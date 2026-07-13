@@ -1,0 +1,194 @@
+/* 파일 경로: src/styles/globals.css */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./tokens.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  * {
+    scrollbar-width: normal;
+    scrollbar-color: var(--border) transparent;
+  }
+}
+
+/* 시스템 전역 스크롤바를 테마 색상(배경/포커스 컬러)에 맞춰 통일 */
+*::-webkit-scrollbar {
+  width: 0.65rem;
+  height: 0.65rem;
+}
+
+*::-webkit-scrollbar-track {
+  background-color: var(--muted);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background-color 150ms ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--primary);
+}
+
+/* x축 스크롤바 숨기기 */
+.scroll-x-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-x-hide {
+  -ms-overflow-style: none;
+  /* IE 대응 */
+  scrollbar-width: none;
+  /* Firefox 대응 */
+}
+
+/* Quick filter 드롭다운 목록 색상은 테마 토큰을 따릅니다. */
+.quick-filter-select option {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+}
+
+.quick-filter-select option:hover,
+.quick-filter-select option:focus {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.quick-filter-select option:checked {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+}
+
+@layer utilities {
+
+  /* @theme 도구 에러를 피하기 위해 Heartbeat 애니메이션을 여기서 정의합니다. */
+  @keyframes heartbeat {
+    0% {
+      box-shadow: 0 0 0 0 var(--heartbeat-color, var(--destructive));
+      transform: scale(1);
+    }
+
+    50% {
+      box-shadow: 0 0 0 7px transparent;
+      transform: scale(1.05);
+    }
+
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+      transform: scale(1);
+    }
+  }
+
+  .animate-heartbeat {
+    animation: var(--animate-heartbeat, heartbeat 2s infinite ease-in-out);
+  }
+}
+
+@theme inline {
+  --animate-heartbeat: heartbeat 2s infinite ease-in-out;
+
+  --animate-marquee-horizontal: marquee-horizontal var(--marquee-duration) infinite linear;
+  --animate-marquee-vertical: marquee-vertical var(--marquee-duration) infinite linear;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+
+  @keyframes marquee-horizontal {
+    from {
+      transform: translateX(0);
+    }
+
+    to {
+      transform: translateX(calc(-100% - var(--marquee-gap)));
+    }
+  }
+
+  @keyframes marquee-vertical {
+    from {
+      transform: translateY(0);
+    }
+
+    to {
+      transform: translateY(calc(-100% - var(--marquee-gap)));
+    }
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-text {
+  display: inline-block;
+  /* 텍스트 클립 안정적으로 적용되도록 */
+
+  background: linear-gradient(90deg,
+      var(--primary) 0%,
+      var(--primary) 25%,
+      color-mix(in oklch, var(--primary) 70%, var(--primary-foreground) 30%) 50%,
+      var(--primary) 75%,
+      var(--primary) 100%);
+  background-size: 220% 100%;
+  background-repeat: repeat-x;
+
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+
+  animation: shimmer 3.5s linear infinite;
+}
+
+:root {
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+.dark {
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
