@@ -6,6 +6,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { Link } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
 import {
   CartesianGrid,
   ReferenceLine,
@@ -31,11 +32,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
 import {
-  FDC_LINES,
   SENSOR_GRADES,
-  getTeamsByLine,
+  SPIDER_LINE_REV,
   getTrendSteps,
 } from "../utils/fdcTrendMockData"
+import { fetchLineMapping } from "../api/mappingConfigApi"
 
 const TREND_TYPE_LABELS = {
   "upper-shift": "상한 이동",
@@ -44,6 +45,8 @@ const TREND_TYPE_LABELS = {
   drift: "점진 Drift",
 }
 const CHARTS_PER_EQUIPMENT = 4
+const MAPPING_TAB_CLASS = "h-8 flex-none px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+const EMPTY_MAPPING = Object.freeze({})
 
 function formatTrendType(value) {
   return TREND_TYPE_LABELS[value] ?? value
@@ -427,20 +430,37 @@ function FdcScatterGrid({ selectedStep, equipmentGroups, selectedSensorName }) {
 
 export function FdcTrendPage() {
   const pageRef = useRef(null)
-  const [selectedLine, setSelectedLine] = useState(FDC_LINES[0])
-  const teams = useMemo(() => getTeamsByLine(selectedLine), [selectedLine])
-  const [selectedTeam, setSelectedTeam] = useState(teams[0] ?? "")
+  const mappingQuery = useQuery({
+    queryKey: ["l0-spider-line-mapping"],
+    queryFn: fetchLineMapping,
+  })
+  const lineMapping = mappingQuery.data?.line_mapping ?? SPIDER_LINE_REV
+  const sdwtMapping = mappingQuery.data?.sdwt_mapping ?? EMPTY_MAPPING
+  const lines = useMemo(
+    () => Array.from(new Set(Object.values(lineMapping))),
+    [lineMapping],
+  )
+  const [selectedLine, setSelectedLine] = useState("")
+  const activeLine = lines.includes(selectedLine) ? selectedLine : (lines[0] ?? "")
+  const teamOptions = useMemo(
+    () => Object.entries(lineMapping)
+      .filter(([, line]) => line === activeLine)
+      .map(([key]) => ({ key, label: sdwtMapping[key] ?? key })),
+    [activeLine, lineMapping, sdwtMapping],
+  )
+  const [selectedTeam, setSelectedTeam] = useState("")
+  const activeTeam = teamOptions.some((team) => team.key === selectedTeam)
+    ? selectedTeam
+    : (teamOptions[0]?.key ?? "")
   const trendSteps = useMemo(
-    () => getTrendSteps({ lineId: selectedLine, teamId: selectedTeam }),
-    [selectedLine, selectedTeam],
+    () => activeLine && activeTeam
+      ? getTrendSteps({ lineId: activeLine, teamId: activeTeam })
+      : [],
+    [activeLine, activeTeam],
   )
   const [selectedStepId, setSelectedStepId] = useState("")
   const [selectedSensorName, setSelectedSensorName] = useState("")
   const [selectedSensorGrades, setSelectedSensorGrades] = useState(() => ["A/B"])
-
-  useEffect(() => {
-    setSelectedTeam(teams[0] ?? "")
-  }, [teams])
 
   useEffect(() => {
     setSelectedStepId(trendSteps[0]?.id ?? "")
@@ -575,24 +595,35 @@ export function FdcTrendPage() {
       </header>
 
       <section className="grid shrink-0 gap-3 border-b bg-background px-6 py-4">
-        <Tabs value={selectedLine} onValueChange={setSelectedLine}>
+        <Tabs
+          value={activeLine}
+          onValueChange={(line) => {
+            setSelectedLine(line)
+            setSelectedTeam("")
+          }}
+        >
           <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-muted/70">
-            {FDC_LINES.map((lineId) => (
-              <TabsTrigger key={lineId} value={lineId} className="h-8 flex-none px-3">
+            {lines.map((lineId) => (
+              <TabsTrigger key={lineId} value={lineId} className={MAPPING_TAB_CLASS}>
                 {lineId}
               </TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
-        <Tabs value={selectedTeam} onValueChange={setSelectedTeam}>
+        <Tabs value={activeTeam} onValueChange={setSelectedTeam}>
           <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-muted/70">
-            {teams.map((teamId) => (
-              <TabsTrigger key={teamId} value={teamId} className="h-8 flex-none px-3">
-                {teamId}
+            {teamOptions.map((team) => (
+              <TabsTrigger key={team.key} value={team.key} className={MAPPING_TAB_CLASS}>
+                {team.label}
               </TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
+        {mappingQuery.isError ? (
+          <p className="text-xs text-destructive">
+            {mappingQuery.error.message} 현재 화면에는 개발용 임시 매핑을 표시합니다.
+          </p>
+        ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <span className="shrink-0 text-xs font-semibold text-muted-foreground">센서 등급</span>
           <div className="flex flex-wrap gap-1.5">

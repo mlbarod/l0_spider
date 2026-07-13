@@ -328,7 +328,7 @@ function SpiderAppCard({ app }) {
       )}
     >
       <Badge className="absolute -right-2 -top-2 z-10 border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-        Open
+        개발중
       </Badge>
 
       <div className="mb-3 flex size-10 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 transition-all duration-300 group-hover:border-primary/30 group-hover:bg-primary/15">

@@ -5,6 +5,8 @@ import { createServer } from "node:http"
 import { extname, join, normalize } from "node:path"
 import { fileURLToPath, URL } from "node:url"
 
+import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
+
 const rootDir = fileURLToPath(new URL(".", import.meta.url))
 const distDir = join(rootDir, "dist")
 const port = Number(process.env.PORT ?? 5173)
@@ -100,11 +102,22 @@ async function serveStatic(req, res) {
   createReadStream(filePath).pipe(res)
 }
 
+async function handleRequest(req, res) {
+  const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`)
+
+  if (url.pathname === "/api/mapping-config") {
+    await handleMappingConfigRequest(req, res)
+    return
+  }
+
+  await serveStatic(req, res)
+}
+
 buildClient()
 await assertDistExists()
 
 const server = createServer((req, res) => {
-  serveStatic(req, res).catch((error) => {
+  handleRequest(req, res).catch((error) => {
     sendJson(res, 500, { ok: false, error: error.message })
   })
 })

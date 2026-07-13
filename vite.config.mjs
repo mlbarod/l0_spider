@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react"
 import path from "node:path"
 import process from "node:process"
 
+import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
+
 const STAGING_HOST = "stg.plane.samsungds.net"
 const siteHost = process.env.VITE_SITE_URL
   ? process.env.VITE_SITE_URL.replace(/^https?:\/\//, "")
@@ -11,8 +13,25 @@ const siteHost = process.env.VITE_SITE_URL
   : ""
 const isStagingHost = siteHost === STAGING_HOST
 
+function mappingConfigApi() {
+  return {
+    name: "l0-spider-mapping-config-api",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = new URL(req.url ?? "/", "http://localhost")
+        if (url.pathname !== "/api/mapping-config") {
+          next()
+          return
+        }
+
+        handleMappingConfigRequest(req, res)
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), mappingConfigApi()],
   resolve: {
     alias: {
       "@": path.resolve(process.cwd(), "src"),
