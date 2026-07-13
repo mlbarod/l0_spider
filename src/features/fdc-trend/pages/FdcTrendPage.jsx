@@ -177,6 +177,7 @@ function ErdScatterCard({ row }) {
   })
   const points = chartQuery.data?.points ?? []
   const axisColumn = chartQuery.data?.axisColumn ?? `${row.sensor}_${row.step}`
+  const chartSourcePath = chartQuery.data?.sourcePath || chartQuery.error?.sourcePath || row.file_path
 
   return (
     <article className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border bg-card shadow-sm">
@@ -240,11 +241,12 @@ function ErdScatterCard({ row }) {
         )}
       </div>
       <footer className="border-t px-3 py-2">
+        <span className="text-[10px] font-medium text-muted-foreground">Chart draw path</span>
         <p
-          className="truncate font-mono text-[10px] text-muted-foreground"
-          title={chartQuery.data?.sourcePath ?? row.file_path}
+          className="mt-0.5 break-all font-mono text-[10px] text-muted-foreground"
+          title={chartSourcePath}
         >
-          {chartQuery.data?.sourcePath ?? row.file_path}
+          {chartSourcePath}
         </p>
       </footer>
     </article>
@@ -258,7 +260,8 @@ export function FdcTrendPage() {
   const [selectedGrades, setSelectedGrades] = useState(() => ["A/B"])
   const [selectedDesc, setSelectedDesc] = useState("")
   const [selectedSensor, setSelectedSensor] = useState("")
-  const [queries, setQueries] = useState({ line: "", team: "", grade: "", step: "", sensor: "" })
+  const [selectedChStep, setSelectedChStep] = useState("")
+  const [queries, setQueries] = useState({ line: "", team: "", grade: "", step: "", sensor: "", chStep: "" })
   const mappingQuery = useQuery({
     queryKey: ["l0-spider-line-mapping"],
     queryFn: fetchLineMapping,
@@ -290,6 +293,7 @@ export function FdcTrendPage() {
       priorities,
       selectedDesc,
       selectedSensor,
+      selectedChStep,
     ],
     queryFn: () => fetchSelfEquipmentData({
       line: activeLine,
@@ -298,15 +302,18 @@ export function FdcTrendPage() {
       priorities,
       desc: selectedDesc,
       sensor: selectedSensor,
+      chStep: selectedChStep,
     }),
     enabled: Boolean(activeLine && activeTeam && activeTeamLabel),
   })
   const steps = dataQuery.data?.steps ?? []
   const sensors = dataQuery.data?.sensors ?? []
+  const chSteps = dataQuery.data?.chSteps ?? []
   const activeDesc = dataQuery.data?.filters?.desc ?? ""
   const activeSensor = dataQuery.data?.filters?.sensor ?? ""
-  const sensorIsSelected = Boolean(selectedSensor && activeSensor === selectedSensor)
-  const chartRows = sensorIsSelected ? (dataQuery.data?.rows ?? []) : []
+  const activeChStep = dataQuery.data?.filters?.chStep ?? ""
+  const chStepIsSelected = Boolean(selectedChStep && activeChStep === selectedChStep)
+  const chartRows = chStepIsSelected ? (dataQuery.data?.rows ?? []) : []
 
   const filteredLines = filterItems(lines.map((line) => ({ value: line, label: line })), queries.line)
   const filteredTeams = filterItems(
@@ -333,17 +340,26 @@ export function FdcTrendPage() {
     })),
     queries.sensor,
   )
+  const filteredChSteps = filterItems(
+    chSteps.map((item) => ({
+      value: item.step,
+      label: item.step,
+      meta: `${item.rowCount.toLocaleString()}건 · ${item.equipmentCount.toLocaleString()} eqp`,
+    })),
+    queries.chStep,
+  )
 
   const setQuery = (key, value) => setQueries((current) => ({ ...current, [key]: value }))
   const resetStepAndSensor = () => {
     setSelectedDesc("")
     setSelectedSensor("")
-    setQueries((current) => ({ ...current, step: "", sensor: "" }))
+    setSelectedChStep("")
+    setQueries((current) => ({ ...current, step: "", sensor: "", chStep: "" }))
   }
   const handleLineChange = (line) => {
     setSelectedLine(line)
     setSelectedTeam("")
-    setQueries((current) => ({ ...current, team: "", step: "", sensor: "" }))
+    setQueries((current) => ({ ...current, team: "", step: "", sensor: "", chStep: "" }))
     resetStepAndSensor()
   }
   const handleTeamChange = (team) => {
@@ -369,7 +385,7 @@ export function FdcTrendPage() {
               <Badge variant="outline">Parquet</Badge>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              라인, 분임조, 센서 등급과 STEP, sensor를 선택해 ERD 결과를 조회합니다.
+              라인, 분임조, 센서 등급과 STEP, sensor, ch_step을 선택해 ERD 결과를 조회합니다.
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" asChild>
@@ -383,7 +399,7 @@ export function FdcTrendPage() {
 
       <section className="shrink-0 border-b bg-card">
         <div className="overflow-x-auto px-6 py-2">
-          <div className="grid h-[320px] min-w-[1180px] grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,.8fr)_minmax(0,1.55fr)_minmax(0,1.25fr)] gap-4">
+          <div className="grid h-[320px] min-w-[1420px] grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,.8fr)_minmax(0,1.55fr)_minmax(0,1.25fr)_minmax(0,1.15fr)] gap-4">
             <FilterCard
               title="Line Name"
               badge={lines.length ? `${lines.length}` : null}
@@ -459,7 +475,9 @@ export function FdcTrendPage() {
                   onClick={() => {
                     setSelectedDesc((current) => current === item.value ? "" : item.value)
                     setSelectedSensor("")
+                    setSelectedChStep("")
                     setQuery("sensor", "")
+                    setQuery("chStep", "")
                   }}
                 />
               ))}
@@ -480,7 +498,31 @@ export function FdcTrendPage() {
                   label={item.label}
                   meta={item.meta}
                   selected={activeSensor === item.value}
-                  onClick={() => setSelectedSensor((current) => current === item.value ? "" : item.value)}
+                  onClick={() => {
+                    setSelectedSensor((current) => current === item.value ? "" : item.value)
+                    setSelectedChStep("")
+                    setQuery("chStep", "")
+                  }}
+                />
+              ))}
+            </FilterCard>
+            <FilterCard
+              title="ch_step"
+              badge={chSteps.length ? `${chSteps.length}` : null}
+              disabled={!selectedSensor || dataQuery.isLoading}
+              placeholder={selectedSensor ? "선택 sensor에 해당하는 ch_step이 없습니다." : "sensor를 먼저 선택하세요"}
+              isActive={Boolean(activeChStep)}
+              isLoading={dataQuery.isFetching && Boolean(selectedSensor)}
+              query={queries.chStep}
+              onQueryChange={(value) => setQuery("chStep", value)}
+            >
+              {filteredChSteps.map((item) => (
+                <SelectRow
+                  key={item.value}
+                  label={item.label}
+                  meta={item.meta}
+                  selected={activeChStep === item.value}
+                  onClick={() => setSelectedChStep((current) => current === item.value ? "" : item.value)}
                 />
               ))}
             </FilterCard>
@@ -503,16 +545,16 @@ export function FdcTrendPage() {
             <div>
               <h2 className="text-base font-semibold">Scatter chart</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                sensor를 선택하면 최신 ERD 이상감지 데이터의 act_time과 sensor_ch_step 값을 표시합니다.
+                ch_step을 선택하면 최신 ERD 이상감지 데이터의 act_time과 sensor_ch_step 값을 표시합니다.
               </p>
             </div>
-            {sensorIsSelected ? (
+            {chStepIsSelected ? (
               <Badge variant="secondary">{chartRows.length.toLocaleString()} charts</Badge>
             ) : null}
           </div>
-          {!sensorIsSelected ? (
+          {!chStepIsSelected ? (
             <div className="grid min-h-52 place-items-center rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
-              STEP과 sensor를 선택하면 scatter chart가 표시됩니다.
+              STEP, sensor와 ch_step을 선택하면 scatter chart가 표시됩니다.
             </div>
           ) : chartRows.length ? (
             <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">

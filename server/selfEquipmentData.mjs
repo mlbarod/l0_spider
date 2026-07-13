@@ -23,6 +23,7 @@ export const TEAM_ERD_COLUMNS = Object.freeze([
 ])
 
 const ERD_FILE_ROOT = "/appdata/abnormal_trend/pic/erd"
+const ERD_BACKUP_ROOT = "/appdata/abnormal_trend/pic/backup"
 const LATEST_DATE_ROOT = "/appdata/abnormal_trend/pic/path"
 const parquetCache = new Map()
 const erdScatterCache = new Map()
@@ -128,8 +129,19 @@ export function buildSelfEquipmentPayload(rows, filters) {
   const selectedSensor = sensors.some((item) => item.sensor === filters.sensor)
     ? filters.sensor
     : ""
-  const chartRows = selectedSensor
+  const sensorRows = selectedSensor
     ? stepRows.filter((row) => row.sensor === selectedSensor)
+    : []
+  const chSteps = sortByRowCount(aggregateBy(sensorRows, "step", (step, chStepRows) => ({
+    step,
+    rowCount: chStepRows.length,
+    equipmentCount: uniqueCount(chStepRows, "eqp"),
+  })), "step")
+  const selectedChStep = chSteps.some((item) => item.step === filters.chStep)
+    ? filters.chStep
+    : ""
+  const chartRows = selectedChStep
+    ? sensorRows.filter((row) => row.step === selectedChStep)
     : []
 
   return {
@@ -140,6 +152,7 @@ export function buildSelfEquipmentPayload(rows, filters) {
       priorities: filters.priorities,
       desc: selectedDesc,
       sensor: selectedSensor,
+      chStep: selectedChStep,
     },
     counts: {
       filteredRows: baseRows.length,
@@ -147,6 +160,7 @@ export function buildSelfEquipmentPayload(rows, filters) {
     },
     steps,
     sensors,
+    chSteps,
     rows: chartRows.map((row, index) => ({ ...row, id: `${index}-${row.file_path}` })),
   }
 }
@@ -159,6 +173,7 @@ function readFilters(url) {
     priorities: url.searchParams.getAll("priority").map((value) => value.trim()).filter(Boolean),
     desc: url.searchParams.get("desc")?.trim() ?? "",
     sensor: url.searchParams.get("sensor")?.trim() ?? "",
+    chStep: url.searchParams.get("chStep")?.trim() ?? "",
   }
 }
 
@@ -195,8 +210,22 @@ async function getLatestDate() {
 }
 
 export function resolveErdDataFilePath(imagePath, latestDate) {
-  const resolvedImagePath = resolve(imagePath)
-  if (!resolvedImagePath.startsWith(`${ERD_FILE_ROOT}/`) || !resolvedImagePath.toLowerCase().endsWith(".png")) {
+  const resolvedInputPath = resolve(imagePath)
+  const isDirectErdPath = resolvedInputPath.startsWith(`${ERD_FILE_ROOT}/`)
+  const isBackupPath = resolvedInputPath.startsWith(`${ERD_BACKUP_ROOT}/`)
+  let resolvedImagePath = resolvedInputPath
+
+  if (isBackupPath) {
+    const encodedPath = relative(ERD_BACKUP_ROOT, resolvedInputPath)
+    if (encodedPath.includes(sep) || !encodedPath.startsWith("#")) {
+      throw new Error("허용되지 않은 ERD 이미지 경로입니다.")
+    }
+    resolvedImagePath = resolve(encodedPath.replaceAll("#", "/"))
+  }
+
+  if ((!isDirectErdPath && !isBackupPath)
+    || !resolvedImagePath.startsWith(`${ERD_FILE_ROOT}/`)
+    || !resolvedImagePath.toLowerCase().endsWith(".png")) {
     throw new Error("허용되지 않은 ERD 이미지 경로입니다.")
   }
 
@@ -291,6 +320,8 @@ export async function handleErdScatterDataRequest(req, res, url) {
     return
   }
 
+  let sourcePath = ""
+
   try {
     const imagePath = url.searchParams.get("path")?.trim() ?? ""
     const eqp = url.searchParams.get("eqp")?.trim() ?? ""
@@ -301,6 +332,7 @@ export async function handleErdScatterDataRequest(req, res, url) {
 
     const latestDate = await getLatestDate()
     const { filePath, sensor, chStep } = resolveErdDataFilePath(imagePath, latestDate)
+    sourcePath = filePath
     const axisColumn = `${sensor}_${chStep}`
     const rows = await readErdScatterRows(filePath, axisColumn)
     sendJson(res, 200, buildErdScatterPayload(rows, { eqp, axisColumn, filePath, latestDate }))
@@ -308,6 +340,7 @@ export async function handleErdScatterDataRequest(req, res, url) {
     sendJson(res, 500, {
       ok: false,
       error: `ERD 이상감지 데이터를 불러오지 못했습니다: ${error.message}`,
+      sourcePath,
     })
   }
 }
