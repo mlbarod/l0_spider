@@ -28,6 +28,13 @@ LIVE_RELOAD=0 PORT=5173 node server.mjs
 
 정적 모드에서 `BUILD_ON_START=0`을 설정하면 기존 `dist`를 재빌드하지 않고 제공한다.
 
+## Self-equipment UI Versions
+
+- 최초버전: `src/features/fdc-trend/pages/versions/FdcTrendPage.initial.jsx.bak`
+- 개선버전(현재 사용): `src/features/fdc-trend/pages/FdcTrendPage.jsx`
+
+원복 절차는 `src/features/fdc-trend/pages/versions/README.md`를 참조한다.
+
 ## Data References
 
 `latest_date`는 `/appdata/abnormal_trend/pic/path`에 있는 파일명 중

@@ -103,7 +103,7 @@ export function buildSelfEquipmentPayload(rows, filters) {
   }))
   const selectedDesc = steps.some((item) => item.desc === filters.desc)
     ? filters.desc
-    : (steps[0]?.desc ?? "")
+    : ""
   const stepRows = selectedDesc
     ? baseRows.filter((row) => row.desc === selectedDesc)
     : []
@@ -113,7 +113,7 @@ export function buildSelfEquipmentPayload(rows, filters) {
   }))
   const selectedSensor = sensors.some((item) => item.sensor === filters.sensor)
     ? filters.sensor
-    : (sensors[0]?.sensor ?? "")
+    : ""
   const chartRows = selectedSensor
     ? stepRows.filter((row) => row.sensor === selectedSensor)
     : []
