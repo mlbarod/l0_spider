@@ -26,13 +26,11 @@ function validateMappingDictionary(config, mappingName, valueName) {
 export async function readLineMapping(configPath = mappingConfigPath) {
   const configText = await readFile(configPath, "utf8")
   const config = JSON.parse(configText)
-  const lineMapping = validateMappingDictionary(config, "line_mapping", "라인")
-  const sdwtMapping = validateMappingDictionary(config, "sdwt_mapping", "SDWT")
-  const missingSdwtKey = Object.keys(lineMapping).find((key) => !sdwtMapping[key])
-
-  if (missingSdwtKey) {
-    throw new Error(`sdwt_mapping에 line_mapping key '${missingSdwtKey}'가 없습니다.`)
-  }
+  const mappingRoot = config?.root && typeof config.root === "object" && !Array.isArray(config.root)
+    ? config.root
+    : config
+  const lineMapping = validateMappingDictionary(mappingRoot, "line_mapping", "라인")
+  const sdwtMapping = validateMappingDictionary(mappingRoot, "sdwt_mapping", "SDWT")
 
   return {
     line_mapping: lineMapping,
