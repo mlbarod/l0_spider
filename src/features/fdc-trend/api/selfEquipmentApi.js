@@ -25,8 +25,10 @@ export async function fetchSelfEquipmentData({
   return payload
 }
 
-export async function fetchErdScatterData({ filePath, eqp }) {
+export async function fetchErdScatterData({ filePath, eqp, sensor, chStep }) {
   const searchParams = new URLSearchParams({ path: filePath, eqp })
+  if (sensor) searchParams.set("sensor", sensor)
+  if (chStep) searchParams.set("chStep", chStep)
   const response = await fetch(`/api/erd-scatter-data?${searchParams.toString()}`, {
     headers: { Accept: "application/json" },
   })

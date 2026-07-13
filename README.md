@@ -40,6 +40,9 @@ LIVE_RELOAD=0 PORT=5173 node server.mjs
 `latest_date`는 `/appdata/abnormal_trend/pic/path`에 있는 파일명 중
 `yyyy-mm-dd hh:mm:ss` 형식과 일치하는 가장 최신 파일명으로 결정한다.
 
+자설비 Scatter chart의 ERD 데이터 경로는 `df_path.parquet`의 `file_path`에서
+부모 경로를 유지하고 마지막 `/` 뒤 파일명만 `data.parquet`으로 바꾸어 사용한다.
+
 | 구분 | 참조 파일 | 경로 | 참조 컬럼/키 |
 | --- | --- | --- | --- |
 | ERD 이상감지 데이터 | `data.parquet` | `/appdata/abnormal_trend/pic/erd/{latest_date}/{sdwt}/{step_desc}/{ver}/{ppid}/{grade}/{sensor}/{ch_step}/data.parquet` | `act_time` (x축), `{sensor}_{ch_step}` (y축), `eqp_cb` (차트별 EQP 필터), `eqp_id`, `disp_name`, `wafer_id` (hover 표시) |

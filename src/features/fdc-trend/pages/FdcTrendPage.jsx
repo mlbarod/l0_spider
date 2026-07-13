@@ -170,9 +170,14 @@ function ScatterPointTooltip({ active, payload, axisColumn }) {
 function ErdScatterCard({ row }) {
   const eqp = stripPngExtension(row.eqp)
   const chartQuery = useQuery({
-    queryKey: ["erd-scatter-data", row.file_path, eqp],
-    queryFn: () => fetchErdScatterData({ filePath: row.file_path, eqp }),
-    enabled: Boolean(row.file_path && eqp),
+    queryKey: ["erd-scatter-data", row.file_path, eqp, row.sensor, row.step],
+    queryFn: () => fetchErdScatterData({
+      filePath: row.file_path,
+      eqp,
+      sensor: row.sensor,
+      chStep: row.step,
+    }),
+    enabled: Boolean(row.file_path && eqp && row.sensor && row.step),
     staleTime: 5 * 60 * 1000,
   })
   const points = chartQuery.data?.points ?? []
@@ -313,7 +318,24 @@ export function FdcTrendPage() {
   const activeSensor = dataQuery.data?.filters?.sensor ?? ""
   const activeChStep = dataQuery.data?.filters?.chStep ?? ""
   const chStepIsSelected = Boolean(selectedChStep && activeChStep === selectedChStep)
-  const chartRows = chStepIsSelected ? (dataQuery.data?.rows ?? []) : []
+  const dataRows = dataQuery.data?.rows
+  const chartRows = useMemo(
+    () => chStepIsSelected ? (dataRows ?? []) : [],
+    [chStepIsSelected, dataRows],
+  )
+  const chartGroups = useMemo(() => {
+    const groups = new Map()
+
+    chartRows.forEach((row) => {
+      const eqp = stripPngExtension(row.eqp) || "EQP 미지정"
+      const groupRows = groups.get(eqp) ?? []
+      groupRows.push(row)
+      groups.set(eqp, groupRows)
+    })
+
+    return Array.from(groups, ([eqp, rows]) => ({ eqp, rows }))
+      .sort((left, right) => left.eqp.localeCompare(right.eqp, "ko", { numeric: true }))
+  }, [chartRows])
 
   const filteredLines = filterItems(lines.map((line) => ({ value: line, label: line })), queries.line)
   const filteredTeams = filterItems(
@@ -549,16 +571,32 @@ export function FdcTrendPage() {
               </p>
             </div>
             {chStepIsSelected ? (
-              <Badge variant="secondary">{chartRows.length.toLocaleString()} charts</Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">{chartGroups.length.toLocaleString()} EQP categories</Badge>
+                <Badge variant="outline">{chartRows.length.toLocaleString()} charts</Badge>
+              </div>
             ) : null}
           </div>
           {!chStepIsSelected ? (
             <div className="grid min-h-52 place-items-center rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
               STEP, sensor와 ch_step을 선택하면 scatter chart가 표시됩니다.
             </div>
-          ) : chartRows.length ? (
-            <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
-              {chartRows.map((row) => <ErdScatterCard key={row.id} row={row} />)}
+          ) : chartGroups.length ? (
+            <div className="grid min-w-0 gap-5">
+              {chartGroups.map((group) => (
+                <section key={group.eqp} className="min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm">
+                  <header className="flex items-center justify-between gap-3 border-b bg-muted/60 px-4 py-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Badge>EQP</Badge>
+                      <h3 className="truncate text-sm font-semibold">{group.eqp}</h3>
+                    </div>
+                    <Badge variant="secondary">{group.rows.length.toLocaleString()} charts</Badge>
+                  </header>
+                  <div className="grid min-w-0 grid-cols-1 gap-4 p-4 xl:grid-cols-2">
+                    {group.rows.map((row) => <ErdScatterCard key={row.id} row={row} />)}
+                  </div>
+                </section>
+              ))}
             </div>
           ) : (
             <div className="grid min-h-52 place-items-center rounded-lg border bg-card text-sm text-muted-foreground">

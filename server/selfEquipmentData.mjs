@@ -1,13 +1,9 @@
 import { createReadStream, existsSync, statSync } from "node:fs"
-import { readdir } from "node:fs/promises"
 import { join, relative, resolve, sep } from "node:path"
 
 import { asyncBufferFromFile, parquetReadObjects } from "hyparquet"
 
-import {
-  buildTeamErdPath,
-  resolveLatestDateFile,
-} from "../src/config/spiderDataPaths.mjs"
+import { buildTeamErdPath } from "../src/config/spiderDataPaths.mjs"
 
 export const TEAM_ERD_COLUMNS = Object.freeze([
   "sdwt",
@@ -24,7 +20,6 @@ export const TEAM_ERD_COLUMNS = Object.freeze([
 
 const ERD_FILE_ROOT = "/appdata/abnormal_trend/pic/erd"
 const ERD_BACKUP_ROOT = "/appdata/abnormal_trend/pic/backup"
-const LATEST_DATE_ROOT = "/appdata/abnormal_trend/pic/path"
 const parquetCache = new Map()
 const erdScatterCache = new Map()
 const erdScatterPending = new Map()
@@ -104,6 +99,12 @@ function sortByRowCount(items, labelColumn) {
   ))
 }
 
+function sortByLabel(items, labelColumn) {
+  return items.sort((left, right) => (
+    left[labelColumn].localeCompare(right[labelColumn], "ko", { numeric: true })
+  ))
+}
+
 export function buildSelfEquipmentPayload(rows, filters) {
   const priorities = new Set(filters.priorities)
   const baseRows = rows.filter((row) => (
@@ -111,7 +112,7 @@ export function buildSelfEquipmentPayload(rows, filters) {
     && row.sdwt === filters.sdwt
     && priorities.has(row.priority)
   ))
-  const steps = sortByRowCount(aggregateBy(baseRows, "desc", (desc, stepRows) => ({
+  const steps = sortByLabel(aggregateBy(baseRows, "desc", (desc, stepRows) => ({
     desc,
     rowCount: stepRows.length,
     equipmentCount: uniqueCount(stepRows, "eqp"),
@@ -201,15 +202,7 @@ export async function handleSelfEquipmentDataRequest(req, res, url) {
   }
 }
 
-async function getLatestDate() {
-  const latestDate = resolveLatestDateFile(await readdir(LATEST_DATE_ROOT))
-  if (!latestDate) {
-    throw new Error("latest_date 결정 파일을 찾을 수 없습니다.")
-  }
-  return latestDate
-}
-
-export function resolveErdDataFilePath(imagePath, latestDate) {
+export function resolveErdDataFilePath(imagePath) {
   const resolvedInputPath = resolve(imagePath)
   const isDirectErdPath = resolvedInputPath.startsWith(`${ERD_FILE_ROOT}/`)
   const isBackupPath = resolvedInputPath.startsWith(`${ERD_BACKUP_ROOT}/`)
@@ -224,8 +217,7 @@ export function resolveErdDataFilePath(imagePath, latestDate) {
   }
 
   if ((!isDirectErdPath && !isBackupPath)
-    || !resolvedImagePath.startsWith(`${ERD_FILE_ROOT}/`)
-    || !resolvedImagePath.toLowerCase().endsWith(".png")) {
+    || !resolvedImagePath.startsWith(`${ERD_FILE_ROOT}/`)) {
     throw new Error("허용되지 않은 ERD 이미지 경로입니다.")
   }
 
@@ -234,11 +226,11 @@ export function resolveErdDataFilePath(imagePath, latestDate) {
     throw new Error("ERD 이미지 경로 구조가 올바르지 않습니다.")
   }
 
-  pathSegments[0] = latestDate
   pathSegments[pathSegments.length - 1] = "data.parquet"
 
   return {
     filePath: join(ERD_FILE_ROOT, ...pathSegments),
+    latestDate: pathSegments[0],
     sensor: pathSegments[pathSegments.length - 3],
     chStep: pathSegments[pathSegments.length - 2],
   }
@@ -330,9 +322,19 @@ export async function handleErdScatterDataRequest(req, res, url) {
       return
     }
 
-    const latestDate = await getLatestDate()
-    const { filePath, sensor, chStep } = resolveErdDataFilePath(imagePath, latestDate)
+    const requestedSensor = url.searchParams.get("sensor")?.trim() ?? ""
+    const requestedChStep = url.searchParams.get("chStep")?.trim() ?? ""
+    const {
+      filePath,
+      latestDate,
+      sensor: pathSensor,
+      chStep: pathChStep,
+    } = resolveErdDataFilePath(imagePath)
     sourcePath = filePath
+    const sensor = requestedSensor || pathSensor
+    const chStep = requestedChStep || pathChStep
+    assertPathSegment("sensor", sensor)
+    assertPathSegment("chStep", chStep)
     const axisColumn = `${sensor}_${chStep}`
     const rows = await readErdScatterRows(filePath, axisColumn)
     sendJson(res, 200, buildErdScatterPayload(rows, { eqp, axisColumn, filePath, latestDate }))
