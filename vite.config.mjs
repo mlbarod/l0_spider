@@ -4,6 +4,10 @@ import path from "node:path"
 import process from "node:process"
 
 import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
+import {
+  handleErdFileRequest,
+  handleSelfEquipmentDataRequest,
+} from "./server/selfEquipmentData.mjs"
 
 const STAGING_HOST = "stg.plane.samsungds.net"
 const siteHost = process.env.VITE_SITE_URL
@@ -19,12 +23,22 @@ function mappingConfigApi() {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = new URL(req.url ?? "/", "http://localhost")
-        if (url.pathname !== "/api/mapping-config") {
-          next()
+        if (url.pathname === "/api/mapping-config") {
+          handleMappingConfigRequest(req, res)
           return
         }
 
-        handleMappingConfigRequest(req, res)
+        if (url.pathname === "/api/self-equipment-data") {
+          handleSelfEquipmentDataRequest(req, res, url)
+          return
+        }
+
+        if (url.pathname === "/api/erd-file") {
+          handleErdFileRequest(req, res, url)
+          return
+        }
+
+        next()
       })
     },
   }

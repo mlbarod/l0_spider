@@ -7,6 +7,10 @@ import { fileURLToPath, URL } from "node:url"
 import { createServer as createViteServer } from "vite"
 
 import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
+import {
+  handleErdFileRequest,
+  handleSelfEquipmentDataRequest,
+} from "./server/selfEquipmentData.mjs"
 
 const rootDir = fileURLToPath(new URL(".", import.meta.url))
 const distDir = join(rootDir, "dist")
@@ -104,17 +108,6 @@ async function serveStatic(req, res) {
   createReadStream(filePath).pipe(res)
 }
 
-async function handleRequest(req, res) {
-  const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`)
-
-  if (url.pathname === "/api/mapping-config") {
-    await handleMappingConfigRequest(req, res)
-    return
-  }
-
-  await serveStatic(req, res)
-}
-
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`)
 
@@ -125,6 +118,18 @@ const server = createServer((req, res) => {
     return
   }
 
+  if (url.pathname === "/api/self-equipment-data") {
+    handleSelfEquipmentDataRequest(req, res, url).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/erd-file") {
+    handleErdFileRequest(req, res, url)
+    return
+  }
+
   if (liveReload) {
     viteServer.middlewares(req, res, (error) => {
       if (error) sendJson(res, 500, { ok: false, error: error.message })
@@ -132,7 +137,7 @@ const server = createServer((req, res) => {
     return
   }
 
-  handleRequest(req, res).catch((error) => {
+  serveStatic(req, res).catch((error) => {
     sendJson(res, 500, { ok: false, error: error.message })
   })
 })
