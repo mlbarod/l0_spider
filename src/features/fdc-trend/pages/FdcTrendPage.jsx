@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from "react"
-import { ArrowLeft, ArrowUp, ImageOff } from "lucide-react"
+import { ArrowLeft, ArrowUp, Check, ChevronRight, ImageOff, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
@@ -20,129 +21,104 @@ function expandPriorities(grades) {
   ))
 }
 
-function CheckboxPill({ checked, disabled = false, label, onChange }) {
+function SelectRow({ label, meta, selected, multiple = false, onClick }) {
   return (
-    <label
+    <button
+      type="button"
+      onClick={onClick}
       className={cn(
-        "inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition",
-        checked
-          ? "border-primary/50 bg-primary/10 text-primary"
-          : "border-border bg-muted/40 text-muted-foreground",
-        disabled && "cursor-not-allowed opacity-50",
+        "flex h-9 w-full min-w-0 items-center gap-3 rounded-md border border-transparent px-3 text-left transition",
+        "hover:border-border hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        selected && "border-primary/30 bg-primary/10 text-primary shadow-sm",
       )}
     >
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={onChange}
-        className="size-3.5 accent-primary"
-      />
-      <span>{label}</span>
-    </label>
-  )
-}
-
-function OptionGroup({
-  title,
-  items,
-  selected,
-  disabled = false,
-  showAll = false,
-  onToggle,
-  onToggleAll,
-}) {
-  const allChecked = items.length > 0 && items.every((item) => selected.has(item.value))
-
-  return (
-    <div className="flex min-w-0 flex-wrap items-center gap-2">
-      <span className="w-24 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
-      </span>
-      {showAll ? (
-        <>
-          <CheckboxPill
-            label="All"
-            checked={allChecked}
-            disabled={disabled || items.length === 0}
-            onChange={() => onToggleAll(!allChecked)}
-          />
-          <div className="h-4 w-px shrink-0 bg-border" />
-        </>
-      ) : null}
-      <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-        {items.length ? items.map((item) => (
-          <CheckboxPill
-            key={item.value}
-            label={item.label}
-            checked={selected.has(item.value)}
-            disabled={disabled}
-            onChange={() => onToggle(item.value)}
-          />
-        )) : (
-          <span className="text-xs text-muted-foreground">선택 가능한 항목이 없습니다.</span>
+      <span
+        className={cn(
+          "min-w-0 flex-1 truncate text-[13px] font-medium leading-5 text-foreground",
+          selected && "text-primary",
         )}
-      </div>
-      <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
-        {selected.size}/{items.length}
+        title={label}
+      >
+        {label}
       </span>
-    </div>
+      {meta ? (
+        <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">{meta}</span>
+      ) : null}
+      {multiple ? (
+        <Check className={cn("size-3 shrink-0", selected ? "text-primary" : "text-transparent")} />
+      ) : (
+        <ChevronRight className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+      )}
+    </button>
   )
 }
 
-function NativeCheck({ checked, label, meta, onChange }) {
+function FilterCard({
+  title,
+  badge,
+  disabled = false,
+  placeholder,
+  isActive = false,
+  isLoading = false,
+  query,
+  onQueryChange,
+  children,
+}) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-xs hover:bg-muted/60">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onChange}
-        className="size-3.5 accent-primary"
-      />
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      {meta ? <span className="shrink-0 text-[10px] text-muted-foreground">{meta}</span> : null}
-    </label>
-  )
-}
-
-function FilterColumn({ title, items, selectedValue, query, onQueryChange, onSelect, emptyText }) {
-  const normalizedQuery = query.trim().toLowerCase()
-  const visibleItems = normalizedQuery
-    ? items.filter((item) => item.label.toLowerCase().includes(normalizedQuery))
-    : items
-
-  return (
-    <section className="grid min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] border-r last:border-r-0">
-      <div className="flex items-center gap-2 px-3 py-2">
-        <h3 className="flex-1 text-xs font-semibold text-foreground">{title}</h3>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-          {selectedValue ? 1 : 0}/{items.length}
-        </span>
+    <Card
+      className={cn(
+        "grid min-h-0 min-w-0 grid-rows-[48px_40px_minmax(0,1fr)] gap-0 overflow-hidden rounded-xl border bg-card py-0 shadow-sm transition-all",
+        isActive && "ring-2 ring-primary/50",
+      )}
+    >
+      <div
+        className={cn(
+          "flex h-12 items-center border-b px-4",
+          isActive ? "bg-primary/10" : "bg-muted/40",
+        )}
+      >
+        <div className="flex h-full min-w-0 flex-1 items-center justify-between gap-2">
+          <CardTitle
+            className={cn(
+              "truncate text-sm font-semibold leading-5",
+              disabled && "text-muted-foreground",
+              isActive && "text-primary",
+            )}
+          >
+            {title}
+          </CardTitle>
+          {isLoading ? (
+            <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" aria-label="로딩 중" />
+          ) : badge != null ? (
+            <Badge variant={isActive ? "default" : "secondary"} className="shrink-0 text-[11px]">
+              {badge}
+            </Badge>
+          ) : null}
+        </div>
       </div>
-      <div className="px-3 pb-2">
+      <div className="border-b px-2 py-1.5">
         <Input
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Search…"
-          className="h-8 bg-muted/30 text-xs"
+          placeholder="검색…"
+          className="h-7 text-xs"
+          disabled={disabled}
         />
       </div>
-      <div className="min-h-0 overflow-y-auto border-t py-1">
-        {visibleItems.length ? visibleItems.map((item) => (
-          <NativeCheck
-            key={item.value}
-            label={item.label}
-            meta={item.meta}
-            checked={selectedValue === item.value}
-            onChange={() => onSelect(item.value)}
-          />
-        )) : (
-          <div className="grid min-h-28 place-items-center px-4 text-center text-xs text-muted-foreground">
-            {emptyText}
+      <CardContent className="min-h-0 overflow-y-auto overflow-x-hidden bg-background/60 p-2">
+        {disabled ? (
+          <div className="flex h-full min-h-16 items-center justify-center px-3 text-center text-sm text-muted-foreground">
+            {placeholder}
+          </div>
+        ) : children.length ? (
+          <div className="grid content-start gap-1.5">{children}</div>
+        ) : (
+          <div className="flex h-full min-h-16 items-center justify-center px-3 text-center text-sm text-muted-foreground">
+            {placeholder}
           </div>
         )}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -192,8 +168,7 @@ export function FdcTrendPage() {
   const [selectedGrades, setSelectedGrades] = useState(() => ["A/B"])
   const [selectedDesc, setSelectedDesc] = useState("")
   const [selectedSensor, setSelectedSensor] = useState("")
-  const [stepQuery, setStepQuery] = useState("")
-  const [sensorQuery, setSensorQuery] = useState("")
+  const [queries, setQueries] = useState({ line: "", team: "", grade: "", step: "", sensor: "" })
   const mappingQuery = useQuery({
     queryKey: ["l0-spider-line-mapping"],
     queryFn: fetchLineMapping,
@@ -243,23 +218,54 @@ export function FdcTrendPage() {
   const sensorIsSelected = Boolean(selectedSensor && activeSensor === selectedSensor)
   const chartRows = sensorIsSelected ? (dataQuery.data?.rows ?? []) : []
 
+  const filteredLines = filterItems(lines.map((line) => ({ value: line, label: line })), queries.line)
+  const filteredTeams = filterItems(
+    teamOptions.map((team) => ({ value: team.key, label: team.label })),
+    queries.team,
+  )
+  const filteredGrades = filterItems(
+    SENSOR_GRADES.map((grade) => ({ value: grade, label: grade })),
+    queries.grade,
+  )
+  const filteredSteps = filterItems(
+    steps.map((item) => ({
+      value: item.desc,
+      label: item.desc,
+      meta: `${item.rowCount.toLocaleString()}건 · ${item.equipmentCount.toLocaleString()} eqp`,
+    })),
+    queries.step,
+  )
+  const filteredSensors = filterItems(
+    sensors.map((item) => ({
+      value: item.sensor,
+      label: item.sensor,
+      meta: `${item.rowCount.toLocaleString()}건`,
+    })),
+    queries.sensor,
+  )
+
+  const setQuery = (key, value) => setQueries((current) => ({ ...current, [key]: value }))
   const resetStepAndSensor = () => {
     setSelectedDesc("")
     setSelectedSensor("")
-    setStepQuery("")
-    setSensorQuery("")
+    setQueries((current) => ({ ...current, step: "", sensor: "" }))
   }
   const handleLineChange = (line) => {
     setSelectedLine(line)
     setSelectedTeam("")
+    setQueries((current) => ({ ...current, team: "", step: "", sensor: "" }))
     resetStepAndSensor()
   }
   const handleTeamChange = (team) => {
     setSelectedTeam(team)
     resetStepAndSensor()
   }
-  const handleGradeChange = (nextGrades) => {
-    setSelectedGrades(SENSOR_GRADES.filter((grade) => nextGrades.has(grade)))
+  const toggleGrade = (grade) => {
+    setSelectedGrades((current) => (
+      current.includes(grade)
+        ? current.filter((item) => item !== grade)
+        : SENSOR_GRADES.filter((item) => [...current, grade].includes(item))
+    ))
     resetStepAndSensor()
   }
 
@@ -286,33 +292,109 @@ export function FdcTrendPage() {
       </header>
 
       <section className="shrink-0 border-b bg-card">
-        <div className="grid gap-2 px-6 py-2.5">
-          <OptionGroup
-            title="Line ID"
-            items={lines.map((line) => ({ value: line, label: line }))}
-            selected={new Set(activeLine ? [activeLine] : [])}
-            onToggle={handleLineChange}
-          />
-          <OptionGroup
-            title="SDWT"
-            items={teamOptions.map((team) => ({ value: team.key, label: team.label }))}
-            selected={new Set(activeTeam ? [activeTeam] : [])}
-            disabled={!activeLine}
-            onToggle={handleTeamChange}
-          />
-          <OptionGroup
-            title="Sensor Grade"
-            items={SENSOR_GRADES.map((grade) => ({ value: grade, label: grade }))}
-            selected={new Set(selectedGrades)}
-            showAll
-            onToggle={(grade) => {
-              const next = new Set(selectedGrades)
-              if (next.has(grade)) next.delete(grade)
-              else next.add(grade)
-              handleGradeChange(next)
-            }}
-            onToggleAll={(checked) => handleGradeChange(checked ? new Set(SENSOR_GRADES) : new Set())}
-          />
+        <div className="overflow-x-auto px-6 py-2">
+          <div className="grid h-[320px] min-w-[1180px] grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,.8fr)_minmax(0,1.55fr)_minmax(0,1.25fr)] gap-4">
+            <FilterCard
+              title="Line Name"
+              badge={lines.length ? `${lines.length}` : null}
+              disabled={mappingQuery.isLoading || lines.length === 0}
+              placeholder={mappingQuery.isLoading ? "로딩 중…" : "선택 가능한 Line이 없습니다."}
+              isActive={Boolean(activeLine)}
+              isLoading={mappingQuery.isFetching}
+              query={queries.line}
+              onQueryChange={(value) => setQuery("line", value)}
+            >
+              {filteredLines.map((item) => (
+                <SelectRow
+                  key={item.value}
+                  label={item.label}
+                  selected={activeLine === item.value}
+                  onClick={() => handleLineChange(item.value)}
+                />
+              ))}
+            </FilterCard>
+            <FilterCard
+              title="SDWT"
+              badge={teamOptions.length ? `${teamOptions.length}` : null}
+              disabled={!activeLine}
+              placeholder="Line Name을 먼저 선택하세요"
+              isActive={Boolean(activeTeam)}
+              query={queries.team}
+              onQueryChange={(value) => setQuery("team", value)}
+            >
+              {filteredTeams.map((item) => (
+                <SelectRow
+                  key={item.value}
+                  label={item.label}
+                  selected={activeTeam === item.value}
+                  onClick={() => handleTeamChange(item.value)}
+                />
+              ))}
+            </FilterCard>
+            <FilterCard
+              title="Sensor Grade"
+              badge={`${SENSOR_GRADES.length}`}
+              disabled={!activeTeam}
+              placeholder="SDWT를 먼저 선택하세요"
+              isActive={selectedGrades.length > 0}
+              query={queries.grade}
+              onQueryChange={(value) => setQuery("grade", value)}
+            >
+              {filteredGrades.map((item) => (
+                <SelectRow
+                  key={item.value}
+                  label={item.label}
+                  selected={selectedGrades.includes(item.value)}
+                  multiple
+                  onClick={() => toggleGrade(item.value)}
+                />
+              ))}
+            </FilterCard>
+            <FilterCard
+              title="STEP"
+              badge={steps.length ? `${steps.length}` : null}
+              disabled={!activeTeam || dataQuery.isLoading}
+              placeholder={dataQuery.isLoading ? "로딩 중…" : "선택 조건에 해당하는 STEP이 없습니다."}
+              isActive={Boolean(activeDesc)}
+              isLoading={dataQuery.isFetching && !selectedDesc}
+              query={queries.step}
+              onQueryChange={(value) => setQuery("step", value)}
+            >
+              {filteredSteps.map((item) => (
+                <SelectRow
+                  key={item.value}
+                  label={item.label}
+                  meta={item.meta}
+                  selected={activeDesc === item.value}
+                  onClick={() => {
+                    setSelectedDesc((current) => current === item.value ? "" : item.value)
+                    setSelectedSensor("")
+                    setQuery("sensor", "")
+                  }}
+                />
+              ))}
+            </FilterCard>
+            <FilterCard
+              title="sensor"
+              badge={sensors.length ? `${sensors.length}` : null}
+              disabled={!selectedDesc || dataQuery.isLoading}
+              placeholder={selectedDesc ? "선택 STEP에 해당하는 sensor가 없습니다." : "STEP을 먼저 선택하세요"}
+              isActive={Boolean(activeSensor)}
+              isLoading={dataQuery.isFetching && Boolean(selectedDesc)}
+              query={queries.sensor}
+              onQueryChange={(value) => setQuery("sensor", value)}
+            >
+              {filteredSensors.map((item) => (
+                <SelectRow
+                  key={item.value}
+                  label={item.label}
+                  meta={item.meta}
+                  selected={activeSensor === item.value}
+                  onClick={() => setSelectedSensor((current) => current === item.value ? "" : item.value)}
+                />
+              ))}
+            </FilterCard>
+          </div>
         </div>
         {mappingQuery.isError ? (
           <p className="border-t px-6 py-2 text-xs text-destructive">{mappingQuery.error.message}</p>
@@ -325,53 +407,6 @@ export function FdcTrendPage() {
             {dataQuery.error.message}
           </div>
         ) : null}
-
-        <section className="grid h-[420px] w-full max-w-5xl min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border bg-card">
-          <div className="flex items-center justify-between gap-2 border-b px-3 py-2.5">
-            <h2 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Filters</h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={resetStepAndSensor}
-              disabled={!selectedDesc && !selectedSensor}
-            >
-              선택 해제
-            </Button>
-          </div>
-          <div className="grid min-h-0 grid-cols-2">
-            <FilterColumn
-              title="STEP / desc"
-              items={steps.map((item) => ({
-                value: item.desc,
-                label: item.desc,
-                meta: `${item.rowCount.toLocaleString()}건 · ${item.equipmentCount.toLocaleString()} eqp`,
-              }))}
-              selectedValue={activeDesc}
-              query={stepQuery}
-              onQueryChange={setStepQuery}
-              onSelect={(desc) => {
-                setSelectedDesc((current) => current === desc ? "" : desc)
-                setSelectedSensor("")
-                setSensorQuery("")
-              }}
-              emptyText={dataQuery.isLoading ? "데이터를 불러오는 중입니다." : "선택 조건에 해당하는 STEP이 없습니다."}
-            />
-            <FilterColumn
-              title="sensor"
-              items={sensors.map((item) => ({
-                value: item.sensor,
-                label: item.sensor,
-                meta: `${item.rowCount.toLocaleString()}건`,
-              }))}
-              selectedValue={activeSensor}
-              query={sensorQuery}
-              onQueryChange={setSensorQuery}
-              onSelect={(sensor) => setSelectedSensor((current) => current === sensor ? "" : sensor)}
-              emptyText={selectedDesc ? "선택 STEP에 해당하는 sensor가 없습니다." : "STEP을 먼저 선택하세요."}
-            />
-          </div>
-        </section>
 
         <section className="grid min-w-0 gap-3">
           <div className="flex items-end justify-between gap-3">
@@ -415,4 +450,11 @@ export function FdcTrendPage() {
       </Button>
     </div>
   )
+}
+
+function filterItems(items, query) {
+  const normalizedQuery = query.trim().toLowerCase()
+  return normalizedQuery
+    ? items.filter((item) => item.label.toLowerCase().includes(normalizedQuery))
+    : items
 }
