@@ -11,13 +11,22 @@ npm run dev
 
 The app opens directly at `/`.
 
-## Production Server
+## Server
 
 ```bash
 PORT=5173 node server.mjs
 ```
 
-Set `BUILD_ON_START=0` to serve the existing `dist` directory without rebuilding.
+기본 실행 모드는 소스 변경사항을 실시간으로 반영한다. 서버를 재실행할 필요 없이
+브라우저를 새로고침하면 최신 개발 코드가 표시된다.
+
+정적 `dist` 운영 모드로 실행하려면 다음과 같이 설정한다.
+
+```bash
+LIVE_RELOAD=0 PORT=5173 node server.mjs
+```
+
+정적 모드에서 `BUILD_ON_START=0`을 설정하면 기존 `dist`를 재빌드하지 않고 제공한다.
 
 ## Data References
 

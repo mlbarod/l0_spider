@@ -442,20 +442,16 @@ export function FdcTrendPage() {
   )
   const [selectedLine, setSelectedLine] = useState("")
   const activeLine = lines.includes(selectedLine) ? selectedLine : (lines[0] ?? "")
-  const activeLineEntries = useMemo(
-    () => Object.entries(lineMapping).filter(([, line]) => line === activeLine),
-    [activeLine, lineMapping],
-  )
   const teamOptions = useMemo(
-    () => activeLineEntries
+    () => Object.entries(lineMapping)
+      .filter(([, line]) => line === activeLine)
       .map(([key]) => ({ key, label: sdwtMapping[key] ?? key })),
-    [activeLineEntries, sdwtMapping],
+    [activeLine, lineMapping, sdwtMapping],
   )
   const [selectedTeam, setSelectedTeam] = useState("")
   const activeTeam = teamOptions.some((team) => team.key === selectedTeam)
     ? selectedTeam
     : (teamOptions[0]?.key ?? "")
-  const activeTeamMappedValue = sdwtMapping[activeTeam]
   const trendSteps = useMemo(
     () => activeLine && activeTeam
       ? getTrendSteps({ lineId: activeLine, teamId: activeTeam })
@@ -614,11 +610,6 @@ export function FdcTrendPage() {
             ))}
           </TabsList>
         </Tabs>
-        <p className="break-all px-1 font-mono text-[10px] leading-4 text-muted-foreground">
-          line_mapping: {activeLineEntries.length
-            ? activeLineEntries.map(([key, value]) => `key=${key}, value=${value}`).join(" | ")
-            : "선택 데이터 없음"}
-        </p>
         <Tabs value={activeTeam} onValueChange={setSelectedTeam}>
           <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-muted/70">
             {teamOptions.map((team) => (
@@ -628,11 +619,6 @@ export function FdcTrendPage() {
             ))}
           </TabsList>
         </Tabs>
-        <p className="break-all px-1 font-mono text-[10px] leading-4 text-muted-foreground">
-          sdwt_mapping: {activeTeam
-            ? `key=${activeTeam}, value=${activeTeamMappedValue ?? activeTeam}${activeTeamMappedValue === undefined ? " (매핑 없음, 원본 사용)" : ""}`
-            : "선택 데이터 없음"}
-        </p>
         {mappingQuery.isError ? (
           <p className="text-xs text-destructive">
             {mappingQuery.error.message} 현재 화면에는 개발용 임시 매핑을 표시합니다.

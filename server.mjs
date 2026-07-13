@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises"
 import { createServer } from "node:http"
 import { extname, join, normalize } from "node:path"
 import { fileURLToPath, URL } from "node:url"
+import { createServer as createViteServer } from "vite"
 
 import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
 
@@ -12,6 +13,7 @@ const distDir = join(rootDir, "dist")
 const port = Number(process.env.PORT ?? 5173)
 const host = process.env.HOST ?? "0.0.0.0"
 const buildOnStart = process.env.BUILD_ON_START !== "0"
+const liveReload = process.env.LIVE_RELOAD !== "0"
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -113,14 +115,43 @@ async function handleRequest(req, res) {
   await serveStatic(req, res)
 }
 
-buildClient()
-await assertDistExists()
-
 const server = createServer((req, res) => {
+  const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`)
+
+  if (url.pathname === "/api/mapping-config") {
+    handleMappingConfigRequest(req, res).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (liveReload) {
+    viteServer.middlewares(req, res, (error) => {
+      if (error) sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
   handleRequest(req, res).catch((error) => {
     sendJson(res, 500, { ok: false, error: error.message })
   })
 })
+
+let viteServer
+
+if (liveReload) {
+  viteServer = await createViteServer({
+    root: rootDir,
+    server: {
+      middlewareMode: true,
+      hmr: { server },
+    },
+    appType: "spa",
+  })
+} else {
+  buildClient()
+  await assertDistExists()
+}
 
 server.on("error", (error) => {
   if (error.code === "EADDRINUSE") {
@@ -133,5 +164,6 @@ server.on("error", (error) => {
 })
 
 server.listen(port, host, () => {
-  console.log(`l0_spider server listening on http://${host}:${port}`)
+  const mode = liveReload ? "live reload" : "static dist"
+  console.log(`l0_spider server listening on http://${host}:${port} (${mode})`)
 })
