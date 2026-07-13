@@ -9,6 +9,7 @@ import { createServer as createViteServer } from "vite"
 import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
 import {
   handleErdFileRequest,
+  handleErdScatterDataRequest,
   handleSelfEquipmentDataRequest,
 } from "./server/selfEquipmentData.mjs"
 
@@ -120,6 +121,13 @@ const server = createServer((req, res) => {
 
   if (url.pathname === "/api/self-equipment-data") {
     handleSelfEquipmentDataRequest(req, res, url).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/erd-scatter-data") {
+    handleErdScatterDataRequest(req, res, url).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
     return

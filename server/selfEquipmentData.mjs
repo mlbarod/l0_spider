@@ -1,9 +1,13 @@
 import { createReadStream, existsSync, statSync } from "node:fs"
-import { resolve } from "node:path"
+import { readdir } from "node:fs/promises"
+import { join, relative, resolve, sep } from "node:path"
 
 import { asyncBufferFromFile, parquetReadObjects } from "hyparquet"
 
-import { buildTeamErdPath } from "../src/config/spiderDataPaths.mjs"
+import {
+  buildTeamErdPath,
+  resolveLatestDateFile,
+} from "../src/config/spiderDataPaths.mjs"
 
 export const TEAM_ERD_COLUMNS = Object.freeze([
   "sdwt",
@@ -19,7 +23,10 @@ export const TEAM_ERD_COLUMNS = Object.freeze([
 ])
 
 const ERD_FILE_ROOT = "/appdata/abnormal_trend/pic/erd"
+const LATEST_DATE_ROOT = "/appdata/abnormal_trend/pic/path"
 const parquetCache = new Map()
+const erdScatterCache = new Map()
+const erdScatterPending = new Map()
 
 const imageMimeTypes = {
   ".png": "image/png",
@@ -89,6 +96,13 @@ function aggregateBy(rows, column, createRow) {
   return Array.from(groups, ([value, groupRows]) => createRow(value, groupRows))
 }
 
+function sortByRowCount(items, labelColumn) {
+  return items.sort((left, right) => (
+    right.rowCount - left.rowCount
+    || left[labelColumn].localeCompare(right[labelColumn], "ko", { numeric: true })
+  ))
+}
+
 export function buildSelfEquipmentPayload(rows, filters) {
   const priorities = new Set(filters.priorities)
   const baseRows = rows.filter((row) => (
@@ -96,21 +110,21 @@ export function buildSelfEquipmentPayload(rows, filters) {
     && row.sdwt === filters.sdwt
     && priorities.has(row.priority)
   ))
-  const steps = aggregateBy(baseRows, "desc", (desc, stepRows) => ({
+  const steps = sortByRowCount(aggregateBy(baseRows, "desc", (desc, stepRows) => ({
     desc,
     rowCount: stepRows.length,
     equipmentCount: uniqueCount(stepRows, "eqp"),
-  }))
+  })), "desc")
   const selectedDesc = steps.some((item) => item.desc === filters.desc)
     ? filters.desc
     : ""
   const stepRows = selectedDesc
     ? baseRows.filter((row) => row.desc === selectedDesc)
     : []
-  const sensors = aggregateBy(stepRows, "sensor", (sensor, sensorRows) => ({
+  const sensors = sortByRowCount(aggregateBy(stepRows, "sensor", (sensor, sensorRows) => ({
     sensor,
     rowCount: sensorRows.length,
-  }))
+  })), "sensor")
   const selectedSensor = sensors.some((item) => item.sensor === filters.sensor)
     ? filters.sensor
     : ""
@@ -168,6 +182,132 @@ export async function handleSelfEquipmentDataRequest(req, res, url) {
     sendJson(res, 500, {
       ok: false,
       error: `분임조별 ERD 이상감지 경로 데이터를 불러오지 못했습니다: ${error.message}`,
+    })
+  }
+}
+
+async function getLatestDate() {
+  const latestDate = resolveLatestDateFile(await readdir(LATEST_DATE_ROOT))
+  if (!latestDate) {
+    throw new Error("latest_date 결정 파일을 찾을 수 없습니다.")
+  }
+  return latestDate
+}
+
+export function resolveErdDataFilePath(imagePath, latestDate) {
+  const resolvedImagePath = resolve(imagePath)
+  if (!resolvedImagePath.startsWith(`${ERD_FILE_ROOT}/`) || !resolvedImagePath.toLowerCase().endsWith(".png")) {
+    throw new Error("허용되지 않은 ERD 이미지 경로입니다.")
+  }
+
+  const pathSegments = relative(ERD_FILE_ROOT, resolvedImagePath).split(sep)
+  if (pathSegments.length < 9) {
+    throw new Error("ERD 이미지 경로 구조가 올바르지 않습니다.")
+  }
+
+  pathSegments[0] = latestDate
+  pathSegments[pathSegments.length - 1] = "data.parquet"
+
+  return {
+    filePath: join(ERD_FILE_ROOT, ...pathSegments),
+    sensor: pathSegments[pathSegments.length - 3],
+    chStep: pathSegments[pathSegments.length - 2],
+  }
+}
+
+async function readErdScatterRows(filePath, axisColumn) {
+  const fileStat = statSync(filePath)
+  const cacheKey = `${filePath}\u0000${axisColumn}`
+  const cached = erdScatterCache.get(cacheKey)
+
+  if (cached?.mtimeMs === fileStat.mtimeMs && cached?.size === fileStat.size) {
+    return cached.rows
+  }
+
+  if (erdScatterPending.has(cacheKey)) return erdScatterPending.get(cacheKey)
+
+  const readPromise = (async () => {
+    const file = await asyncBufferFromFile(filePath)
+    const columns = ["act_time", "eqp_cb", "eqp_id", "disp_name", "wafer_id", axisColumn]
+    const rows = await parquetReadObjects({ file, columns })
+    erdScatterCache.set(cacheKey, { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows })
+    return rows
+  })()
+  erdScatterPending.set(cacheKey, readPromise)
+
+  try {
+    return await readPromise
+  } finally {
+    erdScatterPending.delete(cacheKey)
+  }
+}
+
+function normalizeText(value) {
+  if (value === null || value === undefined) return ""
+  if (value instanceof Date) return value.toISOString().replace("T", " ").replace("Z", "")
+  return String(value)
+}
+
+function normalizeEqp(value) {
+  return normalizeText(value).trim().replace(/\.png$/i, "")
+}
+
+function normalizeNumber(value) {
+  if (value === null || value === undefined || value === "") return null
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+export function buildErdScatterPayload(rows, { eqp, axisColumn, filePath, latestDate }) {
+  const normalizedEqp = normalizeEqp(eqp)
+  const points = rows.flatMap((row) => {
+    if (normalizeEqp(row.eqp_cb) !== normalizedEqp) return []
+    const actTime = normalizeText(row.act_time)
+    const value = normalizeNumber(row[axisColumn])
+    if (!actTime || value === null) return []
+
+    return [{
+      actTime,
+      value,
+      eqpId: normalizeText(row.eqp_id),
+      dispName: normalizeText(row.disp_name),
+      waferId: normalizeText(row.wafer_id),
+    }]
+  }).sort((left, right) => left.actTime.localeCompare(right.actTime))
+
+  return {
+    eqp: normalizedEqp,
+    latestDate,
+    axisColumn,
+    sourcePath: filePath,
+    pointCount: points.length,
+    points,
+  }
+}
+
+export async function handleErdScatterDataRequest(req, res, url) {
+  if (req.method !== "GET") {
+    sendJson(res, 405, { ok: false, error: "Method not allowed" })
+    return
+  }
+
+  try {
+    const imagePath = url.searchParams.get("path")?.trim() ?? ""
+    const eqp = url.searchParams.get("eqp")?.trim() ?? ""
+    if (!imagePath || !eqp) {
+      sendJson(res, 400, { ok: false, error: "path와 eqp 조건이 필요합니다." })
+      return
+    }
+
+    const latestDate = await getLatestDate()
+    const { filePath, sensor, chStep } = resolveErdDataFilePath(imagePath, latestDate)
+    const axisColumn = `${sensor}_${chStep}`
+    const rows = await readErdScatterRows(filePath, axisColumn)
+    sendJson(res, 200, buildErdScatterPayload(rows, { eqp, axisColumn, filePath, latestDate }))
+  } catch (error) {
+    sendJson(res, 500, {
+      ok: false,
+      error: `ERD 이상감지 데이터를 불러오지 못했습니다: ${error.message}`,
     })
   }
 }

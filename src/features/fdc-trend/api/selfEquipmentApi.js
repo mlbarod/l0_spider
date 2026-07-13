@@ -23,6 +23,20 @@ export async function fetchSelfEquipmentData({
   return payload
 }
 
+export async function fetchErdScatterData({ filePath, eqp }) {
+  const searchParams = new URLSearchParams({ path: filePath, eqp })
+  const response = await fetch(`/api/erd-scatter-data?${searchParams.toString()}`, {
+    headers: { Accept: "application/json" },
+  })
+  const payload = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(payload.error || "ERD 이상감지 데이터를 불러오지 못했습니다.")
+  }
+
+  return payload
+}
+
 export function buildErdFileUrl(filePath) {
   return `/api/erd-file?path=${encodeURIComponent(filePath)}`
 }

@@ -1,7 +1,16 @@
 import { useMemo, useRef, useState } from "react"
-import { ArrowLeft, ArrowUp, Check, ChevronRight, ImageOff, Loader2 } from "lucide-react"
+import { ArrowLeft, ArrowUp, Check, ChevronRight, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
+import {
+  CartesianGrid,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+} from "recharts"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,7 +19,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 import { fetchLineMapping } from "../api/mappingConfigApi"
-import { buildErdFileUrl, fetchSelfEquipmentData } from "../api/selfEquipmentApi"
+import { fetchErdScatterData, fetchSelfEquipmentData } from "../api/selfEquipmentApi"
 import { SENSOR_GRADES, SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 
 const EMPTY_MAPPING = Object.freeze({})
@@ -122,39 +131,120 @@ function FilterCard({
   )
 }
 
-function ErdImageCard({ row }) {
-  const [imageError, setImageError] = useState(false)
+function stripPngExtension(value) {
+  return String(value ?? "").replace(/\.png$/i, "")
+}
+
+function formatActTimeTick(value) {
+  const text = String(value ?? "")
+  const time = text.includes(" ") ? text.split(" ").at(-1) : text.split("T").at(-1)
+  return time?.slice(0, 8) || text
+}
+
+function ScatterPointTooltip({ active, payload, axisColumn }) {
+  const point = payload?.[0]?.payload
+  if (!active || !point) return null
+
+  const rows = [
+    ["eqp_id", point.eqpId],
+    ["disp_name", point.dispName],
+    ["wafer_id", point.waferId],
+    [axisColumn, point.value],
+    ["act_time", point.actTime],
+  ]
 
   return (
-    <article className="grid min-h-[360px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border bg-card shadow-sm">
+    <div className="grid min-w-52 gap-1.5 rounded-md border bg-background p-3 text-xs shadow-md">
+      {rows.map(([label, value]) => (
+        <div key={label} className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+          <span className="text-muted-foreground">{label}</span>
+          <span className="break-all text-right font-mono text-foreground">
+            {value === "" || value === null || value === undefined ? "-" : value}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ErdScatterCard({ row }) {
+  const eqp = stripPngExtension(row.eqp)
+  const chartQuery = useQuery({
+    queryKey: ["erd-scatter-data", row.file_path, eqp],
+    queryFn: () => fetchErdScatterData({ filePath: row.file_path, eqp }),
+    enabled: Boolean(row.file_path && eqp),
+    staleTime: 5 * 60 * 1000,
+  })
+  const points = chartQuery.data?.points ?? []
+  const axisColumn = chartQuery.data?.axisColumn ?? `${row.sensor}_${row.step}`
+
+  return (
+    <article className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border bg-card shadow-sm">
       <header className="border-b bg-muted/50 px-3 py-2">
         <div className="flex min-w-0 items-center justify-between gap-3">
-          <h3 className="truncate text-sm font-semibold">{row.eqp || "EQP 미지정"}</h3>
-          <Badge variant="outline" className="shrink-0">{row.priority || "-"}</Badge>
+          <h3 className="truncate text-sm font-semibold">{eqp || "EQP 미지정"}</h3>
+          <div className="flex shrink-0 items-center gap-2">
+            {chartQuery.data ? (
+              <Badge variant="secondary">{points.length.toLocaleString()} points</Badge>
+            ) : null}
+            <Badge variant="outline">{row.priority || "-"}</Badge>
+          </div>
         </div>
         <p className="mt-1 truncate text-[11px] text-muted-foreground">
-          {row.desc} · {row.sensor} · {row.recipe_id} · {row.step}
+          {row.desc} · {axisColumn} · {row.recipe_id}
         </p>
       </header>
-      <div className="grid min-h-[280px] place-items-center bg-background p-2">
-        {imageError ? (
-          <div className="grid justify-items-center gap-2 px-4 text-center text-sm text-muted-foreground">
-            <ImageOff className="size-7" aria-hidden="true" />
-            <span>file_path 이미지를 표시할 수 없습니다.</span>
+      <div className="grid min-h-[320px] place-items-center bg-background p-3">
+        {chartQuery.isLoading ? (
+          <div className="grid justify-items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+            ERD 이상감지 데이터를 불러오는 중입니다.
+          </div>
+        ) : chartQuery.isError ? (
+          <div className="max-w-md px-4 text-center text-sm text-destructive">
+            {chartQuery.error.message}
+          </div>
+        ) : points.length ? (
+          <div className="h-[320px] w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 12, right: 18, bottom: 28, left: 16 }}>
+                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="actTime"
+                  type="category"
+                  name="act_time"
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  tickFormatter={formatActTimeTick}
+                  label={{ value: "act_time", position: "insideBottom", offset: -18, fontSize: 11 }}
+                />
+                <YAxis
+                  dataKey="value"
+                  type="number"
+                  name={axisColumn}
+                  width={64}
+                  domain={["auto", "auto"]}
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                />
+                <RechartsTooltip
+                  cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }}
+                  content={<ScatterPointTooltip axisColumn={axisColumn} />}
+                />
+                <Scatter data={points} dataKey="value" fill="var(--chart-1)" isAnimationActive={false} />
+              </ScatterChart>
+            </ResponsiveContainer>
           </div>
         ) : (
-          <img
-            src={buildErdFileUrl(row.file_path)}
-            alt={`${row.eqp} ${row.sensor} scatter chart`}
-            className="max-h-[520px] w-full object-contain"
-            loading="lazy"
-            onError={() => setImageError(true)}
-          />
+          <div className="px-4 text-center text-sm text-muted-foreground">
+            {eqp}에 해당하는 유효한 scatter 데이터가 없습니다.
+          </div>
         )}
       </div>
       <footer className="border-t px-3 py-2">
-        <p className="truncate font-mono text-[10px] text-muted-foreground" title={row.file_path}>
-          {row.file_path}
+        <p
+          className="truncate font-mono text-[10px] text-muted-foreground"
+          title={chartQuery.data?.sourcePath ?? row.file_path}
+        >
+          {chartQuery.data?.sourcePath ?? row.file_path}
         </p>
       </footer>
     </article>
@@ -413,7 +503,7 @@ export function FdcTrendPage() {
             <div>
               <h2 className="text-base font-semibold">Scatter chart</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                sensor를 선택하면 해당 file_path를 행 단위로 표시합니다.
+                sensor를 선택하면 최신 ERD 이상감지 데이터의 act_time과 sensor_ch_step 값을 표시합니다.
               </p>
             </div>
             {sensorIsSelected ? (
@@ -426,7 +516,7 @@ export function FdcTrendPage() {
             </div>
           ) : chartRows.length ? (
             <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
-              {chartRows.map((row) => <ErdImageCard key={row.id} row={row} />)}
+              {chartRows.map((row) => <ErdScatterCard key={row.id} row={row} />)}
             </div>
           ) : (
             <div className="grid min-h-52 place-items-center rounded-lg border bg-card text-sm text-muted-foreground">
