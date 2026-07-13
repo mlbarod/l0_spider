@@ -761,7 +761,15 @@ export function SpiderFeaturePage({ type }) {
       {type === "l1" ? <MatchingPage /> : null}
       {type === "l3" ? <MatchingPage common /> : null}
       {type === "summary" ? <MetricGrid /> : null}
-      <SourcePathBar paths={[SPIDER_FILE_PATHS.dbInfo, SPIDER_FILE_PATHS.latestPath, SPIDER_FILE_PATHS.latestStats]} />
+      <SourcePathBar
+        paths={[
+          SPIDER_FILE_PATHS.latestPath,
+          SPIDER_FILE_PATHS.latestStats,
+          SPIDER_FILE_PATHS.latestStatsExceptV,
+          SPIDER_FILE_PATHS.teamErdPath,
+          SPIDER_FILE_PATHS.mappingConfig,
+        ]}
+      />
     </PageShell>
   )
 }

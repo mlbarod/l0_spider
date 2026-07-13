@@ -1,3 +1,9 @@
+import {
+  SPIDER_DATA_PATH_TEMPLATES,
+  buildBackupImagePath,
+  buildErdDataPath,
+} from "@/config/spiderDataPaths.mjs"
+
 export const FDC_LINES = Object.freeze([
   "H1L",
   "15L",
@@ -84,11 +90,14 @@ export const SENSOR_GRADES = Object.freeze(["A/B", "D", "N", "M"])
 export const SPIDER_FILE_PATHS = Object.freeze({
   dbInfo: "db_info.pkl",
   dataRoot: "/appdata/abnormal_trend/pic/",
-  erdRoot: "/appdata/abnormal_trend/pic/erd",
+  erdRoot: SPIDER_DATA_PATH_TEMPLATES.erdData,
   commonDate: "/appdata/abnormal_trend/pic/common_date.txt",
   commonalityRoot: "/appdata/abnormal_trend/pic/erd_commonality",
-  latestPath: "/appdata/abnormal_trend/pic/path/2026-05-29",
-  latestStats: "/appdata/abnormal_trend/pic/stats/2026-05-29_spider_step_stats_except_v.parquets",
+  latestPath: SPIDER_DATA_PATH_TEMPLATES.latestDateFile,
+  latestStats: SPIDER_DATA_PATH_TEMPLATES.stats,
+  latestStatsExceptV: SPIDER_DATA_PATH_TEMPLATES.statsExceptV,
+  teamErdPath: SPIDER_DATA_PATH_TEMPLATES.teamErdPath,
+  mappingConfig: SPIDER_DATA_PATH_TEMPLATES.mappingConfig,
   hardSpecRoot: "/appdata/erd_stats_commonality/H1L",
   priority: "/appdata/abnormal_trend/pic/priority/priority.parquet",
   unitModel: "/appdata/abnormal_trend/pic/unit_model.parquet",
@@ -100,7 +109,7 @@ export const SPIDER_FILE_PATHS = Object.freeze({
   hardSpecChartRoot: "/appdata/abnormal_trend/pic/erd_hard_spec",
   hardSpecServerChartRoot: "/appdata/abnormal_trend/pic_server2/erd_hard_spec",
   mErdRoot: "/appdata/m_erdtsum_data_agg",
-  backupRoot: "/appdata/abnormal_trend/pic/backup/",
+  backupRoot: SPIDER_DATA_PATH_TEMPLATES.backupImage,
 })
 const LINE_FACTORS = Object.freeze(Object.fromEntries(FDC_LINES.map((lineId, index) => [lineId, index])))
 
@@ -270,7 +279,7 @@ export function getSpiderSummaryRows() {
 }
 
 export function getSpiderAnomalyRows() {
-  const date = "2026-05-29"
+  const date = "2026-05-29 00:00:00"
 
   return FDC_LINES.flatMap((lineId, lineIndex) =>
     getTeamsByLine(lineId).flatMap((teamId, teamIndex) =>
@@ -280,19 +289,33 @@ export function getSpiderAnomalyRows() {
             const sensorPath = sensor.sensorName.replaceAll(" ", "_")
             const eqpFile = `${equipment.equipmentName}.png`
             const recipeOffset = lineIndex * 300 + teamIndex * 70 + stepIndex * 17
+            const ppid = `PPID-${720 + recipeOffset}`
+            const chStep = `${1200 + stepIndex * 7}@001`
+            const version = `V${1 + (stepIndex % 3)}`
 
             return {
               id: `${step.id}-${equipment.id}-${sensorIndex}`,
               line_id: lineId,
               sdwt: teamId,
               desc: step.stepName,
-              ver: `V${1 + (stepIndex % 3)}`,
+              ver: version,
+              ppid,
               recipe_id: `RCP-${4100 + recipeOffset}`,
               date,
               grade: sensor.grade,
               sensor: sensor.sensorName,
+              ch_step: chStep,
               eqp: eqpFile,
-              file_path: `${SPIDER_FILE_PATHS.dataRoot}erd/${date}/${teamId}/${step.stepName}/${sensor.grade}/${sensorPath}/${eqpFile}`,
+              file_path: buildErdDataPath({
+                latest_date: date,
+                sdwt: teamId,
+                step_desc: step.stepName,
+                ver: version,
+                ppid,
+                grade: sensor.grade,
+                sensor: sensorPath,
+                ch_step: chStep,
+              }),
               abnormalCount: sensor.abnormalCount,
               latestAt: sensor.latestAt,
               points: sensor.points,
@@ -323,7 +346,17 @@ export function getSpiderHistoryRows() {
     update_date: `2026-05-${String(22 + (index % 7)).padStart(2, "0")}`,
     line_id: row.line_id,
     sdwt: row.sdwt,
-    file_path: row.file_path.replace("/pic/", "/pic/backup/"),
+    file_path: buildBackupImagePath({
+      latest_date: row.date,
+      sdwt: row.sdwt,
+      step_desc: row.desc,
+      ver: row.ver,
+      ppid: row.ppid,
+      grade: row.grade,
+      sensor: row.sensor.replaceAll(" ", "_"),
+      ch_step: row.ch_step,
+      eqp: row.eqp.replace(".png", ""),
+    }),
     sensor: row.sensor,
     eqp: row.eqp.replace(".png", ""),
   }))
