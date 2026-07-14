@@ -376,7 +376,7 @@ export function L0SpiderHomePage() {
         <div className="mx-auto grid w-full max-w-7xl gap-6">
           <section className="grid gap-3">
             <div className="min-w-0">
-              <h2 className="text-base font-semibold">L0 Spider App</h2>
+              <h2 className="text-base font-semibold">L0 Spider</h2>
               <p className="mt-1 text-xs text-muted-foreground">L0 Spider 기반 이상감지와 Hard Limit 추천 기능입니다.</p>
             </div>
             <div className="grid grid-cols-5 gap-4">

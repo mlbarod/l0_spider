@@ -88,7 +88,7 @@ const TOOL_GROUPS = ["EQC-01", "EQC-02", "EQC-03", "EQC-04"]
 const TREND_TYPES = ["upper-shift", "variance", "cluster", "drift"]
 export const SENSOR_GRADES = Object.freeze(["A/B", "D", "N", "M"])
 export const SPIDER_FILE_PATHS = Object.freeze({
-  dbInfo: "db_info.pkl",
+  dbInfo: "/appdata/l0_spider/db_info.pkl",
   dataRoot: "/appdata/abnormal_trend/pic/",
   erdRoot: SPIDER_DATA_PATH_TEMPLATES.erdData,
   commonDate: "/appdata/abnormal_trend/pic/common_date.txt",

@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
+import { fetchCurrentUser } from "../api/currentUserApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
 import {
   fetchErdIdentityData,
@@ -885,6 +886,12 @@ const ErdScatterCard = memo(function ErdScatterCard({ row }) {
 export function FdcTrendPage() {
   const pageRef = useRef(null)
   const stepScrollPositionRef = useRef(0)
+  const currentUserQuery = useQuery({
+    queryKey: ["current-user"],
+    queryFn: fetchCurrentUser,
+    staleTime: Infinity,
+    retry: false,
+  })
   const [selectedLine, setSelectedLine] = useState("")
   const [selectedTeam, setSelectedTeam] = useState("")
   const [selectedGrades, setSelectedGrades] = useState(() => ["A/B"])
@@ -1084,12 +1091,21 @@ export function FdcTrendPage() {
               라인, 분임조, 센서 등급과 STEP, eqp_ch, sensor, ch_step을 선택해 ERD 결과를 조회합니다.
             </p>
           </div>
-          <Button type="button" variant="outline" size="sm" asChild>
-            <Link to="/">
-              <ArrowLeft className="size-4" aria-hidden="true" />
-              SPIDER 메인
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <p className="text-sm font-medium text-foreground" aria-live="polite">
+              {currentUserQuery.data?.knoxId
+                ? `${currentUserQuery.data.knoxId}님 안녕하세요!`
+                : currentUserQuery.isLoading
+                ? "접속자 확인 중…"
+                : "접속자 정보를 확인할 수 없습니다."}
+            </p>
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link to="/">
+                <ArrowLeft className="size-4" aria-hidden="true" />
+                SPIDER 메인
+              </Link>
+            </Button>
+          </div>
         </div>
       </header>
 

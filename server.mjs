@@ -6,6 +6,7 @@ import { extname, join, normalize } from "node:path"
 import { fileURLToPath, URL } from "node:url"
 import { createServer as createViteServer } from "vite"
 
+import { handleCurrentUserRequest } from "./server/currentUser.mjs"
 import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
 import {
   handleErdFileRequest,
@@ -46,7 +47,7 @@ function sendJson(res, statusCode, payload) {
 function buildClient() {
   if (!buildOnStart) return
 
-  console.log("Building l0_spider client before starting server...")
+  console.log("Building L0 Spider client before starting server...")
   const result = spawnSync("npm", ["run", "build"], {
     cwd: rootDir,
     stdio: "inherit",
@@ -111,6 +112,13 @@ async function serveStatic(req, res) {
 
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`)
+
+  if (url.pathname === "/api/current-user") {
+    handleCurrentUserRequest(req, res).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
 
   if (url.pathname === "/api/mapping-config") {
     handleMappingConfigRequest(req, res).catch((error) => {
@@ -178,5 +186,5 @@ server.on("error", (error) => {
 
 server.listen(port, host, () => {
   const mode = liveReload ? "live reload" : "static dist"
-  console.log(`l0_spider server listening on http://${host}:${port} (${mode})`)
+  console.log(`L0 Spider server listening on http://${host}:${port} (${mode})`)
 })
