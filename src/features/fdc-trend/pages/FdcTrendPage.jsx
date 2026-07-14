@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react"
+import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, ArrowUp, Check, ChevronRight, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
@@ -71,8 +71,27 @@ function FilterCard({
   isLoading = false,
   query,
   onQueryChange,
+  scrollPositionRef,
   children,
 }) {
+  const contentRef = useRef(null)
+  const isRestoringScrollRef = useRef(false)
+
+  useLayoutEffect(() => {
+    if (!scrollPositionRef || !contentRef.current) return undefined
+
+    const content = contentRef.current
+    const savedScrollTop = scrollPositionRef.current
+    isRestoringScrollRef.current = true
+    content.scrollTop = savedScrollTop
+    const animationFrame = requestAnimationFrame(() => {
+      content.scrollTop = savedScrollTop
+      isRestoringScrollRef.current = false
+    })
+
+    return () => cancelAnimationFrame(animationFrame)
+  })
+
   return (
     <Card
       className={cn(
@@ -114,7 +133,15 @@ function FilterCard({
           disabled={disabled}
         />
       </div>
-      <CardContent className="min-h-0 overflow-y-auto overflow-x-hidden bg-background/60 p-2">
+      <CardContent
+        ref={contentRef}
+        className="min-h-0 overflow-y-auto overflow-x-hidden bg-background/60 p-2"
+        onScroll={(event) => {
+          if (scrollPositionRef && !isRestoringScrollRef.current) {
+            scrollPositionRef.current = event.currentTarget.scrollTop
+          }
+        }}
+      >
         {disabled ? (
           <div className="flex h-full min-h-16 items-center justify-center px-3 text-center text-sm text-muted-foreground">
             {placeholder}
@@ -136,7 +163,7 @@ function stripPngExtension(value) {
 }
 
 function replaceFileNameWithParquet(filePath) {
-  const path = String(filePath ?? "")
+  const path = String(filePath ?? "").replaceAll("/pic_server2/", "/pic/")
   const lastSlashIndex = path.lastIndexOf("/")
   return lastSlashIndex >= 0
     ? `${path.slice(0, lastSlashIndex + 1)}data.parquet`
@@ -270,6 +297,7 @@ function ErdScatterCard({ row }) {
 
 export function FdcTrendPage() {
   const pageRef = useRef(null)
+  const stepScrollPositionRef = useRef(0)
   const [selectedLine, setSelectedLine] = useState("")
   const [selectedTeam, setSelectedTeam] = useState("")
   const [selectedGrades, setSelectedGrades] = useState(() => ["A/B"])
@@ -504,6 +532,7 @@ export function FdcTrendPage() {
               isLoading={dataQuery.isFetching && !selectedDesc}
               query={queries.step}
               onQueryChange={(value) => setQuery("step", value)}
+              scrollPositionRef={stepScrollPositionRef}
             >
               {filteredSteps.map((item) => (
                 <SelectRow

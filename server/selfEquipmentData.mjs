@@ -203,7 +203,8 @@ export async function handleSelfEquipmentDataRequest(req, res, url) {
 }
 
 export function resolveErdDataFilePath(imagePath) {
-  const resolvedInputPath = resolve(imagePath)
+  const normalizedImagePath = imagePath.replaceAll("/pic_server2/", "/pic/")
+  const resolvedInputPath = resolve(normalizedImagePath)
   const isDirectErdPath = resolvedInputPath.startsWith(`${ERD_FILE_ROOT}/`)
   const isBackupPath = resolvedInputPath.startsWith(`${ERD_BACKUP_ROOT}/`)
 
