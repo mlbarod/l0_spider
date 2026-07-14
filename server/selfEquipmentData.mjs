@@ -249,7 +249,15 @@ async function readErdScatterRows(filePath, axisColumn) {
 
   const readPromise = (async () => {
     const file = await asyncBufferFromFile(filePath)
-    const columns = ["act_time", "eqp_cb", "eqp_id", "disp_name", "wafer_id", axisColumn]
+    const columns = [
+      "act_time",
+      "eqp_cb",
+      "eqp_id",
+      "disp_name",
+      "wafer_id",
+      "root_lot_id",
+      axisColumn,
+    ]
     const rows = await parquetReadObjects({ file, columns, compressors })
     erdScatterCache.set(cacheKey, { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows })
     return rows
@@ -351,6 +359,7 @@ export function buildErdScatterPayload(rows, {
       eqpId: normalizeText(row.eqp_id),
       dispName: normalizeText(row.disp_name),
       waferId: normalizeText(row.wafer_id),
+      rootLotId: normalizeText(row.root_lot_id),
       isRecent: recentThresholdMs !== null && actTimeMs >= recentThresholdMs,
     }]
   }).sort((left, right) => left.actTimeMs - right.actTimeMs)

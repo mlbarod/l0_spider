@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import {
   CartesianGrid,
   Cell,
+  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Scatter,
@@ -25,7 +26,11 @@ import { fetchErdScatterData, fetchSelfEquipmentData } from "../api/selfEquipmen
 import { SENSOR_GRADES, SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 
 const EMPTY_MAPPING = Object.freeze({})
+const EMPTY_LIST = Object.freeze([])
 const ALL_CH_STEPS = "ALL"
+const SCATTER_CHART_MARGIN = Object.freeze({ top: 42, right: 18, bottom: 28, left: 16 })
+const SCATTER_Y_AXIS_WIDTH = 64
+const SCATTER_X_AXIS_HEIGHT = 30
 
 function expandPriorities(grades) {
   return Array.from(new Set(
@@ -165,26 +170,32 @@ function stripPngExtension(value) {
   return String(value ?? "").replace(/\.png$/i, "")
 }
 
-function replaceFileNameWithParquet(filePath) {
-  const path = String(filePath ?? "").replaceAll("/pic_server2/", "/pic/")
-  const lastSlashIndex = path.lastIndexOf("/")
-  return lastSlashIndex >= 0
-    ? `${path.slice(0, lastSlashIndex + 1)}data.parquet`
-    : path
-}
-
 function formatActTimeTick(value) {
   if (Number.isFinite(Number(value))) {
-    return new Date(Number(value)).toISOString().slice(11, 19)
+    return new Date(Number(value)).toISOString().slice(0, 10).replaceAll("-", "/")
   }
   const text = String(value ?? "")
-  const time = text.includes(" ") ? text.split(" ").at(-1) : text.split("T").at(-1)
-  return time?.slice(0, 8) || text
+  return text.slice(0, 10).replaceAll("-", "/")
 }
 
 function safeHistoryUrl(value) {
   const url = String(value ?? "").trim()
   return /^(https?:\/\/|\/)/i.test(url) ? url : ""
+}
+
+function numericDomain(values, fallbackPadding) {
+  const finiteValues = values.filter(Number.isFinite)
+  if (!finiteValues.length) return [0, 1]
+
+  const minimum = Math.min(...finiteValues)
+  const maximum = Math.max(...finiteValues)
+  if (minimum !== maximum) {
+    const padding = (maximum - minimum) * 0.025
+    return [minimum - padding, maximum + padding]
+  }
+
+  const padding = Math.abs(minimum) * 0.05 || fallbackPadding
+  return [minimum - padding, maximum + padding]
 }
 
 function ChangeHistoryLabel({ viewBox, history }) {
@@ -220,7 +231,8 @@ function ScatterPointTooltip({ active, payload, axisColumn }) {
     ["eqp_id", point.eqpId],
     ["disp_name", point.dispName],
     ["wafer_id", point.waferId],
-    [axisColumn, point.value],
+    ["root_lot_id", point.rootLotId],
+    [axisColumn, Number(point.value).toFixed(2)],
     ["act_time", point.actTime],
   ]
 
@@ -240,6 +252,9 @@ function ScatterPointTooltip({ active, payload, axisColumn }) {
 
 function ErdScatterCard({ row }) {
   const eqp = stripPngExtension(row.eqp)
+  const chartContainerRef = useRef(null)
+  const [zoomSelection, setZoomSelection] = useState(null)
+  const [zoomDomain, setZoomDomain] = useState(null)
   const chartQuery = useQuery({
     queryKey: ["erd-scatter-data", row.file_path, eqp, row.sensor, row.step],
     queryFn: () => fetchErdScatterData({
@@ -251,18 +266,72 @@ function ErdScatterCard({ row }) {
     enabled: Boolean(row.file_path && eqp && row.sensor && row.step),
     staleTime: 5 * 60 * 1000,
   })
-  const points = chartQuery.data?.points ?? []
-  const changeHistory = chartQuery.data?.changeHistory ?? []
+  const points = chartQuery.data?.points ?? EMPTY_LIST
+  const changeHistory = chartQuery.data?.changeHistory ?? EMPTY_LIST
   const axisColumn = chartQuery.data?.axisColumn ?? `${row.sensor}_${row.step}`
-  const chartSourcePath = chartQuery.data?.sourcePath
-    || chartQuery.error?.sourcePath
-    || replaceFileNameWithParquet(row.file_path)
+  const baseDomain = useMemo(() => ({
+    x: numericDomain([
+      ...points.map((point) => point.actTimeMs),
+      ...changeHistory.map((history) => history.dateMs),
+    ], 60 * 60 * 1000),
+    y: numericDomain(points.map((point) => point.value), 1),
+  }), [changeHistory, points])
+
+  const getZoomPoint = (event) => {
+    const chart = chartContainerRef.current
+    if (!chart || !event) return null
+
+    const bounds = chart.getBoundingClientRect()
+    const plotLeft = SCATTER_CHART_MARGIN.left + SCATTER_Y_AXIS_WIDTH
+    const plotRight = bounds.width - SCATTER_CHART_MARGIN.right
+    const plotTop = SCATTER_CHART_MARGIN.top
+    const plotBottom = bounds.height - SCATTER_CHART_MARGIN.bottom - SCATTER_X_AXIS_HEIGHT
+    const chartX = Math.min(Math.max(event.clientX - bounds.left, plotLeft), plotRight)
+    const chartY = Math.min(Math.max(event.clientY - bounds.top, plotTop), plotBottom)
+    const xDomain = zoomDomain?.x ?? baseDomain.x
+    const yDomain = zoomDomain?.y ?? baseDomain.y
+    const xRatio = (chartX - plotLeft) / Math.max(plotRight - plotLeft, 1)
+    const yRatio = (chartY - plotTop) / Math.max(plotBottom - plotTop, 1)
+
+    return {
+      x: xDomain[0] + xRatio * (xDomain[1] - xDomain[0]),
+      y: yDomain[1] - yRatio * (yDomain[1] - yDomain[0]),
+    }
+  }
+  const handleZoomStart = (_chartEvent, event) => {
+    if (event?.button !== 0) return
+    event.preventDefault()
+    const point = getZoomPoint(event)
+    if (point) setZoomSelection({ x1: point.x, y1: point.y, x2: point.x, y2: point.y })
+  }
+  const handleZoomMove = (_chartEvent, event) => {
+    if (!zoomSelection) return
+    const point = getZoomPoint(event)
+    if (point) setZoomSelection((current) => current ? { ...current, x2: point.x, y2: point.y } : null)
+  }
+  const handleZoomEnd = () => {
+    if (!zoomSelection) return
+    const { x1, y1, x2, y2 } = zoomSelection
+    if (x2 > x1 && y2 < y1) {
+      setZoomDomain({ x: [x1, x2], y: [y2, y1] })
+    }
+    setZoomSelection(null)
+  }
+  const resetZoom = () => {
+    setZoomSelection(null)
+    setZoomDomain(null)
+  }
 
   return (
-    <article className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border bg-card shadow-sm">
+    <article className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border bg-card shadow-sm">
       <header className="border-b bg-muted/50 px-3 py-2">
         <div className="flex min-w-0 items-center justify-between gap-3">
-          <h3 className="truncate text-sm font-semibold">{eqp || "EQP 미지정"}</h3>
+          <div className="flex min-w-0 items-center gap-3">
+            <h3 className="shrink-0 text-sm font-semibold">{eqp || "EQP 미지정"}</h3>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {row.recipe_id || "PPID 미지정"} · {row.sensor || "sensor 미지정"}
+            </p>
+          </div>
           <div className="flex shrink-0 items-center gap-2">
             {chartQuery.data ? (
               <Badge variant="secondary">{points.length.toLocaleString()} points</Badge>
@@ -270,12 +339,9 @@ function ErdScatterCard({ row }) {
             <Badge variant="outline">{row.priority ? `${row.priority}등급` : "등급 미지정"}</Badge>
           </div>
         </div>
-        <p className="mt-1 truncate text-[11px] text-muted-foreground">
-          {row.desc} · {axisColumn} · {row.recipe_id}
-        </p>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-red-500" /> latest_date -26hr 이후
+            <span className="size-2 rounded-full bg-red-500" /> 이상감지 data
           </span>
           <span className="flex items-center gap-1.5">
             <span className="size-2 rounded-full bg-gray-400" /> 이전 데이터
@@ -283,6 +349,7 @@ function ErdScatterCard({ row }) {
           <span className="flex items-center gap-1.5">
             <span className="w-4 border-t border-dashed border-green-600" /> 변경점 이력
           </span>
+          <span>드래그 확대 · 더블클릭 원복</span>
         </div>
       </header>
       <div className="grid min-h-[320px] place-items-center bg-background p-3">
@@ -296,15 +363,24 @@ function ErdScatterCard({ row }) {
             {chartQuery.error.message}
           </div>
         ) : points.length ? (
-          <div className="h-[320px] w-full min-w-0">
+          <div ref={chartContainerRef} className="h-[320px] w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 42, right: 18, bottom: 28, left: 16 }}>
+              <ScatterChart
+                margin={SCATTER_CHART_MARGIN}
+                onMouseDown={handleZoomStart}
+                onMouseMove={handleZoomMove}
+                onMouseUp={handleZoomEnd}
+                onDoubleClick={resetZoom}
+                className="cursor-crosshair select-none"
+              >
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="actTimeMs"
                   type="number"
                   name="act_time"
-                  domain={["dataMin", "dataMax"]}
+                  height={SCATTER_X_AXIS_HEIGHT}
+                  domain={zoomDomain?.x ?? baseDomain.x}
+                  allowDataOverflow={Boolean(zoomDomain)}
                   scale="time"
                   tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                   tickFormatter={formatActTimeTick}
@@ -314,8 +390,9 @@ function ErdScatterCard({ row }) {
                   dataKey="value"
                   type="number"
                   name={axisColumn}
-                  width={64}
-                  domain={["auto", "auto"]}
+                  width={SCATTER_Y_AXIS_WIDTH}
+                  domain={zoomDomain?.y ?? baseDomain.y}
+                  allowDataOverflow={Boolean(zoomDomain)}
                   tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                 />
                 <RechartsTooltip
@@ -333,6 +410,17 @@ function ErdScatterCard({ row }) {
                     label={<ChangeHistoryLabel history={history} />}
                   />
                 ))}
+                {zoomSelection ? (
+                  <ReferenceArea
+                    x1={zoomSelection.x1}
+                    x2={zoomSelection.x2}
+                    y1={zoomSelection.y1}
+                    y2={zoomSelection.y2}
+                    stroke="var(--primary)"
+                    fill="var(--primary)"
+                    fillOpacity={0.12}
+                  />
+                ) : null}
                 <Scatter data={points} dataKey="value" isAnimationActive={false}>
                   {points.map((point, index) => (
                     <Cell
@@ -350,26 +438,6 @@ function ErdScatterCard({ row }) {
           </div>
         )}
       </div>
-      <footer className="border-t px-3 py-2">
-        <span className="text-[10px] font-medium text-muted-foreground">Chart draw path</span>
-        <p
-          className="mt-0.5 break-all font-mono text-[10px] text-muted-foreground"
-          title={chartSourcePath}
-        >
-          {chartSourcePath}
-        </p>
-        {chartQuery.data?.historyPath ? (
-          <>
-            <span className="mt-2 block text-[10px] font-medium text-muted-foreground">변경점 이력 path</span>
-            <p className="mt-0.5 break-all font-mono text-[10px] text-muted-foreground">
-              {chartQuery.data.historyPath}
-            </p>
-          </>
-        ) : null}
-        {chartQuery.data?.historyError ? (
-          <p className="mt-1 text-[10px] text-amber-600">{chartQuery.data.historyError}</p>
-        ) : null}
-      </footer>
     </article>
   )
 }
