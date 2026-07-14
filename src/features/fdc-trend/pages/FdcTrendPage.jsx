@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, ArrowUp, Check, ChevronRight, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
@@ -340,7 +340,8 @@ function IdentityChartDialog({ row, eqp }) {
       chStep: row.step,
     }),
     enabled: Boolean(open && row.file_path && eqp && row.sensor && row.step),
-    staleTime: 5 * 60 * 1000,
+    staleTime: Infinity,
+    gcTime: Infinity,
   })
   const groups = identityQuery.data?.groups ?? EMPTY_LIST
   const axisColumn = identityQuery.data?.axisColumn ?? `${row.sensor}_${row.step}`
@@ -466,7 +467,7 @@ function IdentityChartDialog({ row, eqp }) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="px-[0.825rem]">동일성 차트</Button>
+        <Button type="button" variant="outline" size="sm" className="h-9 px-[0.9rem] text-sm">동일성 차트</Button>
       </DialogTrigger>
       <DialogContent className="h-[88vh] w-[96vw] max-w-[96vw] grid-rows-[auto_minmax(0,1fr)] overflow-hidden sm:max-w-[96vw]">
         <DialogHeader>
@@ -564,7 +565,7 @@ function IdentityChartDialog({ row, eqp }) {
   )
 }
 
-function ErdScatterCard({ row }) {
+const ErdScatterCard = memo(function ErdScatterCard({ row }) {
   const eqp = stripPngExtension(row.eqp)
   const cardRef = useRef(null)
   const chartContainerRef = useRef(null)
@@ -580,10 +581,11 @@ function ErdScatterCard({ row }) {
       return undefined
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsNearViewport(entry.isIntersecting),
-      { rootMargin: "600px 0px" },
-    )
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return
+      setIsNearViewport(true)
+      observer.disconnect()
+    }, { rootMargin: "600px 0px" })
     observer.observe(card)
     return () => observer.disconnect()
   }, [])
@@ -597,7 +599,8 @@ function ErdScatterCard({ row }) {
       chStep: row.step,
     }),
     enabled: Boolean(isNearViewport && row.file_path && eqp && row.sensor && row.step),
-    staleTime: 5 * 60 * 1000,
+    staleTime: Infinity,
+    gcTime: Infinity,
   })
   const points = chartQuery.data?.points ?? EMPTY_LIST
   const changeHistory = chartQuery.data?.changeHistory ?? EMPTY_LIST
@@ -699,7 +702,7 @@ function ErdScatterCard({ row }) {
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {chartQuery.data ? (
-              <Badge variant="secondary">{points.length.toLocaleString()} points</Badge>
+              <Badge variant="secondary">{points.length.toLocaleString()} 매</Badge>
             ) : null}
             <Badge variant="outline">{row.priority ? `${row.priority}등급` : "등급 미지정"}</Badge>
           </div>
@@ -807,13 +810,15 @@ function ErdScatterCard({ row }) {
           </div>
         )}
       </div>
-      <footer className="flex flex-wrap items-center justify-end gap-2 border-t bg-muted/20 px-3 py-2.5">
-        <IdentityChartDialog row={row} eqp={eqp} />
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button type="button" variant="outline" size="sm" className="px-[0.825rem]">변경점이력</Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[85vh] sm:max-w-5xl">
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/20 px-3 py-2.5">
+        <Button type="button" variant="outline" size="sm">SKIP</Button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <IdentityChartDialog row={row} eqp={eqp} />
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className="h-9 px-[0.9rem] text-sm">변경점이력</Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[85vh] sm:max-w-5xl">
             <DialogHeader>
               <DialogTitle>{eqp || "EQP 미지정"} 변경점 이력</DialogTitle>
               <DialogDescription>
@@ -868,13 +873,14 @@ function ErdScatterCard({ row }) {
                 {chartQuery.data?.historyError || "표시할 변경점 이력이 없습니다."}
               </div>
             )}
-          </DialogContent>
-        </Dialog>
-        <Button type="button" variant="outline" size="sm" className="px-[0.825rem]">이력저장</Button>
+            </DialogContent>
+          </Dialog>
+          <Button type="button" variant="outline" size="sm" className="h-9 px-[0.9rem] text-sm">이력저장</Button>
+        </div>
       </footer>
     </article>
   )
-}
+})
 
 export function FdcTrendPage() {
   const pageRef = useRef(null)
@@ -1300,9 +1306,6 @@ export function FdcTrendPage() {
               {dataQuery.isLoading ? "데이터를 불러오는 중입니다." : "표시할 file_path 데이터가 없습니다."}
             </div>
           )}
-          {dataQuery.data?.sourcePath ? (
-            <code className="truncate text-[10px] text-muted-foreground">{dataQuery.data.sourcePath}</code>
-          ) : null}
         </section>
       </main>
 

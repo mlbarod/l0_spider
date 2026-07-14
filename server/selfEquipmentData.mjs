@@ -446,7 +446,10 @@ export function buildErdIdentityPayload(rows, { eqp, axisColumn, filePath }) {
     isSelected: eqpCb === normalizedEqp,
     pointCount: points.length,
     points: points.sort((left, right) => left.actTimeMs - right.actTimeMs),
-  })).sort((left, right) => left.eqpCb.localeCompare(right.eqpCb, "ko", { numeric: true }))
+  })).sort((left, right) => (
+    Number(right.isSelected) - Number(left.isSelected)
+    || left.eqpCb.localeCompare(right.eqpCb, "ko", { numeric: true })
+  ))
 
   return {
     eqp: normalizedEqp,
