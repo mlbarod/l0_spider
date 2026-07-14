@@ -17,7 +17,23 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
 import { fetchLineMapping } from "../api/mappingConfigApi"
@@ -381,7 +397,7 @@ function ErdScatterCard({ row }) {
   }
 
   return (
-    <article ref={cardRef} className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border bg-card shadow-sm">
+    <article ref={cardRef} className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border bg-card shadow-sm">
       <header className="border-b bg-muted/50 px-3 py-2">
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
@@ -506,6 +522,71 @@ function ErdScatterCard({ row }) {
           </div>
         )}
       </div>
+      <footer className="flex flex-wrap items-center gap-2 border-t bg-muted/20 px-3 py-2.5">
+        <Button type="button" variant="outline" size="sm">동일성 차트</Button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button type="button" variant="outline" size="sm">변경점이력</Button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[85vh] sm:max-w-5xl">
+            <DialogHeader>
+              <DialogTitle>{eqp || "EQP 미지정"} 변경점 이력</DialogTitle>
+              <DialogDescription>
+                총 {changeHistory.length.toLocaleString()}건의 변경점 이력입니다.
+              </DialogDescription>
+            </DialogHeader>
+            {chartQuery.isLoading ? (
+              <div className="grid min-h-32 place-items-center rounded-md border bg-muted/30 p-6 text-sm text-muted-foreground">
+                <span className="flex items-center gap-2">
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  변경점 이력을 불러오는 중입니다.
+                </span>
+              </div>
+            ) : changeHistory.length ? (
+              <div className="max-h-[65vh] overflow-auto rounded-md border">
+                <Table>
+                  <TableHeader className="sticky top-0 z-10 bg-background">
+                    <TableRow>
+                      <TableHead>date</TableHead>
+                      <TableHead>work_type</TableHead>
+                      <TableHead>desc</TableHead>
+                      <TableHead className="w-20 text-center">LINK</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {changeHistory.map((history, index) => {
+                      const historyUrl = safeHistoryUrl(history.ctttmUrl)
+                      return (
+                        <TableRow key={`${history.dateMs}-${index}`}>
+                          <TableCell className="font-mono text-xs">{history.date || "-"}</TableCell>
+                          <TableCell>{history.workType || "-"}</TableCell>
+                          <TableCell className="min-w-64 whitespace-normal break-words">
+                            {history.description || "-"}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {historyUrl ? (
+                              <Button type="button" variant="outline" size="sm" asChild>
+                                <a href={historyUrl} target="_blank" rel="noreferrer">LINK</a>
+                              </Button>
+                            ) : (
+                              <Button type="button" variant="outline" size="sm" disabled>LINK</Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="grid min-h-32 place-items-center rounded-md border bg-muted/30 p-6 text-sm text-muted-foreground">
+                {chartQuery.data?.historyError || "표시할 변경점 이력이 없습니다."}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+        <Button type="button" variant="outline" size="sm">이력저장</Button>
+      </footer>
     </article>
   )
 }
