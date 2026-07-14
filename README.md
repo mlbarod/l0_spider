@@ -138,6 +138,14 @@ L0 Spider의 DB 접속정보는 `/appdata/l0_spider/db_info.pkl`에서 읽는다
 
 SKIP 상태인 차트는 상단에 `이상감지 SKIP 건` 배지와 하단에 `SKIP해제` 버튼을 표시한다. 해제가 완료되면 해당 차트 식별값의 `pass_history` 데이터를 삭제하고 배지를 제거한다.
 
+SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일반 SDWT 조회에서는 현재 차트의 10개 식별값(`line_id`, `ver`, `sdwt`, `desc`, `recipe_id`, `update_date`, `priority`, `sensor`, `step`, `eqp`)을 `pass_history`와 대조하여 SKIP된 차트를 Drawing 대상에서 제외한다. 따라서 SKIP된 차트는 일반 조회에서 다시 표시되지 않는다.
+
+`SKIP LIST`를 선택하면 ERD 원본 목록 대신 선택 Line의 `pass_history`를 조회한다. 이후 Sensor Grade → STEP(`desc`) → `eqp_ch`(`eqp`) → `sensor` → `ch_step`(`step`) 필터와 차트 목록은 모두 해당 테이블의 구분값으로 생성한다. 최종 차트 경로는 다음 규칙으로 복원하며, SKIP 해제 시 목록을 다시 조회하여 해제된 차트를 즉시 제거한다.
+
+```text
+/appdata/abnormal_trend/pic/erd/{update_date}/{sdwt}/{desc}/{ver}/{recipe_id}/{priority}/{sensor}/{step}/{eqp}.png
+```
+
 ### `hit_history`
 
 자설비 이상감지의 HIT 이력 데이터를 DB에 저장하거나 기존 데이터를 조회하는 용도로 사용한다.

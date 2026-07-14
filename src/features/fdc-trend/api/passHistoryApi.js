@@ -14,6 +14,27 @@ export async function fetchPassHistory({ lineId, sdwt, desc }) {
   return parseResponse(response)
 }
 
+export async function fetchSkipListData({
+  lineId,
+  priorities,
+  desc,
+  eqpCh,
+  sensor,
+  chStep,
+}) {
+  const searchParams = new URLSearchParams({ view: "filters", lineId })
+  priorities.forEach((priority) => searchParams.append("priority", priority))
+  if (desc) searchParams.set("desc", desc)
+  if (eqpCh) searchParams.set("eqpCh", eqpCh)
+  if (sensor) searchParams.set("sensor", sensor)
+  if (chStep) searchParams.set("chStep", chStep)
+
+  const response = await fetch(`/api/pass-history?${searchParams.toString()}`, {
+    headers: { Accept: "application/json" },
+  })
+  return parseResponse(response)
+}
+
 export async function createPassHistory({ lineId, filePath, comment, execDate }) {
   const response = await fetch("/api/pass-history", {
     method: "POST",

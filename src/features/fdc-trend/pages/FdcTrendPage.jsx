@@ -39,7 +39,12 @@ import { cn } from "@/lib/utils"
 
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
-import { createPassHistory, deletePassHistory, fetchPassHistory } from "../api/passHistoryApi"
+import {
+  createPassHistory,
+  deletePassHistory,
+  fetchPassHistory,
+  fetchSkipListData,
+} from "../api/passHistoryApi"
 import {
   fetchErdIdentityData,
   fetchErdScatterData,
@@ -52,6 +57,8 @@ const EMPTY_LIST = Object.freeze([])
 const ALL_EQP_CHANNELS = "ALL"
 const ALL_SENSORS = "ALL"
 const ALL_CH_STEPS = "ALL"
+const SKIP_LIST_TEAM = "__SKIP_LIST__"
+const SKIP_LIST_LABEL = "SKIP LIST"
 const SCATTER_CHART_MARGIN = Object.freeze({ top: 42, right: 18, bottom: 28, left: 16 })
 const SCATTER_Y_AXIS_WIDTH = 64
 const SCATTER_X_AXIS_HEIGHT = 30
@@ -625,7 +632,10 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, p
   const [skipClickedAt, setSkipClickedAt] = useState("")
   const isSkipped = Boolean(passRecord)
 
-  const refreshPassHistory = () => queryClient.invalidateQueries({ queryKey: ["pass-history", lineId] })
+  const refreshPassHistory = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["pass-history", lineId] }),
+    queryClient.invalidateQueries({ queryKey: ["skip-list-data", lineId] }),
+  ])
   const createSkipMutation = useMutation({
     mutationFn: createPassHistory,
     onSuccess: async () => {
@@ -1069,18 +1079,22 @@ export function FdcTrendPage() {
   )
   const activeLine = lines.includes(selectedLine) ? selectedLine : (lines[0] ?? "")
   const teamOptions = useMemo(
-    () => Object.entries(lineMapping)
-      .filter(([, line]) => line === activeLine)
-      .map(([key]) => ({ key, label: sdwtMapping[key] ?? key })),
+    () => [
+      ...Object.entries(lineMapping)
+        .filter(([, line]) => line === activeLine)
+        .map(([key]) => ({ key, label: sdwtMapping[key] ?? key })),
+      ...(activeLine ? [{ key: SKIP_LIST_TEAM, label: SKIP_LIST_LABEL }] : []),
+    ],
     [activeLine, lineMapping, sdwtMapping],
   )
   const activeTeam = teamOptions.some((team) => team.key === selectedTeam)
     ? selectedTeam
     : (teamOptions[0]?.key ?? "")
   const activeTeamLabel = teamOptions.find((team) => team.key === activeTeam)?.label ?? ""
+  const isSkipList = activeTeam === SKIP_LIST_TEAM
   const priorities = useMemo(() => expandPriorities(selectedGrades), [selectedGrades])
   const dataQueryKey = [
-    "self-equipment-data",
+    isSkipList ? "skip-list-data" : "self-equipment-data",
     activeLine,
     activeTeam,
     activeTeamLabel,
@@ -1092,17 +1106,31 @@ export function FdcTrendPage() {
   ]
   const dataQuery = useQuery({
     queryKey: dataQueryKey,
-    queryFn: () => fetchSelfEquipmentData({
-      line: activeLine,
-      pathSdwt: activeTeam,
-      sdwt: activeTeamLabel,
-      priorities,
-      desc: selectedDesc,
-      eqpCh: selectedEqpCh,
-      sensor: selectedSensor,
-      chStep: selectedChStep,
-    }),
-    enabled: Boolean(activeLine && activeTeam && activeTeamLabel),
+    queryFn: () => isSkipList
+      ? fetchSkipListData({
+          lineId: activeLine,
+          priorities,
+          desc: selectedDesc,
+          eqpCh: selectedEqpCh,
+          sensor: selectedSensor,
+          chStep: selectedChStep,
+        })
+      : fetchSelfEquipmentData({
+          line: activeLine,
+          pathSdwt: activeTeam,
+          sdwt: activeTeamLabel,
+          priorities,
+          desc: selectedDesc,
+          eqpCh: selectedEqpCh,
+          sensor: selectedSensor,
+          chStep: selectedChStep,
+        }),
+    enabled: Boolean(
+      activeLine
+      && activeTeam
+      && activeTeamLabel
+      && (!isSkipList || currentUserQuery.data?.knoxId)
+    ),
     placeholderData: (previousData, previousQuery) => {
       const previousKey = previousQuery?.queryKey ?? []
       const sameFiltersExceptChStep = JSON.stringify(previousKey.slice(0, -1))
@@ -1125,7 +1153,13 @@ export function FdcTrendPage() {
       sdwt: activeTeamLabel,
       desc: activeDesc,
     }),
-    enabled: Boolean(currentUserQuery.data?.knoxId && activeLine && activeTeamLabel && activeDesc),
+    enabled: Boolean(
+      !isSkipList
+      && currentUserQuery.data?.knoxId
+      && activeLine
+      && activeTeamLabel
+      && activeDesc
+    ),
     staleTime: 30 * 1000,
     retry: false,
   })
@@ -1137,10 +1171,14 @@ export function FdcTrendPage() {
   ), [passHistoryQuery.data?.records])
   const chStepIsSelected = Boolean(selectedChStep && activeChStep === selectedChStep)
   const dataRows = dataQuery.data?.rows
-  const chartRows = useMemo(
-    () => chStepIsSelected ? (dataRows ?? []) : [],
-    [chStepIsSelected, dataRows],
-  )
+  const chartRows = useMemo(() => {
+    if (!chStepIsSelected) return []
+    if (isSkipList) return dataRows ?? []
+    if (!passHistoryQuery.isSuccess) return []
+    return (dataRows ?? []).filter((row) => (
+      !passHistoryByKey.has(buildChartPassHistoryKey(activeLine, row))
+    ))
+  }, [activeLine, chStepIsSelected, dataRows, isSkipList, passHistoryByKey, passHistoryQuery.isSuccess])
   const chartGroups = useMemo(() => {
     const groups = new Map()
 
@@ -1160,8 +1198,15 @@ export function FdcTrendPage() {
     teamOptions.map((team) => ({ value: team.key, label: team.label })),
     queries.team,
   )
+  const gradeOptions = useMemo(() => {
+    if (!isSkipList) return SENSOR_GRADES
+    return Array.from(new Set(
+      (dataQuery.data?.availablePriorities ?? EMPTY_LIST)
+        .map((priority) => (["A", "B"].includes(priority) ? "A/B" : priority)),
+    ))
+  }, [dataQuery.data?.availablePriorities, isSkipList])
   const filteredGrades = filterItems(
-    SENSOR_GRADES.map((grade) => ({ value: grade, label: grade })),
+    gradeOptions.map((grade) => ({ value: grade, label: grade })),
     queries.grade,
   )
   const filteredSteps = filterItems(
@@ -1240,7 +1285,7 @@ export function FdcTrendPage() {
     setSelectedGrades((current) => (
       current.includes(grade)
         ? current.filter((item) => item !== grade)
-        : SENSOR_GRADES.filter((item) => [...current, grade].includes(item))
+        : gradeOptions.filter((item) => [...current, grade].includes(item))
     ))
     resetStepAndSensor()
   }
@@ -1317,7 +1362,7 @@ export function FdcTrendPage() {
             </FilterCard>
             <FilterCard
               title="Sensor Grade"
-              badge={`${SENSOR_GRADES.length}`}
+              badge={`${gradeOptions.length}`}
               disabled={!activeTeam}
               placeholder="SDWT를 먼저 선택하세요"
               isActive={selectedGrades.length > 0}
@@ -1446,7 +1491,7 @@ export function FdcTrendPage() {
             {dataQuery.error.message}
           </div>
         ) : null}
-        {passHistoryQuery.isError ? (
+        {!isSkipList && passHistoryQuery.isError ? (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             PASS 이력을 불러오지 못했습니다: {passHistoryQuery.error.message}
           </div>
@@ -1488,8 +1533,10 @@ export function FdcTrendPage() {
                         key={row.id}
                         row={row}
                         lineId={activeLine}
-                        passRecord={passHistoryByKey.get(buildChartPassHistoryKey(activeLine, row))}
-                        passHistoryReady={passHistoryQuery.isSuccess}
+                        passRecord={isSkipList
+                          ? row.pass_history
+                          : passHistoryByKey.get(buildChartPassHistoryKey(activeLine, row))}
+                        passHistoryReady={isSkipList || passHistoryQuery.isSuccess}
                       />
                     ))}
                   </div>
