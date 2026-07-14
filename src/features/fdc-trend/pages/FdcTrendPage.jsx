@@ -4,7 +4,6 @@ import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import {
   CartesianGrid,
-  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Scatter,
@@ -46,6 +45,8 @@ import { SENSOR_GRADES, SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 
 const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
+const ALL_EQP_CHANNELS = "ALL"
+const ALL_SENSORS = "ALL"
 const ALL_CH_STEPS = "ALL"
 const SCATTER_CHART_MARGIN = Object.freeze({ top: 42, right: 18, bottom: 28, left: 16 })
 const SCATTER_Y_AXIS_WIDTH = 64
@@ -234,6 +235,21 @@ function samplePoints(points, limit = MAX_RENDERED_POINTS_PER_SERIES) {
   return sampled
 }
 
+function drawZoomOverlay(element, start, end) {
+  if (!element || !start || !end) return
+
+  const left = Math.min(start.pixelX, end.pixelX)
+  const top = Math.min(start.pixelY, end.pixelY)
+  element.style.display = "block"
+  element.style.width = `${Math.abs(end.pixelX - start.pixelX)}px`
+  element.style.height = `${Math.abs(end.pixelY - start.pixelY)}px`
+  element.style.transform = `translate3d(${left}px, ${top}px, 0)`
+}
+
+function hideZoomOverlay(element) {
+  if (element) element.style.display = "none"
+}
+
 function ChangeHistoryLabel({ viewBox, history }) {
   if (!viewBox || !history) return null
 
@@ -291,23 +307,19 @@ function IdentityXAxisTick({ x, y, payload, groups }) {
   const group = groups[index]
   if (!group) return null
 
-  const firstPoint = group.points[0]
-  const lastPoint = group.points.at(-1)
-  const dateRange = firstPoint && lastPoint
-    ? `${formatActTimeTick(firstPoint.actTimeMs)}~${formatActTimeTick(lastPoint.actTimeMs)}`
-    : ""
-
   return (
     <g transform={`translate(${x},${y})`}>
       <text
-        dy={10}
+        x={-8}
+        y={0}
+        transform="rotate(-90)"
         fill={group.isSelected ? "#dc2626" : "var(--muted-foreground)"}
         fontSize="9"
         fontWeight={group.isSelected ? "700" : "500"}
-        textAnchor="middle"
+        textAnchor="end"
+        dominantBaseline="middle"
       >
-        <tspan x="0">{group.eqpCb}</tspan>
-        <tspan x="0" dy="11" fontSize="7">{dateRange}</tspan>
+        {group.eqpCb}
       </text>
     </g>
   )
@@ -315,9 +327,9 @@ function IdentityXAxisTick({ x, y, payload, groups }) {
 
 function IdentityChartDialog({ row, eqp }) {
   const chartRef = useRef(null)
+  const zoomOverlayRef = useRef(null)
   const zoomSelectionRef = useRef(null)
   const [open, setOpen] = useState(false)
-  const [zoomSelection, setZoomSelection] = useState(null)
   const [zoomDomain, setZoomDomain] = useState(null)
   const identityQuery = useQuery({
     queryKey: ["erd-identity-data", row.file_path, eqp, row.sensor, row.step],
@@ -381,11 +393,15 @@ function IdentityChartDialog({ row, eqp }) {
   }, [groups.length, identityPoints, zoomDomain])
   const fullXDomain = [0, Math.max(groups.length, 1)]
   const xTicks = groups.map((_, index) => index + 0.5)
-  const identityMargin = { top: 18, right: 14, bottom: 54, left: 8 }
+  const identityXAxisHeight = Math.min(
+    140,
+    Math.max(64, groups.reduce((length, group) => Math.max(length, group.eqpCb.length), 0) * 6 + 16),
+  )
+  const identityMargin = { top: 18, right: 14, bottom: 8, left: 8 }
 
   const updateZoomSelection = (selection) => {
     zoomSelectionRef.current = selection
-    setZoomSelection(selection)
+    if (!selection) hideZoomOverlay(zoomOverlayRef.current)
   }
   const getZoomPoint = (event) => {
     const chart = chartRef.current
@@ -395,7 +411,7 @@ function IdentityChartDialog({ row, eqp }) {
     const plotLeft = identityMargin.left + SCATTER_Y_AXIS_WIDTH
     const plotRight = bounds.width - identityMargin.right
     const plotTop = identityMargin.top
-    const plotBottom = bounds.height - identityMargin.bottom - SCATTER_X_AXIS_HEIGHT
+    const plotBottom = bounds.height - identityMargin.bottom - identityXAxisHeight
     const chartX = Math.min(Math.max(event.clientX - bounds.left, plotLeft), plotRight)
     const chartY = Math.min(Math.max(event.clientY - bounds.top, plotTop), plotBottom)
     const xDomain = zoomDomain?.x ?? fullXDomain
@@ -406,6 +422,8 @@ function IdentityChartDialog({ row, eqp }) {
     return {
       x: xDomain[0] + xRatio * (xDomain[1] - xDomain[0]),
       y: yDomain[1] - yRatio * (yDomain[1] - yDomain[0]),
+      pixelX: chartX,
+      pixelY: chartY,
     }
   }
   const handleZoomStart = (event) => {
@@ -414,20 +432,25 @@ function IdentityChartDialog({ row, eqp }) {
     const point = getZoomPoint(event)
     if (!point) return
     event.currentTarget.setPointerCapture?.(event.pointerId)
-    updateZoomSelection({ x1: point.x, y1: point.y, x2: point.x, y2: point.y })
+    updateZoomSelection(point)
+    drawZoomOverlay(zoomOverlayRef.current, point, point)
   }
   const handleZoomMove = (event) => {
-    if (!zoomSelectionRef.current) return
+    const start = zoomSelectionRef.current
+    if (!start) return
     const point = getZoomPoint(event)
-    if (point) updateZoomSelection({ ...zoomSelectionRef.current, x2: point.x, y2: point.y })
+    if (point) drawZoomOverlay(zoomOverlayRef.current, start, point)
   }
   const handleZoomEnd = (event) => {
-    const selection = zoomSelectionRef.current
-    if (!selection) return
+    const start = zoomSelectionRef.current
+    if (!start) return
     const point = getZoomPoint(event)
-    const completed = point ? { ...selection, x2: point.x, y2: point.y } : selection
-    const { x1, y1, x2, y2 } = completed
-    if (x2 > x1 && y2 < y1) setZoomDomain({ x: [x1, x2], y: [y2, y1] })
+    if (point && Math.abs(point.pixelX - start.pixelX) > 4 && Math.abs(point.pixelY - start.pixelY) > 4) {
+      setZoomDomain({
+        x: [Math.min(start.x, point.x), Math.max(start.x, point.x)],
+        y: [Math.min(start.y, point.y), Math.max(start.y, point.y)],
+      })
+    }
     event.currentTarget.releasePointerCapture?.(event.pointerId)
     updateZoomSelection(null)
   }
@@ -468,20 +491,25 @@ function IdentityChartDialog({ row, eqp }) {
         ) : groups.length ? (
           <div
             ref={chartRef}
-            className="min-h-0 w-full cursor-crosshair select-none touch-none rounded-md border bg-background"
+            className="relative min-h-0 w-full cursor-crosshair select-none touch-none rounded-md border bg-background"
             onPointerDown={handleZoomStart}
             onPointerMove={handleZoomMove}
             onPointerUp={handleZoomEnd}
             onPointerCancel={() => updateZoomSelection(null)}
             onDoubleClick={resetZoom}
           >
+            <div
+              ref={zoomOverlayRef}
+              className="pointer-events-none absolute left-0 top-0 z-10 hidden border border-primary bg-primary/10 will-change-transform"
+              aria-hidden="true"
+            />
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={identityMargin}>
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="identityX"
                   type="number"
-                  height={SCATTER_X_AXIS_HEIGHT + 24}
+                  height={identityXAxisHeight}
                   domain={zoomDomain?.x ?? fullXDomain}
                   allowDataOverflow={Boolean(zoomDomain)}
                   ticks={xTicks}
@@ -507,33 +535,20 @@ function IdentityChartDialog({ row, eqp }) {
                     strokeWidth={1.25}
                   />
                 ))}
-                {zoomSelection ? (
-                  <ReferenceArea
-                    x1={zoomSelection.x1}
-                    x2={zoomSelection.x2}
-                    y1={zoomSelection.y1}
-                    y2={zoomSelection.y2}
-                    stroke="var(--primary)"
-                    fill="var(--primary)"
-                    fillOpacity={0.12}
-                  />
-                ) : null}
                 <Scatter
                   data={renderedIdentitySeries.others}
                   dataKey="value"
                   shape="circle"
-                  fill="transparent"
-                  stroke="#9ca3af"
-                  strokeWidth={1.2}
+                  fill="#9ca3af"
+                  stroke="none"
                   isAnimationActive={false}
                 />
                 <Scatter
                   data={renderedIdentitySeries.selected}
                   dataKey="value"
                   shape="circle"
-                  fill="transparent"
-                  stroke="#ef4444"
-                  strokeWidth={1.8}
+                  fill="#ef4444"
+                  stroke="none"
                   isAnimationActive={false}
                 />
               </ScatterChart>
@@ -553,9 +568,9 @@ function ErdScatterCard({ row }) {
   const eqp = stripPngExtension(row.eqp)
   const cardRef = useRef(null)
   const chartContainerRef = useRef(null)
+  const zoomOverlayRef = useRef(null)
   const zoomSelectionRef = useRef(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
-  const [zoomSelection, setZoomSelection] = useState(null)
   const [zoomDomain, setZoomDomain] = useState(null)
 
   useEffect(() => {
@@ -629,11 +644,13 @@ function ErdScatterCard({ row }) {
     return {
       x: xDomain[0] + xRatio * (xDomain[1] - xDomain[0]),
       y: yDomain[1] - yRatio * (yDomain[1] - yDomain[0]),
+      pixelX: chartX,
+      pixelY: chartY,
     }
   }
   const updateZoomSelection = (selection) => {
     zoomSelectionRef.current = selection
-    setZoomSelection(selection)
+    if (!selection) hideZoomOverlay(zoomOverlayRef.current)
   }
   const handleZoomStart = (event) => {
     if (event?.button !== 0) return
@@ -642,22 +659,25 @@ function ErdScatterCard({ row }) {
     if (!point) return
 
     event.currentTarget.setPointerCapture?.(event.pointerId)
-    updateZoomSelection({ x1: point.x, y1: point.y, x2: point.x, y2: point.y })
+    updateZoomSelection(point)
+    drawZoomOverlay(zoomOverlayRef.current, point, point)
   }
   const handleZoomMove = (event) => {
-    if (!zoomSelectionRef.current) return
+    const start = zoomSelectionRef.current
+    if (!start) return
     const point = getZoomPoint(event)
-    if (point) updateZoomSelection({ ...zoomSelectionRef.current, x2: point.x, y2: point.y })
+    if (point) drawZoomOverlay(zoomOverlayRef.current, start, point)
   }
   const handleZoomEnd = (event) => {
-    const selection = zoomSelectionRef.current
-    if (!selection) return
+    const start = zoomSelectionRef.current
+    if (!start) return
 
     const point = getZoomPoint(event)
-    const completedSelection = point ? { ...selection, x2: point.x, y2: point.y } : selection
-    const { x1, y1, x2, y2 } = completedSelection
-    if (x2 > x1 && y2 < y1) {
-      setZoomDomain({ x: [x1, x2], y: [y2, y1] })
+    if (point && Math.abs(point.pixelX - start.pixelX) > 4 && Math.abs(point.pixelY - start.pixelY) > 4) {
+      setZoomDomain({
+        x: [Math.min(start.x, point.x), Math.max(start.x, point.x)],
+        y: [Math.min(start.y, point.y), Math.max(start.y, point.y)],
+      })
     }
     event.currentTarget.releasePointerCapture?.(event.pointerId)
     updateZoomSelection(null)
@@ -712,13 +732,18 @@ function ErdScatterCard({ row }) {
         ) : points.length ? (
           <div
             ref={chartContainerRef}
-            className="h-[320px] w-full min-w-0 cursor-crosshair select-none touch-none"
+            className="relative h-[320px] w-full min-w-0 cursor-crosshair select-none touch-none"
             onPointerDown={handleZoomStart}
             onPointerMove={handleZoomMove}
             onPointerUp={handleZoomEnd}
             onPointerCancel={() => updateZoomSelection(null)}
             onDoubleClick={resetZoom}
           >
+            <div
+              ref={zoomOverlayRef}
+              className="pointer-events-none absolute left-0 top-0 z-10 hidden border border-primary bg-primary/10 will-change-transform"
+              aria-hidden="true"
+            />
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart
                 margin={SCATTER_CHART_MARGIN}
@@ -761,17 +786,6 @@ function ErdScatterCard({ row }) {
                     label={<ChangeHistoryLabel history={history} />}
                   />
                 ))}
-                {zoomSelection ? (
-                  <ReferenceArea
-                    x1={zoomSelection.x1}
-                    x2={zoomSelection.x2}
-                    y1={zoomSelection.y1}
-                    y2={zoomSelection.y2}
-                    stroke="var(--primary)"
-                    fill="var(--primary)"
-                    fillOpacity={0.12}
-                  />
-                ) : null}
                 <Scatter
                   data={renderedPointSeries.previous}
                   dataKey="value"
@@ -869,9 +883,18 @@ export function FdcTrendPage() {
   const [selectedTeam, setSelectedTeam] = useState("")
   const [selectedGrades, setSelectedGrades] = useState(() => ["A/B"])
   const [selectedDesc, setSelectedDesc] = useState("")
+  const [selectedEqpCh, setSelectedEqpCh] = useState("")
   const [selectedSensor, setSelectedSensor] = useState("")
   const [selectedChStep, setSelectedChStep] = useState("")
-  const [queries, setQueries] = useState({ line: "", team: "", grade: "", step: "", sensor: "", chStep: "" })
+  const [queries, setQueries] = useState({
+    line: "",
+    team: "",
+    grade: "",
+    step: "",
+    eqpCh: "",
+    sensor: "",
+    chStep: "",
+  })
   const mappingQuery = useQuery({
     queryKey: ["l0-spider-line-mapping"],
     queryFn: fetchLineMapping,
@@ -901,6 +924,7 @@ export function FdcTrendPage() {
     activeTeamLabel,
     priorities,
     selectedDesc,
+    selectedEqpCh,
     selectedSensor,
     selectedChStep,
   ]
@@ -912,6 +936,7 @@ export function FdcTrendPage() {
       sdwt: activeTeamLabel,
       priorities,
       desc: selectedDesc,
+      eqpCh: selectedEqpCh,
       sensor: selectedSensor,
       chStep: selectedChStep,
     }),
@@ -924,9 +949,11 @@ export function FdcTrendPage() {
     },
   })
   const steps = dataQuery.data?.steps ?? []
+  const eqpChannels = dataQuery.data?.eqpChannels ?? []
   const sensors = dataQuery.data?.sensors ?? []
   const chSteps = dataQuery.data?.chSteps ?? []
   const activeDesc = dataQuery.data?.filters?.desc ?? ""
+  const activeEqpCh = dataQuery.data?.filters?.eqpCh ?? ""
   const activeSensor = dataQuery.data?.filters?.sensor ?? ""
   const activeChStep = dataQuery.data?.filters?.chStep ?? ""
   const chStepIsSelected = Boolean(selectedChStep && activeChStep === selectedChStep)
@@ -966,12 +993,34 @@ export function FdcTrendPage() {
     })),
     queries.step,
   )
+  const filteredEqpChannels = filterItems(
+    eqpChannels.length ? [
+      {
+        value: ALL_EQP_CHANNELS,
+        label: "ALL",
+        meta: `${eqpChannels.reduce((total, item) => total + item.rowCount, 0).toLocaleString()}건`,
+      },
+      ...eqpChannels.map((item) => ({
+        value: item.eqpCh,
+        label: stripPngExtension(item.eqpCh),
+        meta: `${item.rowCount.toLocaleString()}건`,
+      })),
+    ] : [],
+    queries.eqpCh,
+  )
   const filteredSensors = filterItems(
-    sensors.map((item) => ({
-      value: item.sensor,
-      label: item.sensor,
-      meta: `${item.rowCount.toLocaleString()}건`,
-    })),
+    sensors.length ? [
+      ...(selectedEqpCh === ALL_EQP_CHANNELS ? [] : [{
+        value: ALL_SENSORS,
+        label: "ALL",
+        meta: `${sensors.reduce((total, item) => total + item.rowCount, 0).toLocaleString()}건`,
+      }]),
+      ...sensors.map((item) => ({
+        value: item.sensor,
+        label: item.sensor,
+        meta: `${item.rowCount.toLocaleString()}건`,
+      })),
+    ] : [],
     queries.sensor,
   )
   const filteredChSteps = filterItems(
@@ -993,14 +1042,15 @@ export function FdcTrendPage() {
   const setQuery = (key, value) => setQueries((current) => ({ ...current, [key]: value }))
   const resetStepAndSensor = () => {
     setSelectedDesc("")
+    setSelectedEqpCh("")
     setSelectedSensor("")
     setSelectedChStep("")
-    setQueries((current) => ({ ...current, step: "", sensor: "", chStep: "" }))
+    setQueries((current) => ({ ...current, step: "", eqpCh: "", sensor: "", chStep: "" }))
   }
   const handleLineChange = (line) => {
     setSelectedLine(line)
     setSelectedTeam("")
-    setQueries((current) => ({ ...current, team: "", step: "", sensor: "", chStep: "" }))
+    setQueries((current) => ({ ...current, team: "", step: "", eqpCh: "", sensor: "", chStep: "" }))
     resetStepAndSensor()
   }
   const handleTeamChange = (team) => {
@@ -1025,7 +1075,7 @@ export function FdcTrendPage() {
               <h1 className="text-lg font-semibold tracking-tight">자설비 이상감지</h1>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              라인, 분임조, 센서 등급과 STEP, sensor, ch_step을 선택해 ERD 결과를 조회합니다.
+              라인, 분임조, 센서 등급과 STEP, eqp_ch, sensor, ch_step을 선택해 ERD 결과를 조회합니다.
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" asChild>
@@ -1039,7 +1089,7 @@ export function FdcTrendPage() {
 
       <section className="shrink-0 border-b bg-card">
         <div className="overflow-x-auto px-6 py-2">
-          <div className="grid h-[320px] min-w-[1420px] grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,.8fr)_minmax(0,1.55fr)_minmax(0,1.25fr)_minmax(0,1.15fr)] gap-4">
+          <div className="grid h-[320px] min-w-[1640px] grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,.8fr)_minmax(0,1.45fr)_minmax(0,1.15fr)_minmax(0,1.2fr)_minmax(0,1.05fr)] gap-4">
             <FilterCard
               title="Line Name"
               badge={lines.length ? `${lines.length}` : null}
@@ -1115,6 +1165,34 @@ export function FdcTrendPage() {
                   selected={activeDesc === item.value}
                   onClick={() => {
                     setSelectedDesc((current) => current === item.value ? "" : item.value)
+                    setSelectedEqpCh("")
+                    setSelectedSensor("")
+                    setSelectedChStep("")
+                    setQuery("eqpCh", "")
+                    setQuery("sensor", "")
+                    setQuery("chStep", "")
+                  }}
+                />
+              ))}
+            </FilterCard>
+            <FilterCard
+              title="eqp_ch"
+              badge={eqpChannels.length ? `${eqpChannels.length}` : null}
+              disabled={!selectedDesc || dataQuery.isLoading}
+              placeholder={selectedDesc ? "선택 STEP에 해당하는 eqp_ch가 없습니다." : "STEP을 먼저 선택하세요"}
+              isActive={Boolean(activeEqpCh)}
+              isLoading={dataQuery.isFetching && Boolean(selectedDesc) && !selectedEqpCh}
+              query={queries.eqpCh}
+              onQueryChange={(value) => setQuery("eqpCh", value)}
+            >
+              {filteredEqpChannels.map((item) => (
+                <SelectRow
+                  key={item.value}
+                  label={item.label}
+                  meta={item.meta}
+                  selected={activeEqpCh === item.value}
+                  onClick={() => {
+                    setSelectedEqpCh((current) => current === item.value ? "" : item.value)
                     setSelectedSensor("")
                     setSelectedChStep("")
                     setQuery("sensor", "")
@@ -1126,10 +1204,10 @@ export function FdcTrendPage() {
             <FilterCard
               title="sensor"
               badge={sensors.length ? `${sensors.length}` : null}
-              disabled={!selectedDesc || dataQuery.isLoading}
-              placeholder={selectedDesc ? "선택 STEP에 해당하는 sensor가 없습니다." : "STEP을 먼저 선택하세요"}
+              disabled={!selectedEqpCh || dataQuery.isLoading}
+              placeholder={selectedEqpCh ? "선택 eqp_ch에 해당하는 sensor가 없습니다." : "eqp_ch를 먼저 선택하세요"}
               isActive={Boolean(activeSensor)}
-              isLoading={dataQuery.isFetching && Boolean(selectedDesc)}
+              isLoading={dataQuery.isFetching && Boolean(selectedEqpCh)}
               query={queries.sensor}
               onQueryChange={(value) => setQuery("sensor", value)}
             >
@@ -1198,7 +1276,7 @@ export function FdcTrendPage() {
           </div>
           {!chStepIsSelected ? (
             <div className="grid min-h-52 place-items-center rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
-              STEP, sensor와 ch_step을 선택하면 scatter chart가 표시됩니다.
+              STEP, eqp_ch, sensor와 ch_step을 선택하면 scatter chart가 표시됩니다.
             </div>
           ) : chartGroups.length ? (
             <div className="grid min-w-0 gap-5">

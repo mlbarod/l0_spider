@@ -21,6 +21,8 @@ export const TEAM_ERD_COLUMNS = Object.freeze([
 
 const ERD_FILE_ROOT = "/appdata/abnormal_trend/pic/erd"
 const ERD_BACKUP_ROOT = "/appdata/abnormal_trend/pic/backup"
+const ALL_EQP_CHANNELS = "ALL"
+const ALL_SENSORS = "ALL"
 const ALL_CH_STEPS = "ALL"
 const parquetCache = new Map()
 const erdScatterCache = new Map()
@@ -131,15 +133,35 @@ export function buildSelfEquipmentPayload(rows, filters) {
   const stepRows = selectedDesc
     ? baseRows.filter((row) => row.desc === selectedDesc)
     : []
-  const sensors = sortByRowCount(aggregateBy(stepRows, "sensor", (sensor, sensorRows) => ({
+  const eqpChannels = sortByRowCount(aggregateBy(stepRows, "eqp", (eqpCh, eqpChRows) => ({
+    eqpCh,
+    rowCount: eqpChRows.length,
+  })), "eqpCh")
+  const selectedEqpCh = filters.eqpCh === ALL_EQP_CHANNELS && eqpChannels.length > 0
+    ? ALL_EQP_CHANNELS
+    : eqpChannels.some((item) => item.eqpCh === filters.eqpCh)
+    ? filters.eqpCh
+    : ""
+  const eqpChannelRows = selectedEqpCh === ALL_EQP_CHANNELS
+    ? stepRows
+    : selectedEqpCh
+    ? stepRows.filter((row) => row.eqp === selectedEqpCh)
+    : []
+  const sensors = sortByRowCount(aggregateBy(eqpChannelRows, "sensor", (sensor, sensorRows) => ({
     sensor,
     rowCount: sensorRows.length,
   })), "sensor")
-  const selectedSensor = sensors.some((item) => item.sensor === filters.sensor)
+  const selectedSensor = filters.sensor === ALL_SENSORS
+    && selectedEqpCh !== ALL_EQP_CHANNELS
+    && sensors.length > 0
+    ? ALL_SENSORS
+    : sensors.some((item) => item.sensor === filters.sensor)
     ? filters.sensor
     : ""
-  const sensorRows = selectedSensor
-    ? stepRows.filter((row) => row.sensor === selectedSensor)
+  const sensorRows = selectedSensor === ALL_SENSORS
+    ? eqpChannelRows
+    : selectedSensor
+    ? eqpChannelRows.filter((row) => row.sensor === selectedSensor)
     : []
   const chSteps = sortByRowCount(aggregateBy(sensorRows, "step", (step, chStepRows) => ({
     step,
@@ -164,6 +186,7 @@ export function buildSelfEquipmentPayload(rows, filters) {
       sdwt: filters.sdwt,
       priorities: filters.priorities,
       desc: selectedDesc,
+      eqpCh: selectedEqpCh,
       sensor: selectedSensor,
       chStep: selectedChStep,
     },
@@ -172,6 +195,7 @@ export function buildSelfEquipmentPayload(rows, filters) {
       chartRows: chartRows.length,
     },
     steps,
+    eqpChannels,
     sensors,
     chSteps,
     rows: chartRows.map((row, index) => ({ ...row, id: `${index}-${row.file_path}` })),
@@ -185,6 +209,7 @@ function readFilters(url) {
     sdwt: url.searchParams.get("sdwt")?.trim() ?? "",
     priorities: url.searchParams.getAll("priority").map((value) => value.trim()).filter(Boolean),
     desc: url.searchParams.get("desc")?.trim() ?? "",
+    eqpCh: url.searchParams.get("eqpCh")?.trim() ?? "",
     sensor: url.searchParams.get("sensor")?.trim() ?? "",
     chStep: url.searchParams.get("chStep")?.trim() ?? "",
   }

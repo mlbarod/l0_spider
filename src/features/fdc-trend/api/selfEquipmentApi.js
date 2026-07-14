@@ -4,12 +4,14 @@ export async function fetchSelfEquipmentData({
   sdwt,
   priorities,
   desc,
+  eqpCh,
   sensor,
   chStep,
 }) {
   const searchParams = new URLSearchParams({ line, pathSdwt, sdwt })
   priorities.forEach((priority) => searchParams.append("priority", priority))
   if (desc) searchParams.set("desc", desc)
+  if (eqpCh) searchParams.set("eqpCh", eqpCh)
   if (sensor) searchParams.set("sensor", sensor)
   if (chStep) searchParams.set("chStep", chStep)
 
