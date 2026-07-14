@@ -1,10 +1,9 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, ArrowUp, Check, ChevronRight, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import {
   CartesianGrid,
-  Cell,
   ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
@@ -31,6 +30,7 @@ const ALL_CH_STEPS = "ALL"
 const SCATTER_CHART_MARGIN = Object.freeze({ top: 42, right: 18, bottom: 28, left: 16 })
 const SCATTER_Y_AXIS_WIDTH = 64
 const SCATTER_X_AXIS_HEIGHT = 30
+const MAX_RENDERED_POINTS_PER_SERIES = 800
 
 function expandPriorities(grades) {
   return Array.from(new Set(
@@ -198,6 +198,18 @@ function numericDomain(values, fallbackPadding) {
   return [minimum - padding, maximum + padding]
 }
 
+function samplePoints(points, limit = MAX_RENDERED_POINTS_PER_SERIES) {
+  if (points.length <= limit) return points
+
+  const sampled = [points[0]]
+  const interval = (points.length - 1) / (limit - 1)
+  for (let index = 1; index < limit - 1; index += 1) {
+    sampled.push(points[Math.round(index * interval)])
+  }
+  sampled.push(points.at(-1))
+  return sampled
+}
+
 function ChangeHistoryLabel({ viewBox, history }) {
   if (!viewBox || !history) return null
 
@@ -252,9 +264,28 @@ function ScatterPointTooltip({ active, payload, axisColumn }) {
 
 function ErdScatterCard({ row }) {
   const eqp = stripPngExtension(row.eqp)
+  const cardRef = useRef(null)
   const chartContainerRef = useRef(null)
+  const zoomSelectionRef = useRef(null)
+  const [isNearViewport, setIsNearViewport] = useState(false)
   const [zoomSelection, setZoomSelection] = useState(null)
   const [zoomDomain, setZoomDomain] = useState(null)
+
+  useEffect(() => {
+    const card = cardRef.current
+    if (!card || typeof IntersectionObserver === "undefined") {
+      setIsNearViewport(true)
+      return undefined
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsNearViewport(entry.isIntersecting),
+      { rootMargin: "600px 0px" },
+    )
+    observer.observe(card)
+    return () => observer.disconnect()
+  }, [])
+
   const chartQuery = useQuery({
     queryKey: ["erd-scatter-data", row.file_path, eqp, row.sensor, row.step],
     queryFn: () => fetchErdScatterData({
@@ -263,11 +294,26 @@ function ErdScatterCard({ row }) {
       sensor: row.sensor,
       chStep: row.step,
     }),
-    enabled: Boolean(row.file_path && eqp && row.sensor && row.step),
+    enabled: Boolean(isNearViewport && row.file_path && eqp && row.sensor && row.step),
     staleTime: 5 * 60 * 1000,
   })
   const points = chartQuery.data?.points ?? EMPTY_LIST
   const changeHistory = chartQuery.data?.changeHistory ?? EMPTY_LIST
+  const renderedPointSeries = useMemo(() => {
+    const visiblePoints = zoomDomain
+      ? points.filter((point) => (
+        point.actTimeMs >= zoomDomain.x[0]
+        && point.actTimeMs <= zoomDomain.x[1]
+        && point.value >= zoomDomain.y[0]
+        && point.value <= zoomDomain.y[1]
+      ))
+      : points
+
+    return {
+      recent: samplePoints(visiblePoints.filter((point) => point.isRecent)),
+      previous: samplePoints(visiblePoints.filter((point) => !point.isRecent)),
+    }
+  }, [points, zoomDomain])
   const axisColumn = chartQuery.data?.axisColumn ?? `${row.sensor}_${row.step}`
   const baseDomain = useMemo(() => ({
     x: numericDomain([
@@ -298,32 +344,44 @@ function ErdScatterCard({ row }) {
       y: yDomain[1] - yRatio * (yDomain[1] - yDomain[0]),
     }
   }
-  const handleZoomStart = (_chartEvent, event) => {
+  const updateZoomSelection = (selection) => {
+    zoomSelectionRef.current = selection
+    setZoomSelection(selection)
+  }
+  const handleZoomStart = (event) => {
     if (event?.button !== 0) return
     event.preventDefault()
     const point = getZoomPoint(event)
-    if (point) setZoomSelection({ x1: point.x, y1: point.y, x2: point.x, y2: point.y })
+    if (!point) return
+
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    updateZoomSelection({ x1: point.x, y1: point.y, x2: point.x, y2: point.y })
   }
-  const handleZoomMove = (_chartEvent, event) => {
-    if (!zoomSelection) return
+  const handleZoomMove = (event) => {
+    if (!zoomSelectionRef.current) return
     const point = getZoomPoint(event)
-    if (point) setZoomSelection((current) => current ? { ...current, x2: point.x, y2: point.y } : null)
+    if (point) updateZoomSelection({ ...zoomSelectionRef.current, x2: point.x, y2: point.y })
   }
-  const handleZoomEnd = () => {
-    if (!zoomSelection) return
-    const { x1, y1, x2, y2 } = zoomSelection
+  const handleZoomEnd = (event) => {
+    const selection = zoomSelectionRef.current
+    if (!selection) return
+
+    const point = getZoomPoint(event)
+    const completedSelection = point ? { ...selection, x2: point.x, y2: point.y } : selection
+    const { x1, y1, x2, y2 } = completedSelection
     if (x2 > x1 && y2 < y1) {
       setZoomDomain({ x: [x1, x2], y: [y2, y1] })
     }
-    setZoomSelection(null)
+    event.currentTarget.releasePointerCapture?.(event.pointerId)
+    updateZoomSelection(null)
   }
   const resetZoom = () => {
-    setZoomSelection(null)
+    updateZoomSelection(null)
     setZoomDomain(null)
   }
 
   return (
-    <article className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border bg-card shadow-sm">
+    <article ref={cardRef} className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border bg-card shadow-sm">
       <header className="border-b bg-muted/50 px-3 py-2">
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
@@ -353,7 +411,9 @@ function ErdScatterCard({ row }) {
         </div>
       </header>
       <div className="grid min-h-[320px] place-items-center bg-background p-3">
-        {chartQuery.isLoading ? (
+        {!isNearViewport ? (
+          <div className="text-sm text-muted-foreground">화면에 표시할 차트를 준비 중입니다.</div>
+        ) : chartQuery.isLoading ? (
           <div className="grid justify-items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-5 animate-spin" aria-hidden="true" />
             ERD 이상감지 데이터를 불러오는 중입니다.
@@ -363,15 +423,18 @@ function ErdScatterCard({ row }) {
             {chartQuery.error.message}
           </div>
         ) : points.length ? (
-          <div ref={chartContainerRef} className="h-[320px] w-full min-w-0">
+          <div
+            ref={chartContainerRef}
+            className="h-[320px] w-full min-w-0 cursor-crosshair select-none touch-none"
+            onPointerDown={handleZoomStart}
+            onPointerMove={handleZoomMove}
+            onPointerUp={handleZoomEnd}
+            onPointerCancel={() => updateZoomSelection(null)}
+            onDoubleClick={resetZoom}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart
                 margin={SCATTER_CHART_MARGIN}
-                onMouseDown={handleZoomStart}
-                onMouseMove={handleZoomMove}
-                onMouseUp={handleZoomEnd}
-                onDoubleClick={resetZoom}
-                className="cursor-crosshair select-none"
               >
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
                 <XAxis
@@ -394,6 +457,7 @@ function ErdScatterCard({ row }) {
                   domain={zoomDomain?.y ?? baseDomain.y}
                   allowDataOverflow={Boolean(zoomDomain)}
                   tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  tickFormatter={(value) => Number(value).toFixed(2)}
                 />
                 <RechartsTooltip
                   cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }}
@@ -421,14 +485,18 @@ function ErdScatterCard({ row }) {
                     fillOpacity={0.12}
                   />
                 ) : null}
-                <Scatter data={points} dataKey="value" isAnimationActive={false}>
-                  {points.map((point, index) => (
-                    <Cell
-                      key={`${point.actTimeMs}-${index}`}
-                      fill={point.isRecent ? "#ef4444" : "#9ca3af"}
-                    />
-                  ))}
-                </Scatter>
+                <Scatter
+                  data={renderedPointSeries.previous}
+                  dataKey="value"
+                  fill="#9ca3af"
+                  isAnimationActive={false}
+                />
+                <Scatter
+                  data={renderedPointSeries.recent}
+                  dataKey="value"
+                  fill="#ef4444"
+                  isAnimationActive={false}
+                />
               </ScatterChart>
             </ResponsiveContainer>
           </div>
