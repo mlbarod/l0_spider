@@ -286,8 +286,39 @@ function ScatterPointTooltip({ active, payload, axisColumn }) {
   )
 }
 
+function IdentityXAxisTick({ x, y, payload, groups }) {
+  const index = Math.floor(Number(payload?.value))
+  const group = groups[index]
+  if (!group) return null
+
+  const firstPoint = group.points[0]
+  const lastPoint = group.points.at(-1)
+  const dateRange = firstPoint && lastPoint
+    ? `${formatActTimeTick(firstPoint.actTimeMs)}~${formatActTimeTick(lastPoint.actTimeMs)}`
+    : ""
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        dy={10}
+        fill={group.isSelected ? "#dc2626" : "var(--muted-foreground)"}
+        fontSize="9"
+        fontWeight={group.isSelected ? "700" : "500"}
+        textAnchor="middle"
+      >
+        <tspan x="0">{group.eqpCb}</tspan>
+        <tspan x="0" dy="11" fontSize="7">{dateRange}</tspan>
+      </text>
+    </g>
+  )
+}
+
 function IdentityChartDialog({ row, eqp }) {
+  const chartRef = useRef(null)
+  const zoomSelectionRef = useRef(null)
   const [open, setOpen] = useState(false)
+  const [zoomSelection, setZoomSelection] = useState(null)
+  const [zoomDomain, setZoomDomain] = useState(null)
   const identityQuery = useQuery({
     queryKey: ["erd-identity-data", row.file_path, eqp, row.sensor, row.step],
     queryFn: () => fetchErdIdentityData({
@@ -308,21 +339,113 @@ function IdentityChartDialog({ row, eqp }) {
     ),
     [groups],
   )
-  const panelGroups = useMemo(
-    () => groups.map((group) => ({
-      ...group,
-      renderedPoints: samplePoints(group.points, MAX_IDENTITY_POINTS_PER_EQP),
-      xDomain: numericDomain(group.points.map((point) => point.actTimeMs), 60 * 60 * 1000),
-    })),
+  const identityPoints = useMemo(
+    () => groups.flatMap((group, groupIndex) => {
+      const firstTime = group.points[0]?.actTimeMs ?? 0
+      const lastTime = group.points.at(-1)?.actTimeMs ?? firstTime
+      const timeRange = lastTime - firstTime
+      return group.points.map((point) => ({
+        ...point,
+        eqpCb: group.eqpCb,
+        isSelected: group.isSelected,
+        identityX: groupIndex + (timeRange ? (point.actTimeMs - firstTime) / timeRange : 0.5),
+      }))
+    }),
     [groups],
   )
+  const renderedIdentitySeries = useMemo(() => {
+    const visiblePoints = zoomDomain
+      ? identityPoints.filter((point) => (
+        point.identityX >= zoomDomain.x[0]
+        && point.identityX <= zoomDomain.x[1]
+        && point.value >= zoomDomain.y[0]
+        && point.value <= zoomDomain.y[1]
+      ))
+      : identityPoints
+    const groupLimit = Math.min(
+      MAX_IDENTITY_POINTS_PER_EQP,
+      Math.max(60, Math.floor(2400 / Math.max(groups.length, 1))),
+    )
+    const byGroup = new Map()
+    visiblePoints.forEach((point) => {
+      const points = byGroup.get(point.eqpCb) ?? []
+      points.push(point)
+      byGroup.set(point.eqpCb, points)
+    })
+    const sampledPoints = Array.from(byGroup.values()).flatMap((points) => samplePoints(points, groupLimit))
+
+    return {
+      selected: sampledPoints.filter((point) => point.isSelected),
+      others: sampledPoints.filter((point) => !point.isSelected),
+    }
+  }, [groups.length, identityPoints, zoomDomain])
+  const fullXDomain = [0, Math.max(groups.length, 1)]
+  const xTicks = groups.map((_, index) => index + 0.5)
+  const identityMargin = { top: 18, right: 14, bottom: 54, left: 8 }
+
+  const updateZoomSelection = (selection) => {
+    zoomSelectionRef.current = selection
+    setZoomSelection(selection)
+  }
+  const getZoomPoint = (event) => {
+    const chart = chartRef.current
+    if (!chart || !event) return null
+
+    const bounds = chart.getBoundingClientRect()
+    const plotLeft = identityMargin.left + SCATTER_Y_AXIS_WIDTH
+    const plotRight = bounds.width - identityMargin.right
+    const plotTop = identityMargin.top
+    const plotBottom = bounds.height - identityMargin.bottom - SCATTER_X_AXIS_HEIGHT
+    const chartX = Math.min(Math.max(event.clientX - bounds.left, plotLeft), plotRight)
+    const chartY = Math.min(Math.max(event.clientY - bounds.top, plotTop), plotBottom)
+    const xDomain = zoomDomain?.x ?? fullXDomain
+    const yDomain = zoomDomain?.y ?? sharedYDomain
+    const xRatio = (chartX - plotLeft) / Math.max(plotRight - plotLeft, 1)
+    const yRatio = (chartY - plotTop) / Math.max(plotBottom - plotTop, 1)
+
+    return {
+      x: xDomain[0] + xRatio * (xDomain[1] - xDomain[0]),
+      y: yDomain[1] - yRatio * (yDomain[1] - yDomain[0]),
+    }
+  }
+  const handleZoomStart = (event) => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    const point = getZoomPoint(event)
+    if (!point) return
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    updateZoomSelection({ x1: point.x, y1: point.y, x2: point.x, y2: point.y })
+  }
+  const handleZoomMove = (event) => {
+    if (!zoomSelectionRef.current) return
+    const point = getZoomPoint(event)
+    if (point) updateZoomSelection({ ...zoomSelectionRef.current, x2: point.x, y2: point.y })
+  }
+  const handleZoomEnd = (event) => {
+    const selection = zoomSelectionRef.current
+    if (!selection) return
+    const point = getZoomPoint(event)
+    const completed = point ? { ...selection, x2: point.x, y2: point.y } : selection
+    const { x1, y1, x2, y2 } = completed
+    if (x2 > x1 && y2 < y1) setZoomDomain({ x: [x1, x2], y: [y2, y1] })
+    event.currentTarget.releasePointerCapture?.(event.pointerId)
+    updateZoomSelection(null)
+  }
+  const resetZoom = () => {
+    updateZoomSelection(null)
+    setZoomDomain(null)
+  }
+  const handleOpenChange = (nextOpen) => {
+    setOpen(nextOpen)
+    if (!nextOpen) resetZoom()
+  }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm">동일성 차트</Button>
+        <Button type="button" variant="outline" size="sm" className="px-[0.825rem]">동일성 차트</Button>
       </DialogTrigger>
-      <DialogContent className="h-[88vh] w-[96vw] max-w-[96vw] sm:max-w-[96vw]">
+      <DialogContent className="h-[88vh] w-[96vw] max-w-[96vw] grid-rows-[auto_minmax(0,1fr)] overflow-hidden sm:max-w-[96vw]">
         <DialogHeader>
           <DialogTitle>{eqp || "EQP 미지정"} 동일성 차트</DialogTitle>
           <DialogDescription>
@@ -342,70 +465,79 @@ function IdentityChartDialog({ row, eqp }) {
           <div className="grid min-h-80 place-items-center px-6 text-center text-sm text-destructive">
             {identityQuery.error.message}
           </div>
-        ) : panelGroups.length ? (
-          <div className="min-h-0 flex-1 overflow-x-auto rounded-md border bg-background">
-            <div className="flex h-full min-h-[560px] w-max items-stretch">
-              {panelGroups.map((group, index) => (
-                <section
-                  key={group.eqpCb}
-                  className={cn(
-                    "grid w-[360px] shrink-0 grid-rows-[auto_minmax(0,1fr)]",
-                    index > 0 && "border-l-2 border-foreground/60",
-                  )}
-                >
-                  <header className="flex items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <h3 className={cn(
-                        "truncate text-sm font-semibold",
-                        group.isSelected && "text-red-600",
-                      )}>
-                        {group.eqpCb}
-                      </h3>
-                      {group.isSelected ? <Badge variant="destructive">현재 EQP</Badge> : null}
-                    </div>
-                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-                      {group.pointCount.toLocaleString()} points
-                    </span>
-                  </header>
-                  <div className="h-[500px] min-w-0 p-2">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ScatterChart margin={{ top: 16, right: 12, bottom: 30, left: 6 }}>
-                        <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="actTimeMs"
-                          type="number"
-                          name="act_time"
-                          domain={group.xDomain}
-                          scale="time"
-                          tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
-                          tickFormatter={formatActTimeTick}
-                          label={{ value: "act_time", position: "insideBottom", offset: -18, fontSize: 10 }}
-                        />
-                        <YAxis
-                          dataKey="value"
-                          type="number"
-                          name={axisColumn}
-                          width={SCATTER_Y_AXIS_WIDTH}
-                          domain={sharedYDomain}
-                          tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
-                          tickFormatter={(value) => Number(value).toFixed(2)}
-                        />
-                        <RechartsTooltip content={<ScatterPointTooltip axisColumn={axisColumn} />} />
-                        <Scatter
-                          data={group.renderedPoints}
-                          dataKey="value"
-                          shape="circle"
-                          fill="transparent"
-                          stroke={group.isSelected ? "#ef4444" : "#9ca3af"}
-                          strokeWidth={group.isSelected ? 1.8 : 1.2}
-                          isAnimationActive={false}
-                        />
-                      </ScatterChart>
-                    </ResponsiveContainer>
-                  </div>
-                </section>
-              ))}
-            </div>
+        ) : groups.length ? (
+          <div
+            ref={chartRef}
+            className="min-h-0 w-full cursor-crosshair select-none touch-none rounded-md border bg-background"
+            onPointerDown={handleZoomStart}
+            onPointerMove={handleZoomMove}
+            onPointerUp={handleZoomEnd}
+            onPointerCancel={() => updateZoomSelection(null)}
+            onDoubleClick={resetZoom}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={identityMargin}>
+                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="identityX"
+                  type="number"
+                  height={SCATTER_X_AXIS_HEIGHT + 24}
+                  domain={zoomDomain?.x ?? fullXDomain}
+                  allowDataOverflow={Boolean(zoomDomain)}
+                  ticks={xTicks}
+                  tick={<IdentityXAxisTick groups={groups} />}
+                  interval={0}
+                />
+                <YAxis
+                  dataKey="value"
+                  type="number"
+                  name={axisColumn}
+                  width={SCATTER_Y_AXIS_WIDTH}
+                  domain={zoomDomain?.y ?? sharedYDomain}
+                  allowDataOverflow={Boolean(zoomDomain)}
+                  tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                  tickFormatter={(value) => Number(value).toFixed(2)}
+                />
+                <RechartsTooltip content={<ScatterPointTooltip axisColumn={axisColumn} />} />
+                {groups.slice(1).map((group, index) => (
+                  <ReferenceLine
+                    key={group.eqpCb}
+                    x={index + 1}
+                    stroke="var(--foreground)"
+                    strokeWidth={1.25}
+                  />
+                ))}
+                {zoomSelection ? (
+                  <ReferenceArea
+                    x1={zoomSelection.x1}
+                    x2={zoomSelection.x2}
+                    y1={zoomSelection.y1}
+                    y2={zoomSelection.y2}
+                    stroke="var(--primary)"
+                    fill="var(--primary)"
+                    fillOpacity={0.12}
+                  />
+                ) : null}
+                <Scatter
+                  data={renderedIdentitySeries.others}
+                  dataKey="value"
+                  shape="circle"
+                  fill="transparent"
+                  stroke="#9ca3af"
+                  strokeWidth={1.2}
+                  isAnimationActive={false}
+                />
+                <Scatter
+                  data={renderedIdentitySeries.selected}
+                  dataKey="value"
+                  shape="circle"
+                  fill="transparent"
+                  stroke="#ef4444"
+                  strokeWidth={1.8}
+                  isAnimationActive={false}
+                />
+              </ScatterChart>
+            </ResponsiveContainer>
           </div>
         ) : (
           <div className="grid min-h-80 place-items-center text-sm text-muted-foreground">
@@ -661,11 +793,11 @@ function ErdScatterCard({ row }) {
           </div>
         )}
       </div>
-      <footer className="flex flex-wrap items-center gap-2 border-t bg-muted/20 px-3 py-2.5">
+      <footer className="flex flex-wrap items-center justify-end gap-2 border-t bg-muted/20 px-3 py-2.5">
         <IdentityChartDialog row={row} eqp={eqp} />
         <Dialog>
           <DialogTrigger asChild>
-            <Button type="button" variant="outline" size="sm">변경점이력</Button>
+            <Button type="button" variant="outline" size="sm" className="px-[0.825rem]">변경점이력</Button>
           </DialogTrigger>
           <DialogContent className="max-h-[85vh] sm:max-w-5xl">
             <DialogHeader>
@@ -724,7 +856,7 @@ function ErdScatterCard({ row }) {
             )}
           </DialogContent>
         </Dialog>
-        <Button type="button" variant="outline" size="sm">이력저장</Button>
+        <Button type="button" variant="outline" size="sm" className="px-[0.825rem]">이력저장</Button>
       </footer>
     </article>
   )
