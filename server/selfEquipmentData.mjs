@@ -392,6 +392,47 @@ export function buildErdScatterPayload(rows, {
   }
 }
 
+export function buildErdIdentityPayload(rows, { eqp, axisColumn, filePath }) {
+  const normalizedEqp = normalizeEqp(eqp)
+  const groups = new Map()
+
+  rows.forEach((row) => {
+    const eqpCb = normalizeEqp(row.eqp_cb)
+    const actTime = normalizeText(row.act_time)
+    const actTimeMs = parseDateTimeMs(actTime)
+    const value = normalizeNumber(row[axisColumn])
+    if (!eqpCb || !actTime || actTimeMs === null || value === null) return
+
+    const points = groups.get(eqpCb) ?? []
+    points.push({
+      actTime,
+      actTimeMs,
+      value,
+      eqpId: normalizeText(row.eqp_id),
+      dispName: normalizeText(row.disp_name),
+      waferId: normalizeText(row.wafer_id),
+      rootLotId: normalizeText(row.root_lot_id),
+    })
+    groups.set(eqpCb, points)
+  })
+
+  const eqpGroups = Array.from(groups, ([eqpCb, points]) => ({
+    eqpCb,
+    isSelected: eqpCb === normalizedEqp,
+    pointCount: points.length,
+    points: points.sort((left, right) => left.actTimeMs - right.actTimeMs),
+  })).sort((left, right) => left.eqpCb.localeCompare(right.eqpCb, "ko", { numeric: true }))
+
+  return {
+    eqp: normalizedEqp,
+    axisColumn,
+    sourcePath: filePath,
+    groupCount: eqpGroups.length,
+    pointCount: eqpGroups.reduce((total, group) => total + group.pointCount, 0),
+    groups: eqpGroups,
+  }
+}
+
 export async function handleErdScatterDataRequest(req, res, url) {
   if (req.method !== "GET") {
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
@@ -403,6 +444,7 @@ export async function handleErdScatterDataRequest(req, res, url) {
   try {
     const imagePath = url.searchParams.get("path")?.trim() ?? ""
     const eqp = url.searchParams.get("eqp")?.trim() ?? ""
+    const mode = url.searchParams.get("mode")?.trim() ?? "scatter"
     if (!imagePath || !eqp) {
       sendJson(res, 400, { ok: false, error: "path와 eqp 조건이 필요합니다." })
       return
@@ -424,6 +466,10 @@ export async function handleErdScatterDataRequest(req, res, url) {
     assertPathSegment("eqp", normalizeEqp(eqp))
     const axisColumn = `${sensor}_${chStep}`
     const rows = await readErdScatterRows(filePath, axisColumn)
+    if (mode === "identity") {
+      sendJson(res, 200, buildErdIdentityPayload(rows, { eqp, axisColumn, filePath }))
+      return
+    }
     const historyPath = join(dirname(filePath), `${normalizeEqp(eqp)}.parquet`)
     let historyRows = []
     let historyError = ""

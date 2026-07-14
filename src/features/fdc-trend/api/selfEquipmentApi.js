@@ -43,6 +43,22 @@ export async function fetchErdScatterData({ filePath, eqp, sensor, chStep }) {
   return payload
 }
 
+export async function fetchErdIdentityData({ filePath, eqp, sensor, chStep }) {
+  const searchParams = new URLSearchParams({ path: filePath, eqp, mode: "identity" })
+  if (sensor) searchParams.set("sensor", sensor)
+  if (chStep) searchParams.set("chStep", chStep)
+  const response = await fetch(`/api/erd-scatter-data?${searchParams.toString()}`, {
+    headers: { Accept: "application/json" },
+  })
+  const payload = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(payload.error || "동일성 차트 데이터를 불러오지 못했습니다.")
+  }
+
+  return payload
+}
+
 export function buildErdFileUrl(filePath) {
   return `/api/erd-file?path=${encodeURIComponent(filePath)}`
 }

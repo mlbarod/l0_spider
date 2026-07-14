@@ -37,7 +37,11 @@ import {
 import { cn } from "@/lib/utils"
 
 import { fetchLineMapping } from "../api/mappingConfigApi"
-import { fetchErdScatterData, fetchSelfEquipmentData } from "../api/selfEquipmentApi"
+import {
+  fetchErdIdentityData,
+  fetchErdScatterData,
+  fetchSelfEquipmentData,
+} from "../api/selfEquipmentApi"
 import { SENSOR_GRADES, SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 
 const EMPTY_MAPPING = Object.freeze({})
@@ -47,6 +51,7 @@ const SCATTER_CHART_MARGIN = Object.freeze({ top: 42, right: 18, bottom: 28, lef
 const SCATTER_Y_AXIS_WIDTH = 64
 const SCATTER_X_AXIS_HEIGHT = 30
 const MAX_RENDERED_POINTS_PER_SERIES = 800
+const MAX_IDENTITY_POINTS_PER_EQP = 600
 
 function expandPriorities(grades) {
   return Array.from(new Set(
@@ -200,11 +205,14 @@ function safeHistoryUrl(value) {
 }
 
 function numericDomain(values, fallbackPadding) {
-  const finiteValues = values.filter(Number.isFinite)
-  if (!finiteValues.length) return [0, 1]
-
-  const minimum = Math.min(...finiteValues)
-  const maximum = Math.max(...finiteValues)
+  let minimum = Infinity
+  let maximum = -Infinity
+  values.forEach((value) => {
+    if (!Number.isFinite(value)) return
+    minimum = Math.min(minimum, value)
+    maximum = Math.max(maximum, value)
+  })
+  if (!Number.isFinite(minimum) || !Number.isFinite(maximum)) return [0, 1]
   if (minimum !== maximum) {
     const padding = (maximum - minimum) * 0.025
     return [minimum - padding, maximum + padding]
@@ -275,6 +283,137 @@ function ScatterPointTooltip({ active, payload, axisColumn }) {
         </div>
       ))}
     </div>
+  )
+}
+
+function IdentityChartDialog({ row, eqp }) {
+  const [open, setOpen] = useState(false)
+  const identityQuery = useQuery({
+    queryKey: ["erd-identity-data", row.file_path, eqp, row.sensor, row.step],
+    queryFn: () => fetchErdIdentityData({
+      filePath: row.file_path,
+      eqp,
+      sensor: row.sensor,
+      chStep: row.step,
+    }),
+    enabled: Boolean(open && row.file_path && eqp && row.sensor && row.step),
+    staleTime: 5 * 60 * 1000,
+  })
+  const groups = identityQuery.data?.groups ?? EMPTY_LIST
+  const axisColumn = identityQuery.data?.axisColumn ?? `${row.sensor}_${row.step}`
+  const sharedYDomain = useMemo(
+    () => numericDomain(
+      groups.flatMap((group) => group.points.map((point) => point.value)),
+      1,
+    ),
+    [groups],
+  )
+  const panelGroups = useMemo(
+    () => groups.map((group) => ({
+      ...group,
+      renderedPoints: samplePoints(group.points, MAX_IDENTITY_POINTS_PER_EQP),
+      xDomain: numericDomain(group.points.map((point) => point.actTimeMs), 60 * 60 * 1000),
+    })),
+    [groups],
+  )
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" variant="outline" size="sm">동일성 차트</Button>
+      </DialogTrigger>
+      <DialogContent className="h-[88vh] w-[96vw] max-w-[96vw] sm:max-w-[96vw]">
+        <DialogHeader>
+          <DialogTitle>{eqp || "EQP 미지정"} 동일성 차트</DialogTitle>
+          <DialogDescription>
+            {identityQuery.data
+              ? `${identityQuery.data.groupCount.toLocaleString()}개 EQP · ${identityQuery.data.pointCount.toLocaleString()} points`
+              : "동일한 데이터 파일의 전체 eqp_cb를 비교합니다."}
+          </DialogDescription>
+        </DialogHeader>
+        {identityQuery.isLoading ? (
+          <div className="grid min-h-80 place-items-center text-sm text-muted-foreground">
+            <span className="flex items-center gap-2">
+              <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+              동일성 차트 데이터를 불러오는 중입니다.
+            </span>
+          </div>
+        ) : identityQuery.isError ? (
+          <div className="grid min-h-80 place-items-center px-6 text-center text-sm text-destructive">
+            {identityQuery.error.message}
+          </div>
+        ) : panelGroups.length ? (
+          <div className="min-h-0 flex-1 overflow-x-auto rounded-md border bg-background">
+            <div className="flex h-full min-h-[560px] w-max items-stretch">
+              {panelGroups.map((group, index) => (
+                <section
+                  key={group.eqpCb}
+                  className={cn(
+                    "grid w-[360px] shrink-0 grid-rows-[auto_minmax(0,1fr)]",
+                    index > 0 && "border-l-2 border-foreground/60",
+                  )}
+                >
+                  <header className="flex items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <h3 className={cn(
+                        "truncate text-sm font-semibold",
+                        group.isSelected && "text-red-600",
+                      )}>
+                        {group.eqpCb}
+                      </h3>
+                      {group.isSelected ? <Badge variant="destructive">현재 EQP</Badge> : null}
+                    </div>
+                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                      {group.pointCount.toLocaleString()} points
+                    </span>
+                  </header>
+                  <div className="h-[500px] min-w-0 p-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ScatterChart margin={{ top: 16, right: 12, bottom: 30, left: 6 }}>
+                        <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="actTimeMs"
+                          type="number"
+                          name="act_time"
+                          domain={group.xDomain}
+                          scale="time"
+                          tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                          tickFormatter={formatActTimeTick}
+                          label={{ value: "act_time", position: "insideBottom", offset: -18, fontSize: 10 }}
+                        />
+                        <YAxis
+                          dataKey="value"
+                          type="number"
+                          name={axisColumn}
+                          width={SCATTER_Y_AXIS_WIDTH}
+                          domain={sharedYDomain}
+                          tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                          tickFormatter={(value) => Number(value).toFixed(2)}
+                        />
+                        <RechartsTooltip content={<ScatterPointTooltip axisColumn={axisColumn} />} />
+                        <Scatter
+                          data={group.renderedPoints}
+                          dataKey="value"
+                          shape="circle"
+                          fill="transparent"
+                          stroke={group.isSelected ? "#ef4444" : "#9ca3af"}
+                          strokeWidth={group.isSelected ? 1.8 : 1.2}
+                          isAnimationActive={false}
+                        />
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="grid min-h-80 place-items-center text-sm text-muted-foreground">
+            표시할 eqp_cb 데이터가 없습니다.
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -523,7 +662,7 @@ function ErdScatterCard({ row }) {
         )}
       </div>
       <footer className="flex flex-wrap items-center gap-2 border-t bg-muted/20 px-3 py-2.5">
-        <Button type="button" variant="outline" size="sm">동일성 차트</Button>
+        <IdentityChartDialog row={row} eqp={eqp} />
         <Dialog>
           <DialogTrigger asChild>
             <Button type="button" variant="outline" size="sm">변경점이력</Button>
