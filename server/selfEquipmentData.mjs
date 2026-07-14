@@ -21,9 +21,12 @@ export const TEAM_ERD_COLUMNS = Object.freeze([
 
 const ERD_FILE_ROOT = "/appdata/abnormal_trend/pic/erd"
 const ERD_BACKUP_ROOT = "/appdata/abnormal_trend/pic/backup"
+const ALL_CH_STEPS = "ALL"
 const parquetCache = new Map()
 const erdScatterCache = new Map()
 const erdScatterPending = new Map()
+const erdHistoryCache = new Map()
+const erdHistoryPending = new Map()
 
 const imageMimeTypes = {
   ".png": "image/png",
@@ -143,10 +146,14 @@ export function buildSelfEquipmentPayload(rows, filters) {
     rowCount: chStepRows.length,
     equipmentCount: uniqueCount(chStepRows, "eqp"),
   })), "step")
-  const selectedChStep = chSteps.some((item) => item.step === filters.chStep)
+  const selectedChStep = filters.chStep === ALL_CH_STEPS && chSteps.length > 0
+    ? ALL_CH_STEPS
+    : chSteps.some((item) => item.step === filters.chStep)
     ? filters.chStep
     : ""
-  const chartRows = selectedChStep
+  const chartRows = selectedChStep === ALL_CH_STEPS
+    ? sensorRows
+    : selectedChStep
     ? sensorRows.filter((row) => row.step === selectedChStep)
     : []
 
@@ -256,6 +263,32 @@ async function readErdScatterRows(filePath, axisColumn) {
   }
 }
 
+async function readErdHistoryRows(filePath) {
+  const fileStat = statSync(filePath)
+  const cached = erdHistoryCache.get(filePath)
+
+  if (cached?.mtimeMs === fileStat.mtimeMs && cached?.size === fileStat.size) {
+    return cached.rows
+  }
+
+  if (erdHistoryPending.has(filePath)) return erdHistoryPending.get(filePath)
+
+  const readPromise = (async () => {
+    const file = await asyncBufferFromFile(filePath)
+    const columns = ["date", "ctttm_url", "work_type", "desc"]
+    const rows = await parquetReadObjects({ file, columns, compressors })
+    erdHistoryCache.set(filePath, { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows })
+    return rows
+  })()
+  erdHistoryPending.set(filePath, readPromise)
+
+  try {
+    return await readPromise
+  } finally {
+    erdHistoryPending.delete(filePath)
+  }
+}
+
 function normalizeText(value) {
   if (value === null || value === undefined) return ""
   if (value instanceof Date) return value.toISOString().replace("T", " ").replace("Z", "")
@@ -272,30 +305,81 @@ function normalizeNumber(value) {
   return Number.isFinite(number) ? number : null
 }
 
-export function buildErdScatterPayload(rows, { eqp, axisColumn, filePath, latestDate }) {
+function parseDateTimeMs(value) {
+  const text = normalizeText(value).trim()
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?)?/)
+  if (!match) return null
+
+  const [, year, month, day, hour = "0", minute = "0", second = "0", fraction = ""] = match
+  const millisecond = Number(fraction.slice(0, 3).padEnd(3, "0"))
+  return Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second),
+    millisecond,
+  )
+}
+
+export function buildErdScatterPayload(rows, {
+  eqp,
+  axisColumn,
+  filePath,
+  latestDate,
+  historyPath = "",
+  historyRows = [],
+  historyError = "",
+}) {
   const normalizedEqp = normalizeEqp(eqp)
+  const latestDateMs = parseDateTimeMs(latestDate)
+  const recentThresholdMs = latestDateMs === null
+    ? null
+    : latestDateMs - 26 * 60 * 60 * 1000
   const points = rows.flatMap((row) => {
     if (normalizeEqp(row.eqp_cb) !== normalizedEqp) return []
     const actTime = normalizeText(row.act_time)
+    const actTimeMs = parseDateTimeMs(actTime)
     const value = normalizeNumber(row[axisColumn])
-    if (!actTime || value === null) return []
+    if (!actTime || actTimeMs === null || value === null) return []
 
     return [{
       actTime,
+      actTimeMs,
       value,
       eqpId: normalizeText(row.eqp_id),
       dispName: normalizeText(row.disp_name),
       waferId: normalizeText(row.wafer_id),
+      isRecent: recentThresholdMs !== null && actTimeMs >= recentThresholdMs,
     }]
-  }).sort((left, right) => left.actTime.localeCompare(right.actTime))
+  }).sort((left, right) => left.actTimeMs - right.actTimeMs)
+  const changeHistory = historyRows.flatMap((row) => {
+    const date = normalizeText(row.date)
+    const dateMs = parseDateTimeMs(date)
+    if (!date || dateMs === null) return []
+
+    return [{
+      date,
+      dateMs,
+      ctttmUrl: normalizeText(row.ctttm_url),
+      workType: normalizeText(row.work_type),
+      description: normalizeText(row.desc),
+    }]
+  }).sort((left, right) => left.dateMs - right.dateMs)
 
   return {
     eqp: normalizedEqp,
     latestDate,
     axisColumn,
     sourcePath: filePath,
+    historyPath,
+    historyError,
+    latestDateMs,
+    recentThresholdMs,
     pointCount: points.length,
     points,
+    changeHistory,
   }
 }
 
@@ -328,9 +412,26 @@ export async function handleErdScatterDataRequest(req, res, url) {
     const chStep = requestedChStep || pathChStep
     assertPathSegment("sensor", sensor)
     assertPathSegment("chStep", chStep)
+    assertPathSegment("eqp", normalizeEqp(eqp))
     const axisColumn = `${sensor}_${chStep}`
     const rows = await readErdScatterRows(filePath, axisColumn)
-    sendJson(res, 200, buildErdScatterPayload(rows, { eqp, axisColumn, filePath, latestDate }))
+    const historyPath = join(dirname(filePath), `${normalizeEqp(eqp)}.parquet`)
+    let historyRows = []
+    let historyError = ""
+    try {
+      historyRows = await readErdHistoryRows(historyPath)
+    } catch (error) {
+      historyError = `변경점 이력을 불러오지 못했습니다: ${error.message}`
+    }
+    sendJson(res, 200, buildErdScatterPayload(rows, {
+      eqp,
+      axisColumn,
+      filePath,
+      latestDate,
+      historyPath,
+      historyRows,
+      historyError,
+    }))
   } catch (error) {
     sendJson(res, 500, {
       ok: false,

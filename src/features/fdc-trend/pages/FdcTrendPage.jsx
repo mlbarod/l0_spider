@@ -4,6 +4,8 @@ import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import {
   CartesianGrid,
+  Cell,
+  ReferenceLine,
   ResponsiveContainer,
   Scatter,
   ScatterChart,
@@ -23,6 +25,7 @@ import { fetchErdScatterData, fetchSelfEquipmentData } from "../api/selfEquipmen
 import { SENSOR_GRADES, SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 
 const EMPTY_MAPPING = Object.freeze({})
+const ALL_CH_STEPS = "ALL"
 
 function expandPriorities(grades) {
   return Array.from(new Set(
@@ -171,9 +174,42 @@ function replaceFileNameWithParquet(filePath) {
 }
 
 function formatActTimeTick(value) {
+  if (Number.isFinite(Number(value))) {
+    return new Date(Number(value)).toISOString().slice(11, 19)
+  }
   const text = String(value ?? "")
   const time = text.includes(" ") ? text.split(" ").at(-1) : text.split("T").at(-1)
   return time?.slice(0, 8) || text
+}
+
+function safeHistoryUrl(value) {
+  const url = String(value ?? "").trim()
+  return /^(https?:\/\/|\/)/i.test(url) ? url : ""
+}
+
+function ChangeHistoryLabel({ viewBox, history }) {
+  if (!viewBox || !history) return null
+
+  const label = history.workType || "변경점"
+  const details = [history.date, history.description, history.ctttmUrl].filter(Boolean).join(" · ")
+  const url = safeHistoryUrl(history.ctttmUrl)
+  const text = (
+    <text
+      x={viewBox.x}
+      y={Math.max(viewBox.y - 8, 12)}
+      fill="#15803d"
+      fontSize="10"
+      fontWeight="600"
+      textAnchor="middle"
+    >
+      <title>{details}</title>
+      {label}
+    </text>
+  )
+
+  return url ? (
+    <a href={url} target="_blank" rel="noreferrer">{text}</a>
+  ) : text
 }
 
 function ScatterPointTooltip({ active, payload, axisColumn }) {
@@ -216,6 +252,7 @@ function ErdScatterCard({ row }) {
     staleTime: 5 * 60 * 1000,
   })
   const points = chartQuery.data?.points ?? []
+  const changeHistory = chartQuery.data?.changeHistory ?? []
   const axisColumn = chartQuery.data?.axisColumn ?? `${row.sensor}_${row.step}`
   const chartSourcePath = chartQuery.data?.sourcePath
     || chartQuery.error?.sourcePath
@@ -230,12 +267,23 @@ function ErdScatterCard({ row }) {
             {chartQuery.data ? (
               <Badge variant="secondary">{points.length.toLocaleString()} points</Badge>
             ) : null}
-            <Badge variant="outline">{row.priority || "-"}</Badge>
+            <Badge variant="outline">{row.priority ? `${row.priority}등급` : "등급 미지정"}</Badge>
           </div>
         </div>
         <p className="mt-1 truncate text-[11px] text-muted-foreground">
           {row.desc} · {axisColumn} · {row.recipe_id}
         </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-red-500" /> latest_date -26hr 이후
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-gray-400" /> 이전 데이터
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-4 border-t border-dashed border-green-600" /> 변경점 이력
+          </span>
+        </div>
       </header>
       <div className="grid min-h-[320px] place-items-center bg-background p-3">
         {chartQuery.isLoading ? (
@@ -250,12 +298,14 @@ function ErdScatterCard({ row }) {
         ) : points.length ? (
           <div className="h-[320px] w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 12, right: 18, bottom: 28, left: 16 }}>
+              <ScatterChart margin={{ top: 42, right: 18, bottom: 28, left: 16 }}>
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
                 <XAxis
-                  dataKey="actTime"
-                  type="category"
+                  dataKey="actTimeMs"
+                  type="number"
                   name="act_time"
+                  domain={["dataMin", "dataMax"]}
+                  scale="time"
                   tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                   tickFormatter={formatActTimeTick}
                   label={{ value: "act_time", position: "insideBottom", offset: -18, fontSize: 11 }}
@@ -272,7 +322,25 @@ function ErdScatterCard({ row }) {
                   cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }}
                   content={<ScatterPointTooltip axisColumn={axisColumn} />}
                 />
-                <Scatter data={points} dataKey="value" fill="var(--chart-1)" isAnimationActive={false} />
+                {changeHistory.map((history, index) => (
+                  <ReferenceLine
+                    key={`${history.dateMs}-${index}`}
+                    x={history.dateMs}
+                    stroke="#16a34a"
+                    strokeDasharray="6 4"
+                    strokeWidth={1.5}
+                    ifOverflow="extendDomain"
+                    label={<ChangeHistoryLabel history={history} />}
+                  />
+                ))}
+                <Scatter data={points} dataKey="value" isAnimationActive={false}>
+                  {points.map((point, index) => (
+                    <Cell
+                      key={`${point.actTimeMs}-${index}`}
+                      fill={point.isRecent ? "#ef4444" : "#9ca3af"}
+                    />
+                  ))}
+                </Scatter>
               </ScatterChart>
             </ResponsiveContainer>
           </div>
@@ -290,6 +358,17 @@ function ErdScatterCard({ row }) {
         >
           {chartSourcePath}
         </p>
+        {chartQuery.data?.historyPath ? (
+          <>
+            <span className="mt-2 block text-[10px] font-medium text-muted-foreground">변경점 이력 path</span>
+            <p className="mt-0.5 break-all font-mono text-[10px] text-muted-foreground">
+              {chartQuery.data.historyPath}
+            </p>
+          </>
+        ) : null}
+        {chartQuery.data?.historyError ? (
+          <p className="mt-1 text-[10px] text-amber-600">{chartQuery.data.historyError}</p>
+        ) : null}
       </footer>
     </article>
   )
@@ -408,11 +487,18 @@ export function FdcTrendPage() {
     queries.sensor,
   )
   const filteredChSteps = filterItems(
-    chSteps.map((item) => ({
-      value: item.step,
-      label: item.step.split("@")[0],
-      meta: `${item.rowCount.toLocaleString()}건 · ${item.equipmentCount.toLocaleString()} eqp`,
-    })),
+    chSteps.length ? [
+      {
+        value: ALL_CH_STEPS,
+        label: "ALL",
+        meta: `${chSteps.reduce((total, item) => total + item.rowCount, 0).toLocaleString()}건`,
+      },
+      ...chSteps.map((item) => ({
+        value: item.step,
+        label: item.step.split("@")[0],
+        meta: `${item.rowCount.toLocaleString()}건 · ${item.equipmentCount.toLocaleString()} eqp`,
+      })),
+    ] : [],
     queries.chStep,
   )
 
@@ -449,7 +535,6 @@ export function FdcTrendPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-semibold tracking-tight">자설비 이상감지</h1>
-              <Badge variant="outline">Parquet</Badge>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
               라인, 분임조, 센서 등급과 STEP, sensor, ch_step을 선택해 ERD 결과를 조회합니다.
