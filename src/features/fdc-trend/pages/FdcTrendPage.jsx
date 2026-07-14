@@ -135,6 +135,14 @@ function stripPngExtension(value) {
   return String(value ?? "").replace(/\.png$/i, "")
 }
 
+function replaceFileNameWithParquet(filePath) {
+  const path = String(filePath ?? "")
+  const lastSlashIndex = path.lastIndexOf("/")
+  return lastSlashIndex >= 0
+    ? `${path.slice(0, lastSlashIndex + 1)}data.parquet`
+    : path
+}
+
 function formatActTimeTick(value) {
   const text = String(value ?? "")
   const time = text.includes(" ") ? text.split(" ").at(-1) : text.split("T").at(-1)
@@ -182,7 +190,9 @@ function ErdScatterCard({ row }) {
   })
   const points = chartQuery.data?.points ?? []
   const axisColumn = chartQuery.data?.axisColumn ?? `${row.sensor}_${row.step}`
-  const chartSourcePath = chartQuery.data?.sourcePath || chartQuery.error?.sourcePath || row.file_path
+  const chartSourcePath = chartQuery.data?.sourcePath
+    || chartQuery.error?.sourcePath
+    || replaceFileNameWithParquet(row.file_path)
 
   return (
     <article className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border bg-card shadow-sm">
@@ -289,17 +299,18 @@ export function FdcTrendPage() {
     : (teamOptions[0]?.key ?? "")
   const activeTeamLabel = teamOptions.find((team) => team.key === activeTeam)?.label ?? ""
   const priorities = useMemo(() => expandPriorities(selectedGrades), [selectedGrades])
+  const dataQueryKey = [
+    "self-equipment-data",
+    activeLine,
+    activeTeam,
+    activeTeamLabel,
+    priorities,
+    selectedDesc,
+    selectedSensor,
+    selectedChStep,
+  ]
   const dataQuery = useQuery({
-    queryKey: [
-      "self-equipment-data",
-      activeLine,
-      activeTeam,
-      activeTeamLabel,
-      priorities,
-      selectedDesc,
-      selectedSensor,
-      selectedChStep,
-    ],
+    queryKey: dataQueryKey,
     queryFn: () => fetchSelfEquipmentData({
       line: activeLine,
       pathSdwt: activeTeam,
@@ -310,6 +321,12 @@ export function FdcTrendPage() {
       chStep: selectedChStep,
     }),
     enabled: Boolean(activeLine && activeTeam && activeTeamLabel),
+    placeholderData: (previousData, previousQuery) => {
+      const previousKey = previousQuery?.queryKey ?? []
+      const sameFiltersExceptChStep = JSON.stringify(previousKey.slice(0, -1))
+        === JSON.stringify(dataQueryKey.slice(0, -1))
+      return sameFiltersExceptChStep ? previousData : undefined
+    },
   })
   const steps = dataQuery.data?.steps ?? []
   const sensors = dataQuery.data?.sensors ?? []
@@ -365,7 +382,7 @@ export function FdcTrendPage() {
   const filteredChSteps = filterItems(
     chSteps.map((item) => ({
       value: item.step,
-      label: item.step,
+      label: item.step.split("@")[0],
       meta: `${item.rowCount.toLocaleString()}건 · ${item.equipmentCount.toLocaleString()} eqp`,
     })),
     queries.chStep,

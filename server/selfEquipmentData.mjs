@@ -1,5 +1,5 @@
 import { createReadStream, existsSync, statSync } from "node:fs"
-import { join, relative, resolve, sep } from "node:path"
+import { dirname, join, relative, resolve, sep } from "node:path"
 
 import { asyncBufferFromFile, parquetReadObjects } from "hyparquet"
 
@@ -206,33 +206,20 @@ export function resolveErdDataFilePath(imagePath) {
   const resolvedInputPath = resolve(imagePath)
   const isDirectErdPath = resolvedInputPath.startsWith(`${ERD_FILE_ROOT}/`)
   const isBackupPath = resolvedInputPath.startsWith(`${ERD_BACKUP_ROOT}/`)
-  let resolvedImagePath = resolvedInputPath
 
-  if (isBackupPath) {
-    const encodedPath = relative(ERD_BACKUP_ROOT, resolvedInputPath)
-    if (encodedPath.includes(sep) || !encodedPath.startsWith("#")) {
-      throw new Error("허용되지 않은 ERD 이미지 경로입니다.")
-    }
-    resolvedImagePath = resolve(encodedPath.replaceAll("#", "/"))
-  }
-
-  if ((!isDirectErdPath && !isBackupPath)
-    || !resolvedImagePath.startsWith(`${ERD_FILE_ROOT}/`)) {
+  if (!isDirectErdPath && !isBackupPath) {
     throw new Error("허용되지 않은 ERD 이미지 경로입니다.")
   }
 
-  const pathSegments = relative(ERD_FILE_ROOT, resolvedImagePath).split(sep)
-  if (pathSegments.length < 9) {
-    throw new Error("ERD 이미지 경로 구조가 올바르지 않습니다.")
-  }
-
-  pathSegments[pathSegments.length - 1] = "data.parquet"
+  const pathSegments = isDirectErdPath
+    ? relative(ERD_FILE_ROOT, resolvedInputPath).split(sep)
+    : []
 
   return {
-    filePath: join(ERD_FILE_ROOT, ...pathSegments),
-    latestDate: pathSegments[0],
-    sensor: pathSegments[pathSegments.length - 3],
-    chStep: pathSegments[pathSegments.length - 2],
+    filePath: join(dirname(resolvedInputPath), "data.parquet"),
+    latestDate: pathSegments[0] ?? "",
+    sensor: pathSegments[pathSegments.length - 3] ?? "",
+    chStep: pathSegments[pathSegments.length - 2] ?? "",
   }
 }
 
