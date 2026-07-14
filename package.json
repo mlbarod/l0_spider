@@ -33,6 +33,7 @@
     "dompurify": "^3.3.0",
     "framer-motion": "^12.23.25",
     "hyparquet": "^1.26.2",
+    "hyparquet-compressors": "^1.1.1",
     "lucide-react": "^0.548.0",
     "marked": "^17.0.1",
     "moment": "^2.30.1",

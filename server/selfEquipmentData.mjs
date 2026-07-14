@@ -2,6 +2,7 @@ import { createReadStream, existsSync, statSync } from "node:fs"
 import { dirname, join, relative, resolve, sep } from "node:path"
 
 import { asyncBufferFromFile, parquetReadObjects } from "hyparquet"
+import { compressors } from "hyparquet-compressors"
 
 import { buildTeamErdPath } from "../src/config/spiderDataPaths.mjs"
 
@@ -68,7 +69,11 @@ async function readTeamErdRows({ line, pathSdwt }) {
   }
 
   const file = await asyncBufferFromFile(filePath)
-  const rows = (await parquetReadObjects({ file, columns: TEAM_ERD_COLUMNS })).map(normalizeRow)
+  const rows = (await parquetReadObjects({
+    file,
+    columns: TEAM_ERD_COLUMNS,
+    compressors,
+  })).map(normalizeRow)
   parquetCache.set(filePath, { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows })
 
   return { filePath, rows }
@@ -238,7 +243,7 @@ async function readErdScatterRows(filePath, axisColumn) {
   const readPromise = (async () => {
     const file = await asyncBufferFromFile(filePath)
     const columns = ["act_time", "eqp_cb", "eqp_id", "disp_name", "wafer_id", axisColumn]
-    const rows = await parquetReadObjects({ file, columns })
+    const rows = await parquetReadObjects({ file, columns, compressors })
     erdScatterCache.set(cacheKey, { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows })
     return rows
   })()
