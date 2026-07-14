@@ -5,6 +5,7 @@ import process from "node:process"
 
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
 import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
+import { handlePassHistoryRequest } from "./server/passHistory.mjs"
 import {
   handleErdFileRequest,
   handleSelfEquipmentDataRequest,
@@ -26,6 +27,11 @@ function mappingConfigApi() {
         const url = new URL(req.url ?? "/", "http://localhost")
         if (url.pathname === "/api/current-user") {
           handleCurrentUserRequest(req, res)
+          return
+        }
+
+        if (url.pathname === "/api/pass-history") {
+          handlePassHistoryRequest(req, res, url)
           return
         }
 

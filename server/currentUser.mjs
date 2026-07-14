@@ -28,7 +28,7 @@ export function getRemoteIp(req) {
   )
 }
 
-function runCurrentUserLookup(remoteIp) {
+export function resolveCurrentUser(remoteIp) {
   const now = Date.now()
   userCache.forEach((entry, ip) => {
     if (entry.expiresAt <= now) userCache.delete(ip)
@@ -112,7 +112,7 @@ export async function handleCurrentUserRequest(req, res) {
   }
 
   try {
-    const payload = await runCurrentUserLookup(remoteIp)
+    const payload = await resolveCurrentUser(remoteIp)
     sendJson(res, 200, payload)
   } catch (error) {
     const statusCode = error.code === "USER_NOT_FOUND" ? 404 : 500

@@ -8,6 +8,7 @@ import { createServer as createViteServer } from "vite"
 
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
 import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
+import { handlePassHistoryRequest } from "./server/passHistory.mjs"
 import {
   handleErdFileRequest,
   handleErdScatterDataRequest,
@@ -115,6 +116,13 @@ const server = createServer((req, res) => {
 
   if (url.pathname === "/api/current-user") {
     handleCurrentUserRequest(req, res).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/pass-history") {
+    handlePassHistoryRequest(req, res, url).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
     return

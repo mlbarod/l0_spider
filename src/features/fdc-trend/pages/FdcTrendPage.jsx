@@ -1,7 +1,8 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, ArrowUp, Check, ChevronRight, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import {
   CartesianGrid,
   ReferenceLine,
@@ -20,6 +21,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -37,6 +39,7 @@ import { cn } from "@/lib/utils"
 
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
+import { createPassHistory, deletePassHistory, fetchPassHistory } from "../api/passHistoryApi"
 import {
   fetchErdIdentityData,
   fetchErdScatterData,
@@ -191,6 +194,48 @@ function FilterCard({
 
 function stripPngExtension(value) {
   return String(value ?? "").replace(/\.png$/i, "")
+}
+
+function getLatestDateFromErdPath(filePath) {
+  const normalizedPath = String(filePath ?? "").replaceAll("/pic_server2/", "/pic/")
+  return normalizedPath.match(/\/erd\/([^/]+)\//)?.[1] ?? ""
+}
+
+function normalizePassHistoryDate(value) {
+  const text = String(value ?? "")
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}:\d{2}))?/)
+  if (!match) return text
+  return !match[2] || match[2] === "00:00:00" ? match[1] : `${match[1]} ${match[2]}`
+}
+
+function buildChartPassHistoryKey(lineId, row) {
+  return [
+    lineId,
+    row.ver,
+    row.sdwt,
+    row.desc,
+    row.recipe_id,
+    normalizePassHistoryDate(getLatestDateFromErdPath(row.file_path)),
+    row.priority,
+    row.sensor,
+    row.step,
+    stripPngExtension(row.eqp),
+  ].map((value) => String(value ?? "")).join("\u0000")
+}
+
+function buildRecordPassHistoryKey(record) {
+  return [
+    record.line_id,
+    record.ver,
+    record.sdwt,
+    record.desc,
+    record.recipe_id,
+    normalizePassHistoryDate(record.update_date),
+    record.priority,
+    record.sensor,
+    record.step,
+    stripPngExtension(record.eqp),
+  ].map((value) => String(value ?? "")).join("\u0000")
 }
 
 function formatActTimeTick(value) {
@@ -566,14 +611,64 @@ function IdentityChartDialog({ row, eqp }) {
   )
 }
 
-const ErdScatterCard = memo(function ErdScatterCard({ row }) {
+const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, passHistoryReady }) {
   const eqp = stripPngExtension(row.eqp)
+  const queryClient = useQueryClient()
   const cardRef = useRef(null)
   const chartContainerRef = useRef(null)
   const zoomOverlayRef = useRef(null)
   const zoomSelectionRef = useRef(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
   const [zoomDomain, setZoomDomain] = useState(null)
+  const [skipDialogOpen, setSkipDialogOpen] = useState(false)
+  const [skipComment, setSkipComment] = useState("")
+  const [skipClickedAt, setSkipClickedAt] = useState("")
+  const isSkipped = Boolean(passRecord)
+
+  const refreshPassHistory = () => queryClient.invalidateQueries({ queryKey: ["pass-history", lineId] })
+  const createSkipMutation = useMutation({
+    mutationFn: createPassHistory,
+    onSuccess: async () => {
+      setSkipDialogOpen(false)
+      setSkipComment("")
+      setSkipClickedAt("")
+      await refreshPassHistory()
+      toast.success("SKIP완료")
+    },
+    onError: (error) => toast.error(error.message),
+  })
+  const deleteSkipMutation = useMutation({
+    mutationFn: deletePassHistory,
+    onSuccess: async () => {
+      await refreshPassHistory()
+      toast.success("SKIP해제 완료")
+    },
+    onError: (error) => toast.error(error.message),
+  })
+
+  const handleSkipDialogChange = (nextOpen) => {
+    if (createSkipMutation.isPending) return
+    setSkipDialogOpen(nextOpen)
+    if (nextOpen) {
+      setSkipClickedAt(new Date().toISOString())
+      return
+    }
+    setSkipComment("")
+    setSkipClickedAt("")
+  }
+
+  const handleSkipConfirm = () => {
+    createSkipMutation.mutate({
+      lineId,
+      filePath: row.file_path,
+      comment: skipComment,
+      execDate: skipClickedAt || new Date().toISOString(),
+    })
+  }
+
+  const handleSkipDelete = () => {
+    deleteSkipMutation.mutate({ lineId, filePath: row.file_path })
+  }
 
   useEffect(() => {
     const card = cardRef.current
@@ -702,6 +797,7 @@ const ErdScatterCard = memo(function ErdScatterCard({ row }) {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {isSkipped ? <Badge variant="destructive">이상감지 SKIP 건</Badge> : null}
             {chartQuery.data ? (
               <Badge variant="secondary">{points.length.toLocaleString()} 매</Badge>
             ) : null}
@@ -812,7 +908,60 @@ const ErdScatterCard = memo(function ErdScatterCard({ row }) {
         )}
       </div>
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/20 px-3 py-2.5">
-        <Button type="button" variant="outline" size="sm">SKIP</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Dialog open={skipDialogOpen} onOpenChange={handleSkipDialogChange}>
+            <DialogTrigger asChild>
+              <Button type="button" variant="outline" size="sm" disabled={isSkipped || !passHistoryReady}>SKIP</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>{eqp || "EQP 미지정"} 이상감지 SKIP</DialogTitle>
+                <DialogDescription>
+                  SKIP 사유를 한 줄로 입력할 수 있습니다. comment는 입력하지 않아도 됩니다.
+                </DialogDescription>
+              </DialogHeader>
+              <Input
+                value={skipComment}
+                onChange={(event) => setSkipComment(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.nativeEvent.isComposing && !createSkipMutation.isPending) {
+                    event.preventDefault()
+                    handleSkipConfirm()
+                  }
+                }}
+                placeholder="comment 입력 (선택)"
+                aria-label="SKIP comment"
+                autoFocus
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleSkipDialogChange(false)}
+                  disabled={createSkipMutation.isPending}
+                >
+                  취소
+                </Button>
+                <Button type="button" onClick={handleSkipConfirm} disabled={createSkipMutation.isPending}>
+                  {createSkipMutation.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+                  OK
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          {isSkipped ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSkipDelete}
+              disabled={deleteSkipMutation.isPending}
+            >
+              {deleteSkipMutation.isPending ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
+              SKIP해제
+            </Button>
+          ) : null}
+        </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <IdentityChartDialog row={row} eqp={eqp} />
           <Dialog>
@@ -969,6 +1118,23 @@ export function FdcTrendPage() {
   const activeEqpCh = dataQuery.data?.filters?.eqpCh ?? ""
   const activeSensor = dataQuery.data?.filters?.sensor ?? ""
   const activeChStep = dataQuery.data?.filters?.chStep ?? ""
+  const passHistoryQuery = useQuery({
+    queryKey: ["pass-history", activeLine, activeTeamLabel, activeDesc],
+    queryFn: () => fetchPassHistory({
+      lineId: activeLine,
+      sdwt: activeTeamLabel,
+      desc: activeDesc,
+    }),
+    enabled: Boolean(currentUserQuery.data?.knoxId && activeLine && activeTeamLabel && activeDesc),
+    staleTime: 30 * 1000,
+    retry: false,
+  })
+  const passHistoryByKey = useMemo(() => new Map(
+    (passHistoryQuery.data?.records ?? EMPTY_LIST).map((record) => [
+      buildRecordPassHistoryKey(record),
+      record,
+    ]),
+  ), [passHistoryQuery.data?.records])
   const chStepIsSelected = Boolean(selectedChStep && activeChStep === selectedChStep)
   const dataRows = dataQuery.data?.rows
   const chartRows = useMemo(
@@ -1280,6 +1446,11 @@ export function FdcTrendPage() {
             {dataQuery.error.message}
           </div>
         ) : null}
+        {passHistoryQuery.isError ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            PASS 이력을 불러오지 못했습니다: {passHistoryQuery.error.message}
+          </div>
+        ) : null}
 
         <section className="grid min-w-0 gap-3">
           <div className="flex items-end justify-between gap-3">
@@ -1312,7 +1483,15 @@ export function FdcTrendPage() {
                     <Badge variant="secondary">{group.rows.length.toLocaleString()} charts</Badge>
                   </header>
                   <div className="grid min-w-0 grid-cols-1 gap-4 p-4 xl:grid-cols-2">
-                    {group.rows.map((row) => <ErdScatterCard key={row.id} row={row} />)}
+                    {group.rows.map((row) => (
+                      <ErdScatterCard
+                        key={row.id}
+                        row={row}
+                        lineId={activeLine}
+                        passRecord={passHistoryByKey.get(buildChartPassHistoryKey(activeLine, row))}
+                        passHistoryReady={passHistoryQuery.isSuccess}
+                      />
+                    ))}
                   </div>
                 </section>
               ))}

@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { QueryClientProvider } from "@tanstack/react-query"
 
+import { Toaster } from "@/components/ui/sonner"
 import { createQueryClient } from "@/lib/queryClient"
 import { ThemeProvider } from "@/lib/theme"
 
@@ -11,6 +12,7 @@ export function AppProviders({ children }) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" defaultColor="violet">
         {children}
+        <Toaster richColors position="top-center" />
       </ThemeProvider>
     </QueryClientProvider>
   )
