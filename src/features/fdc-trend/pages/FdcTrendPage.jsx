@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
   CartesianGrid,
+  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Scatter,
@@ -384,6 +385,8 @@ function IdentityChartDialog({ row, eqp }) {
   const zoomSelectionRef = useRef(null)
   const [open, setOpen] = useState(false)
   const [zoomDomain, setZoomDomain] = useState(null)
+  const [referenceLineMode, setReferenceLineMode] = useState(false)
+  const [referenceLines, setReferenceLines] = useState([])
   const identityQuery = useQuery({
     queryKey: ["erd-identity-data", row.file_path, eqp, row.sensor, row.step],
     queryFn: () => fetchErdIdentityData({
@@ -485,6 +488,12 @@ function IdentityChartDialog({ row, eqp }) {
     event.preventDefault()
     const point = getZoomPoint(event)
     if (!point) return
+    if (referenceLineMode) {
+      const nextLines = [...referenceLines.slice(0, 1), point.y]
+      setReferenceLines(nextLines)
+      if (nextLines.length === 2) setReferenceLineMode(false)
+      return
+    }
     event.currentTarget.setPointerCapture?.(event.pointerId)
     updateZoomSelection(point)
     drawZoomOverlay(zoomOverlayRef.current, point, point)
@@ -512,10 +521,32 @@ function IdentityChartDialog({ row, eqp }) {
     updateZoomSelection(null)
     setZoomDomain(null)
   }
+  const handleReferenceLineMode = () => {
+    setReferenceLineMode((current) => {
+      if (current) return false
+      if (referenceLines.length >= 2) setReferenceLines([])
+      return true
+    })
+  }
+  const clearReferenceLines = () => {
+    setReferenceLineMode(false)
+    setReferenceLines([])
+  }
+  const handleChartContextMenu = (event) => {
+    event.preventDefault()
+    clearReferenceLines()
+  }
   const handleOpenChange = (nextOpen) => {
     setOpen(nextOpen)
-    if (!nextOpen) resetZoom()
+    if (!nextOpen) {
+      resetZoom()
+      clearReferenceLines()
+    }
   }
+  const visibleXDomain = zoomDomain?.x ?? fullXDomain
+  const referenceBand = referenceLines.length === 2
+    ? [Math.min(...referenceLines), Math.max(...referenceLines)]
+    : null
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -524,7 +555,17 @@ function IdentityChartDialog({ row, eqp }) {
       </DialogTrigger>
       <DialogContent className="h-[88vh] w-[96vw] max-w-[96vw] grid-rows-[auto_minmax(0,1fr)] overflow-hidden sm:max-w-[96vw]">
         <DialogHeader>
-          <DialogTitle>{eqp || "EQP 미지정"} 동일성 차트</DialogTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3 pr-8">
+            <DialogTitle>{eqp || "EQP 미지정"} 동일성 차트</DialogTitle>
+            <Button
+              type="button"
+              size="sm"
+              variant={referenceLineMode ? "default" : "outline"}
+              onClick={handleReferenceLineMode}
+            >
+              기준선 긋기
+            </Button>
+          </div>
           <DialogDescription className="grid gap-1">
             <span className="font-medium text-foreground">
               {row.recipe_id || "PPID 미지정"} / {row.sensor || "sensor 미지정"} / {row.step || "ch_step 미지정"}
@@ -535,6 +576,10 @@ function IdentityChartDialog({ row, eqp }) {
                 : "동일한 데이터 파일의 전체 eqp_cb를 비교합니다."}
             </span>
           </DialogDescription>
+          <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
+            마우스 오버: 상세정보 · 좌클릭 드래그: 영역 확대 · 더블클릭: 확대 초기화 ·
+            기준선 긋기 후 좌클릭 2회: 기준 구간 표시 · 우클릭: 기준선 삭제
+          </p>
         </DialogHeader>
         {identityQuery.isLoading ? (
           <div className="grid min-h-80 place-items-center text-sm text-muted-foreground">
@@ -556,6 +601,7 @@ function IdentityChartDialog({ row, eqp }) {
             onPointerUp={handleZoomEnd}
             onPointerCancel={() => updateZoomSelection(null)}
             onDoubleClick={resetZoom}
+            onContextMenu={handleChartContextMenu}
           >
             <div
               ref={zoomOverlayRef}
@@ -592,6 +638,27 @@ function IdentityChartDialog({ row, eqp }) {
                   animationDuration={0}
                   wrapperStyle={{ transition: "none", willChange: "auto" }}
                 />
+                {referenceBand ? (
+                  <ReferenceArea
+                    x1={visibleXDomain[0]}
+                    x2={visibleXDomain[1]}
+                    y1={referenceBand[0]}
+                    y2={referenceBand[1]}
+                    fill="#fb923c"
+                    fillOpacity={0.16}
+                    stroke="none"
+                    ifOverflow="visible"
+                  />
+                ) : null}
+                {referenceLines.map((value, index) => (
+                  <ReferenceLine
+                    key={`user-reference-${index}`}
+                    y={value}
+                    stroke="#f97316"
+                    strokeWidth={1.75}
+                    ifOverflow="extendDomain"
+                  />
+                ))}
                 {groups.slice(1).map((group, index) => (
                   <ReferenceLine
                     key={group.eqpCb}

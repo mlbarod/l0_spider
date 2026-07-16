@@ -428,10 +428,7 @@ export function buildErdScatterPayload(rows, {
 }) {
   const normalizedEqp = normalizeEqp(eqp)
   const latestDateMs = parseDateTimeMs(latestDate)
-  const recentThresholdMs = latestDateMs === null
-    ? null
-    : latestDateMs - 26 * 60 * 60 * 1000
-  const points = rows.flatMap((row) => {
+  const chartPoints = rows.flatMap((row) => {
     if (normalizeEqp(row.eqp_cb) !== normalizedEqp) return []
     const actTime = normalizeText(row.act_time)
     const actTimeMs = parseDateTimeMs(actTime)
@@ -446,9 +443,16 @@ export function buildErdScatterPayload(rows, {
       dispName: normalizeText(row.disp_name),
       waferId: normalizeText(row.wafer_id),
       rootLotId: normalizeText(row.root_lot_id),
-      isRecent: recentThresholdMs !== null && actTimeMs >= recentThresholdMs,
     }]
   }).sort((left, right) => left.actTimeMs - right.actTimeMs)
+  const mostRecentActTimeMs = chartPoints.at(-1)?.actTimeMs ?? null
+  const recentThresholdMs = mostRecentActTimeMs === null
+    ? null
+    : mostRecentActTimeMs - 26 * 60 * 60 * 1000
+  const points = chartPoints.map((point) => ({
+    ...point,
+    isRecent: recentThresholdMs !== null && point.actTimeMs >= recentThresholdMs,
+  }))
   const changeHistory = historyRows.flatMap((row) => {
     const date = normalizeText(row.date)
     const dateMs = parseDateTimeMs(date)
@@ -471,6 +475,7 @@ export function buildErdScatterPayload(rows, {
     historyPath,
     historyError,
     latestDateMs,
+    mostRecentActTimeMs,
     recentThresholdMs,
     pointCount: points.length,
     points,
