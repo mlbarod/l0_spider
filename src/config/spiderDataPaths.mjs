@@ -4,10 +4,16 @@ export const SPIDER_DATA_PATH_TEMPLATES = Object.freeze({
   erdData: `${PIC_ROOT}/erd/{latest_date}/{sdwt}/{step_desc}/{ver}/{ppid}/{grade}/{sensor}/{ch_step}/data.parquet`,
   stats: `${PIC_ROOT}/stats/{latest_date}_spider_step_stats.parquets`,
   statsExceptV: `${PIC_ROOT}/stats/{latest_date}_spider_step_stats_except_v.parquets`,
+  commonalityRoot: `${PIC_ROOT}/erd_commonality`,
+  commonalityImage: `${PIC_ROOT}/erd_commonality/{latest_date}/{sdwt}/{grade}/{step_seq}/{step_desc}/{ppid}/{ppid}/{sensor}_{ch_step}/img.png`,
   backupImage: `${PIC_ROOT}/backup/#appdata#abnormal_trend#pic#erd#{latest_date}#{sdwt}#{step_desc}#{ver}#{ppid}#{grade}#{sensor}#{ch_step}#{eqp}.png`,
   latestDateFile: `${PIC_ROOT}/path/{latest_date}`,
   teamErdPath: `${PIC_ROOT}/path/{line}/{sdwt}/df_path.parquet`,
   mappingConfig: "/appdata/l0_spider/mapping_config.json",
+})
+
+export const SPIDER_DATA_PATH_NAMES = Object.freeze({
+  latestCommonality: "동일성 최신날짜",
 })
 
 export const LATEST_DATE_FILE_PATTERN = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/
@@ -29,6 +35,10 @@ export function buildStatsPath(latestDate) {
 
 export function buildStatsExceptVPath(latestDate) {
   return fillPathTemplate(SPIDER_DATA_PATH_TEMPLATES.statsExceptV, { latest_date: latestDate })
+}
+
+export function buildCommonalityImagePath(values) {
+  return fillPathTemplate(SPIDER_DATA_PATH_TEMPLATES.commonalityImage, values)
 }
 
 export function buildBackupImagePath(values) {

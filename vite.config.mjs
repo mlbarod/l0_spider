@@ -4,6 +4,7 @@ import path from "node:path"
 import process from "node:process"
 
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
+import { handleLatestCommonalityPathRequest } from "./server/latestCommonalityPath.mjs"
 import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
 import { handlePassHistoryRequest } from "./server/passHistory.mjs"
 import {
@@ -27,6 +28,11 @@ function mappingConfigApi() {
         const url = new URL(req.url ?? "/", "http://localhost")
         if (url.pathname === "/api/current-user") {
           handleCurrentUserRequest(req, res)
+          return
+        }
+
+        if (url.pathname === "/api/latest-commonality-path") {
+          handleLatestCommonalityPathRequest(req, res)
           return
         }
 
