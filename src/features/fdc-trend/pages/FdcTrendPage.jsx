@@ -632,6 +632,7 @@ const SkipChartDialog = memo(function SkipChartDialog({
   const refreshPassHistory = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ["pass-history", lineId] }),
     queryClient.invalidateQueries({ queryKey: ["skip-list-data", lineId] }),
+    queryClient.invalidateQueries({ queryKey: ["self-equipment-data", lineId] }),
   ])
   const createSkipMutation = useMutation({
     mutationFn: createPassHistory,
@@ -722,6 +723,7 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, p
   const refreshPassHistory = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ["pass-history", lineId] }),
     queryClient.invalidateQueries({ queryKey: ["skip-list-data", lineId] }),
+    queryClient.invalidateQueries({ queryKey: ["self-equipment-data", lineId] }),
   ])
   const deleteSkipMutation = useMutation({
     mutationFn: deletePassHistory,
@@ -1192,12 +1194,8 @@ export function FdcTrendPage() {
   const dataRows = dataQuery.data?.rows
   const chartRows = useMemo(() => {
     if (!chStepIsSelected) return []
-    if (isSkipList) return dataRows ?? []
-    if (!passHistoryQuery.isSuccess) return []
-    return (dataRows ?? []).filter((row) => (
-      !passHistoryByKey.has(buildChartPassHistoryKey(activeLine, row))
-    ))
-  }, [activeLine, chStepIsSelected, dataRows, isSkipList, passHistoryByKey, passHistoryQuery.isSuccess])
+    return dataRows ?? []
+  }, [chStepIsSelected, dataRows])
   const chartGroups = useMemo(() => {
     const groups = new Map()
 

@@ -5,6 +5,7 @@ import { asyncBufferFromFile, parquetReadObjects } from "hyparquet"
 import { compressors } from "hyparquet-compressors"
 
 import { buildTeamErdPath } from "../src/config/spiderDataPaths.mjs"
+import { listPassHistoryRecords } from "./passHistory.mjs"
 
 export const TEAM_ERD_COLUMNS = Object.freeze([
   "sdwt",
@@ -24,6 +25,7 @@ const ERD_BACKUP_ROOT = "/appdata/abnormal_trend/pic/backup"
 const ALL_EQP_CHANNELS = "ALL"
 const ALL_SENSORS = "ALL"
 const ALL_CH_STEPS = "ALL"
+export const SKIP_EXCLUSION_DURATION_MS = 3 * 24 * 60 * 60 * 1000
 const parquetCache = new Map()
 const erdScatterCache = new Map()
 const erdScatterPending = new Map()
@@ -59,6 +61,54 @@ function normalizeRow(row) {
       return [column, value === null || value === undefined ? "" : String(value)]
     }),
   )
+}
+
+function normalizeSkipEqp(value) {
+  return String(value ?? "").trim().replace(/\.png$/i, "")
+}
+
+function buildSkipComparisonKey(row) {
+  return [
+    row.line_rev ?? row.line_id,
+    row.sdwt,
+    row.desc,
+    row.ver,
+    row.recipe_id,
+    row.priority,
+    row.sensor,
+    row.step,
+    normalizeSkipEqp(row.eqp),
+  ].map((value) => String(value ?? "").trim()).join("\u0000")
+}
+
+function parseDatabaseDate(value) {
+  if (value instanceof Date) return value.getTime()
+  const text = String(value ?? "").trim()
+  if (!text) return Number.NaN
+  return Date.parse(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(text)
+    ? text.replace(" ", "T")
+    : text)
+}
+
+export function excludeRecentlySkippedRows(
+  rows,
+  passRecords,
+  nowMs = Date.now(),
+  durationMs = SKIP_EXCLUSION_DURATION_MS,
+) {
+  const activeSkipKeys = new Set(
+    passRecords
+      .filter((record) => {
+        const execDateMs = parseDatabaseDate(record.exec_date)
+        const elapsedMs = nowMs - execDateMs
+        return Number.isFinite(execDateMs) && elapsedMs >= 0 && elapsedMs < durationMs
+      })
+      .map(buildSkipComparisonKey),
+  )
+
+  return activeSkipKeys.size
+    ? rows.filter((row) => !activeSkipKeys.has(buildSkipComparisonKey(row)))
+    : rows
 }
 
 async function readTeamErdRows({ line, pathSdwt }) {
@@ -228,9 +278,20 @@ export async function handleSelfEquipmentDataRequest(req, res, url) {
       return
     }
 
-    const { filePath, rows } = await readTeamErdRows(filters)
-    const payload = buildSelfEquipmentPayload(rows, filters)
-    sendJson(res, 200, { ...payload, sourcePath: filePath })
+    const [{ filePath, rows }, passRecords] = await Promise.all([
+      readTeamErdRows(filters),
+      listPassHistoryRecords({ lineId: filters.line, sdwt: filters.sdwt }),
+    ])
+    const visibleRows = excludeRecentlySkippedRows(rows, passRecords)
+    const payload = buildSelfEquipmentPayload(visibleRows, filters)
+    sendJson(res, 200, {
+      ...payload,
+      counts: {
+        ...payload.counts,
+        excludedSkipRows: rows.length - visibleRows.length,
+      },
+      sourcePath: filePath,
+    })
   } catch (error) {
     sendJson(res, 500, {
       ok: false,

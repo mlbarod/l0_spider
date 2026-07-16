@@ -268,6 +268,15 @@ function runPassHistoryHelper(action, payload) {
   })
 }
 
+export async function listPassHistoryRecords({ lineId, sdwt = "", desc = "" }) {
+  const result = await runPassHistoryHelper("list", {
+    lineId: normalizeText(lineId),
+    sdwt: normalizeText(sdwt),
+    desc: normalizeText(desc),
+  })
+  return result.records ?? []
+}
+
 function buildRecord({ lineId, filePath, knoxId, comment = "", execDate = "" }) {
   const normalizedLineId = normalizeText(lineId)
   if (!normalizedLineId) throw new Error("Line Name이 필요합니다.")
@@ -289,13 +298,13 @@ export async function handlePassHistoryRequest(req, res, url) {
         sendJson(res, 400, { ok: false, error: "Line Name이 필요합니다." })
         return
       }
-      const result = await runPassHistoryHelper("list", {
+      const records = await listPassHistoryRecords({
         lineId,
         sdwt: url.searchParams.get("view") === "filters" ? "" : normalizeText(url.searchParams.get("sdwt")),
         desc: url.searchParams.get("view") === "filters" ? "" : normalizeText(url.searchParams.get("desc")),
       })
       if (url.searchParams.get("view") === "filters") {
-        sendJson(res, 200, buildPassHistoryFilterPayload(result.records ?? [], {
+        sendJson(res, 200, buildPassHistoryFilterPayload(records, {
           lineId,
           priorities: url.searchParams.getAll("priority").map(normalizeText).filter(Boolean),
           desc: normalizeText(url.searchParams.get("desc")),
@@ -305,7 +314,7 @@ export async function handlePassHistoryRequest(req, res, url) {
         }))
         return
       }
-      sendJson(res, 200, result)
+      sendJson(res, 200, { ok: true, records })
       return
     }
 
