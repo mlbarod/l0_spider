@@ -7,6 +7,10 @@ import { fileURLToPath, URL } from "node:url"
 import { createServer as createViteServer } from "vite"
 
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
+import {
+  handleCommonalityDataRequest,
+  handleCommonalityImageRequest,
+} from "./server/commonalityData.mjs"
 import { handleLatestCommonalityPathRequest } from "./server/latestCommonalityPath.mjs"
 import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
 import { handlePassHistoryRequest } from "./server/passHistory.mjs"
@@ -124,6 +128,20 @@ const server = createServer((req, res) => {
 
   if (url.pathname === "/api/latest-commonality-path") {
     handleLatestCommonalityPathRequest(req, res).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/commonality-data") {
+    handleCommonalityDataRequest(req, res, url).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/commonality-image") {
+    handleCommonalityImageRequest(req, res, url).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
     return

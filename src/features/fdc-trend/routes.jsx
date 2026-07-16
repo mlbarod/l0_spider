@@ -1,5 +1,6 @@
 // 파일 경로: src/features/fdc-trend/routes.jsx
 import { FdcTrendShell } from "./components/FdcTrendShell"
+import { CommonalityAnomalyPage } from "./pages/CommonalityAnomalyPage"
 import { FdcTrendPage } from "./pages/FdcTrendPage"
 import { L0SpiderHomePage } from "./pages/L0SpiderHomePage"
 import { SpiderFeaturePage } from "./pages/SpiderFeaturePage"
@@ -15,7 +16,7 @@ const fdcTrendChildren = [
   },
   {
     path: "matching-anomaly",
-    element: <SpiderFeaturePage type="matching" />,
+    element: <CommonalityAnomalyPage />,
   },
   {
     path: "common-anomaly",

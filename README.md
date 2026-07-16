@@ -211,3 +211,24 @@ SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일
 
 날짜 형식의 디렉터리가 없으면 API는 `404`와 명확한 오류 메시지를 반환한다.
 운영 경로를 예외적으로 변경해야 할 때만 서버 환경변수 `COMMONALITY_ROOT_PATH`를 사용한다.
+
+### 동일성 이상감지 App
+
+`/matching-anomaly`은 실제 동일성 기준 이상감지 그래프 파일을 사용한다. Line Name과
+SDWT는 자설비 이상감지와 동일하게 `mapping_config.json`의 `line_mapping`,
+`sdwt_mapping`을 사용한다. 선택한 SDWT에 대해 아래 경로의 `grade`부터 두 번째
+`ppid`까지 모든 직하위 디렉터리를 순회하고, `{sensor}_{ch_step}` 폴더의 마지막
+밑줄을 기준으로 Sensor와 ch_step 필터 값을 생성한다.
+
+```text
+{동일성 최신날짜}/{sdwt}/{grade}/{step_seq}/{step_desc}/{ppid}/{ppid}/{sensor}_{ch_step}/img.png
+```
+
+두 번째 `{ppid}` 폴더명이 첫 번째 `{ppid}`와 같은 경로의 `img.png`만 표시 대상으로
+사용한다. 최종 필터 결과는 `{step_desc}`별로 분류하여 2열 이미지 카드로 표시한다.
+이미지 로드에 실패하면 해당 카드에 요청한 절대 파일 경로를 표시한다.
+
+- 필터·이미지 목록 API: `GET /api/commonality-data`
+- 이미지 제공 API: `GET /api/commonality-image?path=...`
+- 서버 탐색 모듈: `server/commonalityData.mjs`
+- 화면: `src/features/fdc-trend/pages/CommonalityAnomalyPage.jsx`

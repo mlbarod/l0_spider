@@ -4,6 +4,10 @@ import path from "node:path"
 import process from "node:process"
 
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
+import {
+  handleCommonalityDataRequest,
+  handleCommonalityImageRequest,
+} from "./server/commonalityData.mjs"
 import { handleLatestCommonalityPathRequest } from "./server/latestCommonalityPath.mjs"
 import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
 import { handlePassHistoryRequest } from "./server/passHistory.mjs"
@@ -33,6 +37,16 @@ function mappingConfigApi() {
 
         if (url.pathname === "/api/latest-commonality-path") {
           handleLatestCommonalityPathRequest(req, res)
+          return
+        }
+
+        if (url.pathname === "/api/commonality-data") {
+          handleCommonalityDataRequest(req, res, url)
+          return
+        }
+
+        if (url.pathname === "/api/commonality-image") {
+          handleCommonalityImageRequest(req, res, url)
           return
         }
 
