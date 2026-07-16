@@ -367,7 +367,7 @@ function IdentityXAxisTick({ x, y, payload, groups }) {
         y={0}
         transform="rotate(-90)"
         fill={group.isSelected ? "#dc2626" : "var(--muted-foreground)"}
-        fontSize="9"
+        fontSize="11"
         fontWeight={group.isSelected ? "700" : "500"}
         textAnchor="end"
         dominantBaseline="middle"
@@ -448,8 +448,8 @@ function IdentityChartDialog({ row, eqp }) {
   const fullXDomain = [0, Math.max(groups.length, 1)]
   const xTicks = groups.map((_, index) => index + 0.5)
   const identityXAxisHeight = Math.min(
-    140,
-    Math.max(64, groups.reduce((length, group) => Math.max(length, group.eqpCb.length), 0) * 6 + 16),
+    150,
+    Math.max(68, groups.reduce((length, group) => Math.max(length, group.eqpCb.length), 0) * 7 + 18),
   )
   const identityMargin = { top: 18, right: 14, bottom: 8, left: 8 }
 
@@ -525,10 +525,15 @@ function IdentityChartDialog({ row, eqp }) {
       <DialogContent className="h-[88vh] w-[96vw] max-w-[96vw] grid-rows-[auto_minmax(0,1fr)] overflow-hidden sm:max-w-[96vw]">
         <DialogHeader>
           <DialogTitle>{eqp || "EQP 미지정"} 동일성 차트</DialogTitle>
-          <DialogDescription>
-            {identityQuery.data
-              ? `${identityQuery.data.groupCount.toLocaleString()}개 EQP · ${identityQuery.data.pointCount.toLocaleString()} points`
-              : "동일한 데이터 파일의 전체 eqp_cb를 비교합니다."}
+          <DialogDescription className="grid gap-1">
+            <span className="font-medium text-foreground">
+              {row.recipe_id || "PPID 미지정"} / {row.sensor || "sensor 미지정"} / {row.step || "ch_step 미지정"}
+            </span>
+            <span>
+              {identityQuery.data
+                ? `${identityQuery.data.groupCount.toLocaleString()}개 EQP · ${identityQuery.data.pointCount.toLocaleString()} points`
+                : "동일한 데이터 파일의 전체 eqp_cb를 비교합니다."}
+            </span>
           </DialogDescription>
         </DialogHeader>
         {identityQuery.isLoading ? (
@@ -580,7 +585,13 @@ function IdentityChartDialog({ row, eqp }) {
                   tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
                   tickFormatter={(value) => Number(value).toFixed(2)}
                 />
-                <RechartsTooltip content={<ScatterPointTooltip axisColumn={axisColumn} />} />
+                <RechartsTooltip
+                  content={<ScatterPointTooltip axisColumn={axisColumn} />}
+                  cursor={false}
+                  isAnimationActive={false}
+                  animationDuration={0}
+                  wrapperStyle={{ transition: "none", willChange: "auto" }}
+                />
                 {groups.slice(1).map((group, index) => (
                   <ReferenceLine
                     key={group.eqpCb}
@@ -939,8 +950,11 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, p
                   tickFormatter={(value) => Number(value).toFixed(2)}
                 />
                 <RechartsTooltip
-                  cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }}
                   content={<ScatterPointTooltip axisColumn={axisColumn} />}
+                  cursor={false}
+                  isAnimationActive={false}
+                  animationDuration={0}
+                  wrapperStyle={{ transition: "none", willChange: "auto" }}
                 />
                 {changeHistory.map((history, index) => (
                   <ReferenceLine
