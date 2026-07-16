@@ -159,6 +159,23 @@ SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일
 | `knox_id` | `VARCHAR` |
 | `exec_date` | `TIMESTAMP` |
 
+자설비 이상감지 Chart의 `이력저장` 버튼은 `POST /api/hit-history`를 호출한다.
+서버는 Chart drawing에 사용한 ERD 이미지 경로를 파싱하고 아래 규칙으로 저장한다.
+`knox_id`는 요청 본문이 아니라 접속 IP 기반 현재 사용자 조회 결과를 사용한다.
+
+| `hit_history` 컬럼 | 이력저장 값 |
+| --- | --- |
+| `update_date` | Chart 경로의 `{latest_date}` |
+| `line_id` | 화면에서 선택한 Line Name |
+| `sdwt` | Chart 경로의 `{sdwt}` |
+| `file_path` | Chart drawing 원본 파일 경로의 모든 `/`를 `#`으로 치환한 값 |
+| `knox_id` | 현재 접속자의 `knox_id` |
+| `exec_date` | 이력저장 버튼 클릭 시각 |
+
+예를 들어 `/appdata/abnormal_trend/pic/erd/.../EQP-1.png`는
+`#appdata#abnormal_trend#pic#erd#...#EQP-1.png`로 저장한다. 버튼 클릭마다
+`hit_history`에 새 행을 INSERT한다.
+
 현재 확인된 정보에는 `VARCHAR` 길이, 기본키, 인덱스, NULL 허용 여부와 기본값이 포함되어 있지 않으므로 각 표에서는 별도로 가정하지 않는다.
 
 ## Self-equipment UI Versions
@@ -220,12 +237,22 @@ SDWT는 자설비 이상감지와 동일하게 `mapping_config.json`의 `line_ma
 `ppid`까지 모든 직하위 디렉터리를 순회하고, `{sensor}_{ch_step}` 폴더의 마지막
 밑줄을 기준으로 Sensor와 ch_step 필터 값을 생성한다.
 
+서버 탐색은 각 폴더를 순차 처리하거나 전체 트리를 `rglob` 방식으로 무조건 탐색하지
+않는다. 경로 깊이가 고정된 점을 이용해 필요한 단계의 디렉터리만 최대 64개씩 제한
+병렬 조회한다. `{sensor}_{ch_step}` 폴더에 도달하면 규칙에 따라 `img.png` 경로를
+즉시 생성하며, 필터 단계에서 각 이미지 파일에 별도의 `stat`/`readdir`을 하지 않는다.
+실제 파일 확인은 화면의 이미지 요청 시 수행하고, 파일이 없으면 카드에 절대경로를
+표시한다. 동일 SDWT의 동시 요청은 하나의 탐색 Promise를 공유하며, 탐색 결과는 5분간
+캐시한다. 최신날짜 폴더가 변경되면 경로가 캐시 키에 포함되므로 새 폴더를 자동으로
+다시 탐색한다.
+
 ```text
 {동일성 최신날짜}/{sdwt}/{grade}/{step_seq}/{step_desc}/{ppid}/{ppid}/{sensor}_{ch_step}/img.png
 ```
 
 두 번째 `{ppid}` 폴더명이 첫 번째 `{ppid}`와 같은 경로의 `img.png`만 표시 대상으로
-사용한다. 최종 필터 결과는 `{step_desc}`별로 분류하여 2열 이미지 카드로 표시한다.
+사용한다. ch_step의 `ALL`은 선택 Sensor의 모든 ch_step 이미지를 조회한다. 최종 필터
+결과는 `{step_desc}`별로 분류하여 데스크톱 기준 3열 이미지 카드로 표시한다.
 이미지 로드에 실패하면 해당 카드에 요청한 절대 파일 경로를 표시한다.
 
 - 필터·이미지 목록 API: `GET /api/commonality-data`

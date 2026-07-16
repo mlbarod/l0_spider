@@ -4,6 +4,7 @@ import path from "node:path"
 import process from "node:process"
 
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
+import { handleHitHistoryRequest } from "./server/hitHistory.mjs"
 import {
   handleCommonalityDataRequest,
   handleCommonalityImageRequest,
@@ -32,6 +33,11 @@ function mappingConfigApi() {
         const url = new URL(req.url ?? "/", "http://localhost")
         if (url.pathname === "/api/current-user") {
           handleCurrentUserRequest(req, res)
+          return
+        }
+
+        if (url.pathname === "/api/hit-history") {
+          handleHitHistoryRequest(req, res)
           return
         }
 

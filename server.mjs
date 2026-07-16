@@ -7,6 +7,7 @@ import { fileURLToPath, URL } from "node:url"
 import { createServer as createViteServer } from "vite"
 
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
+import { handleHitHistoryRequest } from "./server/hitHistory.mjs"
 import {
   handleCommonalityDataRequest,
   handleCommonalityImageRequest,
@@ -121,6 +122,13 @@ const server = createServer((req, res) => {
 
   if (url.pathname === "/api/current-user") {
     handleCurrentUserRequest(req, res).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/hit-history") {
+    handleHitHistoryRequest(req, res).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
     return

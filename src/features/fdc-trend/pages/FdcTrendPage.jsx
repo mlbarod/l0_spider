@@ -39,6 +39,7 @@ import {
 import { cn } from "@/lib/utils"
 
 import { fetchCurrentUser } from "../api/currentUserApi"
+import { createHitHistory } from "../api/hitHistoryApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
 import {
   createPassHistory,
@@ -787,7 +788,7 @@ const SkipChartDialog = memo(function SkipChartDialog({
   )
 })
 
-const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, passHistoryReady }) {
+const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord }) {
   const eqp = stripPngExtension(row.eqp)
   const queryClient = useQueryClient()
   const cardRef = useRef(null)
@@ -813,6 +814,18 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, p
   })
   const handleSkipDelete = () => {
     deleteSkipMutation.mutate({ lineId, filePath: row.file_path })
+  }
+  const saveHitHistoryMutation = useMutation({
+    mutationFn: createHitHistory,
+    onSuccess: () => toast.success("이력저장 완료"),
+    onError: (error) => toast.error(error.message),
+  })
+  const handleHistorySave = () => {
+    saveHitHistoryMutation.mutate({
+      lineId,
+      filePath: row.file_path,
+      execDate: new Date().toISOString(),
+    })
   }
 
   useEffect(() => {
@@ -1061,7 +1074,7 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, p
             eqp={eqp}
             filePath={row.file_path}
             lineId={lineId}
-            disabled={isSkipped || !passHistoryReady}
+            disabled={isSkipped}
           />
           {isSkipped ? (
             <Button
@@ -1139,7 +1152,19 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, p
             )}
             </DialogContent>
           </Dialog>
-          <Button type="button" variant="outline" size="sm" className="h-9 px-[0.9rem] text-sm">이력저장</Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 px-[0.9rem] text-sm"
+            onClick={handleHistorySave}
+            disabled={saveHitHistoryMutation.isPending}
+          >
+            {saveHitHistoryMutation.isPending
+              ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              : null}
+            이력저장
+          </Button>
         </div>
       </footer>
     </article>
@@ -1640,10 +1665,6 @@ export function FdcTrendPage() {
                         passRecord={isSkipList
                           ? row.pass_history
                           : passHistoryByKey.get(buildChartPassHistoryKey(activeLine, row))}
-                        passHistoryReady={Boolean(
-                          currentUserQuery.data?.knoxId
-                          && (isSkipList || passHistoryQuery.isSuccess)
-                        )}
                       />
                     ))}
                   </div>

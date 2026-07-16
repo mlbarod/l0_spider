@@ -4,8 +4,11 @@ import { join, relative, resolve, sep } from "node:path"
 
 import { getLatestCommonalityPath } from "./latestCommonalityPath.mjs"
 
-const INDEX_CACHE_TTL_MS = 30 * 1000
+const INDEX_CACHE_TTL_MS = 5 * 60 * 1000
+const DIRECTORY_READ_CONCURRENCY = 64
+const ALL_CH_STEPS = "ALL"
 const commonalityIndexCache = new Map()
+const commonalityIndexPending = new Map()
 
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
@@ -25,10 +28,38 @@ function assertPathSegment(name, value) {
   }
 }
 
-async function readDirectories(directoryPath) {
-  return (await readdir(directoryPath, { withFileTypes: true }))
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
+async function mapWithConcurrency(items, limit, mapper) {
+  if (!items.length) return []
+
+  const results = new Array(items.length)
+  let nextIndex = 0
+  async function worker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex
+      nextIndex += 1
+      results[index] = await mapper(items[index], index)
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, () => worker()),
+  )
+  return results
+}
+
+async function readChildDirectories(nodes, propertyName, predicate = () => true) {
+  const childGroups = await mapWithConcurrency(
+    nodes,
+    DIRECTORY_READ_CONCURRENCY,
+    async (node) => (await readdir(node.path, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory() && predicate(entry, node))
+      .map((entry) => ({
+        ...node,
+        [propertyName]: entry.name,
+        path: join(node.path, entry.name),
+      })),
+  )
+  return childGroups.flat()
 }
 
 async function isRegularFile(filePath) {
@@ -49,51 +80,36 @@ function splitSensorChStep(folderName) {
 }
 
 export async function collectCommonalityRows(sdwtPath, latestPath, sdwt) {
-  const rows = []
-  const grades = await readDirectories(sdwtPath)
+  let nodes = [{ path: sdwtPath }]
+  nodes = await readChildDirectories(nodes, "grade")
+  nodes = await readChildDirectories(nodes, "stepSeq")
+  nodes = await readChildDirectories(nodes, "stepDesc")
+  nodes = await readChildDirectories(nodes, "ppid")
+  nodes = await readChildDirectories(
+    nodes,
+    "duplicatePpid",
+    (entry, node) => entry.name === node.ppid,
+  )
+  nodes = await readChildDirectories(nodes, "sensorChStep")
 
-  for (const grade of grades) {
-    const gradePath = join(sdwtPath, grade)
-    const stepSequences = await readDirectories(gradePath)
-    for (const stepSeq of stepSequences) {
-      const stepSeqPath = join(gradePath, stepSeq)
-      const stepDescriptions = await readDirectories(stepSeqPath)
-      for (const stepDesc of stepDescriptions) {
-        const stepDescPath = join(stepSeqPath, stepDesc)
-        const ppids = await readDirectories(stepDescPath)
-        for (const ppid of ppids) {
-          const ppidPath = join(stepDescPath, ppid)
-          const duplicatePpids = await readDirectories(ppidPath)
-          for (const duplicatePpid of duplicatePpids) {
-            if (duplicatePpid !== ppid) continue
-            const duplicatePpidPath = join(ppidPath, duplicatePpid)
-            const sensorChSteps = await readDirectories(duplicatePpidPath)
-            for (const sensorChStep of sensorChSteps) {
-              const parsed = splitSensorChStep(sensorChStep)
-              if (!parsed) continue
-              const filePath = join(duplicatePpidPath, sensorChStep, "img.png")
-              if (!await isRegularFile(filePath)) continue
-              rows.push({
-                id: relative(latestPath.path, filePath).split(sep).join("/"),
-                latestDate: latestPath.date,
-                sdwt,
-                grade,
-                stepSeq,
-                stepDesc,
-                ppid,
-                duplicatePpid,
-                sensor: parsed.sensor,
-                chStep: parsed.chStep,
-                filePath,
-              })
-            }
-          }
-        }
-      }
-    }
-  }
-
-  return rows
+  return nodes.flatMap((node) => {
+    const parsed = splitSensorChStep(node.sensorChStep)
+    if (!parsed) return []
+    const filePath = join(node.path, "img.png")
+    return [{
+      id: relative(latestPath.path, filePath).split(sep).join("/"),
+      latestDate: latestPath.date,
+      sdwt,
+      grade: node.grade,
+      stepSeq: node.stepSeq,
+      stepDesc: node.stepDesc,
+      ppid: node.ppid,
+      duplicatePpid: node.duplicatePpid,
+      sensor: parsed.sensor,
+      chStep: parsed.chStep,
+      filePath,
+    }]
+  })
 }
 
 async function resolveSdwtPath(latestPath, pathSdwt, displaySdwt) {
@@ -126,15 +142,26 @@ async function getCommonalityIndex({ pathSdwt, sdwt }) {
     return { latestPath, folderSdwt, rows: cached.rows }
   }
 
-  const rows = await collectCommonalityRows(sdwtPath, latestPath, folderSdwt)
-  commonalityIndexCache.forEach((entry, key) => {
-    if (entry.expiresAt <= Date.now()) commonalityIndexCache.delete(key)
-  })
-  commonalityIndexCache.set(cacheKey, {
-    rows,
-    expiresAt: Date.now() + INDEX_CACHE_TTL_MS,
-  })
-  return { latestPath, folderSdwt, rows }
+  if (commonalityIndexPending.has(cacheKey)) {
+    const rows = await commonalityIndexPending.get(cacheKey)
+    return { latestPath, folderSdwt, rows }
+  }
+
+  const indexPromise = collectCommonalityRows(sdwtPath, latestPath, folderSdwt)
+  commonalityIndexPending.set(cacheKey, indexPromise)
+  try {
+    const rows = await indexPromise
+    commonalityIndexCache.forEach((entry, key) => {
+      if (entry.expiresAt <= Date.now()) commonalityIndexCache.delete(key)
+    })
+    commonalityIndexCache.set(cacheKey, {
+      rows,
+      expiresAt: Date.now() + INDEX_CACHE_TTL_MS,
+    })
+    return { latestPath, folderSdwt, rows }
+  } finally {
+    commonalityIndexPending.delete(cacheKey)
+  }
 }
 
 function sortValues(values) {
@@ -149,8 +176,14 @@ export function buildCommonalityFilterPayload(index, filters) {
     ? index.rows.filter((row) => row.sensor === selectedSensor)
     : []
   const chSteps = sortValues(sensorRows.map((row) => row.chStep))
-  const selectedChStep = chSteps.includes(filters.chStep) ? filters.chStep : ""
-  const rows = selectedChStep
+  const selectedChStep = filters.chStep === ALL_CH_STEPS && chSteps.length
+    ? ALL_CH_STEPS
+    : chSteps.includes(filters.chStep)
+    ? filters.chStep
+    : ""
+  const rows = selectedChStep === ALL_CH_STEPS
+    ? sensorRows
+    : selectedChStep
     ? sensorRows.filter((row) => row.chStep === selectedChStep)
     : []
 

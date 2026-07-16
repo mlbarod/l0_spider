@@ -18,6 +18,7 @@ import { SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 
 const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
+const ALL_CH_STEPS = "ALL"
 
 function SelectRow({ label, meta, selected, onClick }) {
   return (
@@ -212,7 +213,15 @@ export function CommonalityAnomalyPage() {
   const filteredLines = filterValues(lines.map((line) => ({ label: line, value: line })), queries.line)
   const filteredTeams = filterValues(teamOptions.map((team) => ({ label: team.label, value: team.key })), queries.team)
   const filteredSensors = filterValues(sensors.map((sensor) => ({ label: sensor, value: sensor })), queries.sensor)
-  const filteredChSteps = filterValues(chSteps.map((chStep) => ({ label: chStep, value: chStep })), queries.chStep)
+  const filteredChSteps = filterValues(
+    chSteps.length
+      ? [
+          { label: "ALL", value: ALL_CH_STEPS },
+          ...chSteps.map((chStep) => ({ label: chStep, value: chStep })),
+        ]
+      : [],
+    queries.chStep,
+  )
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto bg-muted/30">
@@ -334,7 +343,7 @@ export function CommonalityAnomalyPage() {
         {dataQuery.data?.latest ? (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card px-4 py-3 text-xs">
             <span className="font-semibold">{dataQuery.data.latest.name}</span>
-            <code className="break-all text-muted-foreground">{dataQuery.data.latest.path}</code>
+            <code className="text-muted-foreground">{dataQuery.data.latest.date}</code>
           </div>
         ) : null}
         {dataQuery.isError ? (
@@ -372,7 +381,7 @@ export function CommonalityAnomalyPage() {
                     </div>
                     <Badge variant="secondary">{group.rows.length.toLocaleString()} images</Badge>
                   </header>
-                  <div className="grid min-w-0 grid-cols-1 gap-4 p-4 xl:grid-cols-2">
+                  <div className="grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2 xl:grid-cols-3">
                     {group.rows.map((row) => <CommonalityImageCard key={row.id} row={row} />)}
                   </div>
                 </section>
