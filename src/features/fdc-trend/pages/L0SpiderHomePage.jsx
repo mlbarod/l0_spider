@@ -45,6 +45,7 @@ const spiderApps = [
     category: "Matching",
     href: "/matching-anomaly",
     active: true,
+    status: "운영중",
   },
   {
     icon: Network,
@@ -102,24 +103,30 @@ const spiderSuites = [
     title: "Defect SPIDER",
     subtitle: "Defect 신호 기반 이상 패턴을 탐색합니다.",
     category: "Defect",
-    href: "/defect-spider",
+    href: "https://go/defect-spider",
     active: true,
+    external: true,
+    status: "운영중",
   },
   {
     icon: Radar,
     title: "L1 SPIDER",
     subtitle: "L1 설비/공정 신호를 추적합니다.",
     category: "Level 1",
-    href: "/l1-spider",
+    href: "https://go/spider1",
     active: true,
+    external: true,
+    status: "운영중",
   },
   {
     icon: Network,
     title: "L3 SPIDER",
     subtitle: "L3 연계 지표와 이상 흐름을 확인합니다.",
     category: "Level 3",
-    href: "/l3-spider",
+    href: "https://plane.samsungds.net/spider/l3",
     active: true,
+    external: true,
+    status: "운영중",
   },
 ]
 
@@ -321,34 +328,66 @@ function SelfEquipmentDashboard() {
 }
 
 function SpiderAppCard({ app }) {
+  const isOperating = app.status === "운영중"
   const content = (
     <div
       className={cn(
-        "relative h-full min-h-[148px] rounded-2xl border border-border/50 bg-card p-4 shadow-sm transition-all duration-300",
-        "cursor-pointer hover:-translate-y-1 hover:border-primary/20 hover:shadow-lg",
+        "relative h-full min-h-[148px] rounded-2xl border p-4 shadow-sm transition-all duration-300",
+        "cursor-pointer hover:-translate-y-1 hover:shadow-lg",
+        isOperating
+          ? "border-border/50 bg-card hover:border-primary/20"
+          : "border-muted bg-muted/50 hover:border-muted-foreground/20",
       )}
     >
-      <Badge className="absolute -right-2 -top-2 z-10 border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+      <Badge className={cn(
+        "absolute -right-2 -top-2 z-10 px-2 py-1 text-xs font-medium",
+        isOperating
+          ? "border border-primary/20 bg-primary/10 text-primary"
+          : "border border-muted-foreground/20 bg-muted text-muted-foreground",
+      )}>
         {app.status ?? "개발중"}
       </Badge>
 
-      <div className="mb-3 flex size-10 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 transition-all duration-300 group-hover:border-primary/30 group-hover:bg-primary/15">
-        <app.icon className="size-5 text-primary" />
+      <div className={cn(
+        "mb-3 flex size-10 items-center justify-center rounded-2xl border transition-all duration-300",
+        isOperating
+          ? "border-primary/20 bg-primary/10 group-hover:border-primary/30 group-hover:bg-primary/15"
+          : "border-muted-foreground/15 bg-muted",
+      )}>
+        <app.icon className={cn("size-5", isOperating ? "text-primary" : "text-muted-foreground")} />
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col justify-between text-left">
         <div>
-          <h3 className="mb-2 text-base font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
+          <h3 className={cn(
+            "mb-2 text-base font-semibold leading-tight transition-colors",
+            isOperating ? "text-foreground group-hover:text-primary" : "text-muted-foreground",
+          )}>
             {app.title}
           </h3>
-          <p className="mb-3 text-xs leading-5 text-muted-foreground">{app.subtitle}</p>
+          <p className={cn(
+            "mb-3 text-xs leading-5",
+            isOperating ? "text-muted-foreground" : "text-muted-foreground/70",
+          )}>{app.subtitle}</p>
         </div>
-        <div className="text-xs font-medium text-primary/70">{app.category}</div>
+        <div className={cn(
+          "text-xs font-medium",
+          isOperating ? "text-primary/70" : "text-muted-foreground/70",
+        )}>{app.category}</div>
       </div>
     </div>
   )
 
-  return (
+  return app.external ? (
+    <a
+      href={app.href}
+      target="_blank"
+      rel="noreferrer"
+      className="group relative block h-full"
+    >
+      {content}
+    </a>
+  ) : (
     <Link to={app.href} className="group relative block h-full">
       {content}
     </Link>

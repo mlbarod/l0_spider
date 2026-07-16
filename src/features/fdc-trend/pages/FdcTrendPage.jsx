@@ -1656,7 +1656,7 @@ export function FdcTrendPage() {
                     </div>
                     <Badge variant="secondary">{group.rows.length.toLocaleString()} charts</Badge>
                   </header>
-                  <div className="grid min-w-0 grid-cols-1 gap-4 p-4 xl:grid-cols-2">
+                  <div className="grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2 xl:grid-cols-3">
                     {group.rows.map((row) => (
                       <ErdScatterCard
                         key={row.id}
