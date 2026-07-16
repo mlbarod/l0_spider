@@ -283,13 +283,6 @@ function buildRecord({ lineId, filePath, knoxId, comment = "", execDate = "" }) 
 
 export async function handlePassHistoryRequest(req, res, url) {
   try {
-    const remoteIp = getRemoteIp(req)
-    if (!remoteIp) {
-      sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
-      return
-    }
-    const currentUser = await resolveCurrentUser(remoteIp)
-
     if (req.method === "GET") {
       const lineId = normalizeText(url.searchParams.get("lineId"))
       if (!lineId) {
@@ -317,6 +310,12 @@ export async function handlePassHistoryRequest(req, res, url) {
     }
 
     if (req.method === "POST" || req.method === "DELETE") {
+      const remoteIp = getRemoteIp(req)
+      if (!remoteIp) {
+        sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
+        return
+      }
+      const currentUser = await resolveCurrentUser(remoteIp)
       const body = await readJsonBody(req)
       const record = buildRecord({ ...body, knoxId: currentUser.knoxId })
       const result = await runPassHistoryHelper(req.method === "POST" ? "insert" : "delete", record)

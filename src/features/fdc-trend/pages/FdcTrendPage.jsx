@@ -618,19 +618,16 @@ function IdentityChartDialog({ row, eqp }) {
   )
 }
 
-const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, passHistoryReady }) {
-  const eqp = stripPngExtension(row.eqp)
+const SkipChartDialog = memo(function SkipChartDialog({
+  eqp,
+  filePath,
+  lineId,
+  disabled,
+}) {
   const queryClient = useQueryClient()
-  const cardRef = useRef(null)
-  const chartContainerRef = useRef(null)
-  const zoomOverlayRef = useRef(null)
-  const zoomSelectionRef = useRef(null)
-  const [isNearViewport, setIsNearViewport] = useState(false)
-  const [zoomDomain, setZoomDomain] = useState(null)
   const [skipDialogOpen, setSkipDialogOpen] = useState(false)
   const [skipComment, setSkipComment] = useState("")
-  const [skipClickedAt, setSkipClickedAt] = useState("")
-  const isSkipped = Boolean(passRecord)
+  const skipClickedAtRef = useRef("")
 
   const refreshPassHistory = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ["pass-history", lineId] }),
@@ -641,12 +638,91 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, p
     onSuccess: async () => {
       setSkipDialogOpen(false)
       setSkipComment("")
-      setSkipClickedAt("")
+      skipClickedAtRef.current = ""
       await refreshPassHistory()
       toast.success("SKIP완료")
     },
     onError: (error) => toast.error(error.message),
   })
+  const handleSkipDialogChange = (nextOpen) => {
+    if (createSkipMutation.isPending) return
+    setSkipDialogOpen(nextOpen)
+    if (nextOpen) {
+      skipClickedAtRef.current = new Date().toISOString()
+      return
+    }
+    setSkipComment("")
+    skipClickedAtRef.current = ""
+  }
+
+  const handleSkipConfirm = () => {
+    createSkipMutation.mutate({
+      lineId,
+      filePath,
+      comment: skipComment,
+      execDate: skipClickedAtRef.current || new Date().toISOString(),
+    })
+  }
+
+  return (
+    <Dialog open={skipDialogOpen} onOpenChange={handleSkipDialogChange}>
+      <DialogTrigger asChild>
+        <Button type="button" variant="outline" size="sm" disabled={disabled}>SKIP</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{eqp || "EQP 미지정"} 이상감지 SKIP</DialogTitle>
+          <DialogDescription>
+            SKIP 사유를 한 줄로 입력할 수 있습니다. comment는 입력하지 않아도 됩니다.
+          </DialogDescription>
+        </DialogHeader>
+        <Input
+          value={skipComment}
+          onChange={(event) => setSkipComment(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.nativeEvent.isComposing && !createSkipMutation.isPending) {
+              event.preventDefault()
+              handleSkipConfirm()
+            }
+          }}
+          placeholder="comment 입력 (선택)"
+          aria-label="SKIP comment"
+          autoFocus
+        />
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleSkipDialogChange(false)}
+            disabled={createSkipMutation.isPending}
+          >
+            취소
+          </Button>
+          <Button type="button" onClick={handleSkipConfirm} disabled={createSkipMutation.isPending}>
+            {createSkipMutation.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+            OK
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+})
+
+const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, passHistoryReady }) {
+  const eqp = stripPngExtension(row.eqp)
+  const queryClient = useQueryClient()
+  const cardRef = useRef(null)
+  const chartContainerRef = useRef(null)
+  const zoomOverlayRef = useRef(null)
+  const zoomSelectionRef = useRef(null)
+  const [isNearViewport, setIsNearViewport] = useState(false)
+  const [zoomDomain, setZoomDomain] = useState(null)
+  const isSkipped = Boolean(passRecord)
+
+  const refreshPassHistory = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["pass-history", lineId] }),
+    queryClient.invalidateQueries({ queryKey: ["skip-list-data", lineId] }),
+  ])
   const deleteSkipMutation = useMutation({
     mutationFn: deletePassHistory,
     onSuccess: async () => {
@@ -655,27 +731,6 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, p
     },
     onError: (error) => toast.error(error.message),
   })
-
-  const handleSkipDialogChange = (nextOpen) => {
-    if (createSkipMutation.isPending) return
-    setSkipDialogOpen(nextOpen)
-    if (nextOpen) {
-      setSkipClickedAt(new Date().toISOString())
-      return
-    }
-    setSkipComment("")
-    setSkipClickedAt("")
-  }
-
-  const handleSkipConfirm = () => {
-    createSkipMutation.mutate({
-      lineId,
-      filePath: row.file_path,
-      comment: skipComment,
-      execDate: skipClickedAt || new Date().toISOString(),
-    })
-  }
-
   const handleSkipDelete = () => {
     deleteSkipMutation.mutate({ lineId, filePath: row.file_path })
   }
@@ -919,46 +974,12 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, p
       </div>
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/20 px-3 py-2.5">
         <div className="flex flex-wrap items-center gap-2">
-          <Dialog open={skipDialogOpen} onOpenChange={handleSkipDialogChange}>
-            <DialogTrigger asChild>
-              <Button type="button" variant="outline" size="sm" disabled={isSkipped || !passHistoryReady}>SKIP</Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>{eqp || "EQP 미지정"} 이상감지 SKIP</DialogTitle>
-                <DialogDescription>
-                  SKIP 사유를 한 줄로 입력할 수 있습니다. comment는 입력하지 않아도 됩니다.
-                </DialogDescription>
-              </DialogHeader>
-              <Input
-                value={skipComment}
-                onChange={(event) => setSkipComment(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.nativeEvent.isComposing && !createSkipMutation.isPending) {
-                    event.preventDefault()
-                    handleSkipConfirm()
-                  }
-                }}
-                placeholder="comment 입력 (선택)"
-                aria-label="SKIP comment"
-                autoFocus
-              />
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleSkipDialogChange(false)}
-                  disabled={createSkipMutation.isPending}
-                >
-                  취소
-                </Button>
-                <Button type="button" onClick={handleSkipConfirm} disabled={createSkipMutation.isPending}>
-                  {createSkipMutation.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-                  OK
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <SkipChartDialog
+            eqp={eqp}
+            filePath={row.file_path}
+            lineId={lineId}
+            disabled={isSkipped || !passHistoryReady}
+          />
           {isSkipped ? (
             <Button
               type="button"
@@ -1129,7 +1150,6 @@ export function FdcTrendPage() {
       activeLine
       && activeTeam
       && activeTeamLabel
-      && (!isSkipList || currentUserQuery.data?.knoxId)
     ),
     placeholderData: (previousData, previousQuery) => {
       const previousKey = previousQuery?.queryKey ?? []
@@ -1155,7 +1175,6 @@ export function FdcTrendPage() {
     }),
     enabled: Boolean(
       !isSkipList
-      && currentUserQuery.data?.knoxId
       && activeLine
       && activeTeamLabel
       && activeDesc
@@ -1364,7 +1383,13 @@ export function FdcTrendPage() {
               title="Sensor Grade"
               badge={`${gradeOptions.length}`}
               disabled={!activeTeam}
-              placeholder="SDWT를 먼저 선택하세요"
+              placeholder={!activeTeam
+                ? "SDWT를 먼저 선택하세요"
+                : dataQuery.isLoading
+                ? "로딩 중…"
+                : isSkipList
+                ? "SKIP된 차트가 없습니다."
+                : "선택 가능한 Sensor Grade가 없습니다."}
               isActive={selectedGrades.length > 0}
               query={queries.grade}
               onQueryChange={(value) => setQuery("grade", value)}
@@ -1536,7 +1561,10 @@ export function FdcTrendPage() {
                         passRecord={isSkipList
                           ? row.pass_history
                           : passHistoryByKey.get(buildChartPassHistoryKey(activeLine, row))}
-                        passHistoryReady={isSkipList || passHistoryQuery.isSuccess}
+                        passHistoryReady={Boolean(
+                          currentUserQuery.data?.knoxId
+                          && (isSkipList || passHistoryQuery.isSuccess)
+                        )}
                       />
                     ))}
                   </div>
