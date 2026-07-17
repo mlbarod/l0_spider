@@ -19,7 +19,7 @@ export const SPIDER_DATA_PATH_TEMPLATES = Object.freeze({
 
 export const SPIDER_DASHBOARD_COLUMNS = Object.freeze({
   stats: Object.freeze(["exec_date", "recipe_id", "priority", "ng", "total"]),
-  detail: Object.freeze(["sdwt", "desc", "recipe_id", "priority", "sensor"]),
+  detail: Object.freeze(["sdwt", "desc", "recipe_id", "priority", "sensor", "eqp"]),
 })
 
 export const SPIDER_DATA_PATH_NAMES = Object.freeze({

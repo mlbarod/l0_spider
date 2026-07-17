@@ -1,11 +1,10 @@
-import { useQuery } from "@tanstack/react-query"
-import { Activity, BookOpen, ChartNoAxesCombined, Database, Gauge, Layers3, Mail, Network, Radar, ScanSearch, TrendingUp, TriangleAlert, Users } from "lucide-react"
+import { Activity, BookOpen, ChartNoAxesCombined, Gauge, Mail, Network, Radar, ScanSearch, TrendingUp, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
-import { fetchDashboardSummary } from "../api/dashboardApi"
+import { LineAnomalyDashboard } from "../components/LineAnomalyDashboard"
 
 const spiderApps = [
   {
@@ -102,127 +101,6 @@ const spiderSuites = [
     status: "운영중",
   },
 ]
-
-const DASHBOARD_METRICS = [
-  {
-    key: "monitoringSensorTotal",
-    label: "모니터링 센서 총합",
-    unit: "개",
-    icon: Database,
-    iconStyle: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
-  },
-  {
-    key: "detectedPpidCount",
-    label: "감지 PPID갯수",
-    unit: "개",
-    icon: Layers3,
-    iconStyle: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  },
-  {
-    key: "totalAnomalyCount",
-    label: "전체 이상건수",
-    unit: "건",
-    icon: TriangleAlert,
-    iconStyle: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-  },
-  {
-    key: "abGradeCount",
-    label: "A/B Grade",
-    unit: "건",
-    icon: Gauge,
-    iconStyle: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  },
-  {
-    key: "dGradeCount",
-    label: "D Grade",
-    unit: "건",
-    icon: Gauge,
-    iconStyle: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  },
-  {
-    key: "nGradeCount",
-    label: "N Grade",
-    unit: "건",
-    icon: Gauge,
-    iconStyle: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-  },
-  {
-    key: "mGradeCount",
-    label: "M Grade",
-    unit: "건",
-    icon: Gauge,
-    iconStyle: "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400",
-  },
-]
-
-function formatMetricValue(value, isLoading) {
-  if (isLoading) return "…"
-  const number = Number(value)
-  return Number.isFinite(number) ? number.toLocaleString("ko-KR") : "—"
-}
-
-function DashboardMetricCard({ metric, value, isLoading }) {
-  const Icon = metric.icon
-  return (
-    <article className="grid min-h-[132px] grid-rows-[auto_1fr] rounded-2xl border bg-card p-3.5 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-semibold leading-5 text-foreground">{metric.label}</p>
-        <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg", metric.iconStyle)}>
-          <Icon className="size-4" aria-hidden="true" />
-        </span>
-      </div>
-      <div className="flex items-end gap-1.5 pt-2" aria-live="polite">
-        <strong className="text-xl font-semibold tracking-tight tabular-nums xl:text-2xl">
-          {formatMetricValue(value, isLoading)}
-        </strong>
-        <span className="pb-0.5 text-xs font-medium text-muted-foreground">{metric.unit}</span>
-      </div>
-    </article>
-  )
-}
-
-function SelfEquipmentDashboard() {
-  const dashboardQuery = useQuery({
-    queryKey: ["spider-dashboard-summary"],
-    queryFn: fetchDashboardSummary,
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-  })
-  const metrics = dashboardQuery.data?.metrics
-
-  return (
-    <section className="mt-6 grid gap-5 border-t-2 border-border/80 pt-9">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-xl font-semibold tracking-tight">자설비 이상감지 Dashboard</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            최신 SPIDER 전체·세부 파일 기준 모니터링 범위와 이상감지 현황입니다.
-          </p>
-        </div>
-        <Badge variant="outline" className="h-7 px-3">
-          기준일시 {dashboardQuery.isError ? "조회 실패" : (dashboardQuery.data?.latestDate || "조회 중")}
-        </Badge>
-      </div>
-
-      {dashboardQuery.isError ? (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {dashboardQuery.error.message}
-        </div>
-      ) : null}
-
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
-        {DASHBOARD_METRICS.map((metric) => (
-          <DashboardMetricCard
-            key={metric.key}
-            metric={metric}
-            value={metrics?.[metric.key]}
-            isLoading={dashboardQuery.isLoading}
-          />
-        ))}
-      </div>
-    </section>
-  )
-}
 
 function SpiderAppCard({ app }) {
   const isOperating = app.status === "운영중"
@@ -346,7 +224,7 @@ export function L0SpiderHomePage() {
               ))}
             </div>
           </section>
-          <SelfEquipmentDashboard />
+          <LineAnomalyDashboard />
         </div>
       </main>
     </div>

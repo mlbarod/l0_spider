@@ -98,22 +98,29 @@ node server.mjs
 
 ### 메인 대시보드 데이터
 
-SPIDER 메인 하단 대시보드는 `/appdata/abnormal_trend/pic/path` 아래에서
-`YYYY-MM-DD hh:mm:ss` 형식의 가장 최신 항목을 `{latest_date}`로 결정하고 다음 두
-Parquet 파일을 함께 읽는다.
+SPIDER 메인 하단의 라인별 이상 현황 대시보드는
+`/appdata/abnormal_trend/pic/path` 아래에서 `YYYY-MM-DD hh:mm:ss` 형식의 파일을
+조회 기간에 맞춰 읽는다. 최신 항목은 `{latest_date}`로 사용한다.
 
 | 구분 | 경로 | 참조 컬럼 |
 | --- | --- | --- |
 | 전체 통계 | `/appdata/abnormal_trend/pic/stats/{latest_date}_spider_step_stats.parquets` | `exec_date`, `recipe_id`, `priority`, `ng`, `total` |
-| 세부 통계 | `/appdata/abnormal_trend/pic/path/{latest_date}` | `sdwt`, `desc`, `recipe_id`, `priority`, `sensor` |
+| 세부 통계 | `/appdata/abnormal_trend/pic/path/{latest_date}` | `sdwt`, `desc`, `recipe_id`, `priority`, `sensor`, `eqp` |
 
-상단 KPI는 다음 기준으로 계산한다.
+라인별 이상 1건은 세부 통계의 `sdwt`를 `/appdata/l0_spider/mapping_config.json`의
+`line_mapping`과 `sdwt_mapping`으로 라인에 매핑한 뒤, 같은 날짜와 라인 안에서
+`desc`, `recipe_id`, `priority`, `sensor`, `eqp` 조합이 같은 행을 중복 제거하여 계산한다.
+매핑할 수 없거나 비어 있는 `sdwt` 행은 라인 집계에서 제외한다.
 
-- 모니터링 센서 총합: 전체 통계에서 `priority = 'TL'`인 행의 `total` 합계
-- 감지 PPID갯수: 세부 통계의 고유 `recipe_id` 수
-- 전체 이상건수: 세부 통계의 `sdwt`, `desc`, `recipe_id`, `priority`, `sensor` 조합 고유건수
-- A/B Grade: 세부 통계의 `priority`가 A 또는 B인 행에서 위 5개 컬럼 조합 고유건수
-- D/N/M Grade: 세부 통계에서 각 `priority`로 필터한 뒤 위 5개 컬럼 조합 고유건수
+`GET /api/dashboard-data`는 다음 쿼리를 지원한다.
+
+- `startDate`, `endDate`: `YYYY-MM-DD` 형식의 조회 기간. 생략 시 최신 파일일을 포함한 최근 7일
+- `line`: 복수 지정 가능한 라인 필터. 생략 시 조회 기간에 실제 데이터가 있는 전체 라인
+
+서버는 요약 KPI, 라인별 누적/최신일/전일 비교/비율, 날짜·라인별 추이를 집계해
+반환한다. 조회 기간 중 파일이 없는 날짜는 추이에 0건으로 포함한다. 최신 파일의
+직전 달력 날짜에 해당하는 파일이 없으면 전일 비교값은 `null`로 반환한다. 기존 최신일
+센서/Grade 요약값도 같은 API 응답에 유지한다.
 
 L0 Spider의 DB 접속정보는 `/appdata/l0_spider/db_info.pkl`에서 읽는다. 아래 이력 테이블의 실제 INSERT/SELECT 기능은 해당 기능 개발 시 명시된 스키마를 기준으로 구현한다.
 
@@ -275,7 +282,7 @@ IP로 현재 사용자를 확인한 후 한 행을 INSERT한다. 자설비는 `c
 | V제외 stats 파일 | `{latest_date}_spider_step_stats_except_v.parquets` | `/appdata/abnormal_trend/pic/stats/{latest_date}_spider_step_stats_except_v.parquets` | 미정 (개발하면서 순차 정의) |
 | 동일성 기준 이상 감지 그래프 | `img.png` | `/appdata/abnormal_trend/pic/erd_commonality/{latest_date}/{sdwt}/{grade}/{step_seq}/{step_desc}/{ppid}/{ppid}/{sensor}_{ch_step}/img.png` | 미정 (개발하면서 순차 정의) |
 | 이상감지 이력 이미지 | `#appdata#abnormal_trend#pic#erd#{latest_date}#{sdwt}#{step_desc}#{ver}#{ppid}#{grade}#{sensor}#{ch_step}#{eqp}.png` | `/appdata/abnormal_trend/pic/backup/#appdata#abnormal_trend#pic#erd#{latest_date}#{sdwt}#{step_desc}#{ver}#{ppid}#{grade}#{sensor}#{ch_step}#{eqp}.png` | 해당 없음 (이미지 파일) |
-| `latest_date` 결정 및 대시보드 세부 파일 | `{latest_date}` | `/appdata/abnormal_trend/pic/path/{latest_date}` | `sdwt`, `desc`, `recipe_id`, `priority`, `sensor` |
+| `latest_date` 결정 및 대시보드 세부 파일 | `{latest_date}` | `/appdata/abnormal_trend/pic/path/{latest_date}` | `sdwt`, `desc`, `recipe_id`, `priority`, `sensor`, `eqp` |
 | 분임조별 ERD 이상감지 경로 데이터 | `df_path.parquet` | `/appdata/abnormal_trend/pic/path/{line}/{sdwt}/df_path.parquet` | `sdwt`, `desc`, `ver`, `recipe_id`, `priority`, `sensor`, `step`, `eqp`, `file_path`, `line_rev` |
 | 공통부 이상감지 경로 테이블 | `df_path.parquet` | `/appdata/abnormal_trend/pic/path_common/{line}/{sdwt}/df_path.parquet` | `file_path`, `sdwt`, `prc_group`, `date`, `priority`, `sensor`, `step`, `eqp`, `line_rev` |
 | 공통부 이상감지 데이터 | `data.parquet` | `/appdata/abnormal_trend/pic/common/{latest_date}/{sdwt}/{step_desc}/{grade}/{sensor}/{ch_step}/data.parquet` | `eqp_id`, `disp_name`, `lotid`, `wafer_id`, `act_time` (x축), `{sensor}_{ch_step}` (y축), `eqp_cb` (차트별 EQP 필터) |

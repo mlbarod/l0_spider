@@ -1,0 +1,577 @@
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  CalendarDays,
+  ChevronDown,
+  ExternalLink,
+  Loader2,
+  RotateCcw,
+  Search,
+} from "lucide-react"
+import { Link } from "react-router-dom"
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts"
+
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { cn } from "@/lib/utils"
+
+import { fetchDashboardSummary } from "../api/dashboardApi"
+
+const CHART_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "#2563eb",
+  "#0f766e",
+  "#7c3aed",
+]
+const MAX_TREND_LINES = 8
+const TABLE_PAGE_SIZE = 8
+
+function formatCount(value) {
+  const number = Number(value)
+  return Number.isFinite(number) ? number.toLocaleString("ko-KR") : "—"
+}
+
+function formatDisplayDate(value) {
+  return value ? value.replaceAll("-", ".") : "—"
+}
+
+function compareValues(left, right, key) {
+  const leftValue = left[key]
+  const rightValue = right[key]
+  if (typeof leftValue === "number" && typeof rightValue === "number") return leftValue - rightValue
+  if (key === "lastAbnormalDate") {
+    return Date.parse(`${leftValue ?? "1970-01-01"}T00:00:00Z`)
+      - Date.parse(`${rightValue ?? "1970-01-01"}T00:00:00Z`)
+  }
+  return String(leftValue ?? "").localeCompare(String(rightValue ?? ""), "ko", { numeric: true })
+}
+
+function ChangeText({ value, emptyText = "비교 데이터 없음", className }) {
+  if (value === null || value === undefined) {
+    return <span className={cn("text-muted-foreground", className)}>{emptyText}</span>
+  }
+  if (value > 0) {
+    return <span className={cn("text-amber-600 dark:text-amber-400", className)}>▲ {formatCount(value)}건</span>
+  }
+  if (value < 0) {
+    return <span className={cn("text-emerald-600 dark:text-emerald-400", className)}>▼ {formatCount(Math.abs(value))}건</span>
+  }
+  return <span className={cn("text-muted-foreground", className)}>변동 없음</span>
+}
+
+function KpiCard({ label, value, unit, description, valueClassName }) {
+  return (
+    <article className="grid min-h-[108px] grid-rows-[auto_1fr_auto] rounded-xl border bg-card px-4 py-3 shadow-sm">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <div className="flex min-w-0 items-end gap-1.5 py-1">
+        <strong className={cn("truncate text-2xl font-semibold tracking-tight tabular-nums", valueClassName)}>
+          {value}
+        </strong>
+        {unit ? <span className="pb-0.5 text-xs font-medium text-muted-foreground">{unit}</span> : null}
+      </div>
+      <p className="truncate text-[11px] text-muted-foreground">{description}</p>
+    </article>
+  )
+}
+
+function DashboardTooltip({ active, payload, label, type }) {
+  if (!active || !payload?.length) return null
+  if (type === "bar") {
+    const row = payload[0]?.payload
+    return (
+      <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-lg">
+        <p className="font-semibold">{row?.lineId}</p>
+        <p className="mt-1 text-muted-foreground">이상 건수 <strong className="text-foreground">{formatCount(row?.totalCount)}건</strong></p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-w-40 rounded-lg border bg-background px-3 py-2 text-xs shadow-lg">
+      <p className="mb-1.5 font-semibold">{formatDisplayDate(label)}</p>
+      <div className="grid gap-1">
+        {payload.map((entry) => (
+          <div key={entry.dataKey} className="flex items-center justify-between gap-5">
+            <span className="flex items-center gap-2 text-muted-foreground">
+              <span className="size-2 rounded-full" style={{ backgroundColor: entry.color }} />
+              {entry.name}
+            </span>
+            <strong className="tabular-nums text-foreground">{formatCount(entry.value)}건</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function EmptyChart({ message = "조회 조건에 해당하는 데이터가 없습니다." }) {
+  return (
+    <div className="grid h-[310px] place-items-center rounded-lg border border-dashed bg-muted/20 text-sm text-muted-foreground">
+      {message}
+    </div>
+  )
+}
+
+function LineMultiSelect({ lines, selectedLines, onChange, disabled }) {
+  const isAllSelected = selectedLines.length === 0
+
+  function toggleLine(line, checked) {
+    let nextLines
+    if (isAllSelected) {
+      nextLines = checked ? [line] : lines.filter((item) => item !== line)
+    } else {
+      nextLines = checked
+        ? [...selectedLines, line]
+        : selectedLines.filter((item) => item !== line)
+    }
+    const uniqueLines = Array.from(new Set(nextLines))
+    onChange(uniqueLines.length === lines.length ? [] : uniqueLines)
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="w-full justify-between px-3" disabled={disabled}>
+          <span className="truncate">{isAllSelected ? "전체 라인" : `${selectedLines.length}개 라인 선택`}</span>
+          <ChevronDown className="size-4 text-muted-foreground" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="max-h-72 w-64 overflow-y-auto">
+        <DropdownMenuLabel>라인 선택</DropdownMenuLabel>
+        <DropdownMenuCheckboxItem
+          checked={isAllSelected}
+          onCheckedChange={() => onChange([])}
+          onSelect={(event) => event.preventDefault()}
+        >
+          전체 라인
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuSeparator />
+        {lines.map((line) => (
+          <DropdownMenuCheckboxItem
+            key={line}
+            checked={isAllSelected || selectedLines.includes(line)}
+            onCheckedChange={(checked) => toggleLine(line, checked)}
+            onSelect={(event) => event.preventDefault()}
+          >
+            {line}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function SortButton({ column, label, sortConfig, onSort }) {
+  const active = sortConfig.key === column
+  const Icon = active ? (sortConfig.direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown
+  return (
+    <button type="button" className="inline-flex items-center gap-1 hover:text-primary" onClick={() => onSort(column)}>
+      {label}
+      <Icon className={cn("size-3.5", !active && "text-muted-foreground/60")} />
+    </button>
+  )
+}
+
+function LineSummaryTable({ rows }) {
+  const [search, setSearch] = useState("")
+  const [page, setPage] = useState(1)
+  const [sortConfig, setSortConfig] = useState({ key: "totalCount", direction: "desc" })
+  const normalizedSearch = search.trim().toLocaleLowerCase("ko")
+  const sortedRows = useMemo(() => {
+    const filteredRows = normalizedSearch
+      ? rows.filter((row) => row.lineId.toLocaleLowerCase("ko").includes(normalizedSearch))
+      : rows
+    return [...filteredRows].sort((left, right) => {
+      const result = compareValues(left, right, sortConfig.key)
+      return sortConfig.direction === "asc" ? result : -result
+    })
+  }, [normalizedSearch, rows, sortConfig])
+  const pageCount = Math.max(1, Math.ceil(sortedRows.length / TABLE_PAGE_SIZE))
+  const activePage = Math.min(page, pageCount)
+  const visibleRows = sortedRows.slice((activePage - 1) * TABLE_PAGE_SIZE, activePage * TABLE_PAGE_SIZE)
+
+  function handleSort(key) {
+    setSortConfig((current) => ({
+      key,
+      direction: current.key === key && current.direction === "desc" ? "asc" : "desc",
+    }))
+    setPage(1)
+  }
+
+  return (
+    <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+        <div>
+          <h3 className="text-sm font-semibold">라인별 상세 현황</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">전체 이상 건수 내림차순 · 라인 선택 시 상세 화면 이동</p>
+        </div>
+        <label className="relative w-64">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value)
+              setPage(1)
+            }}
+            placeholder="라인명 검색"
+            className="pl-9"
+          />
+        </label>
+      </div>
+      <div className="max-h-[390px] overflow-auto">
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-card">
+            <TableRow className="bg-muted/40">
+              <TableHead><SortButton column="lineId" label="라인" sortConfig={sortConfig} onSort={handleSort} /></TableHead>
+              <TableHead className="text-right"><SortButton column="totalCount" label="전체 이상 건수" sortConfig={sortConfig} onSort={handleSort} /></TableHead>
+              <TableHead className="text-right"><SortButton column="latestDateCount" label="최신일 이상 건수" sortConfig={sortConfig} onSort={handleSort} /></TableHead>
+              <TableHead className="text-right"><SortButton column="changeCount" label="전일 대비" sortConfig={sortConfig} onSort={handleSort} /></TableHead>
+              <TableHead><SortButton column="lastAbnormalDate" label="최근 이상 발생일" sortConfig={sortConfig} onSort={handleSort} /></TableHead>
+              <TableHead className="text-right"><SortButton column="ratio" label="전체 대비 비율" sortConfig={sortConfig} onSort={handleSort} /></TableHead>
+              <TableHead className="w-28 text-center">상세 보기</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visibleRows.length ? visibleRows.map((row) => (
+              <TableRow key={row.lineId}>
+                <TableCell className="font-semibold">{row.lineId}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatCount(row.totalCount)}건</TableCell>
+                <TableCell className="text-right tabular-nums">{formatCount(row.latestDateCount)}건</TableCell>
+                <TableCell className="text-right"><ChangeText value={row.changeCount} className="text-xs font-medium" /></TableCell>
+                <TableCell>{formatDisplayDate(row.lastAbnormalDate)}</TableCell>
+                <TableCell className="text-right tabular-nums">{row.ratio.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}%</TableCell>
+                <TableCell className="text-center">
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to={`/self-equipment?line=${encodeURIComponent(row.lineId)}`}>
+                      상세 <ExternalLink className="size-3.5" />
+                    </Link>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            )) : (
+              <TableRow>
+                <TableCell colSpan={7} className="h-28 text-center text-muted-foreground">
+                  {search ? "검색 결과가 없습니다." : "조회 조건에 해당하는 라인 데이터가 없습니다."}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex items-center justify-between border-t px-4 py-2.5 text-xs text-muted-foreground">
+        <span>총 {formatCount(sortedRows.length)}개 라인</span>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={activePage <= 1}>이전</Button>
+          <span className="min-w-16 text-center tabular-nums">{activePage} / {pageCount}</span>
+          <Button variant="outline" size="sm" onClick={() => setPage((value) => Math.min(pageCount, value + 1))} disabled={activePage >= pageCount}>다음</Button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export function LineAnomalyDashboard() {
+  const initializedRef = useRef(false)
+  const [appliedFilters, setAppliedFilters] = useState({})
+  const [draftStartDate, setDraftStartDate] = useState("")
+  const [draftEndDate, setDraftEndDate] = useState("")
+  const [draftLines, setDraftLines] = useState([])
+  const [hiddenLines, setHiddenLines] = useState(() => new Set())
+  const dashboardQuery = useQuery({
+    queryKey: [
+      "spider-line-dashboard",
+      appliedFilters.startDate ?? "default",
+      appliedFilters.endDate ?? "default",
+      (appliedFilters.lines ?? []).join("\u0000"),
+    ],
+    queryFn: ({ signal }) => fetchDashboardSummary({ ...appliedFilters, signal }),
+    staleTime: 60 * 1000,
+    retry: false,
+    placeholderData: (previousData) => previousData,
+  })
+  const dashboard = dashboardQuery.data?.lineDashboard
+
+  useEffect(() => {
+    if (!dashboard || initializedRef.current) return
+    initializedRef.current = true
+    setDraftStartDate(dashboard.filters.startDate)
+    setDraftEndDate(dashboard.filters.endDate)
+    setDraftLines(dashboard.filters.lines ?? [])
+  }, [dashboard])
+
+  const displayedLines = useMemo(
+    () => (dashboard?.lineSummary ?? []).slice(0, MAX_TREND_LINES).map((row) => row.lineId),
+    [dashboard?.lineSummary],
+  )
+  const trendRows = useMemo(() => {
+    const visibleLineSet = new Set(displayedLines)
+    const rowsByDate = new Map()
+    ;(dashboard?.dailyTrend ?? []).forEach((row) => {
+      if (!visibleLineSet.has(row.lineId)) return
+      const dateRow = rowsByDate.get(row.date) ?? { date: row.date }
+      dateRow[row.lineId] = row.abnormalCount
+      rowsByDate.set(row.date, dateRow)
+    })
+    return Array.from(rowsByDate.values()).sort((left, right) => (
+      Date.parse(`${left.date}T00:00:00Z`) - Date.parse(`${right.date}T00:00:00Z`)
+    ))
+  }, [dashboard?.dailyTrend, displayedLines])
+
+  const filterError = !draftStartDate || !draftEndDate
+    ? "조회 시작일과 종료일을 입력하세요."
+    : draftStartDate > draftEndDate ? "조회 시작일은 종료일보다 늦을 수 없습니다." : ""
+
+  function applyFilters(nextLines = draftLines) {
+    if (filterError || dashboardQuery.isFetching) return
+    const nextFilters = { startDate: draftStartDate, endDate: draftEndDate, lines: nextLines }
+    const isSame = JSON.stringify(nextFilters) === JSON.stringify(appliedFilters)
+    setHiddenLines(new Set())
+    if (isSame) dashboardQuery.refetch()
+    else setAppliedFilters(nextFilters)
+  }
+
+  function resetFilters() {
+    if (!dashboard) return
+    setDraftStartDate(dashboard.options.defaultStartDate)
+    setDraftEndDate(dashboard.options.defaultEndDate)
+    setDraftLines([])
+    setHiddenLines(new Set())
+    setAppliedFilters({})
+  }
+
+  function selectLine(lineId) {
+    if (!lineId || dashboardQuery.isFetching) return
+    setDraftStartDate(dashboard.filters.startDate)
+    setDraftEndDate(dashboard.filters.endDate)
+    setDraftLines([lineId])
+    setHiddenLines(new Set())
+    setAppliedFilters({
+      startDate: dashboard.filters.startDate,
+      endDate: dashboard.filters.endDate,
+      lines: [lineId],
+    })
+  }
+
+  if (dashboardQuery.isPending && !dashboard) {
+    return (
+      <section className="mt-6 grid min-h-[420px] place-items-center border-t-2 border-border/80 pt-9">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-5 animate-spin" /> 라인별 대시보드를 불러오는 중입니다.
+        </div>
+      </section>
+    )
+  }
+
+  if (dashboardQuery.isError && !dashboard) {
+    return (
+      <section className="mt-6 grid gap-4 border-t-2 border-border/80 pt-9">
+        <h2 className="text-xl font-semibold tracking-tight">라인별 이상 현황 Dashboard</h2>
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-5 text-sm text-destructive">
+          {dashboardQuery.error.message}
+        </div>
+      </section>
+    )
+  }
+
+  const summary = dashboard.summary
+  const lineRows = dashboard.lineSummary
+  const options = dashboard.options
+  const topLineDescription = summary.topLine ? `${formatCount(summary.topLineCount)}건` : "발생 데이터 없음"
+
+  return (
+    <section className="relative mt-6 grid gap-5 border-t-2 border-border/80 pt-9" aria-busy={dashboardQuery.isFetching}>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight">라인별 이상 현황 Dashboard</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            SDWT 기준정보를 라인으로 매핑한 뒤 5개 식별값으로 중복 제거한 일자별 이상건수입니다.
+          </p>
+        </div>
+        <Badge variant="outline" className="h-7 px-3">
+          최신 데이터 {summary.latestDate ? formatDisplayDate(summary.latestDate) : "없음"}
+        </Badge>
+      </div>
+
+      <form
+        className="grid items-end gap-3 rounded-xl border bg-card p-4 shadow-sm lg:grid-cols-[170px_170px_minmax(220px,1fr)_auto_auto]"
+        onSubmit={(event) => {
+          event.preventDefault()
+          applyFilters()
+        }}
+      >
+        <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
+          조회 시작일
+          <Input type="date" value={draftStartDate} min={options.minDate} max={options.maxDate} onChange={(event) => setDraftStartDate(event.target.value)} />
+        </label>
+        <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
+          조회 종료일
+          <Input type="date" value={draftEndDate} min={options.minDate} max={options.maxDate} onChange={(event) => setDraftEndDate(event.target.value)} />
+        </label>
+        <div className="grid gap-1.5 text-xs font-medium text-muted-foreground">
+          라인 선택
+          <LineMultiSelect lines={options.lines} selectedLines={draftLines} onChange={setDraftLines} disabled={!options.lines.length} />
+        </div>
+        <Button type="submit" disabled={Boolean(filterError) || dashboardQuery.isFetching}>
+          {dashboardQuery.isFetching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+          조회
+        </Button>
+        <Button type="button" variant="outline" onClick={resetFilters} disabled={dashboardQuery.isFetching}>
+          <RotateCcw className="size-4" /> 초기화
+        </Button>
+        {filterError ? <p className="text-xs text-destructive lg:col-span-5">{filterError}</p> : null}
+      </form>
+
+      {dashboardQuery.isError ? (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          {dashboardQuery.error.message}
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <KpiCard label="전체 이상 건수" value={formatCount(summary.totalAbnormalCount)} unit="건" description={`${formatDisplayDate(dashboard.filters.startDate)} ~ ${formatDisplayDate(dashboard.filters.endDate)}`} />
+        <KpiCard label="이상 발생 라인" value={formatCount(summary.abnormalLineCount)} unit="개" description="선택 기간 내 1건 이상 발생" />
+        <KpiCard label="최신일 이상 건수" value={formatCount(summary.latestDateCount)} unit="건" description={summary.latestDate ? formatDisplayDate(summary.latestDate) : "조회 기간 내 파일 없음"} />
+        <KpiCard label="최다 발생 라인" value={summary.topLine ?? "—"} description={topLineDescription} />
+        <KpiCard
+          label="전일 대비"
+          value={<ChangeText value={summary.changeFromPreviousDay} className="text-xl xl:text-2xl" />}
+          description={summary.previousDate ? `${formatDisplayDate(summary.previousDate)} 대비` : "비교 데이터 없음"}
+        />
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)]">
+        <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+          <div className="border-b px-4 py-3">
+            <h3 className="text-sm font-semibold">라인별 이상 건수</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">선택 기간 누적 · 이상 건수 내림차순</p>
+          </div>
+          <div className="h-[330px] overflow-y-auto p-3">
+            {lineRows.length ? (
+              <div style={{ height: Math.max(300, lineRows.length * 38) }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={lineRows} layout="vertical" margin={{ top: 4, right: 28, bottom: 4, left: 8 }}>
+                    <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+                    <YAxis type="category" dataKey="lineId" width={105} tick={{ fontSize: 12, fill: "var(--foreground)" }} interval={0} />
+                    <Tooltip content={<DashboardTooltip type="bar" />} cursor={{ fill: "var(--muted)", opacity: 0.45 }} />
+                    <Bar
+                      dataKey="totalCount"
+                      name="이상 건수"
+                      fill="var(--primary)"
+                      radius={[0, 4, 4, 0]}
+                      maxBarSize={22}
+                      className="cursor-pointer"
+                      onClick={(entry) => selectLine(entry?.lineId ?? entry?.payload?.lineId)}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : <EmptyChart />}
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+          <div className="flex items-start justify-between gap-3 border-b px-4 py-3">
+            <div>
+              <h3 className="text-sm font-semibold">라인별 일자별 이상 건수 추이</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {lineRows.length > MAX_TREND_LINES ? `가독성을 위해 상위 ${MAX_TREND_LINES}개 라인 표시` : "범례를 클릭해 라인 표시 여부 변경"}
+              </p>
+            </div>
+            <CalendarDays className="size-4 text-muted-foreground" />
+          </div>
+          <div className="h-[330px] p-3">
+            {displayedLines.length && trendRows.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendRows} margin={{ top: 8, right: 18, bottom: 4, left: 0 }}>
+                  <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(value) => value.slice(5)}
+                    minTickGap={26}
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                  />
+                  <YAxis allowDecimals={false} width={46} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+                  <Tooltip content={<DashboardTooltip type="line" />} />
+                  <Legend
+                    iconType="line"
+                    wrapperStyle={{ fontSize: 12, paddingTop: 8, cursor: "pointer" }}
+                    onClick={(entry) => {
+                      const lineId = entry.dataKey ?? entry.value
+                      setHiddenLines((current) => {
+                        const next = new Set(current)
+                        if (next.has(lineId)) next.delete(lineId)
+                        else next.add(lineId)
+                        return next
+                      })
+                    }}
+                  />
+                  {displayedLines.map((lineId, index) => (
+                    <Line
+                      key={lineId}
+                      type="monotone"
+                      dataKey={lineId}
+                      name={lineId}
+                      stroke={CHART_COLORS[index % CHART_COLORS.length]}
+                      strokeWidth={2}
+                      dot={trendRows.length <= 14 ? { r: 2 } : false}
+                      activeDot={{ r: 4 }}
+                      connectNulls={false}
+                      hide={hiddenLines.has(lineId)}
+                      isAnimationActive={false}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            ) : <EmptyChart />}
+          </div>
+        </section>
+      </div>
+
+      <LineSummaryTable rows={lineRows} />
+
+      {dashboardQuery.isFetching ? (
+        <div className="pointer-events-none absolute inset-x-0 top-[82px] z-20 flex justify-center">
+          <div className="flex items-center gap-2 rounded-full border bg-background/95 px-4 py-2 text-xs font-medium shadow-md">
+            <Loader2 className="size-4 animate-spin" /> 기존 화면을 유지하면서 조회 중입니다.
+          </div>
+        </div>
+      ) : null}
+    </section>
+  )
+}

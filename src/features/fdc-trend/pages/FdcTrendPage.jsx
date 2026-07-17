@@ -1,6 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, ArrowUp, Check, ChevronRight, Loader2 } from "lucide-react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
@@ -1282,13 +1282,15 @@ export function FdcTrendPage() {
   const pageRef = useRef(null)
   const stepScrollPositionRef = useRef(0)
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
+  const requestedLine = searchParams.get("line")?.trim() ?? ""
   const currentUserQuery = useQuery({
     queryKey: ["current-user"],
     queryFn: fetchCurrentUser,
     staleTime: Infinity,
     retry: false,
   })
-  const [selectedLine, setSelectedLine] = useState("")
+  const [selectedLine, setSelectedLine] = useState(() => requestedLine)
   const [selectedTeam, setSelectedTeam] = useState("")
   const [selectedGrades, setSelectedGrades] = useState(() => ["A/B"])
   const [selectedDesc, setSelectedDesc] = useState("")

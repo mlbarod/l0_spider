@@ -1,23 +1,27 @@
 import { readdir, stat } from "node:fs/promises"
-import { dirname } from "node:path"
+import { dirname, join } from "node:path"
 
 import { asyncBufferFromFile, parquetReadObjects } from "hyparquet"
 import { compressors } from "hyparquet-compressors"
 
 import {
+  LATEST_DATE_FILE_PATTERN,
   SPIDER_DASHBOARD_COLUMNS,
   SPIDER_DATA_PATH_TEMPLATES,
-  buildDashboardDetailPath,
   buildDashboardStatsPath,
-  resolveLatestDateFile,
 } from "../src/config/spiderDataPaths.mjs"
+import { readLineMapping } from "./mappingConfig.mjs"
 
 export const DASHBOARD_STATS_COLUMNS = SPIDER_DASHBOARD_COLUMNS.stats
 export const DASHBOARD_DETAIL_COLUMNS = SPIDER_DASHBOARD_COLUMNS.detail
+export const LINE_ANOMALY_ID_COLUMNS = Object.freeze(["desc", "recipe_id", "priority", "sensor", "eqp"])
+export const DEFAULT_DASHBOARD_PERIOD_DAYS = 7
 
 const DASHBOARD_PATH_ROOT = process.env.SPIDER_DASHBOARD_PATH_ROOT
   ?? dirname(SPIDER_DATA_PATH_TEMPLATES.dashboardDetail)
+const READ_CONCURRENCY = 4
 const parquetCache = new Map()
+const parquetPending = new Map()
 
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
@@ -60,6 +64,142 @@ function gradeRows(rows, priorities) {
   return rows.filter((row) => allowed.has(normalizePriority(row.priority)))
 }
 
+function createDashboardError(code, message) {
+  const error = new Error(message)
+  error.code = code
+  return error
+}
+
+function parseDateParts(dateText) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateText)
+  if (!match) return null
+  const [, yearText, monthText, dayText] = match
+  const year = Number(yearText)
+  const month = Number(monthText)
+  const day = Number(dayText)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  if (
+    date.getUTCFullYear() !== year
+    || date.getUTCMonth() !== month - 1
+    || date.getUTCDate() !== day
+  ) return null
+  return { year, month, day, date }
+}
+
+function isValidDateTimeFileName(fileName) {
+  if (!LATEST_DATE_FILE_PATTERN.test(fileName)) return false
+  const dateParts = parseDateParts(fileName.slice(0, 10))
+  const timeMatch = /^(\d{2}):(\d{2}):(\d{2})$/.exec(fileName.slice(11))
+  if (!dateParts || !timeMatch) return false
+  const [, hour, minute, second] = timeMatch.map(Number)
+  return hour <= 23 && minute <= 59 && second <= 59
+}
+
+function formatUtcDate(date) {
+  return date.toISOString().slice(0, 10)
+}
+
+function compareDateTexts(left, right) {
+  const leftDate = parseDateParts(left.slice(0, 10))?.date.getTime() ?? Number.NaN
+  const rightDate = parseDateParts(right.slice(0, 10))?.date.getTime() ?? Number.NaN
+  if (leftDate !== rightDate) return leftDate - rightDate
+  return left.slice(11).localeCompare(right.slice(11))
+}
+
+function shiftDate(dateText, days) {
+  const parsed = parseDateParts(dateText)
+  if (!parsed) return null
+  parsed.date.setUTCDate(parsed.date.getUTCDate() + days)
+  return formatUtcDate(parsed.date)
+}
+
+function enumerateDates(startDate, endDate) {
+  const start = parseDateParts(startDate)?.date
+  const end = parseDateParts(endDate)?.date
+  if (!start || !end) return []
+  const dates = []
+  for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    dates.push(formatUtcDate(cursor))
+  }
+  return dates
+}
+
+function compareLineIds(left, right) {
+  return left.localeCompare(right, "ko", { numeric: true })
+}
+
+export function resolveDashboardDateRange(dateTimes, requested = {}) {
+  const availableDates = Array.from(new Set(
+    dateTimes.filter(isValidDateTimeFileName).map((dateTime) => dateTime.slice(0, 10)),
+  )).sort(compareDateTexts)
+
+  if (!availableDates.length) {
+    throw createDashboardError(
+      "DASHBOARD_LATEST_DATE_NOT_FOUND",
+      "YYYY-MM-DD hh:mm:ss 형식의 대시보드 세부 파일이 없습니다.",
+    )
+  }
+
+  const minDate = availableDates[0]
+  const maxDate = availableDates.at(-1)
+  const defaultEndDate = maxDate
+  const defaultStartCandidate = shiftDate(defaultEndDate, -(DEFAULT_DASHBOARD_PERIOD_DAYS - 1))
+  const defaultStartDate = defaultStartCandidate < minDate ? minDate : defaultStartCandidate
+  const startDate = requested.startDate || defaultStartDate
+  const endDate = requested.endDate || defaultEndDate
+
+  if (!parseDateParts(startDate) || !parseDateParts(endDate)) {
+    throw createDashboardError(
+      "DASHBOARD_INVALID_FILTER",
+      "조회 시작일과 종료일은 YYYY-MM-DD 형식이어야 합니다.",
+    )
+  }
+  if (startDate > endDate) {
+    throw createDashboardError(
+      "DASHBOARD_INVALID_FILTER",
+      "조회 시작일은 종료일보다 늦을 수 없습니다.",
+    )
+  }
+
+  return { startDate, endDate, minDate, maxDate, defaultStartDate, defaultEndDate }
+}
+
+function buildSdwtLineLookup(mappingConfig) {
+  const lineMapping = mappingConfig?.line_mapping ?? {}
+  const sdwtMapping = mappingConfig?.sdwt_mapping ?? {}
+  const lookup = new Map()
+
+  Object.entries(lineMapping).forEach(([sdwtKey, lineValue]) => {
+    const key = normalizeText(sdwtKey)
+    const line = normalizeText(lineValue)
+    if (!key || !line) return
+    lookup.set(key, line)
+    const displaySdwt = normalizeText(sdwtMapping[sdwtKey])
+    if (displaySdwt) lookup.set(displaySdwt, line)
+  })
+
+  return lookup
+}
+
+function getKnownLines(mappingConfig) {
+  return new Set(
+    Object.values(mappingConfig?.line_mapping ?? {}).map(normalizeText).filter(Boolean),
+  )
+}
+
+function validateRequestedLines(lines, mappingConfig) {
+  const knownLines = getKnownLines(mappingConfig)
+  const requestedLines = Array.from(new Set(lines.map(normalizeText).filter(Boolean)))
+  const invalidLine = requestedLines.find((line) => !knownLines.has(line))
+  if (invalidLine) {
+    throw createDashboardError(
+      "DASHBOARD_INVALID_FILTER",
+      `기준정보에 존재하지 않는 라인입니다: ${invalidLine}`,
+    )
+  }
+  return requestedLines
+}
+
 export function buildDashboardSummary(statsRows, detailRows, source = {}) {
   const tlRows = gradeRows(statsRows, ["TL"])
   const abRows = gradeRows(detailRows, ["A", "B"])
@@ -72,11 +212,11 @@ export function buildDashboardSummary(statsRows, detailRows, source = {}) {
     metrics: {
       monitoringSensorTotal: sumColumn(tlRows, "total"),
       detectedPpidCount: uniqueCount(detailRows, "recipe_id"),
-      totalAnomalyCount: uniqueCombinationCount(detailRows, DASHBOARD_DETAIL_COLUMNS),
-      abGradeCount: uniqueCombinationCount(abRows, DASHBOARD_DETAIL_COLUMNS),
-      dGradeCount: uniqueCombinationCount(dRows, DASHBOARD_DETAIL_COLUMNS),
-      nGradeCount: uniqueCombinationCount(nRows, DASHBOARD_DETAIL_COLUMNS),
-      mGradeCount: uniqueCombinationCount(mRows, DASHBOARD_DETAIL_COLUMNS),
+      totalAnomalyCount: uniqueCombinationCount(detailRows, LINE_ANOMALY_ID_COLUMNS),
+      abGradeCount: uniqueCombinationCount(abRows, LINE_ANOMALY_ID_COLUMNS),
+      dGradeCount: uniqueCombinationCount(dRows, LINE_ANOMALY_ID_COLUMNS),
+      nGradeCount: uniqueCombinationCount(nRows, LINE_ANOMALY_ID_COLUMNS),
+      mGradeCount: uniqueCombinationCount(mRows, LINE_ANOMALY_ID_COLUMNS),
     },
     detailCounts: {
       rows: detailRows.length,
@@ -96,44 +236,221 @@ export function buildDashboardSummary(statsRows, detailRows, source = {}) {
   }
 }
 
+export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
+  const sdwtLineLookup = buildSdwtLineLookup(mappingConfig)
+  const requestedLines = validateRequestedLines(filters.lines ?? [], mappingConfig)
+  const fileDates = new Set()
+  const combinationsByDateLine = new Map()
+  const actualLines = new Set()
+
+  datedRows.forEach(({ dateTime, rows }) => {
+    const date = normalizeText(dateTime).slice(0, 10)
+    if (!parseDateParts(date)) return
+    fileDates.add(date)
+
+    rows.forEach((row) => {
+      const lineId = sdwtLineLookup.get(normalizeText(row.sdwt))
+      if (!lineId) return
+      actualLines.add(lineId)
+      const dateLineKey = `${date}\u0000${lineId}`
+      const combinations = combinationsByDateLine.get(dateLineKey) ?? new Set()
+      combinations.add(LINE_ANOMALY_ID_COLUMNS.map((column) => normalizeText(row[column])).join("\u0000"))
+      combinationsByDateLine.set(dateLineKey, combinations)
+    })
+  })
+
+  const availableLines = Array.from(actualLines).sort(compareLineIds)
+  const selectedLines = requestedLines.length ? requestedLines : availableLines
+  const dates = enumerateDates(filters.startDate, filters.endDate)
+  const getCount = (date, lineId) => combinationsByDateLine.get(`${date}\u0000${lineId}`)?.size ?? 0
+  const latestDate = Array.from(fileDates).sort(compareDateTexts).at(-1) ?? null
+  const previousDate = latestDate ? shiftDate(latestDate, -1) : null
+  const hasPreviousData = Boolean(previousDate && fileDates.has(previousDate))
+
+  const lineSummary = selectedLines.map((lineId) => {
+    const totalCount = dates.reduce((sum, date) => sum + getCount(date, lineId), 0)
+    const latestDateCount = latestDate ? getCount(latestDate, lineId) : 0
+    const previousDateCount = hasPreviousData ? getCount(previousDate, lineId) : null
+    const lastAbnormalDate = [...dates].reverse().find((date) => getCount(date, lineId) > 0) ?? null
+    return {
+      lineId,
+      totalCount,
+      latestDateCount,
+      previousDateCount,
+      changeCount: previousDateCount === null ? null : latestDateCount - previousDateCount,
+      lastAbnormalDate,
+      ratio: 0,
+    }
+  })
+
+  const totalAbnormalCount = lineSummary.reduce((sum, row) => sum + row.totalCount, 0)
+  lineSummary.forEach((row) => {
+    row.ratio = totalAbnormalCount ? Number(((row.totalCount / totalAbnormalCount) * 100).toFixed(2)) : 0
+  })
+  lineSummary.sort((left, right) => right.totalCount - left.totalCount || compareLineIds(left.lineId, right.lineId))
+
+  const latestDateCount = lineSummary.reduce((sum, row) => sum + row.latestDateCount, 0)
+  const previousDateCount = hasPreviousData
+    ? lineSummary.reduce((sum, row) => sum + row.previousDateCount, 0)
+    : null
+  const topLineRow = lineSummary.find((row) => row.totalCount > 0) ?? null
+  const dailyTrend = dates.flatMap((date) => (
+    lineSummary.map((row) => ({
+      date,
+      lineId: row.lineId,
+      abnormalCount: getCount(date, row.lineId),
+    }))
+  ))
+
+  return {
+    filters: {
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      lines: requestedLines,
+    },
+    options: {
+      lines: availableLines,
+      minDate: filters.minDate,
+      maxDate: filters.maxDate,
+      defaultStartDate: filters.defaultStartDate,
+      defaultEndDate: filters.defaultEndDate,
+    },
+    summary: {
+      totalAbnormalCount,
+      abnormalLineCount: lineSummary.filter((row) => row.totalCount > 0).length,
+      latestDate,
+      latestDateCount,
+      topLine: topLineRow?.lineId ?? null,
+      topLineCount: topLineRow?.totalCount ?? 0,
+      previousDate: hasPreviousData ? previousDate : null,
+      changeFromPreviousDay: previousDateCount === null ? null : latestDateCount - previousDateCount,
+    },
+    lineSummary,
+    dailyTrend,
+    meta: {
+      filesRead: datedRows.length,
+      unmappedRows: datedRows.reduce((count, item) => (
+        count + item.rows.filter((row) => !sdwtLineLookup.has(normalizeText(row.sdwt))).length
+      ), 0),
+    },
+  }
+}
+
 async function readParquetRows(filePath, columns) {
   const fileStat = await stat(filePath)
   const cached = parquetCache.get(filePath)
   if (cached?.mtimeMs === fileStat.mtimeMs && cached?.size === fileStat.size) {
     return cached.rows
   }
+  if (parquetPending.has(filePath)) return parquetPending.get(filePath)
 
-  const file = await asyncBufferFromFile(filePath)
-  const rows = await parquetReadObjects({ file, columns, compressors })
-  parquetCache.set(filePath, { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows })
-  return rows
+  const pending = (async () => {
+    const file = await asyncBufferFromFile(filePath)
+    const rows = await parquetReadObjects({ file, columns, compressors })
+    parquetCache.set(filePath, { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows })
+    return rows
+  })()
+  parquetPending.set(filePath, pending)
+  try {
+    return await pending
+  } finally {
+    parquetPending.delete(filePath)
+  }
+}
+
+async function mapWithConcurrency(items, mapper, concurrency = READ_CONCURRENCY) {
+  const results = new Array(items.length)
+  let cursor = 0
+  async function worker() {
+    while (cursor < items.length) {
+      const index = cursor
+      cursor += 1
+      results[index] = await mapper(items[index], index)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker))
+  return results
+}
+
+export async function listDashboardDateFiles(pathRoot = DASHBOARD_PATH_ROOT) {
+  const entries = await readdir(pathRoot, { withFileTypes: true })
+  return entries
+    .filter((entry) => entry.isFile() && isValidDateTimeFileName(entry.name))
+    .map((entry) => ({ dateTime: entry.name, filePath: join(pathRoot, entry.name) }))
+    .sort((left, right) => compareDateTexts(left.dateTime, right.dateTime))
 }
 
 export async function getLatestDashboardDate(pathRoot = DASHBOARD_PATH_ROOT) {
-  const entries = await readdir(pathRoot, { withFileTypes: true })
-  const latestDate = resolveLatestDateFile(entries.map((entry) => entry.name))
+  const files = await listDashboardDateFiles(pathRoot)
+  const latestDate = files.at(-1)?.dateTime
   if (latestDate) return latestDate
-
-  const error = new Error(
-    `대시보드 최신날짜를 찾지 못했습니다: ${pathRoot} 아래에 YYYY-MM-DD hh:mm:ss 형식의 파일이 없습니다.`,
+  throw createDashboardError(
+    "DASHBOARD_LATEST_DATE_NOT_FOUND",
+    `${pathRoot} 아래에 YYYY-MM-DD hh:mm:ss 형식의 파일이 없습니다.`,
   )
-  error.code = "DASHBOARD_LATEST_DATE_NOT_FOUND"
-  throw error
 }
 
-export async function getDashboardSummary() {
-  const latestDate = await getLatestDashboardDate()
-  const statsPath = buildDashboardStatsPath(latestDate)
-  const detailPath = buildDashboardDetailPath(latestDate)
-  const [statsRows, detailRows] = await Promise.all([
+export async function getDashboardSummary(requestedFilters = {}) {
+  const dateFiles = await listDashboardDateFiles()
+  const dateRange = resolveDashboardDateRange(
+    dateFiles.map((file) => file.dateTime),
+    requestedFilters,
+  )
+  const selectedFiles = dateFiles.filter(({ dateTime }) => {
+    const date = dateTime.slice(0, 10)
+    return date >= dateRange.startDate && date <= dateRange.endDate
+  })
+  const latestFile = dateFiles.at(-1)
+  const selectedAndLatestFiles = Array.from(
+    new Map([...selectedFiles, latestFile].map((file) => [file.dateTime, file])).values(),
+  )
+  const statsPath = buildDashboardStatsPath(latestFile.dateTime)
+
+  const [mappingConfig, statsRows, fileRows] = await Promise.all([
+    readLineMapping(),
     readParquetRows(statsPath, DASHBOARD_STATS_COLUMNS),
-    readParquetRows(detailPath, DASHBOARD_DETAIL_COLUMNS),
+    mapWithConcurrency(selectedAndLatestFiles, async (file) => ({
+      ...file,
+      rows: await readParquetRows(file.filePath, DASHBOARD_DETAIL_COLUMNS),
+    })),
   ])
 
-  return buildDashboardSummary(statsRows, detailRows, { latestDate, statsPath, detailPath })
+  const rowsByDateTime = new Map(fileRows.map((file) => [file.dateTime, file.rows]))
+  const latestDetailRows = rowsByDateTime.get(latestFile.dateTime) ?? []
+  const datedRows = selectedFiles.map((file) => ({
+    dateTime: file.dateTime,
+    rows: rowsByDateTime.get(file.dateTime) ?? [],
+  }))
+  const requestedLines = requestedFilters.lines ?? []
+  const baseSummary = buildDashboardSummary(statsRows, latestDetailRows, {
+    latestDate: latestFile.dateTime,
+    statsPath,
+    detailPath: latestFile.filePath,
+  })
+
+  return {
+    ...baseSummary,
+    lineDashboard: buildLineDashboardPayload(datedRows, mappingConfig, {
+      ...dateRange,
+      lines: requestedLines,
+    }),
+    sourcePaths: {
+      ...baseSummary.sourcePaths,
+      historyRoot: DASHBOARD_PATH_ROOT,
+      mapping: mappingConfig.source_path,
+    },
+  }
 }
 
-export async function handleDashboardDataRequest(req, res) {
+function parseRequestFilters(url) {
+  return {
+    startDate: normalizeText(url.searchParams.get("startDate")),
+    endDate: normalizeText(url.searchParams.get("endDate")),
+    lines: url.searchParams.getAll("line").map(normalizeText).filter(Boolean),
+  }
+}
+
+export async function handleDashboardDataRequest(req, res, requestUrl) {
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.writeHead(405, {
       Allow: "GET, HEAD",
@@ -144,7 +461,8 @@ export async function handleDashboardDataRequest(req, res) {
   }
 
   try {
-    const payload = await getDashboardSummary()
+    const url = requestUrl ?? new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`)
+    const payload = await getDashboardSummary(parseRequestFilters(url))
     if (req.method === "HEAD") {
       res.writeHead(200, { "Cache-Control": "no-store" })
       res.end()
@@ -152,7 +470,9 @@ export async function handleDashboardDataRequest(req, res) {
     }
     sendJson(res, 200, { ok: true, ...payload })
   } catch (error) {
-    const statusCode = error.code === "DASHBOARD_LATEST_DATE_NOT_FOUND" ? 404 : 500
+    const statusCode = error.code === "DASHBOARD_LATEST_DATE_NOT_FOUND"
+      ? 404
+      : error.code === "DASHBOARD_INVALID_FILTER" ? 400 : 500
     if (req.method === "HEAD") {
       res.writeHead(statusCode, { "Cache-Control": "no-store" })
       res.end()
