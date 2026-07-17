@@ -2,12 +2,16 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  COMMON_SKIP_EXCLUSION_DURATION_MS,
   buildCommonAnomalyPayload,
   buildCommonIdentityPayload,
   buildCommonScatterPayload,
+  excludeRecentlySkippedCommonRows,
   resolveCommonAnomalyDataPath,
   resolveCommonAnomalyImagePath,
 } from "./commonAnomalyData.mjs"
+
+const NOW = Date.parse("2026-07-17T12:00:00+09:00")
 
 function createPathRow(overrides = {}) {
   return {
@@ -23,6 +27,50 @@ function createPathRow(overrides = {}) {
     ...overrides,
   }
 }
+
+function createCommonPassRecord(overrides = {}) {
+  return {
+    line_id: "P1L",
+    ver: "NA",
+    sdwt: "SDWT-1",
+    desc: "ETCH",
+    recipe_id: "DIFFERENT-PRC-GROUP",
+    update_date: "2026-07-01",
+    priority: "A",
+    sensor: "TEMP",
+    step: "10",
+    eqp: "EQP-1",
+    exec_date: "2026-07-16T12:00:00+09:00",
+    ...overrides,
+  }
+}
+
+test("공통부 동일 이상건은 지정된 7개 구분자만 비교하여 3일간 제외한다", () => {
+  const row = createPathRow({ prc_group: "ORIGINAL-PRC-GROUP" })
+
+  assert.deepEqual(
+    excludeRecentlySkippedCommonRows([row], [createCommonPassRecord()], NOW),
+    [],
+  )
+})
+
+test("공통부 7개 구분자 중 하나가 다르면 일반 이상건에서 제외하지 않는다", () => {
+  const row = createPathRow({ sensor: "PRESSURE" })
+
+  assert.deepEqual(
+    excludeRecentlySkippedCommonRows([row], [createCommonPassRecord()], NOW),
+    [row],
+  )
+})
+
+test("공통부 SKIP 등록 후 정확히 3일이 지나면 일반 이상건에 다시 포함한다", () => {
+  const row = createPathRow()
+  const expiredRecord = createCommonPassRecord({
+    exec_date: new Date(NOW - COMMON_SKIP_EXCLUSION_DURATION_MS).toISOString(),
+  })
+
+  assert.deepEqual(excludeRecentlySkippedCommonRows([row], [expiredRecord], NOW), [row])
+})
 
 test("pic_server2를 pic로 바꾸고 마지막 png 파일명을 data.parquet으로 바꾼다", () => {
   assert.equal(

@@ -3,6 +3,7 @@ import test from "node:test"
 
 import {
   COMMON_PASS_HISTORY_VERSION,
+  buildCommonPassHistoryFilterPayload,
   buildPassHistoryFilterPayload,
   parseCommonPassHistoryPath,
 } from "./passHistory.mjs"
@@ -51,4 +52,42 @@ test("공통부 PASS 이력은 자설비 SKIP LIST 필터에서 제외한다", (
 
   assert.equal(payload.counts.filteredRows, 0)
   assert.deepEqual(payload.rows, [])
+})
+
+test("공통부 PASS 이력을 공통부 SKIP LIST 이미지 행으로 복원한다", () => {
+  const commonRecord = {
+    line_id: "P1L",
+    ver: COMMON_PASS_HISTORY_VERSION,
+    sdwt: "SDWT-1",
+    desc: "ETCH",
+    recipe_id: "PRC-GROUP-1",
+    update_date: "2026-07-17",
+    priority: "A",
+    sensor: "TEMP",
+    step: "10",
+    eqp: "EQP-1",
+    exec_date: "2026-07-17 12:00:00",
+  }
+  const payload = buildCommonPassHistoryFilterPayload([
+    commonRecord,
+    { ...commonRecord, ver: "V1", eqp: "SELF-EQP" },
+  ], {
+    lineId: "P1L",
+    prcGroup: "PRC-GROUP-1",
+    eqp: "ALL",
+    sensor: "TEMP",
+  })
+
+  assert.equal(COMMON_PASS_HISTORY_VERSION, "NA")
+  assert.equal(payload.filters.sdwt, "SKIP LIST")
+  assert.equal(payload.rows.length, 1)
+  assert.equal(
+    payload.rows[0].data_path,
+    "/appdata/abnormal_trend/pic/common/2026-07-17/SDWT-1/ETCH/A/TEMP/10/data.parquet",
+  )
+  assert.equal(
+    payload.rows[0].image_path,
+    "/appdata/abnormal_trend/pic/common/2026-07-17/SDWT-1/ETCH/A/TEMP/10/EQP-1.png",
+  )
+  assert.equal(payload.rows[0].pass_history, commonRecord)
 })

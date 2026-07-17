@@ -1,10 +1,11 @@
 import { createReadStream, existsSync, statSync } from "node:fs"
-import { basename, dirname, join, resolve, sep } from "node:path"
+import { basename, dirname, join, relative, resolve, sep } from "node:path"
 
 import { asyncBufferFromFile, parquetReadObjects } from "hyparquet"
 import { compressors } from "hyparquet-compressors"
 
 import { buildCommonAnomalyPath } from "../src/config/spiderDataPaths.mjs"
+import { COMMON_PASS_HISTORY_VERSION, listPassHistoryRecords } from "./passHistory.mjs"
 
 export const COMMON_ANOMALY_COLUMNS = Object.freeze([
   "file_path",
@@ -20,6 +21,7 @@ export const COMMON_ANOMALY_COLUMNS = Object.freeze([
 
 const COMMON_DATA_ROOT = "/appdata/abnormal_trend/pic/common"
 const ALL_EQPS = "ALL"
+export const COMMON_SKIP_EXCLUSION_DURATION_MS = 3 * 24 * 60 * 60 * 1000
 const pathTableCache = new Map()
 const scatterCache = new Map()
 const scatterPending = new Map()
@@ -40,6 +42,59 @@ function normalizeText(value) {
 
 function normalizeEqp(value) {
   return normalizeText(value).replace(/\.png$/i, "")
+}
+
+function parseDatabaseDate(value) {
+  if (value instanceof Date) return value.getTime()
+  const text = normalizeText(value)
+  if (!text) return Number.NaN
+  return Date.parse(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(text)
+    ? text.replace(" ", "T")
+    : text)
+}
+
+function buildCommonSkipComparisonKey(row) {
+  let pathValues = {}
+  if (row.file_path || row.data_path) {
+    const dataPath = resolveCommonAnomalyDataPath(row.data_path || row.file_path)
+    const segments = relative(COMMON_DATA_ROOT, dataPath).split(sep)
+    if (segments.length === 7 && segments.at(-1) === "data.parquet") {
+      const [, sdwt, desc, priority, sensor, step] = segments
+      pathValues = { sdwt, desc, priority, sensor, step }
+    }
+  }
+
+  return [
+    row.line_rev ?? row.line_id,
+    row.sdwt || pathValues.sdwt,
+    row.desc || pathValues.desc,
+    row.priority || pathValues.priority,
+    row.sensor || pathValues.sensor,
+    row.step || pathValues.step,
+    normalizeEqp(row.eqp),
+  ].map(normalizeText).join("\u0000")
+}
+
+export function excludeRecentlySkippedCommonRows(
+  rows,
+  passRecords,
+  nowMs = Date.now(),
+  durationMs = COMMON_SKIP_EXCLUSION_DURATION_MS,
+) {
+  const activeSkipKeys = new Set(
+    passRecords
+      .filter((record) => normalizeText(record.ver) === COMMON_PASS_HISTORY_VERSION)
+      .filter((record) => {
+        const execDateMs = parseDatabaseDate(record.exec_date)
+        const elapsedMs = nowMs - execDateMs
+        return Number.isFinite(execDateMs) && elapsedMs >= 0 && elapsedMs < durationMs
+      })
+      .map(buildCommonSkipComparisonKey),
+  )
+
+  return activeSkipKeys.size
+    ? rows.filter((row) => !activeSkipKeys.has(buildCommonSkipComparisonKey(row)))
+    : rows
 }
 
 function canonicalEqp(value) {
@@ -301,9 +356,18 @@ export async function handleCommonAnomalyDataRequest(req, res, url) {
       sendJson(res, 400, { ok: false, error: "line, pathSdwt, sdwt 조건이 필요합니다." })
       return
     }
-    const { filePath, rows } = await readCommonPathRows(filters)
+    const [{ filePath, rows }, passRecords] = await Promise.all([
+      readCommonPathRows(filters),
+      listPassHistoryRecords({ lineId: filters.line }),
+    ])
+    const visibleRows = excludeRecentlySkippedCommonRows(rows, passRecords)
+    const payload = buildCommonAnomalyPayload(visibleRows, filters)
     sendJson(res, 200, {
-      ...buildCommonAnomalyPayload(rows, filters),
+      ...payload,
+      counts: {
+        ...payload.counts,
+        excludedSkipRows: rows.length - visibleRows.length,
+      },
       sourcePath: filePath,
     })
   } catch (error) {

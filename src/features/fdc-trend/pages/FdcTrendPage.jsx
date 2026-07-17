@@ -217,16 +217,6 @@ function normalizePassHistoryDate(value) {
   return !match[2] || match[2] === "00:00:00" ? match[1] : `${match[1]} ${match[2]}`
 }
 
-function formatPassHistoryExecDate(value) {
-  const date = new Date(value)
-  if (!Number.isFinite(date.getTime())) return String(value ?? "")
-  const pad = (part) => String(part).padStart(2, "0")
-  return [
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
-    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
-  ].join(" ")
-}
-
 function buildChartPassHistoryKey(lineId, row) {
   return [
     lineId,
@@ -720,7 +710,6 @@ export const SkipChartDialog = memo(function SkipChartDialog({
   disabled,
   prcGroup = "",
   dataQueryKeyPrefix = "self-equipment-data",
-  recordPreview = null,
 }) {
   const queryClient = useQueryClient()
   const [skipDialogOpen, setSkipDialogOpen] = useState(false)
@@ -730,6 +719,7 @@ export const SkipChartDialog = memo(function SkipChartDialog({
   const refreshPassHistory = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ["pass-history", lineId] }),
     queryClient.invalidateQueries({ queryKey: ["skip-list-data", lineId] }),
+    queryClient.invalidateQueries({ queryKey: ["common-anomaly-skip-list", lineId] }),
     queryClient.invalidateQueries({ queryKey: [dataQueryKeyPrefix, lineId] }),
   ])
   const createSkipMutation = useMutation({
@@ -770,7 +760,7 @@ export const SkipChartDialog = memo(function SkipChartDialog({
       <DialogTrigger asChild>
         <Button type="button" variant="outline" size="sm" disabled={disabled}>SKIP</Button>
       </DialogTrigger>
-      <DialogContent className={recordPreview ? "sm:max-w-2xl" : "sm:max-w-md"}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{eqp || "EQP 미지정"} 이상감지 SKIP</DialogTitle>
           <DialogDescription>
@@ -790,29 +780,6 @@ export const SkipChartDialog = memo(function SkipChartDialog({
           aria-label="SKIP comment"
           autoFocus
         />
-        {recordPreview ? (
-          <section className="grid gap-2">
-            <h4 className="text-sm font-semibold">PASS 이력 DB 업로드 예정 데이터</h4>
-            <div className="max-h-[45vh] overflow-auto rounded-md border bg-muted/30">
-              <dl className="grid grid-cols-[minmax(140px,auto)_minmax(0,1fr)] text-xs">
-                {Object.entries({
-                  ...recordPreview,
-                  exec_date: skipClickedAt ? formatPassHistoryExecDate(skipClickedAt) : "OK 클릭 시각",
-                  comment: skipComment,
-                }).map(([column, value]) => (
-                  <div key={column} className="contents">
-                    <dt className="border-b border-r px-3 py-2 font-medium text-muted-foreground">
-                      {column}
-                    </dt>
-                    <dd className="break-all border-b px-3 py-2 font-mono text-foreground">
-                      {value === "" || value === null || value === undefined ? "(빈 문자열)" : String(value)}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          </section>
-        ) : null}
         <DialogFooter>
           <Button
             type="button"

@@ -141,12 +141,12 @@ SKIP 상태인 차트는 상단에 `이상감지 SKIP 건` 배지와 하단에 `
 공통부 이상감지의 SKIP도 같은 `/api/pass-history`와 팝업 구조를 사용한다. Chart drawing에
 사용하는 공통부 `data.parquet` 경로, 선택 EQP와 `prc_group`을 서버로 전달하며,
 접속자 `knox_id`는 자설비와 동일하게 서버가 결정한다. 공통부 경로에는 `{ver}`가 없으므로
-자설비 이력과 구분하기 위한 내부값 `COMMON`을 `ver`에 저장한다.
+공통부 SKIP은 하드코딩 값 `NA`를 `ver`에 저장한다.
 
 | `pass_history` 컬럼 | 공통부 SKIP 저장값 |
 | --- | --- |
 | `line_id` | 필터에서 선택한 Line Name |
-| `ver` | `COMMON` |
+| `ver` | `NA` |
 | `sdwt` | 공통부 데이터 경로의 `{sdwt}` |
 | `desc` | 공통부 데이터 경로의 `{step_desc}` |
 | `recipe_id` | 경로 테이블에서 선택된 `prc_group` |
@@ -159,7 +159,8 @@ SKIP 상태인 차트는 상단에 `이상감지 SKIP 건` 배지와 하단에 `
 | `exec_date` | SKIP 버튼을 눌러 팝업을 연 시각 |
 | `comment` | 팝업에서 입력한 한 줄 comment, 미입력 시 빈 문자열 |
 
-`ver = COMMON`인 행은 자설비의 `SKIP LIST` 경로 복원 대상에서 제외한다.
+`ver = NA`인 행은 공통부 `SKIP LIST`에서 조회하며 자설비의 `SKIP LIST` 경로 복원
+대상에서는 제외한다.
 
 SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일반 SDWT 조회에서는 SKIP 등록 시각(`exec_date`)부터 72시간 동안 `latest_date`를 제외한 ERD 경로의 모든 식별값(`line_id`, `sdwt`, `desc`, `ver`, `recipe_id`, `priority`, `sensor`, `step`, `eqp`)이 같은 행을 동일 이상건으로 처리한다. 해당 행은 차트 목록뿐 아니라 STEP, `eqp_ch`, `sensor`, `ch_step`의 일반 이상건수 집계에서도 제외한다. 72시간이 지나면 SKIP 이력은 `SKIP LIST`에 남아 있지만 일반 이상건수 제외 조건에서는 만료된다.
 
@@ -260,11 +261,21 @@ SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일
 `동일성 차트`는 `data.parquet`의 `act_time`과 `{sensor}_{ch_step}`을 사용하여 같은
 파일의 전체 `eqp_cb`를 자설비와 같은 UI로 비교하고,
 선택 EQP를 강조한다. `SKIP`은 자설비와 같은 팝업·등록·해제 UI를 사용한다.
-공통부 SKIP 팝업은 최종 `OK` 전에 파싱 기준 `data.parquet` 경로와 `pass_history`에
-저장될 전체 컬럼 값을 표시하여 DB 오류를 점검할 수 있게 한다.
+SDWT 필터 마지막의 `SKIP LIST`를 선택하면 선택 Line에서 `ver = NA`인
+`pass_history` 행을 `prc_group`(`recipe_id`) → `eqp` → `sensor` 순서로 조회하고,
+저장된 값으로 `data.parquet` 및 `{eqp}.png` 경로를 복원한다. SKIP 해제 후에는 해당
+이미지가 목록에서 즉시 제거된다.
+
+일반 SDWT 조회에서는 공통부 SKIP 등록 시각(`exec_date`)부터 72시간 동안
+`line_id`, `sdwt`, `desc`, `priority`, `sensor`, `step`(`ch_step`), `eqp`의 7개 값이
+모두 같은 행을 동일 이상감지 건으로 판단한다. 이 비교에는 `ver`, `recipe_id`,
+`update_date`를 사용하지 않으며, 동일 건은 이미지 목록과 각 필터 건수에서 제외된다.
+72시간이 지나면 일반 이상감지 대상에 다시 포함되지만 SKIP 이력 자체는 사용자가
+해제할 때까지 공통부 `SKIP LIST`에 남는다.
 `이력저장`은 공통부용 기능이 별도로 정의될 때까지 비활성화한다.
 
 - 필터·경로 목록 API: `GET /api/common-anomaly-data`
+- SKIP LIST API: `GET /api/pass-history?view=common-filters`
 - 이미지 API: `GET /api/common-anomaly-image`
 - 동일성 데이터 API: `GET /api/common-anomaly-scatter-data?mode=identity`
 - 서버 데이터 모듈: `server/commonAnomalyData.mjs`

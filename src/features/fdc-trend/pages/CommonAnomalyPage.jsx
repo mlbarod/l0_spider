@@ -13,6 +13,7 @@ import {
   buildCommonAnomalyImageUrl,
   fetchCommonAnomalyData,
   fetchCommonAnomalyIdentityData,
+  fetchCommonSkipListData,
 } from "../api/commonAnomalyApi"
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
@@ -23,7 +24,9 @@ import { IdentityChartDialog, SkipChartDialog } from "./FdcTrendPage"
 const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
 const ALL_EQPS = "ALL"
-const COMMON_PASS_HISTORY_VERSION = "COMMON"
+const COMMON_PASS_HISTORY_VERSION = "NA"
+const SKIP_LIST_TEAM = "__SKIP_LIST__"
+const SKIP_LIST_LABEL = "SKIP LIST"
 
 function SelectRow({ label, meta, selected, onClick }) {
   return (
@@ -159,7 +162,6 @@ function buildCommonRecordPassHistoryKey(record) {
 const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({
   row,
   lineId,
-  currentUserKnoxId,
   passRecord,
 }) {
   const eqp = stripPngExtension(row.eqp)
@@ -172,27 +174,10 @@ const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({
     file_path: row.data_path,
     recipe_id: row.prc_group,
   }), [row])
-  const skipUploadPreview = useMemo(() => {
-    const pathValues = getCommonPathValues(row.data_path)
-    return {
-      "source_file (파싱 기준)": row.data_path,
-      line_id: lineId,
-      ver: COMMON_PASS_HISTORY_VERSION,
-      sdwt: pathValues.sdwt ?? row.sdwt,
-      desc: pathValues.desc ?? row.prc_group,
-      recipe_id: row.prc_group,
-      update_date: normalizePassHistoryDate(pathValues.updateDate ?? row.date),
-      priority: pathValues.priority ?? row.priority,
-      sensor: pathValues.sensor ?? row.sensor,
-      step: pathValues.step ?? row.step,
-      eqp,
-      knox_id: currentUserKnoxId || "접속 IP 기준 서버 결정",
-    }
-  }, [currentUserKnoxId, eqp, lineId, row])
-
   const refreshPassHistory = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ["pass-history", lineId] }),
     queryClient.invalidateQueries({ queryKey: ["common-anomaly-data", lineId] }),
+    queryClient.invalidateQueries({ queryKey: ["common-anomaly-skip-list", lineId] }),
   ])
   const deleteSkipMutation = useMutation({
     mutationFn: deletePassHistory,
@@ -254,7 +239,6 @@ const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({
             lineId={lineId}
             prcGroup={row.prc_group}
             dataQueryKeyPrefix="common-anomaly-data"
-            recordPreview={skipUploadPreview}
             disabled={isSkipped}
           />
           {isSkipped ? (
@@ -315,33 +299,45 @@ export function CommonAnomalyPage() {
   const lines = useMemo(() => Array.from(new Set(Object.values(lineMapping))), [lineMapping])
   const activeLine = lines.includes(selectedLine) ? selectedLine : (lines[0] ?? "")
   const teamOptions = useMemo(
-    () => Object.entries(lineMapping)
-      .filter(([, line]) => line === activeLine)
-      .map(([key]) => ({ key, label: sdwtMapping[key] ?? key })),
+    () => [
+      ...Object.entries(lineMapping)
+        .filter(([, line]) => line === activeLine)
+        .map(([key]) => ({ key, label: sdwtMapping[key] ?? key })),
+      ...(activeLine ? [{ key: SKIP_LIST_TEAM, label: SKIP_LIST_LABEL }] : []),
+    ],
     [activeLine, lineMapping, sdwtMapping],
   )
   const activeTeam = teamOptions.some((team) => team.key === selectedTeam)
     ? selectedTeam
     : (teamOptions[0]?.key ?? "")
   const activeTeamLabel = teamOptions.find((team) => team.key === activeTeam)?.label ?? ""
+  const isSkipList = activeTeam === SKIP_LIST_TEAM
+  const dataQueryKey = [
+    isSkipList ? "common-anomaly-skip-list" : "common-anomaly-data",
+    activeLine,
+    activeTeam,
+    activeTeamLabel,
+    selectedPrcGroup,
+    selectedEqp,
+    selectedSensor,
+  ]
   const dataQuery = useQuery({
-    queryKey: [
-      "common-anomaly-data",
-      activeLine,
-      activeTeam,
-      activeTeamLabel,
-      selectedPrcGroup,
-      selectedEqp,
-      selectedSensor,
-    ],
-    queryFn: () => fetchCommonAnomalyData({
-      line: activeLine,
-      pathSdwt: activeTeam,
-      sdwt: activeTeamLabel,
-      prcGroup: selectedPrcGroup,
-      eqp: selectedEqp,
-      sensor: selectedSensor,
-    }),
+    queryKey: dataQueryKey,
+    queryFn: () => isSkipList
+      ? fetchCommonSkipListData({
+          lineId: activeLine,
+          prcGroup: selectedPrcGroup,
+          eqp: selectedEqp,
+          sensor: selectedSensor,
+        })
+      : fetchCommonAnomalyData({
+          line: activeLine,
+          pathSdwt: activeTeam,
+          sdwt: activeTeamLabel,
+          prcGroup: selectedPrcGroup,
+          eqp: selectedEqp,
+          sensor: selectedSensor,
+        }),
     enabled: Boolean(activeLine && activeTeam && activeTeamLabel),
   })
   const prcGroups = dataQuery.data?.prcGroups ?? EMPTY_LIST
@@ -357,7 +353,7 @@ export function CommonAnomalyPage() {
       sdwt: activeTeamLabel,
       desc: "",
     }),
-    enabled: Boolean(activeLine && activeTeamLabel),
+    enabled: Boolean(!isSkipList && activeLine && activeTeamLabel),
     staleTime: 30 * 1000,
     retry: false,
   })
@@ -564,8 +560,9 @@ export function CommonAnomalyPage() {
                         key={row.id}
                         row={row}
                         lineId={activeLine}
-                        currentUserKnoxId={currentUserQuery.data?.knoxId}
-                        passRecord={passHistoryByKey.get(buildCommonChartPassHistoryKey(activeLine, row))}
+                        passRecord={isSkipList
+                          ? row.pass_history
+                          : passHistoryByKey.get(buildCommonChartPassHistoryKey(activeLine, row))}
                       />
                     ))}
                   </div>

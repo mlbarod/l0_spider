@@ -6,7 +6,7 @@ import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
 
 const ERD_FILE_ROOT = "/appdata/abnormal_trend/pic/erd"
 const COMMON_FILE_ROOT = "/appdata/abnormal_trend/pic/common"
-export const COMMON_PASS_HISTORY_VERSION = "COMMON"
+export const COMMON_PASS_HISTORY_VERSION = "NA"
 const helperPath = fileURLToPath(new URL("../scripts/pass_history.py", import.meta.url))
 const ALL_VALUES = "ALL"
 
@@ -85,6 +85,21 @@ function buildErdImagePath(record) {
   ].map(normalizeText)
   if (segments.some((value) => !value)) throw new Error("PASS 이력에서 ERD 차트 경로를 복원하지 못했습니다.")
   return `${ERD_FILE_ROOT}/${segments.join("/")}`
+}
+
+function buildCommonDataPath(record) {
+  const segments = [
+    normalizeDbDate(record.update_date),
+    record.sdwt,
+    record.desc,
+    record.priority,
+    record.sensor,
+    record.step,
+  ].map(normalizeText)
+  if (segments.some((value) => !value || value.includes("/") || value.includes("\\") || value.includes(".."))) {
+    throw new Error("PASS 이력에서 공통부 이상감지 경로를 복원하지 못했습니다.")
+  }
+  return `${COMMON_FILE_ROOT}/${segments.join("/")}/data.parquet`
 }
 
 export function buildPassHistoryFilterPayload(records, filters) {
@@ -184,6 +199,91 @@ export function buildPassHistoryFilterPayload(records, filters) {
         step: normalizeText(record.step),
         eqp: `${normalizeEqp(record.eqp)}.png`,
         file_path: filePath,
+        line_rev: normalizeText(record.line_id),
+        pass_history: record,
+      }
+    }),
+  }
+}
+
+export function buildCommonPassHistoryFilterPayload(records, filters) {
+  const seenRecords = new Set()
+  const commonRecords = records.filter((record) => {
+    if (normalizeText(record.line_id) !== filters.lineId) return false
+    if (normalizeText(record.ver) !== COMMON_PASS_HISTORY_VERSION) return false
+    const identity = passRecordIdentity(record)
+    if (seenRecords.has(identity)) return false
+    seenRecords.add(identity)
+    return true
+  })
+  const prcGroups = aggregateBy(commonRecords, "recipe_id", (value, groupRecords) => ({
+    value,
+    rowCount: groupRecords.length,
+  }))
+  const selectedPrcGroup = prcGroups.some((item) => item.value === filters.prcGroup)
+    ? filters.prcGroup
+    : ""
+  const prcGroupRecords = selectedPrcGroup
+    ? commonRecords.filter((record) => normalizeText(record.recipe_id) === selectedPrcGroup)
+    : []
+  const eqps = aggregateBy(prcGroupRecords, "eqp", (value, groupRecords) => ({
+    value: `${value}.png`,
+    rowCount: groupRecords.length,
+  }), normalizeEqp)
+  const normalizedSelectedEqp = normalizeEqp(filters.eqp)
+  const selectedEqp = filters.eqp === ALL_VALUES && eqps.length
+    ? ALL_VALUES
+    : eqps.some((item) => normalizeEqp(item.value) === normalizedSelectedEqp)
+    ? `${normalizedSelectedEqp}.png`
+    : ""
+  const eqpRecords = selectedEqp === ALL_VALUES
+    ? prcGroupRecords
+    : selectedEqp
+    ? prcGroupRecords.filter((record) => normalizeEqp(record.eqp) === normalizeEqp(selectedEqp))
+    : []
+  const sensors = aggregateBy(eqpRecords, "sensor", (value, groupRecords) => ({
+    value,
+    rowCount: groupRecords.length,
+  }))
+  const selectedSensor = sensors.some((item) => item.value === filters.sensor)
+    ? filters.sensor
+    : ""
+  const chartRecords = selectedSensor
+    ? eqpRecords.filter((record) => normalizeText(record.sensor) === selectedSensor)
+    : []
+
+  return {
+    filters: {
+      line: filters.lineId,
+      pathSdwt: "__SKIP_LIST__",
+      sdwt: "SKIP LIST",
+      prcGroup: selectedPrcGroup,
+      eqp: selectedEqp,
+      sensor: selectedSensor,
+    },
+    counts: {
+      filteredRows: commonRecords.length,
+      chartRows: chartRecords.length,
+    },
+    prcGroups,
+    eqps,
+    sensors,
+    rows: chartRecords.map((record) => {
+      const dataPath = buildCommonDataPath(record)
+      const eqp = normalizeEqp(record.eqp)
+      const imagePath = `${dataPath.slice(0, -"data.parquet".length)}${eqp}.png`
+      return {
+        id: `pass-${passRecordIdentity(record)}`,
+        file_path: imagePath,
+        data_path: dataPath,
+        image_path: imagePath,
+        sdwt: normalizeText(record.sdwt),
+        prc_group: normalizeText(record.recipe_id),
+        date: normalizeDbDate(record.update_date),
+        priority: normalizeText(record.priority),
+        sensor: normalizeText(record.sensor),
+        step: normalizeText(record.step),
+        eqp: `${eqp}.png`,
         line_rev: normalizeText(record.line_id),
         pass_history: record,
       }
@@ -344,12 +444,14 @@ export async function handlePassHistoryRequest(req, res, url) {
         sendJson(res, 400, { ok: false, error: "Line Name이 필요합니다." })
         return
       }
+      const view = normalizeText(url.searchParams.get("view"))
+      const isFilterView = view === "filters" || view === "common-filters"
       const records = await listPassHistoryRecords({
         lineId,
-        sdwt: url.searchParams.get("view") === "filters" ? "" : normalizeText(url.searchParams.get("sdwt")),
-        desc: url.searchParams.get("view") === "filters" ? "" : normalizeText(url.searchParams.get("desc")),
+        sdwt: isFilterView ? "" : normalizeText(url.searchParams.get("sdwt")),
+        desc: isFilterView ? "" : normalizeText(url.searchParams.get("desc")),
       })
-      if (url.searchParams.get("view") === "filters") {
+      if (view === "filters") {
         sendJson(res, 200, buildPassHistoryFilterPayload(records, {
           lineId,
           priorities: url.searchParams.getAll("priority").map(normalizeText).filter(Boolean),
@@ -357,6 +459,15 @@ export async function handlePassHistoryRequest(req, res, url) {
           eqpCh: normalizeText(url.searchParams.get("eqpCh")),
           sensor: normalizeText(url.searchParams.get("sensor")),
           chStep: normalizeText(url.searchParams.get("chStep")),
+        }))
+        return
+      }
+      if (view === "common-filters") {
+        sendJson(res, 200, buildCommonPassHistoryFilterPayload(records, {
+          lineId,
+          prcGroup: normalizeText(url.searchParams.get("prcGroup")),
+          eqp: normalizeText(url.searchParams.get("eqp")),
+          sensor: normalizeText(url.searchParams.get("sensor")),
         }))
         return
       }
