@@ -55,6 +55,7 @@ import {
   fetchSelfEquipmentData,
 } from "../api/selfEquipmentApi"
 import { SENSOR_GRADES, SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
+import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 
 const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
@@ -1426,7 +1427,10 @@ export function FdcTrendPage() {
       .sort((left, right) => left.eqp.localeCompare(right.eqp, "ko", { numeric: true }))
   }, [chartRows])
 
-  const filteredLines = filterItems(lines.map((line) => ({ value: line, label: line })), queries.line)
+  const filteredLines = filterItems(
+    lines.map((line) => ({ value: line, label: formatLineDisplayName(line) })),
+    queries.line,
+  )
   const filteredTeams = filterItems(
     teamOptions.map((team) => ({ value: team.key, label: team.label })),
     queries.team,

@@ -10,18 +10,19 @@ import {
   SPIDER_DATA_PATH_TEMPLATES,
   buildDashboardStatsPath,
 } from "../src/config/spiderDataPaths.mjs"
-import { readLineMapping } from "./mappingConfig.mjs"
+import { mappingConfigPath, readLineMapping } from "./mappingConfig.mjs"
 
 export const DASHBOARD_STATS_COLUMNS = SPIDER_DASHBOARD_COLUMNS.stats
 export const DASHBOARD_DETAIL_COLUMNS = SPIDER_DASHBOARD_COLUMNS.detail
 export const LINE_ANOMALY_ID_COLUMNS = Object.freeze(["desc", "recipe_id", "priority", "sensor", "eqp"])
-export const DEFAULT_DASHBOARD_PERIOD_DAYS = 7
 
 const DASHBOARD_PATH_ROOT = process.env.SPIDER_DASHBOARD_PATH_ROOT
   ?? dirname(SPIDER_DATA_PATH_TEMPLATES.dashboardDetail)
 const READ_CONCURRENCY = 4
 const parquetCache = new Map()
 const parquetPending = new Map()
+const dashboardFileListCache = new Map()
+let mappingCache = null
 
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
@@ -143,8 +144,7 @@ export function resolveDashboardDateRange(dateTimes, requested = {}) {
   const minDate = availableDates[0]
   const maxDate = availableDates.at(-1)
   const defaultEndDate = maxDate
-  const defaultStartCandidate = shiftDate(defaultEndDate, -(DEFAULT_DASHBOARD_PERIOD_DAYS - 1))
-  const defaultStartDate = defaultStartCandidate < minDate ? minDate : defaultStartCandidate
+  const defaultStartDate = maxDate
   const startDate = requested.startDate || defaultStartDate
   const endDate = requested.endDate || defaultEndDate
 
@@ -241,6 +241,7 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
   const requestedLines = validateRequestedLines(filters.lines ?? [], mappingConfig)
   const fileDates = new Set()
   const combinationsByDateLine = new Map()
+  const combinationsByDateLineGrade = new Map()
   const actualLines = new Set()
 
   datedRows.forEach(({ dateTime, rows }) => {
@@ -254,8 +255,17 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
       actualLines.add(lineId)
       const dateLineKey = `${date}\u0000${lineId}`
       const combinations = combinationsByDateLine.get(dateLineKey) ?? new Set()
-      combinations.add(LINE_ANOMALY_ID_COLUMNS.map((column) => normalizeText(row[column])).join("\u0000"))
+      const combinationKey = LINE_ANOMALY_ID_COLUMNS
+        .map((column) => normalizeText(row[column]))
+        .join("\u0000")
+      combinations.add(combinationKey)
       combinationsByDateLine.set(dateLineKey, combinations)
+
+      const priority = normalizePriority(row.priority)
+      const dateLineGradeKey = `${dateLineKey}\u0000${priority}`
+      const gradeCombinations = combinationsByDateLineGrade.get(dateLineGradeKey) ?? new Set()
+      gradeCombinations.add(combinationKey)
+      combinationsByDateLineGrade.set(dateLineGradeKey, gradeCombinations)
     })
   })
 
@@ -263,6 +273,9 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
   const selectedLines = requestedLines.length ? requestedLines : availableLines
   const dates = enumerateDates(filters.startDate, filters.endDate)
   const getCount = (date, lineId) => combinationsByDateLine.get(`${date}\u0000${lineId}`)?.size ?? 0
+  const getGradeCount = (date, lineId, priorities) => priorities.reduce((sum, priority) => (
+    sum + (combinationsByDateLineGrade.get(`${date}\u0000${lineId}\u0000${priority}`)?.size ?? 0)
+  ), 0)
   const latestDate = Array.from(fileDates).sort(compareDateTexts).at(-1) ?? null
   const previousDate = latestDate ? shiftDate(latestDate, -1) : null
   const hasPreviousData = Boolean(previousDate && fileDates.has(previousDate))
@@ -294,6 +307,11 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
     ? lineSummary.reduce((sum, row) => sum + row.previousDateCount, 0)
     : null
   const topLineRow = lineSummary.find((row) => row.totalCount > 0) ?? null
+  const sumGradeCount = (priorities) => dates.reduce((dateSum, date) => (
+    dateSum + selectedLines.reduce((lineSum, lineId) => (
+      lineSum + getGradeCount(date, lineId, priorities)
+    ), 0)
+  ), 0)
   const dailyTrend = dates.flatMap((date) => (
     lineSummary.map((row) => ({
       date,
@@ -324,6 +342,11 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
       topLineCount: topLineRow?.totalCount ?? 0,
       previousDate: hasPreviousData ? previousDate : null,
       changeFromPreviousDay: previousDateCount === null ? null : latestDateCount - previousDateCount,
+      monitoringSensorTotal: normalizeNumber(filters.monitoringSensorTotal),
+      abGradeCount: sumGradeCount(["A", "B"]),
+      dGradeCount: sumGradeCount(["D"]),
+      nGradeCount: sumGradeCount(["N"]),
+      mGradeCount: sumGradeCount(["M"]),
     },
     lineSummary,
     dailyTrend,
@@ -373,11 +396,41 @@ async function mapWithConcurrency(items, mapper, concurrency = READ_CONCURRENCY)
 }
 
 export async function listDashboardDateFiles(pathRoot = DASHBOARD_PATH_ROOT) {
+  const rootStat = await stat(pathRoot)
+  const cached = dashboardFileListCache.get(pathRoot)
+  if (cached?.mtimeMs === rootStat.mtimeMs) return cached.files
+
   const entries = await readdir(pathRoot, { withFileTypes: true })
-  return entries
+  const files = entries
     .filter((entry) => entry.isFile() && isValidDateTimeFileName(entry.name))
     .map((entry) => ({ dateTime: entry.name, filePath: join(pathRoot, entry.name) }))
     .sort((left, right) => compareDateTexts(left.dateTime, right.dateTime))
+  dashboardFileListCache.set(pathRoot, { mtimeMs: rootStat.mtimeMs, files })
+  return files
+}
+
+export function selectLatestDashboardFilePerDate(dateFiles, startDate, endDate) {
+  const latestByDate = new Map()
+  dateFiles.forEach((file) => {
+    const date = file.dateTime.slice(0, 10)
+    if (date < startDate || date > endDate) return
+    const current = latestByDate.get(date)
+    if (!current || compareDateTexts(current.dateTime, file.dateTime) < 0) {
+      latestByDate.set(date, file)
+    }
+  })
+  return Array.from(latestByDate.values())
+    .sort((left, right) => compareDateTexts(left.dateTime, right.dateTime))
+}
+
+async function readDashboardMapping() {
+  const fileStat = await stat(mappingConfigPath)
+  if (mappingCache?.mtimeMs === fileStat.mtimeMs && mappingCache?.size === fileStat.size) {
+    return mappingCache.value
+  }
+  const value = await readLineMapping()
+  mappingCache = { mtimeMs: fileStat.mtimeMs, size: fileStat.size, value }
+  return value
 }
 
 export async function getLatestDashboardDate(pathRoot = DASHBOARD_PATH_ROOT) {
@@ -396,36 +449,34 @@ export async function getDashboardSummary(requestedFilters = {}) {
     dateFiles.map((file) => file.dateTime),
     requestedFilters,
   )
-  const selectedFiles = dateFiles.filter(({ dateTime }) => {
-    const date = dateTime.slice(0, 10)
-    return date >= dateRange.startDate && date <= dateRange.endDate
-  })
-  const latestFile = dateFiles.at(-1)
-  const selectedAndLatestFiles = Array.from(
-    new Map([...selectedFiles, latestFile].map((file) => [file.dateTime, file])).values(),
+  const selectedFiles = selectLatestDashboardFilePerDate(
+    dateFiles,
+    dateRange.startDate,
+    dateRange.endDate,
   )
-  const statsPath = buildDashboardStatsPath(latestFile.dateTime)
+  const latestFile = selectedFiles.at(-1) ?? null
+  const statsPath = latestFile ? buildDashboardStatsPath(latestFile.dateTime) : ""
 
   const [mappingConfig, statsRows, fileRows] = await Promise.all([
-    readLineMapping(),
-    readParquetRows(statsPath, DASHBOARD_STATS_COLUMNS),
-    mapWithConcurrency(selectedAndLatestFiles, async (file) => ({
+    readDashboardMapping(),
+    latestFile ? readParquetRows(statsPath, DASHBOARD_STATS_COLUMNS) : [],
+    mapWithConcurrency(selectedFiles, async (file) => ({
       ...file,
       rows: await readParquetRows(file.filePath, DASHBOARD_DETAIL_COLUMNS),
     })),
   ])
 
   const rowsByDateTime = new Map(fileRows.map((file) => [file.dateTime, file.rows]))
-  const latestDetailRows = rowsByDateTime.get(latestFile.dateTime) ?? []
+  const latestDetailRows = latestFile ? (rowsByDateTime.get(latestFile.dateTime) ?? []) : []
   const datedRows = selectedFiles.map((file) => ({
     dateTime: file.dateTime,
     rows: rowsByDateTime.get(file.dateTime) ?? [],
   }))
   const requestedLines = requestedFilters.lines ?? []
   const baseSummary = buildDashboardSummary(statsRows, latestDetailRows, {
-    latestDate: latestFile.dateTime,
+    latestDate: latestFile?.dateTime ?? "",
     statsPath,
-    detailPath: latestFile.filePath,
+    detailPath: latestFile?.filePath ?? "",
   })
 
   return {
@@ -433,6 +484,7 @@ export async function getDashboardSummary(requestedFilters = {}) {
     lineDashboard: buildLineDashboardPayload(datedRows, mappingConfig, {
       ...dateRange,
       lines: requestedLines,
+      monitoringSensorTotal: baseSummary.metrics.monitoringSensorTotal,
     }),
     sourcePaths: {
       ...baseSummary.sourcePaths,

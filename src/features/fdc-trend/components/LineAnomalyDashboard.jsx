@@ -17,6 +17,7 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
+  LabelList,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -47,6 +48,7 @@ import {
 import { cn } from "@/lib/utils"
 
 import { fetchDashboardSummary } from "../api/dashboardApi"
+import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 
 const CHART_COLORS = [
   "var(--chart-1)",
@@ -115,7 +117,7 @@ function DashboardTooltip({ active, payload, label, type }) {
     const row = payload[0]?.payload
     return (
       <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-lg">
-        <p className="font-semibold">{row?.lineId}</p>
+        <p className="font-semibold">{formatLineDisplayName(row?.lineId)}</p>
         <p className="mt-1 text-muted-foreground">이상 건수 <strong className="text-foreground">{formatCount(row?.totalCount)}건</strong></p>
       </div>
     )
@@ -188,7 +190,7 @@ function LineMultiSelect({ lines, selectedLines, onChange, disabled }) {
             onCheckedChange={(checked) => toggleLine(line, checked)}
             onSelect={(event) => event.preventDefault()}
           >
-            {line}
+            {formatLineDisplayName(line)}
           </DropdownMenuCheckboxItem>
         ))}
       </DropdownMenuContent>
@@ -214,7 +216,7 @@ function LineSummaryTable({ rows }) {
   const normalizedSearch = search.trim().toLocaleLowerCase("ko")
   const sortedRows = useMemo(() => {
     const filteredRows = normalizedSearch
-      ? rows.filter((row) => row.lineId.toLocaleLowerCase("ko").includes(normalizedSearch))
+      ? rows.filter((row) => formatLineDisplayName(row.lineId).toLocaleLowerCase("ko").includes(normalizedSearch))
       : rows
     return [...filteredRows].sort((left, right) => {
       const result = compareValues(left, right, sortConfig.key)
@@ -269,7 +271,7 @@ function LineSummaryTable({ rows }) {
           <TableBody>
             {visibleRows.length ? visibleRows.map((row) => (
               <TableRow key={row.lineId}>
-                <TableCell className="font-semibold">{row.lineId}</TableCell>
+                <TableCell className="font-semibold">{formatLineDisplayName(row.lineId)}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatCount(row.totalCount)}건</TableCell>
                 <TableCell className="text-right tabular-nums">{formatCount(row.latestDateCount)}건</TableCell>
                 <TableCell className="text-right"><ChangeText value={row.changeCount} className="text-xs font-medium" /></TableCell>
@@ -351,6 +353,11 @@ export function LineAnomalyDashboard() {
       Date.parse(`${left.date}T00:00:00Z`) - Date.parse(`${right.date}T00:00:00Z`)
     ))
   }, [dashboard?.dailyTrend, displayedLines])
+  const barRows = useMemo(() => (
+    [...(dashboard?.lineSummary ?? [])].sort((left, right) => (
+      right.lineId.localeCompare(left.lineId, "ko", { numeric: true })
+    ))
+  ), [dashboard?.lineSummary])
 
   const filterError = !draftStartDate || !draftEndDate
     ? "조회 시작일과 종료일을 입력하세요."
@@ -411,8 +418,6 @@ export function LineAnomalyDashboard() {
   const summary = dashboard.summary
   const lineRows = dashboard.lineSummary
   const options = dashboard.options
-  const topLineDescription = summary.topLine ? `${formatCount(summary.topLineCount)}건` : "발생 데이터 없음"
-
   return (
     <section className="relative mt-6 grid gap-5 border-t-2 border-border/80 pt-9" aria-busy={dashboardQuery.isFetching}>
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -462,11 +467,14 @@ export function LineAnomalyDashboard() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
+        <KpiCard label="모니터링 센서 총합" value={formatCount(summary.monitoringSensorTotal)} unit="개" description="조회 최신 시각 · TL total 합계" />
         <KpiCard label="전체 이상 건수" value={formatCount(summary.totalAbnormalCount)} unit="건" description={`${formatDisplayDate(dashboard.filters.startDate)} ~ ${formatDisplayDate(dashboard.filters.endDate)}`} />
-        <KpiCard label="이상 발생 라인" value={formatCount(summary.abnormalLineCount)} unit="개" description="선택 기간 내 1건 이상 발생" />
         <KpiCard label="최신일 이상 건수" value={formatCount(summary.latestDateCount)} unit="건" description={summary.latestDate ? formatDisplayDate(summary.latestDate) : "조회 기간 내 파일 없음"} />
-        <KpiCard label="최다 발생 라인" value={summary.topLine ?? "—"} description={topLineDescription} />
+        <KpiCard label="A/B Grade" value={formatCount(summary.abGradeCount)} unit="건" description="A · B Grade 고유건수" />
+        <KpiCard label="D Grade" value={formatCount(summary.dGradeCount)} unit="건" description="D Grade 고유건수" />
+        <KpiCard label="N Grade" value={formatCount(summary.nGradeCount)} unit="건" description="N Grade 고유건수" />
+        <KpiCard label="M Grade" value={formatCount(summary.mGradeCount)} unit="건" description="M Grade 고유건수" />
         <KpiCard
           label="전일 대비"
           value={<ChangeText value={summary.changeFromPreviousDay} className="text-xl xl:text-2xl" />}
@@ -478,16 +486,16 @@ export function LineAnomalyDashboard() {
         <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
           <div className="border-b px-4 py-3">
             <h3 className="text-sm font-semibold">라인별 이상 건수</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">선택 기간 누적 · 이상 건수 내림차순</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">선택 기간 누적 · 라인명 내림차순 · 막대 끝 건수 표시</p>
           </div>
           <div className="h-[330px] overflow-y-auto p-3">
-            {lineRows.length ? (
-              <div style={{ height: Math.max(300, lineRows.length * 38) }}>
+            {barRows.length ? (
+              <div style={{ height: Math.max(300, barRows.length * 38) }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={lineRows} layout="vertical" margin={{ top: 4, right: 28, bottom: 4, left: 8 }}>
+                  <BarChart data={barRows} layout="vertical" margin={{ top: 4, right: 68, bottom: 4, left: 8 }}>
                     <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" horizontal={false} />
                     <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
-                    <YAxis type="category" dataKey="lineId" width={105} tick={{ fontSize: 12, fill: "var(--foreground)" }} interval={0} />
+                    <YAxis type="category" dataKey="lineId" tickFormatter={formatLineDisplayName} width={105} tick={{ fontSize: 12, fill: "var(--foreground)" }} interval={0} />
                     <Tooltip content={<DashboardTooltip type="bar" />} cursor={{ fill: "var(--muted)", opacity: 0.45 }} />
                     <Bar
                       dataKey="totalCount"
@@ -497,7 +505,14 @@ export function LineAnomalyDashboard() {
                       maxBarSize={22}
                       className="cursor-pointer"
                       onClick={(entry) => selectLine(entry?.lineId ?? entry?.payload?.lineId)}
-                    />
+                    >
+                      <LabelList
+                        dataKey="totalCount"
+                        position="right"
+                        formatter={(value) => `${formatCount(value)}건`}
+                        style={{ fill: "var(--foreground)", fontSize: 11, fontWeight: 600 }}
+                      />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -546,7 +561,7 @@ export function LineAnomalyDashboard() {
                       key={lineId}
                       type="monotone"
                       dataKey={lineId}
-                      name={lineId}
+                      name={formatLineDisplayName(lineId)}
                       stroke={CHART_COLORS[index % CHART_COLORS.length]}
                       strokeWidth={2}
                       dot={trendRows.length <= 14 ? { r: 2 } : false}

@@ -20,6 +20,7 @@ import { fetchCurrentUser } from "../api/currentUserApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
 import { deletePassHistory, fetchPassHistory } from "../api/passHistoryApi"
 import { SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
+import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 import { IdentityChartDialog, SkipChartDialog } from "./FdcTrendPage"
 
 const EMPTY_MAPPING = Object.freeze({})
@@ -424,7 +425,10 @@ export function CommonAnomalyPage() {
       toast.error(`클릭이력 저장 실패: ${error.message}`)
     }
   }
-  const filteredLines = filterItems(lines.map((value) => ({ value, label: value })), queries.line)
+  const filteredLines = filterItems(
+    lines.map((value) => ({ value, label: formatLineDisplayName(value) })),
+    queries.line,
+  )
   const filteredTeams = filterItems(teamOptions.map((team) => ({ value: team.key, label: team.label })), queries.team)
   const filteredPrcGroups = filterItems(prcGroups.map((item) => ({
     value: item.value,

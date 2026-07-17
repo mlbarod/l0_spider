@@ -17,6 +17,7 @@ import {
 } from "../api/commonalityApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
 import { SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
+import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 
 const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
@@ -250,7 +251,10 @@ export function CommonalityAnomalyPage() {
       toast.error(`클릭이력 저장 실패: ${error.message}`)
     }
   }
-  const filteredLines = filterValues(lines.map((line) => ({ label: line, value: line })), queries.line)
+  const filteredLines = filterValues(
+    lines.map((line) => ({ label: formatLineDisplayName(line), value: line })),
+    queries.line,
+  )
   const filteredTeams = filterValues(teamOptions.map((team) => ({ label: team.label, value: team.key })), queries.team)
   const filteredSensors = filterValues(sensors.map((sensor) => ({ label: sensor, value: sensor })), queries.sensor)
   const filteredChSteps = filterValues(

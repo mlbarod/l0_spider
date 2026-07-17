@@ -47,6 +47,7 @@ import {
   getYieldSpecRows,
 } from "../utils/fdcTrendMockData"
 import { fetchHardSpecMeta, fetchHardSpecRecommendations } from "../api/fdcTrendApi"
+import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 
 const PAGE_META = {
   matching: {
@@ -221,7 +222,13 @@ function MetricGrid() {
 
 function SummaryTable({ title, rows, firstColumn }) {
   const columns = [
-    { key: firstColumn, label: firstColumn },
+    {
+      key: firstColumn,
+      label: firstColumn,
+      render: (row) => firstColumn === "line_id"
+        ? formatLineDisplayName(row[firstColumn])
+        : row[firstColumn],
+    },
     { key: "A등급", label: "A등급" },
     { key: "B등급", label: "B등급" },
     { key: "D등급", label: "D등급" },
@@ -349,7 +356,7 @@ function FilterBar({ line, sdwt, sdwtOptions = getSdwtOptionsByLine(line), onLin
           <Tabs value={line} onValueChange={onLineChange}>
             <TabsList>
               {FDC_LINES.map((lineId) => (
-                <TabsTrigger key={lineId} value={lineId}>{lineId}</TabsTrigger>
+                <TabsTrigger key={lineId} value={lineId}>{formatLineDisplayName(lineId)}</TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
@@ -477,7 +484,7 @@ function HardSpecPage() {
             <SelectTrigger className="w-[180px]"><SelectValue placeholder="라인ID 선택해주세요" /></SelectTrigger>
             <SelectContent>
               {(meta?.lineIds ?? [HARD_SPEC_DEFAULT_LINE]).map((lineId) => (
-                <SelectItem key={lineId} value={lineId}>{lineId}</SelectItem>
+                <SelectItem key={lineId} value={lineId}>{formatLineDisplayName(lineId)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
