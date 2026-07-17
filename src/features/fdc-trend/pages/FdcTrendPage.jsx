@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
+import { createClickedCategoryHistory } from "../api/clickedCategoryHistoryApi"
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { createHitHistory } from "../api/hitHistoryApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
@@ -886,7 +887,7 @@ export const EqpAllSkipDialog = memo(function EqpAllSkipDialog({
   )
 })
 
-const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord }) {
+const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, allSkipLoadTargets }) {
   const eqp = stripPngExtension(row.eqp)
   const queryClient = useQueryClient()
   const cardRef = useRef(null)
@@ -1174,6 +1175,14 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord })
             lineId={lineId}
             disabled={isSkipped}
           />
+          {allSkipLoadTargets ? (
+            <EqpAllSkipDialog
+              eqp={eqp}
+              lineId={lineId}
+              dataQueryKeyPrefix="self-equipment-data"
+              loadTargets={allSkipLoadTargets}
+            />
+          ) : null}
           {isSkipped ? (
             <Button
               type="button"
@@ -1272,6 +1281,7 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord })
 export function FdcTrendPage() {
   const pageRef = useRef(null)
   const stepScrollPositionRef = useRef(0)
+  const queryClient = useQueryClient()
   const currentUserQuery = useQuery({
     queryKey: ["current-user"],
     queryFn: fetchCurrentUser,
@@ -1510,6 +1520,50 @@ export function FdcTrendPage() {
     ))
     resetStepAndSensor()
   }
+  const handleChStepChange = async (chStep) => {
+    const nextChStep = selectedChStep === chStep ? "" : chStep
+    const clickedAt = new Date().toISOString()
+    setSelectedChStep(nextChStep)
+    if (!nextChStep || isSkipList) return
+
+    try {
+      const queryKey = [
+        "self-equipment-data",
+        activeLine,
+        activeTeam,
+        activeTeamLabel,
+        priorities,
+        selectedDesc,
+        selectedEqpCh,
+        selectedSensor,
+        nextChStep,
+      ]
+      const payload = await queryClient.fetchQuery({
+        queryKey,
+        queryFn: () => fetchSelfEquipmentData({
+          line: activeLine,
+          pathSdwt: activeTeam,
+          sdwt: activeTeamLabel,
+          priorities,
+          desc: selectedDesc,
+          eqpCh: selectedEqpCh,
+          sensor: selectedSensor,
+          chStep: nextChStep,
+        }),
+      })
+      const filePaths = (payload.rows ?? []).map((row) => row.file_path)
+      if (!filePaths.length) return
+      await createClickedCategoryHistory({
+        app: "self",
+        lineId: activeLine,
+        filePaths,
+        grades: priorities,
+        clickedAt,
+      })
+    } catch (error) {
+      toast.error(`클릭이력 저장 실패: ${error.message}`)
+    }
+  }
 
   return (
     <div ref={pageRef} className="relative flex h-full min-h-0 min-w-0 flex-col overflow-y-auto bg-muted/30">
@@ -1701,7 +1755,7 @@ export function FdcTrendPage() {
                   label={item.label}
                   meta={item.meta}
                   selected={activeChStep === item.value}
-                  onClick={() => setSelectedChStep((current) => current === item.value ? "" : item.value)}
+                  onClick={() => { void handleChStepChange(item.value) }}
                 />
               ))}
             </FilterCard>
@@ -1751,28 +1805,6 @@ export function FdcTrendPage() {
                     <div className="flex min-w-0 items-center gap-2">
                       <Badge>EQP</Badge>
                       <h3 className="truncate text-sm font-semibold">{group.eqp}</h3>
-                      {!isSkipList ? (
-                        <EqpAllSkipDialog
-                          eqp={group.eqp}
-                          lineId={activeLine}
-                          dataQueryKeyPrefix="self-equipment-data"
-                          loadTargets={async () => {
-                            const payload = await fetchSelfEquipmentData({
-                              line: activeLine,
-                              pathSdwt: activeTeam,
-                              sdwt: activeTeamLabel,
-                              priorities,
-                              desc: activeDesc,
-                              eqpCh: group.rows[0]?.eqp ?? group.eqp,
-                              sensor: activeSensor,
-                              chStep: ALL_CH_STEPS,
-                            })
-                            return (payload.rows ?? []).map((row) => ({
-                              filePath: row.file_path,
-                            }))
-                          }}
-                        />
-                      ) : null}
                     </div>
                     <Badge variant="secondary">{group.rows.length.toLocaleString()} charts</Badge>
                   </header>
@@ -1785,6 +1817,21 @@ export function FdcTrendPage() {
                         passRecord={isSkipList
                           ? row.pass_history
                           : passHistoryByKey.get(buildChartPassHistoryKey(activeLine, row))}
+                        allSkipLoadTargets={isSkipList ? null : async () => {
+                          const payload = await fetchSelfEquipmentData({
+                            line: activeLine,
+                            pathSdwt: activeTeam,
+                            sdwt: activeTeamLabel,
+                            priorities,
+                            desc: activeDesc,
+                            eqpCh: group.rows[0]?.eqp ?? group.eqp,
+                            sensor: activeSensor,
+                            chStep: ALL_CH_STEPS,
+                          })
+                          return (payload.rows ?? []).map((targetRow) => ({
+                            filePath: targetRow.file_path,
+                          }))
+                        }}
                       />
                     ))}
                   </div>

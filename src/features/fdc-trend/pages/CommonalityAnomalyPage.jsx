@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react"
 import { ArrowLeft, Check, ChevronRight, FileWarning, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,6 +10,7 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
+import { createClickedCategoryHistory } from "../api/clickedCategoryHistoryApi"
 import {
   buildCommonalityImageUrl,
   fetchCommonalityData,
@@ -142,6 +144,7 @@ function filterValues(values, query) {
 }
 
 export function CommonalityAnomalyPage() {
+  const queryClient = useQueryClient()
   const [selectedLine, setSelectedLine] = useState("")
   const [selectedTeam, setSelectedTeam] = useState("")
   const [selectedSensor, setSelectedSensor] = useState("")
@@ -209,6 +212,43 @@ export function CommonalityAnomalyPage() {
     setSelectedSensor("")
     setSelectedChStep("")
     setQueries((current) => ({ ...current, sensor: "", chStep: "" }))
+  }
+  const handleChStepChange = async (chStep) => {
+    const nextChStep = selectedChStep === chStep ? "" : chStep
+    const clickedAt = new Date().toISOString()
+    setSelectedChStep(nextChStep)
+    if (!nextChStep) return
+
+    try {
+      const queryKey = [
+        "commonality-data",
+        activeLine,
+        activeTeam,
+        activeTeamLabel,
+        selectedSensor,
+        nextChStep,
+      ]
+      const payload = await queryClient.fetchQuery({
+        queryKey,
+        queryFn: () => fetchCommonalityData({
+          line: activeLine,
+          pathSdwt: activeTeam,
+          sdwt: activeTeamLabel,
+          sensor: selectedSensor,
+          chStep: nextChStep,
+        }),
+      })
+      const filePaths = (payload.rows ?? []).map((row) => row.filePath)
+      if (!filePaths.length) return
+      await createClickedCategoryHistory({
+        app: "commonality",
+        lineId: activeLine,
+        filePaths,
+        clickedAt,
+      })
+    } catch (error) {
+      toast.error(`클릭이력 저장 실패: ${error.message}`)
+    }
   }
   const filteredLines = filterValues(lines.map((line) => ({ label: line, value: line })), queries.line)
   const filteredTeams = filterValues(teamOptions.map((team) => ({ label: team.label, value: team.key })), queries.team)
@@ -331,7 +371,7 @@ export function CommonalityAnomalyPage() {
                   key={item.value}
                   label={item.label}
                   selected={activeChStep === item.value}
-                  onClick={() => setSelectedChStep((current) => current === item.value ? "" : item.value)}
+                  onClick={() => { void handleChStepChange(item.value) }}
                 />
               ))}
             </FilterCard>

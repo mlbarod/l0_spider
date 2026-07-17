@@ -7,6 +7,7 @@ import { fileURLToPath, URL } from "node:url"
 import { createServer as createViteServer } from "vite"
 
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
+import { handleClickedCategoryHistoryRequest } from "./server/clickedCategoryHistory.mjs"
 import {
   handleCommonAnomalyDataRequest,
   handleCommonAnomalyImageRequest,
@@ -134,6 +135,13 @@ const server = createServer((req, res) => {
 
   if (url.pathname === "/api/hit-history") {
     handleHitHistoryRequest(req, res).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/clicked-category-history") {
+    handleClickedCategoryHistoryRequest(req, res).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
     return

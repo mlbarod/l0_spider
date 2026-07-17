@@ -9,6 +9,7 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
+import { createClickedCategoryHistory } from "../api/clickedCategoryHistoryApi"
 import {
   buildCommonAnomalyImageUrl,
   fetchCommonAnomalyData,
@@ -19,7 +20,7 @@ import { fetchCurrentUser } from "../api/currentUserApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
 import { deletePassHistory, fetchPassHistory } from "../api/passHistoryApi"
 import { SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
-import { EqpAllSkipDialog, IdentityChartDialog, SkipChartDialog } from "./FdcTrendPage"
+import { IdentityChartDialog, SkipChartDialog } from "./FdcTrendPage"
 
 const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
@@ -278,6 +279,7 @@ function filterItems(items, query) {
 
 export function CommonAnomalyPage() {
   const pageRef = useRef(null)
+  const queryClient = useQueryClient()
   const [selectedLine, setSelectedLine] = useState("")
   const [selectedTeam, setSelectedTeam] = useState("")
   const [selectedPrcGroup, setSelectedPrcGroup] = useState("")
@@ -382,6 +384,45 @@ export function CommonAnomalyPage() {
     setSelectedEqp("")
     setSelectedSensor("")
     setQueries((current) => ({ ...current, prcGroup: "", eqp: "", sensor: "" }))
+  }
+  const handleSensorChange = async (sensor) => {
+    const nextSensor = selectedSensor === sensor ? "" : sensor
+    const clickedAt = new Date().toISOString()
+    setSelectedSensor(nextSensor)
+    if (!nextSensor || isSkipList) return
+
+    try {
+      const queryKey = [
+        "common-anomaly-data",
+        activeLine,
+        activeTeam,
+        activeTeamLabel,
+        selectedPrcGroup,
+        selectedEqp,
+        nextSensor,
+      ]
+      const payload = await queryClient.fetchQuery({
+        queryKey,
+        queryFn: () => fetchCommonAnomalyData({
+          line: activeLine,
+          pathSdwt: activeTeam,
+          sdwt: activeTeamLabel,
+          prcGroup: selectedPrcGroup,
+          eqp: selectedEqp,
+          sensor: nextSensor,
+        }),
+      })
+      const filePaths = (payload.rows ?? []).map((row) => row.data_path)
+      if (!filePaths.length) return
+      await createClickedCategoryHistory({
+        app: "common",
+        lineId: activeLine,
+        filePaths,
+        clickedAt,
+      })
+    } catch (error) {
+      toast.error(`클릭이력 저장 실패: ${error.message}`)
+    }
   }
   const filteredLines = filterItems(lines.map((value) => ({ value, label: value })), queries.line)
   const filteredTeams = filterItems(teamOptions.map((team) => ({ value: team.key, label: team.label })), queries.team)
@@ -521,7 +562,7 @@ export function CommonAnomalyPage() {
             >
               {filteredSensors.map((item) => (
                 <SelectRow key={item.value} label={item.label} meta={item.meta} selected={activeSensor === item.value} onClick={() => {
-                  setSelectedSensor((current) => current === item.value ? "" : item.value)
+                  void handleSensorChange(item.value)
                 }} />
               ))}
             </FilterCard>
@@ -554,18 +595,6 @@ export function CommonAnomalyPage() {
                     <div className="flex min-w-0 items-center gap-2">
                       <Badge>EQP</Badge>
                       <h3 className="truncate text-sm font-semibold">{group.eqp}</h3>
-                      {!isSkipList ? (
-                        <EqpAllSkipDialog
-                          eqp={group.eqp}
-                          lineId={activeLine}
-                          dataQueryKeyPrefix="common-anomaly-data"
-                          loadTargets={async () => group.rows.map((row) => ({
-                            filePath: row.data_path,
-                            eqp: group.eqp,
-                            prcGroup: row.prc_group,
-                          }))}
-                        />
-                      ) : null}
                     </div>
                     <Badge variant="secondary">{group.rows.length.toLocaleString()} images</Badge>
                   </header>

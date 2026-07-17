@@ -137,9 +137,10 @@ L0 Spider의 DB 접속정보는 `/appdata/l0_spider/db_info.pkl`에서 읽는다
 | `comment` | 팝업에서 입력한 한 줄 comment, 미입력 시 빈 문자열 |
 
 SKIP 상태인 차트는 상단에 `이상감지 SKIP 건` 배지와 하단에 `SKIP해제` 버튼을 표시한다. 해제가 완료되면 해당 차트 식별값의 `pass_history` 데이터를 삭제하고 배지를 제거한다.
-자설비와 공통부 이상감지의 EQP 카테고리 헤더에는 `EQP ALL SKIP` 버튼을 표시한다.
-이 버튼은 현재 EQP에 해당하는 실제 모든 `ch_step` 경로를 조회하여 각 `ch_step`을
-별도의 `pass_history` 행으로 한 번에 저장한다. `step = ALL`인 가상 행은 저장하지 않는다.
+자설비 각 Chart의 `SKIP` 버튼 옆에는 `EQP ALL SKIP` 버튼을 표시한다. 어느 Chart에서
+누르더라도 현재 EQP의 실제 모든 `ch_step` 경로를 조회하여 각 `ch_step`을 별도의
+`pass_history` 행으로 한 번에 저장한다. `step = ALL`인 가상 행은 저장하지 않는다.
+공통부 이상감지에는 `EQP ALL SKIP` 버튼을 표시하지 않는다.
 
 공통부 이상감지의 SKIP도 같은 `/api/pass-history`와 팝업 구조를 사용한다. Chart drawing에
 사용하는 공통부 `data.parquet` 경로, 선택 EQP와 `prc_group`을 서버로 전달하며,
@@ -202,6 +203,33 @@ SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일
 예를 들어 `/appdata/abnormal_trend/pic/erd/.../EQP-1.png`는
 `#appdata#abnormal_trend#pic#erd#...#EQP-1.png`로 저장한다. 버튼 클릭마다
 `hit_history`에 새 행을 INSERT한다.
+
+### `clicked_category_history`
+
+세 이상감지 App에서 마지막 필터를 선택해 Chart Drawing을 시작한 클릭이력을 저장한다.
+
+| 컬럼 | 타입 |
+| --- | --- |
+| `line_id` | `VARCHAR` |
+| `sdwt` | `VARCHAR` |
+| `grade` | `VARCHAR` |
+| `sensor` | `VARCHAR` |
+| `update_date` | `TIMESTAMP` |
+| `knox_id` | `VARCHAR` |
+
+`POST /api/clicked-category-history`는 실제 Drawing 결과 경로를 서버에서 파싱하고 접속
+IP로 현재 사용자를 확인한 후 한 행을 INSERT한다. 자설비는 `ch_step`, 동일성은
+`ch_step`, 공통부는 마지막 필터인 `sensor`를 새로 선택할 때 호출한다. 필터를 다시
+클릭해 선택 해제하거나 SKIP LIST를 조회하는 동작은 저장하지 않는다.
+
+| App | `line_id` | `sdwt` | `grade` | `sensor` | `update_date` |
+| --- | --- | --- | --- | --- | --- |
+| 자설비 | 선택 Line Name | ERD Drawing 경로 | 선택 grade를 확장한 리스트 문자열. `A/B`는 `['A', 'B']` | ERD Drawing 경로 | `ch_step` 클릭 시각 |
+| 동일성 | 선택 Line Name + `(g)` | `img.png` Drawing 경로 | `img.png` Drawing 경로 | `{sensor}_{ch_step}` 경로 | `ch_step` 클릭 시각 |
+| 공통부 | 선택 Line Name + `(c)` | `data.parquet` Drawing 경로 | `data.parquet` Drawing 경로 | `data.parquet` Drawing 경로 | `sensor` 클릭 시각 |
+
+한 번의 Drawing 결과에 여러 grade 또는 sensor가 포함되면 중복을 제거한 리스트 문자열로
+저장한다. `knox_id`는 모든 App에서 접속 IP 기반 현재 사용자 값을 사용한다.
 
 현재 확인된 정보에는 `VARCHAR` 길이, 기본키, 인덱스, NULL 허용 여부와 기본값이 포함되어 있지 않으므로 각 표에서는 별도로 가정하지 않는다.
 
