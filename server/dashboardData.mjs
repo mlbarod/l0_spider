@@ -120,6 +120,17 @@ export function getPreviousDashboardDateTime(dateTime) {
   return previousDate ? `${previousDate} ${dateTime.slice(11)}` : null
 }
 
+export function selectPreviousDashboardFileAtSameTime(dateFiles, latestDateTime) {
+  const previousDateTime = getPreviousDashboardDateTime(latestDateTime)
+  if (!previousDateTime) return null
+  const previousDate = previousDateTime.slice(0, 10)
+  const sameTime = previousDateTime.slice(11)
+  return dateFiles.find((file) => (
+    file.dateTime.slice(0, 10) === previousDate
+    && file.dateTime.slice(11) === sameTime
+  )) ?? null
+}
+
 function enumerateDates(startDate, endDate) {
   const start = parseDateParts(startDate)?.date
   const end = parseDateParts(endDate)?.date
@@ -305,6 +316,9 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
 
   const lineSummary = selectedLines.map((lineId) => {
     const totalCount = dates.reduce((sum, date) => sum + getCount(date, lineId), 0)
+    const abGradeCount = dates.reduce((sum, date) => (
+      sum + getGradeCount(date, lineId, ["A", "B"])
+    ), 0)
     const latestDateCount = latestDate ? getCount(latestDate, lineId) : 0
     const previousDateCount = hasPreviousData
       ? (comparisonCombinationsByLine.get(lineId)?.size ?? 0)
@@ -313,6 +327,7 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
     return {
       lineId,
       totalCount,
+      abGradeCount,
       latestDateCount,
       previousDateCount,
       changeCount: previousDateCount === null ? null : latestDateCount - previousDateCount,
@@ -483,11 +498,8 @@ export async function getDashboardSummary(requestedFilters = {}) {
     dateRange.endDate,
   )
   const latestFile = selectedFiles.at(-1) ?? null
-  const comparisonDateTime = latestFile
-    ? getPreviousDashboardDateTime(latestFile.dateTime)
-    : null
-  const comparisonFile = comparisonDateTime
-    ? dateFiles.find((file) => file.dateTime === comparisonDateTime) ?? null
+  const comparisonFile = latestFile
+    ? selectPreviousDashboardFileAtSameTime(dateFiles, latestFile.dateTime)
     : null
   const filesToRead = Array.from(new Map(
     [...selectedFiles, ...(comparisonFile ? [comparisonFile] : [])]

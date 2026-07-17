@@ -10,6 +10,7 @@ import {
   getPreviousDashboardDateTime,
   resolveDashboardDateRange,
   selectLatestDashboardFilePerDate,
+  selectPreviousDashboardFileAtSameTime,
 } from "./dashboardData.mjs"
 import { formatLineDisplayName } from "../src/features/fdc-trend/utils/lineDisplay.mjs"
 
@@ -151,6 +152,7 @@ test("sdwt를 라인으로 매핑한 뒤 날짜·라인별 5개 컬럼 고유조
     {
       lineId: "P1",
       totalCount: 3,
+      abGradeCount: 3,
       latestDateCount: 1,
       previousDateCount: 2,
       changeCount: -1,
@@ -160,6 +162,7 @@ test("sdwt를 라인으로 매핑한 뒤 날짜·라인별 5개 컬럼 고유조
     {
       lineId: "P2",
       totalCount: 2,
+      abGradeCount: 0,
       latestDateCount: 1,
       previousDateCount: 1,
       changeCount: 0,
@@ -270,6 +273,20 @@ test("전일 비교 파일명은 최신 파일의 D-1 동일 hh:mm:ss로 계산�
     "2026-07-16 16:30:45",
   )
   assert.equal(getPreviousDashboardDateTime("2026-07-17 25:00:00"), null)
+})
+
+test("전일 비교는 D-1의 다른 시각 파일을 제외하고 동일 hh:mm:ss 파일만 선택한다", () => {
+  const files = [
+    { dateTime: "2026-07-16 08:00:00", filePath: "/path/morning" },
+    { dateTime: "2026-07-16 16:00:00", filePath: "/path/evening" },
+    { dateTime: "2026-07-17 08:00:00", filePath: "/path/latest" },
+  ]
+
+  assert.equal(
+    selectPreviousDashboardFileAtSameTime(files, "2026-07-17 08:00:00")?.filePath,
+    "/path/morning",
+  )
+  assert.equal(selectPreviousDashboardFileAtSameTime(files, "2026-07-17 12:00:00"), null)
 })
 
 test("전일 대비는 기간 집계 파일이 아니라 D-1 동일 시각 파일 행으로 계산한다", () => {

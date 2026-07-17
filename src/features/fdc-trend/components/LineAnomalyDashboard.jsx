@@ -274,6 +274,7 @@ function LineSummaryTable({ rows }) {
             <TableRow className="bg-muted/40">
               <TableHead><SortButton column="lineId" label="라인" sortConfig={sortConfig} onSort={handleSort} /></TableHead>
               <TableHead className="text-right"><SortButton column="totalCount" label="전체 이상 건수" sortConfig={sortConfig} onSort={handleSort} /></TableHead>
+              <TableHead className="text-right"><SortButton column="abGradeCount" label="A/B Grade 이상건수" sortConfig={sortConfig} onSort={handleSort} /></TableHead>
               <TableHead className="text-right"><SortButton column="latestDateCount" label="최신일 이상 건수" sortConfig={sortConfig} onSort={handleSort} /></TableHead>
               <TableHead className="text-right"><SortButton column="changeCount" label="전일 대비" sortConfig={sortConfig} onSort={handleSort} /></TableHead>
               <TableHead><SortButton column="lastAbnormalDate" label="최근 이상 발생일" sortConfig={sortConfig} onSort={handleSort} /></TableHead>
@@ -286,6 +287,7 @@ function LineSummaryTable({ rows }) {
               <TableRow key={row.lineId}>
                 <TableCell className="font-semibold">{formatLineDisplayName(row.lineId)}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatCount(row.totalCount)}건</TableCell>
+                <TableCell className="text-right tabular-nums">{formatCount(row.abGradeCount)}건</TableCell>
                 <TableCell className="text-right tabular-nums">{formatCount(row.latestDateCount)}건</TableCell>
                 <TableCell className="text-right"><ChangeText value={row.changeCount} className="text-xs font-medium" /></TableCell>
                 <TableCell>{formatDisplayDate(row.lastAbnormalDate)}</TableCell>
@@ -300,7 +302,7 @@ function LineSummaryTable({ rows }) {
               </TableRow>
             )) : (
               <TableRow>
-                <TableCell colSpan={7} className="h-28 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="h-28 text-center text-muted-foreground">
                   {search ? "검색 결과가 없습니다." : "조회 조건에 해당하는 라인 데이터가 없습니다."}
                 </TableCell>
               </TableRow>
