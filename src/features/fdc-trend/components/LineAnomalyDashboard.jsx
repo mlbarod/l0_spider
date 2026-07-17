@@ -62,6 +62,7 @@ const CHART_COLORS = [
 ]
 const MAX_TREND_LINES = 8
 const TABLE_PAGE_SIZE = 8
+const TREND_PERIOD_OPTIONS = Object.freeze([30, 90, 180])
 
 function formatCount(value) {
   const number = Number(value)
@@ -70,6 +71,13 @@ function formatCount(value) {
 
 function formatDisplayDate(value) {
   return value ? value.replaceAll("-", ".") : "—"
+}
+
+function getPresetStartDate(endDate, days) {
+  const date = new Date(`${endDate}T00:00:00Z`)
+  if (!Number.isFinite(date.getTime())) return endDate
+  date.setUTCDate(date.getUTCDate() - (days - 1))
+  return date.toISOString().slice(0, 10)
 }
 
 function compareValues(left, right, key) {
@@ -314,6 +322,7 @@ export function LineAnomalyDashboard() {
   const [draftEndDate, setDraftEndDate] = useState("")
   const [draftLines, setDraftLines] = useState([])
   const [hiddenLines, setHiddenLines] = useState(() => new Set())
+  const [trendPeriodDays, setTrendPeriodDays] = useState(30)
   const dashboardQuery = useQuery({
     queryKey: [
       "spider-line-dashboard",
@@ -327,6 +336,32 @@ export function LineAnomalyDashboard() {
     placeholderData: (previousData) => previousData,
   })
   const dashboard = dashboardQuery.data?.lineDashboard
+  const trendPresetFilters = useMemo(() => {
+    if (!dashboard || trendPeriodDays === null) return null
+    const endDate = dashboard.options.maxDate
+    return {
+      startDate: getPresetStartDate(endDate, trendPeriodDays),
+      endDate,
+      lines: dashboard.filters.lines ?? [],
+    }
+  }, [dashboard, trendPeriodDays])
+  const trendQuery = useQuery({
+    queryKey: [
+      "spider-line-dashboard-trend",
+      trendPeriodDays ?? "filter",
+      trendPresetFilters?.startDate ?? "",
+      trendPresetFilters?.endDate ?? "",
+      (trendPresetFilters?.lines ?? []).join("\u0000"),
+    ],
+    queryFn: ({ signal }) => fetchDashboardSummary({ ...trendPresetFilters, signal }),
+    enabled: Boolean(trendPresetFilters),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+    placeholderData: (previousData) => previousData,
+  })
+  const trendDashboard = trendPeriodDays === null
+    ? dashboard
+    : trendQuery.data?.lineDashboard
 
   useEffect(() => {
     if (!dashboard || initializedRef.current) return
@@ -337,13 +372,13 @@ export function LineAnomalyDashboard() {
   }, [dashboard])
 
   const displayedLines = useMemo(
-    () => (dashboard?.lineSummary ?? []).slice(0, MAX_TREND_LINES).map((row) => row.lineId),
-    [dashboard?.lineSummary],
+    () => (trendDashboard?.lineSummary ?? []).slice(0, MAX_TREND_LINES).map((row) => row.lineId),
+    [trendDashboard?.lineSummary],
   )
   const trendRows = useMemo(() => {
     const visibleLineSet = new Set(displayedLines)
     const rowsByDate = new Map()
-    ;(dashboard?.dailyTrend ?? []).forEach((row) => {
+    ;(trendDashboard?.dailyTrend ?? []).forEach((row) => {
       if (!visibleLineSet.has(row.lineId)) return
       const dateRow = rowsByDate.get(row.date) ?? { date: row.date }
       dateRow[row.lineId] = row.abnormalCount
@@ -352,7 +387,7 @@ export function LineAnomalyDashboard() {
     return Array.from(rowsByDate.values()).sort((left, right) => (
       Date.parse(`${left.date}T00:00:00Z`) - Date.parse(`${right.date}T00:00:00Z`)
     ))
-  }, [dashboard?.dailyTrend, displayedLines])
+  }, [trendDashboard?.dailyTrend, displayedLines])
   const barRows = useMemo(() => (
     [...(dashboard?.lineSummary ?? [])].sort((left, right) => (
       right.lineId.localeCompare(left.lineId, "ko", { numeric: true })
@@ -368,6 +403,7 @@ export function LineAnomalyDashboard() {
     const nextFilters = { startDate: draftStartDate, endDate: draftEndDate, lines: nextLines }
     const isSame = JSON.stringify(nextFilters) === JSON.stringify(appliedFilters)
     setHiddenLines(new Set())
+    setTrendPeriodDays(null)
     if (isSame) dashboardQuery.refetch()
     else setAppliedFilters(nextFilters)
   }
@@ -378,6 +414,7 @@ export function LineAnomalyDashboard() {
     setDraftEndDate(dashboard.options.defaultEndDate)
     setDraftLines([])
     setHiddenLines(new Set())
+    setTrendPeriodDays(30)
     setAppliedFilters({})
   }
 
@@ -418,6 +455,10 @@ export function LineAnomalyDashboard() {
   const summary = dashboard.summary
   const lineRows = dashboard.lineSummary
   const options = dashboard.options
+  const trendLineRows = trendDashboard?.lineSummary ?? []
+  const trendRangeLabel = trendDashboard
+    ? `${formatDisplayDate(trendDashboard.filters.startDate)} ~ ${formatDisplayDate(trendDashboard.filters.endDate)}`
+    : "추이 조회 중"
   return (
     <section className="relative mt-6 grid gap-5 border-t-2 border-border/80 pt-9" aria-busy={dashboardQuery.isFetching}>
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -525,13 +566,43 @@ export function LineAnomalyDashboard() {
             <div>
               <h3 className="text-sm font-semibold">라인별 일자별 이상 건수 추이</h3>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {lineRows.length > MAX_TREND_LINES ? `가독성을 위해 상위 ${MAX_TREND_LINES}개 라인 표시` : "범례를 클릭해 라인 표시 여부 변경"}
+                {trendRangeLabel} · {trendLineRows.length > MAX_TREND_LINES ? `상위 ${MAX_TREND_LINES}개 라인 표시` : "범례 클릭으로 표시 전환"}
               </p>
             </div>
-            <CalendarDays className="size-4 text-muted-foreground" />
+            <div className="flex shrink-0 items-center gap-1.5">
+              {trendPeriodDays === null ? (
+                <Badge variant="secondary" className="h-7 px-2.5">조회기간</Badge>
+              ) : null}
+              {TREND_PERIOD_OPTIONS.map((days) => (
+                <Button
+                  key={days}
+                  type="button"
+                  size="sm"
+                  variant={trendPeriodDays === days ? "default" : "outline"}
+                  className="h-7 px-2.5 text-xs"
+                  disabled={trendQuery.isFetching && trendPeriodDays === days}
+                  onClick={() => {
+                    setTrendPeriodDays(days)
+                    setHiddenLines(new Set())
+                    if (trendPeriodDays === days) trendQuery.refetch()
+                  }}
+                >
+                  {trendQuery.isFetching && trendPeriodDays === days
+                    ? <Loader2 className="size-3.5 animate-spin" />
+                    : <CalendarDays className="size-3.5" />}
+                  {days}일
+                </Button>
+              ))}
+            </div>
           </div>
           <div className="h-[330px] p-3">
-            {displayedLines.length && trendRows.length ? (
+            {trendQuery.isPending && trendPeriodDays !== null && !trendDashboard ? (
+              <div className="grid h-[310px] place-items-center text-sm text-muted-foreground">
+                <span className="flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> 과거 추이를 불러오는 중입니다.</span>
+              </div>
+            ) : trendQuery.isError && trendPeriodDays !== null ? (
+              <EmptyChart message={trendQuery.error.message} />
+            ) : displayedLines.length && trendRows.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trendRows} margin={{ top: 8, right: 18, bottom: 4, left: 0 }}>
                   <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />

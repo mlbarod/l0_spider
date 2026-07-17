@@ -25,6 +25,7 @@ import {
 } from "./server/selfEquipmentData.mjs"
 
 const STAGING_HOST = "stg.plane.samsungds.net"
+const MEM_ETCH_COMMON_HOST = "mem-etch-common.samsungds.net"
 const siteHost = process.env.VITE_SITE_URL
   ? process.env.VITE_SITE_URL.replace(/^https?:\/\//, "")
       .split("/")[0]
@@ -125,9 +126,12 @@ export default defineConfig({
   server: {
     host: true,
     port: 3000,
+    allowedHosts: [
+      MEM_ETCH_COMMON_HOST,
+      ...(isStagingHost ? [STAGING_HOST] : []),
+    ],
     ...(isStagingHost
       ? {
-          allowedHosts: [STAGING_HOST],
           hmr: {
             host: STAGING_HOST,
             protocol: "wss",
@@ -135,6 +139,9 @@ export default defineConfig({
           },
         }
       : {}),
+  },
+  preview: {
+    allowedHosts: [MEM_ETCH_COMMON_HOST],
   },
 
 })
