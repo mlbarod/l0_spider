@@ -156,7 +156,12 @@ function buildCommonRecordPassHistoryKey(record) {
   ].map((value) => String(value ?? "")).join("\u0000")
 }
 
-const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({ row, lineId, passRecord }) {
+const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({
+  row,
+  lineId,
+  currentUserKnoxId,
+  passRecord,
+}) {
   const eqp = stripPngExtension(row.eqp)
   const queryClient = useQueryClient()
   const [imageFailed, setImageFailed] = useState(false)
@@ -167,6 +172,23 @@ const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({ row, lineI
     file_path: row.data_path,
     recipe_id: row.prc_group,
   }), [row])
+  const skipUploadPreview = useMemo(() => {
+    const pathValues = getCommonPathValues(row.data_path)
+    return {
+      "source_file (파싱 기준)": row.data_path,
+      line_id: lineId,
+      ver: COMMON_PASS_HISTORY_VERSION,
+      sdwt: pathValues.sdwt ?? row.sdwt,
+      desc: pathValues.desc ?? row.prc_group,
+      recipe_id: row.prc_group,
+      update_date: normalizePassHistoryDate(pathValues.updateDate ?? row.date),
+      priority: pathValues.priority ?? row.priority,
+      sensor: pathValues.sensor ?? row.sensor,
+      step: pathValues.step ?? row.step,
+      eqp,
+      knox_id: currentUserKnoxId || "접속 IP 기준 서버 결정",
+    }
+  }, [currentUserKnoxId, eqp, lineId, row])
 
   const refreshPassHistory = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ["pass-history", lineId] }),
@@ -232,6 +254,7 @@ const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({ row, lineI
             lineId={lineId}
             prcGroup={row.prc_group}
             dataQueryKeyPrefix="common-anomaly-data"
+            recordPreview={skipUploadPreview}
             disabled={isSkipped}
           />
           {isSkipped ? (
@@ -523,20 +546,6 @@ export function CommonAnomalyPage() {
           </div>
         ) : null}
         <section className="grid min-w-0 gap-3">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold">이상감지 Image</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                sensor를 선택하면 공통부 경로의 data.parquet 파일명을 eqp_cb.png로 바꾼 이미지를 표시합니다.
-              </p>
-            </div>
-            {sensorIsSelected ? (
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">{chartGroups.length.toLocaleString()} EQP categories</Badge>
-                <Badge variant="outline">{chartRows.length.toLocaleString()} images</Badge>
-              </div>
-            ) : null}
-          </div>
           {!sensorIsSelected ? (
             <div className="grid min-h-52 place-items-center rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
               prc_group, eqp와 sensor를 선택하면 이상감지 이미지가 표시됩니다.
@@ -549,12 +558,13 @@ export function CommonAnomalyPage() {
                     <div className="flex min-w-0 items-center gap-2"><Badge>EQP</Badge><h3 className="truncate text-sm font-semibold">{group.eqp}</h3></div>
                     <Badge variant="secondary">{group.rows.length.toLocaleString()} images</Badge>
                   </header>
-                  <div className="grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid min-w-0 grid-cols-1 gap-4 p-4 md:grid-cols-2">
                     {group.rows.map((row) => (
-                        <CommonAnomalyImageCard
+                      <CommonAnomalyImageCard
                         key={row.id}
                         row={row}
                         lineId={activeLine}
+                        currentUserKnoxId={currentUserQuery.data?.knoxId}
                         passRecord={passHistoryByKey.get(buildCommonChartPassHistoryKey(activeLine, row))}
                       />
                     ))}
