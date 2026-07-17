@@ -185,7 +185,7 @@ function buildDashboardData() {
 
 function DashboardCard({ title, description, badge, children }) {
   return (
-    <section className="grid min-h-[320px] grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-2xl border bg-card shadow-sm">
+    <section className="grid min-h-[300px] grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-2xl border bg-card shadow-sm">
       <div className="flex items-start justify-between gap-3 border-b bg-muted/40 px-4 py-3">
         <div className="min-w-0">
           <h3 className="truncate text-sm font-semibold">{title}</h3>
@@ -282,7 +282,7 @@ function SelfEquipmentDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <DashboardCard title="라인별 현재 이상건수" description="상위 6개 라인 기준 분포" badge={`${linePieData.length} lines`}>
           <AnomalyPieChart data={linePieData} />
         </DashboardCard>
@@ -305,7 +305,7 @@ function SpiderAppCard({ app }) {
   const content = (
     <div
       className={cn(
-        "relative h-full min-h-[148px] rounded-2xl border p-4 shadow-sm transition-all duration-300",
+        "relative h-full min-h-[140px] rounded-2xl border p-4 shadow-sm transition-all duration-300",
         "cursor-pointer hover:-translate-y-1 hover:shadow-lg",
         isOperating
           ? "border-border/50 bg-card hover:border-primary/20"
@@ -370,8 +370,8 @@ function SpiderAppCard({ app }) {
 export function L0SpiderHomePage() {
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto bg-background">
-      <section className="shrink-0 border-b bg-card px-6 py-8">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+      <section className="shrink-0 border-b bg-card px-4 pb-4 pt-7 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0 space-y-3">
             <Badge variant="outline">L0 Spider</Badge>
             <div>
@@ -382,7 +382,7 @@ export function L0SpiderHomePage() {
             </div>
           </div>
           <aside
-            className="flex shrink-0 items-center gap-3 rounded-xl border bg-background/80 px-4 py-3 shadow-sm"
+            className="mb-0.5 flex shrink-0 items-center gap-3 rounded-xl border border-border/80 bg-muted/40 px-4 py-3 shadow-sm"
             aria-label="개발 및 운영 담당자"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
@@ -398,14 +398,14 @@ export function L0SpiderHomePage() {
         </div>
       </section>
 
-      <main className="min-h-0 flex-1 px-6 py-8">
-        <div className="mx-auto grid w-full max-w-7xl gap-6">
+      <main className="min-h-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto grid w-full max-w-[1680px] gap-5">
           <section className="grid gap-3">
             <div className="min-w-0">
               <h2 className="text-base font-semibold">L0 Spider</h2>
               <p className="mt-1 text-xs text-muted-foreground">L0 Spider 기반 이상감지와 Hard Limit 추천 기능입니다.</p>
             </div>
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
               {spiderApps.map((app) => (
                 <SpiderAppCard key={app.title} app={app} />
               ))}
@@ -416,7 +416,7 @@ export function L0SpiderHomePage() {
               <h2 className="text-base font-semibold">L1,L3 이상감지 App</h2>
               <p className="mt-1 text-xs text-muted-foreground">L1과 L3 데이터를 활용한 이상감지 App입니다.</p>
             </div>
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
               {spiderSuites.map((app) => (
                 <SpiderAppCard key={app.title} app={app} />
               ))}
