@@ -138,6 +138,29 @@ L0 Spider의 DB 접속정보는 `/appdata/l0_spider/db_info.pkl`에서 읽는다
 
 SKIP 상태인 차트는 상단에 `이상감지 SKIP 건` 배지와 하단에 `SKIP해제` 버튼을 표시한다. 해제가 완료되면 해당 차트 식별값의 `pass_history` 데이터를 삭제하고 배지를 제거한다.
 
+공통부 이상감지의 SKIP도 같은 `/api/pass-history`와 팝업 구조를 사용한다. Chart drawing에
+사용하는 공통부 `data.parquet` 경로, 선택 EQP와 `prc_group`을 서버로 전달하며,
+접속자 `knox_id`는 자설비와 동일하게 서버가 결정한다. 공통부 경로에는 `{ver}`가 없으므로
+자설비 이력과 구분하기 위한 내부값 `COMMON`을 `ver`에 저장한다.
+
+| `pass_history` 컬럼 | 공통부 SKIP 저장값 |
+| --- | --- |
+| `line_id` | 필터에서 선택한 Line Name |
+| `ver` | `COMMON` |
+| `sdwt` | 공통부 데이터 경로의 `{sdwt}` |
+| `desc` | 공통부 데이터 경로의 `{step_desc}` |
+| `recipe_id` | 경로 테이블에서 선택된 `prc_group` |
+| `update_date` | 공통부 데이터 경로의 `{latest_date}` |
+| `priority` | 공통부 데이터 경로의 `{grade}` |
+| `sensor` | 공통부 데이터 경로의 `{sensor}` |
+| `step` | 공통부 데이터 경로의 `{ch_step}` |
+| `eqp` | 선택 EQP (`.png` 확장자 제외) |
+| `knox_id` | 현재 접속자의 `knox_id` |
+| `exec_date` | SKIP 버튼을 눌러 팝업을 연 시각 |
+| `comment` | 팝업에서 입력한 한 줄 comment, 미입력 시 빈 문자열 |
+
+`ver = COMMON`인 행은 자설비의 `SKIP LIST` 경로 복원 대상에서 제외한다.
+
 SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일반 SDWT 조회에서는 SKIP 등록 시각(`exec_date`)부터 72시간 동안 `latest_date`를 제외한 ERD 경로의 모든 식별값(`line_id`, `sdwt`, `desc`, `ver`, `recipe_id`, `priority`, `sensor`, `step`, `eqp`)이 같은 행을 동일 이상건으로 처리한다. 해당 행은 차트 목록뿐 아니라 STEP, `eqp_ch`, `sensor`, `ch_step`의 일반 이상건수 집계에서도 제외한다. 72시간이 지나면 SKIP 이력은 `SKIP LIST`에 남아 있지만 일반 이상건수 제외 조건에서는 만료된다.
 
 `SKIP LIST`를 선택하면 ERD 원본 목록 대신 선택 Line의 `pass_history`를 조회한다. 이후 Sensor Grade → STEP(`desc`) → `eqp_ch`(`eqp`) → `sensor` → `ch_step`(`step`) 필터와 차트 목록은 모두 해당 테이블의 구분값으로 생성한다. 최종 차트 경로는 다음 규칙으로 복원하며, SKIP 해제 시 목록을 다시 조회하여 해제된 차트를 즉시 제거한다.
@@ -204,7 +227,7 @@ SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일
 | `latest_date` 결정 파일 | `{latest_date}` | `/appdata/abnormal_trend/pic/path/{latest_date}` | 해당 없음 (파일명 참조) |
 | 분임조별 ERD 이상감지 경로 데이터 | `df_path.parquet` | `/appdata/abnormal_trend/pic/path/{line}/{sdwt}/df_path.parquet` | `sdwt`, `desc`, `ver`, `recipe_id`, `priority`, `sensor`, `step`, `eqp`, `file_path`, `line_rev` |
 | 공통부 이상감지 경로 테이블 | `df_path.parquet` | `/appdata/abnormal_trend/pic/path_common/{line}/{sdwt}/df_path.parquet` | `file_path`, `sdwt`, `prc_group`, `date`, `priority`, `sensor`, `step`, `eqp`, `line_rev` |
-| 공통부 이상감지 데이터 | `data.parquet` | `/appdata/abnormal_trend/pic/common/{latest_date}/{sdwt}/{step_desc}/{grade}/{sensor}/{ch_step}/data.parquet` | `eqp_id`, `disp_name`, `lotid`, `wafer_id`, `act_time` (x축), `{sensor}` (y축), `eqp_cb` (차트별 EQP 필터) |
+| 공통부 이상감지 데이터 | `data.parquet` | `/appdata/abnormal_trend/pic/common/{latest_date}/{sdwt}/{step_desc}/{grade}/{sensor}/{ch_step}/data.parquet` | `eqp_id`, `disp_name`, `lotid`, `wafer_id`, `act_time` (x축), `{sensor}_{ch_step}` (y축), `eqp_cb` (차트별 EQP 필터) |
 | 기준정보 매핑 | `mapping_config.json` | `/appdata/l0_spider/mapping_config.json` | `root.line_mapping` (`key`: SDWT 식별자, `value`: 라인), `root.sdwt_mapping` (`key`: SDWT 식별자, `value`: 표시명, key가 없으면 원본 SDWT 사용) |
 
 새 데이터 파일이나 참조 컬럼/키가 추가되면 이 표와
@@ -229,15 +252,16 @@ SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일
 → /appdata/abnormal_trend/pic/common/2026-07-17/SDWT-1/ETCH/A/TEMP/10/data.parquet
 ```
 
-Scatter chart는 `act_time`을 x축, 선택한 `{sensor}` 컬럼을 y축으로 사용하고,
+Scatter chart는 `act_time`을 x축, 선택한 `{sensor}_{ch_step}` 컬럼을 y축으로 사용하고,
 테이블 행의 `eqp`와 parquet의 `eqp_cb`가 같은 데이터만 표시한다. 대소문자와
 채널 접미사 차이를 허용하며 직접 매칭되지 않으면 `eqp_id`를 확인하고,
 parquet의 `eqp_cb`가 하나뿐인 파일은 그 값을 사용한다. hover에는
-`eqp_id`, `disp_name`, `lotid`, `wafer_id`, `act_time`, 선택 sensor 값을 표시한다.
-차트 카드의 `SKIP`, `동일성 차트`, `이력저장` 버튼은 자설비
-이상감지와 동일하게 배치했으며, 공통부용 버튼 기능이 별도로 정의될 때까지 비활성화한다.
+`eqp_id`, `disp_name`, `lotid`, `wafer_id`, `act_time`, 선택 sensor_ch_step 값을 표시한다.
+`동일성 차트`는 같은 `data.parquet`의 전체 `eqp_cb`를 자설비와 같은 UI로 비교하고,
+선택 EQP를 강조한다. `SKIP`은 자설비와 같은 팝업·등록·해제 UI를 사용한다.
+`이력저장`은 공통부용 기능이 별도로 정의될 때까지 비활성화한다.
 유효한 scatter 데이터가 없으면 차트 영역에 drawing 대상 `data.parquet` 절대경로와
-전체 행, EQP 매칭 행, 유효하지 않은 `act_time`/sensor 값의 제외 건수를 표시한다.
+전체 행, EQP 매칭 행, 유효하지 않은 `act_time`/sensor_ch_step 값의 제외 건수를 표시한다.
 
 - 필터·경로 목록 API: `GET /api/common-anomaly-data`
 - Scatter 데이터 API: `GET /api/common-anomaly-scatter-data`

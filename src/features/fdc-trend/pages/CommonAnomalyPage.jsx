@@ -1,7 +1,8 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, ArrowUp, Check, ChevronRight, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import {
   CartesianGrid,
   ResponsiveContainer,
@@ -20,15 +21,19 @@ import { cn } from "@/lib/utils"
 
 import {
   fetchCommonAnomalyData,
+  fetchCommonAnomalyIdentityData,
   fetchCommonAnomalyScatterData,
 } from "../api/commonAnomalyApi"
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
+import { deletePassHistory, fetchPassHistory } from "../api/passHistoryApi"
 import { SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
+import { IdentityChartDialog, SkipChartDialog } from "./FdcTrendPage"
 
 const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
 const ALL_EQPS = "ALL"
+const COMMON_PASS_HISTORY_VERSION = "COMMON"
 const CHART_MARGIN = Object.freeze({ top: 42, right: 18, bottom: 28, left: 16 })
 const Y_AXIS_WIDTH = 64
 const X_AXIS_HEIGHT = 30
@@ -114,6 +119,57 @@ function stripPngExtension(value) {
   return String(value ?? "").replace(/\.png$/i, "")
 }
 
+function normalizePassHistoryDate(value) {
+  const text = String(value ?? "")
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}:\d{2}))?/)
+  if (!match) return text
+  return !match[2] || match[2] === "00:00:00" ? match[1] : `${match[1]} ${match[2]}`
+}
+
+function getCommonPathValues(filePath) {
+  const normalizedPath = String(filePath ?? "").replaceAll("/pic_server2/", "/pic/")
+  const match = normalizedPath.match(/\/common\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/data\.parquet$/i)
+  return match ? {
+    updateDate: match[1],
+    sdwt: match[2],
+    desc: match[3],
+    priority: match[4],
+    sensor: match[5],
+    step: match[6],
+  } : {}
+}
+
+function buildCommonChartPassHistoryKey(lineId, row) {
+  const pathValues = getCommonPathValues(row.data_path)
+  return [
+    lineId,
+    COMMON_PASS_HISTORY_VERSION,
+    pathValues.sdwt ?? row.sdwt,
+    pathValues.desc ?? row.prc_group,
+    row.prc_group,
+    normalizePassHistoryDate(pathValues.updateDate ?? row.date),
+    pathValues.priority ?? row.priority,
+    pathValues.sensor ?? row.sensor,
+    pathValues.step ?? row.step,
+    stripPngExtension(row.eqp),
+  ].map((value) => String(value ?? "")).join("\u0000")
+}
+
+function buildCommonRecordPassHistoryKey(record) {
+  return [
+    record.line_id,
+    record.ver,
+    record.sdwt,
+    record.desc,
+    record.recipe_id,
+    normalizePassHistoryDate(record.update_date),
+    record.priority,
+    record.sensor,
+    record.step,
+    stripPngExtension(record.eqp),
+  ].map((value) => String(value ?? "")).join("\u0000")
+}
+
 function formatActTimeTick(value) {
   if (Number.isFinite(Number(value))) {
     return new Date(Number(value)).toISOString().slice(0, 10).replaceAll("-", "/")
@@ -187,13 +243,41 @@ function getZoomPoint(event, chart, domains) {
   }
 }
 
-const CommonScatterCard = memo(function CommonScatterCard({ row }) {
+const CommonScatterCard = memo(function CommonScatterCard({ row, lineId, passRecord }) {
   const eqp = stripPngExtension(row.eqp)
+  const queryClient = useQueryClient()
   const cardRef = useRef(null)
   const chartRef = useRef(null)
   const zoomStartRef = useRef(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
   const [zoomDomain, setZoomDomain] = useState(null)
+  const isSkipped = Boolean(passRecord)
+  const identityRow = useMemo(() => ({
+    ...row,
+    file_path: row.data_path,
+    recipe_id: row.prc_group,
+  }), [row])
+
+  const refreshPassHistory = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["pass-history", lineId] }),
+    queryClient.invalidateQueries({ queryKey: ["common-anomaly-data", lineId] }),
+  ])
+  const deleteSkipMutation = useMutation({
+    mutationFn: deletePassHistory,
+    onSuccess: async () => {
+      await refreshPassHistory()
+      toast.success("SKIP해제 완료")
+    },
+    onError: (error) => toast.error(error.message),
+  })
+  const handleSkipDelete = () => {
+    deleteSkipMutation.mutate({
+      lineId,
+      filePath: row.data_path,
+      eqp,
+      prcGroup: row.prc_group,
+    })
+  }
 
   useEffect(() => {
     const card = cardRef.current
@@ -211,18 +295,19 @@ const CommonScatterCard = memo(function CommonScatterCard({ row }) {
   }, [])
 
   const chartQuery = useQuery({
-    queryKey: ["common-anomaly-scatter-data", row.file_path, eqp, row.sensor],
+    queryKey: ["common-anomaly-scatter-data", row.data_path, eqp, row.sensor, row.step],
     queryFn: () => fetchCommonAnomalyScatterData({
-      filePath: row.file_path,
+      filePath: row.data_path,
       eqp,
       sensor: row.sensor,
+      chStep: row.step,
     }),
-    enabled: Boolean(isNearViewport && row.file_path && eqp && row.sensor),
+    enabled: Boolean(isNearViewport && row.data_path && eqp && row.sensor && row.step),
     staleTime: Infinity,
     gcTime: Infinity,
   })
   const points = chartQuery.data?.points ?? EMPTY_LIST
-  const axisColumn = chartQuery.data?.axisColumn ?? row.sensor
+  const axisColumn = chartQuery.data?.axisColumn ?? `${row.sensor}_${row.step}`
   const baseDomain = useMemo(() => ({
     x: numericDomain(points.map((point) => point.actTimeMs), 60 * 60 * 1000),
     y: numericDomain(points.map((point) => point.value), 1),
@@ -275,6 +360,7 @@ const CommonScatterCard = memo(function CommonScatterCard({ row }) {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {isSkipped ? <Badge variant="destructive">이상감지 SKIP 건</Badge> : null}
             {chartQuery.data ? <Badge variant="secondary">{points.length.toLocaleString()} 매</Badge> : null}
             <Badge variant="outline">{row.priority ? `${row.priority}등급` : "등급 미지정"}</Badge>
           </div>
@@ -353,7 +439,7 @@ const CommonScatterCard = memo(function CommonScatterCard({ row }) {
               <>
                 <p className="text-xs">
                   전체 {chartQuery.data.diagnostics.totalRows.toLocaleString()}건 · EQP 매칭 {chartQuery.data.diagnostics.eqpMatchedRows.toLocaleString()}건 ·
-                  act_time 제외 {chartQuery.data.diagnostics.invalidActTimeRows.toLocaleString()}건 · sensor 값 제외 {chartQuery.data.diagnostics.invalidValueRows.toLocaleString()}건
+                  act_time 제외 {chartQuery.data.diagnostics.invalidActTimeRows.toLocaleString()}건 · sensor_ch_step 값 제외 {chartQuery.data.diagnostics.invalidValueRows.toLocaleString()}건
                 </p>
                 {chartQuery.data.diagnostics.availableEqpCbs?.length ? (
                   <p className="max-w-full break-all text-left text-xs">
@@ -366,9 +452,36 @@ const CommonScatterCard = memo(function CommonScatterCard({ row }) {
         )}
       </div>
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/20 px-3 py-2.5">
-        <Button type="button" variant="outline" size="sm" disabled title="버튼 기능 정의 예정">SKIP</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <SkipChartDialog
+            eqp={eqp}
+            filePath={row.data_path}
+            lineId={lineId}
+            prcGroup={row.prc_group}
+            dataQueryKeyPrefix="common-anomaly-data"
+            disabled={isSkipped}
+          />
+          {isSkipped ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSkipDelete}
+              disabled={deleteSkipMutation.isPending}
+            >
+              {deleteSkipMutation.isPending ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
+              SKIP해제
+            </Button>
+          ) : null}
+        </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button type="button" variant="outline" size="sm" className="h-9 px-[0.9rem] text-sm" disabled title="버튼 기능 정의 예정">동일성 차트</Button>
+          <IdentityChartDialog
+            row={identityRow}
+            eqp={eqp}
+            identityFetcher={fetchCommonAnomalyIdentityData}
+            queryKeyPrefix="common-anomaly-identity-data"
+            lotIdLabel="lotid"
+          />
           <Button type="button" variant="outline" size="sm" className="h-9 px-[0.9rem] text-sm" disabled title="버튼 기능 정의 예정">이력저장</Button>
         </div>
       </footer>
@@ -441,6 +554,22 @@ export function CommonAnomalyPage() {
   const activePrcGroup = dataQuery.data?.filters?.prcGroup ?? ""
   const activeEqp = dataQuery.data?.filters?.eqp ?? ""
   const activeSensor = dataQuery.data?.filters?.sensor ?? ""
+  const passHistoryQuery = useQuery({
+    queryKey: ["pass-history", activeLine, activeTeamLabel, COMMON_PASS_HISTORY_VERSION],
+    queryFn: () => fetchPassHistory({
+      lineId: activeLine,
+      sdwt: activeTeamLabel,
+      desc: "",
+    }),
+    enabled: Boolean(activeLine && activeTeamLabel),
+    staleTime: 30 * 1000,
+    retry: false,
+  })
+  const passHistoryByKey = useMemo(() => new Map(
+    (passHistoryQuery.data?.records ?? EMPTY_LIST)
+      .filter((record) => record.ver === COMMON_PASS_HISTORY_VERSION)
+      .map((record) => [buildCommonRecordPassHistoryKey(record), record]),
+  ), [passHistoryQuery.data?.records])
   const sensorIsSelected = Boolean(selectedSensor && activeSensor === selectedSensor)
   const chartRows = sensorIsSelected ? dataQuery.data?.rows ?? EMPTY_LIST : EMPTY_LIST
   const chartGroups = useMemo(() => {
@@ -615,12 +744,17 @@ export function CommonAnomalyPage() {
             {dataQuery.error.message}
           </div>
         ) : null}
+        {passHistoryQuery.isError ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            PASS 이력을 불러오지 못했습니다: {passHistoryQuery.error.message}
+          </div>
+        ) : null}
         <section className="grid min-w-0 gap-3">
           <div className="flex items-end justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold">Scatter chart</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                sensor를 선택하면 공통부 data.parquet의 act_time과 선택 sensor 값을 표시합니다.
+                sensor를 선택하면 공통부 data.parquet의 act_time과 sensor_ch_step 값을 표시합니다.
               </p>
             </div>
             {sensorIsSelected ? (
@@ -643,7 +777,14 @@ export function CommonAnomalyPage() {
                     <Badge variant="secondary">{group.rows.length.toLocaleString()} charts</Badge>
                   </header>
                   <div className="grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2 xl:grid-cols-3">
-                    {group.rows.map((row) => <CommonScatterCard key={row.id} row={row} />)}
+                    {group.rows.map((row) => (
+                      <CommonScatterCard
+                        key={row.id}
+                        row={row}
+                        lineId={activeLine}
+                        passRecord={passHistoryByKey.get(buildCommonChartPassHistoryKey(activeLine, row))}
+                      />
+                    ))}
                   </div>
                 </section>
               ))}

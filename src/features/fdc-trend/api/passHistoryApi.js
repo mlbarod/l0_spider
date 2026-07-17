@@ -35,20 +35,20 @@ export async function fetchSkipListData({
   return parseResponse(response)
 }
 
-export async function createPassHistory({ lineId, filePath, comment, execDate }) {
+export async function createPassHistory({ lineId, filePath, eqp, prcGroup, comment, execDate }) {
   const response = await fetch("/api/pass-history", {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ lineId, filePath, comment, execDate }),
+    body: JSON.stringify({ lineId, filePath, eqp, prcGroup, comment, execDate }),
   })
   return parseResponse(response)
 }
 
-export async function deletePassHistory({ lineId, filePath }) {
+export async function deletePassHistory({ lineId, filePath, eqp, prcGroup }) {
   const response = await fetch("/api/pass-history", {
     method: "DELETE",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ lineId, filePath }),
+    body: JSON.stringify({ lineId, filePath, eqp, prcGroup }),
   })
   return parseResponse(response)
 }

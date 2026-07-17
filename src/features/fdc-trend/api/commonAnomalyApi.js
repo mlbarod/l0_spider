@@ -21,8 +21,8 @@ export async function fetchCommonAnomalyData({
   return payload
 }
 
-export async function fetchCommonAnomalyScatterData({ filePath, eqp, sensor }) {
-  const searchParams = new URLSearchParams({ path: filePath, eqp, sensor })
+async function fetchCommonChartData({ filePath, eqp, sensor, chStep, mode = "scatter" }) {
+  const searchParams = new URLSearchParams({ path: filePath, eqp, sensor, chStep, mode })
   const response = await fetch(`/api/common-anomaly-scatter-data?${searchParams.toString()}`, {
     headers: { Accept: "application/json" },
   })
@@ -33,4 +33,12 @@ export async function fetchCommonAnomalyScatterData({ filePath, eqp, sensor }) {
     throw error
   }
   return payload
+}
+
+export function fetchCommonAnomalyScatterData(options) {
+  return fetchCommonChartData(options)
+}
+
+export function fetchCommonAnomalyIdentityData(options) {
+  return fetchCommonChartData({ ...options, mode: "identity" })
 }

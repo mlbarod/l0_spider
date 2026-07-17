@@ -330,7 +330,7 @@ function ChangeHistoryLabel({ viewBox, history }) {
   ) : text
 }
 
-function ScatterPointTooltip({ active, payload, axisColumn }) {
+function ScatterPointTooltip({ active, payload, axisColumn, lotIdLabel = "root_lot_id" }) {
   const point = payload?.[0]?.payload
   if (!active || !point) return null
 
@@ -338,7 +338,7 @@ function ScatterPointTooltip({ active, payload, axisColumn }) {
     ["eqp_id", point.eqpId],
     ["disp_name", point.dispName],
     ["wafer_id", point.waferId],
-    ["root_lot_id", point.rootLotId],
+    [lotIdLabel, point.rootLotId],
     [axisColumn, Number(point.value).toFixed(2)],
     ["act_time", point.actTime],
   ]
@@ -380,7 +380,13 @@ function IdentityXAxisTick({ x, y, payload, groups }) {
   )
 }
 
-function IdentityChartDialog({ row, eqp }) {
+export function IdentityChartDialog({
+  row,
+  eqp,
+  identityFetcher = fetchErdIdentityData,
+  queryKeyPrefix = "erd-identity-data",
+  lotIdLabel = "root_lot_id",
+}) {
   const chartRef = useRef(null)
   const zoomOverlayRef = useRef(null)
   const zoomSelectionRef = useRef(null)
@@ -389,8 +395,8 @@ function IdentityChartDialog({ row, eqp }) {
   const [referenceLineMode, setReferenceLineMode] = useState(false)
   const [referenceLines, setReferenceLines] = useState([])
   const identityQuery = useQuery({
-    queryKey: ["erd-identity-data", row.file_path, eqp, row.sensor, row.step],
-    queryFn: () => fetchErdIdentityData({
+    queryKey: [queryKeyPrefix, row.file_path, eqp, row.sensor, row.step],
+    queryFn: () => identityFetcher({
       filePath: row.file_path,
       eqp,
       sensor: row.sensor,
@@ -633,7 +639,7 @@ function IdentityChartDialog({ row, eqp }) {
                   tickFormatter={(value) => Number(value).toFixed(2)}
                 />
                 <RechartsTooltip
-                  content={<ScatterPointTooltip axisColumn={axisColumn} />}
+                  content={<ScatterPointTooltip axisColumn={axisColumn} lotIdLabel={lotIdLabel} />}
                   cursor={false}
                   isAnimationActive={false}
                   animationDuration={0}
@@ -697,11 +703,13 @@ function IdentityChartDialog({ row, eqp }) {
   )
 }
 
-const SkipChartDialog = memo(function SkipChartDialog({
+export const SkipChartDialog = memo(function SkipChartDialog({
   eqp,
   filePath,
   lineId,
   disabled,
+  prcGroup = "",
+  dataQueryKeyPrefix = "self-equipment-data",
 }) {
   const queryClient = useQueryClient()
   const [skipDialogOpen, setSkipDialogOpen] = useState(false)
@@ -711,7 +719,7 @@ const SkipChartDialog = memo(function SkipChartDialog({
   const refreshPassHistory = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ["pass-history", lineId] }),
     queryClient.invalidateQueries({ queryKey: ["skip-list-data", lineId] }),
-    queryClient.invalidateQueries({ queryKey: ["self-equipment-data", lineId] }),
+    queryClient.invalidateQueries({ queryKey: [dataQueryKeyPrefix, lineId] }),
   ])
   const createSkipMutation = useMutation({
     mutationFn: createPassHistory,
@@ -739,6 +747,8 @@ const SkipChartDialog = memo(function SkipChartDialog({
     createSkipMutation.mutate({
       lineId,
       filePath,
+      eqp,
+      prcGroup,
       comment: skipComment,
       execDate: skipClickedAtRef.current || new Date().toISOString(),
     })

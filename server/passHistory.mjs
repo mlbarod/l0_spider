@@ -5,6 +5,8 @@ import { fileURLToPath, URL } from "node:url"
 import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
 
 const ERD_FILE_ROOT = "/appdata/abnormal_trend/pic/erd"
+const COMMON_FILE_ROOT = "/appdata/abnormal_trend/pic/common"
+export const COMMON_PASS_HISTORY_VERSION = "COMMON"
 const helperPath = fileURLToPath(new URL("../scripts/pass_history.py", import.meta.url))
 const ALL_VALUES = "ALL"
 
@@ -88,6 +90,7 @@ function buildErdImagePath(record) {
 export function buildPassHistoryFilterPayload(records, filters) {
   const seenRecords = new Set()
   const uniqueRecords = records.filter((record) => {
+    if (normalizeText(record.ver) === COMMON_PASS_HISTORY_VERSION) return false
     const identity = passRecordIdentity(record)
     if (seenRecords.has(identity)) return false
     seenRecords.add(identity)
@@ -208,6 +211,36 @@ export function parsePassHistoryPath(filePath) {
   return required
 }
 
+export function parseCommonPassHistoryPath(filePath, { eqp, prcGroup }) {
+  const normalizedPath = normalizeText(filePath).replaceAll("/pic_server2/", "/pic/")
+  const resolvedPath = resolve(normalizedPath)
+  if (!resolvedPath.startsWith(`${COMMON_FILE_ROOT}/`)) {
+    throw new Error("허용되지 않은 공통부 이상감지 데이터 경로입니다.")
+  }
+
+  const segments = relative(COMMON_FILE_ROOT, resolvedPath).split(sep)
+  if (segments.length !== 7 || segments.at(-1) !== "data.parquet") {
+    throw new Error("공통부 이상감지 경로에서 PASS 이력 정보를 찾지 못했습니다.")
+  }
+
+  const [updateDate, sdwt, desc, priority, sensor, step] = segments
+  const required = {
+    updateDate,
+    sdwt,
+    desc,
+    ver: COMMON_PASS_HISTORY_VERSION,
+    recipeId: normalizeText(prcGroup),
+    priority,
+    sensor,
+    step,
+    eqp: normalizeEqp(eqp),
+  }
+  if (Object.values(required).some((value) => !value)) {
+    throw new Error("공통부 이상감지 PASS 이력 정보가 올바르지 않습니다.")
+  }
+  return required
+}
+
 async function readJsonBody(req) {
   let body = ""
   for await (const chunk of req) {
@@ -277,13 +310,26 @@ export async function listPassHistoryRecords({ lineId, sdwt = "", desc = "" }) {
   return result.records ?? []
 }
 
-function buildRecord({ lineId, filePath, knoxId, comment = "", execDate = "" }) {
+function buildRecord({
+  lineId,
+  filePath,
+  eqp = "",
+  prcGroup = "",
+  knoxId,
+  comment = "",
+  execDate = "",
+}) {
   const normalizedLineId = normalizeText(lineId)
   if (!normalizedLineId) throw new Error("Line Name이 필요합니다.")
 
+  const normalizedPath = normalizeText(filePath).replaceAll("/pic_server2/", "/pic/")
+  const pathValues = resolve(normalizedPath).startsWith(`${COMMON_FILE_ROOT}/`)
+    ? parseCommonPassHistoryPath(normalizedPath, { eqp, prcGroup })
+    : parsePassHistoryPath(normalizedPath)
+
   return {
     lineId: normalizedLineId,
-    ...parsePassHistoryPath(filePath),
+    ...pathValues,
     knoxId: normalizeText(knoxId),
     execDate: normalizeText(execDate),
     comment: String(comment ?? ""),

@@ -197,11 +197,15 @@ function aggregateValues(rows, column) {
 
 export function resolveCommonAnomalyDataPath(imagePath) {
   const normalizedImagePath = normalizeText(imagePath).replaceAll("pic_server2", "pic")
-  if (!/\/[^/]+\.png$/i.test(normalizedImagePath)) {
-    throw new Error("공통부 file_path의 마지막 파일명이 .png로 끝나지 않습니다.")
+  const dataPath = /\/data\.parquet$/i.test(normalizedImagePath)
+    ? normalizedImagePath
+    : /\/[^/]+\.png$/i.test(normalizedImagePath)
+    ? normalizedImagePath.replace(/\/[^/]+\.png$/i, "/data.parquet")
+    : ""
+  if (!dataPath) {
+    throw new Error("공통부 경로의 마지막 파일명이 .png 또는 data.parquet이 아닙니다.")
   }
 
-  const dataPath = normalizedImagePath.replace(/\/[^/]+\.png$/i, "/data.parquet")
   const filePath = resolve(dataPath)
   if (!filePath.startsWith(`${COMMON_DATA_ROOT}${sep}`)) {
     throw new Error("허용되지 않은 공통부 이상감지 경로입니다.")
@@ -299,9 +303,9 @@ export async function handleCommonAnomalyDataRequest(req, res, url) {
   }
 }
 
-async function readCommonScatterRows(filePath, sensor) {
+async function readCommonScatterRows(filePath, axisColumn) {
   const fileStat = statSync(filePath)
-  const cacheKey = `${filePath}\u0000${sensor}`
+  const cacheKey = `${filePath}\u0000${axisColumn}`
   const cached = scatterCache.get(cacheKey)
   if (cached?.mtimeMs === fileStat.mtimeMs && cached?.size === fileStat.size) return cached.rows
   if (scatterPending.has(cacheKey)) return scatterPending.get(cacheKey)
@@ -314,7 +318,7 @@ async function readCommonScatterRows(filePath, sensor) {
       "lotid",
       "wafer_id",
       "act_time",
-      sensor,
+      axisColumn,
       "eqp_cb",
     ]))
     const rows = await parquetReadObjects({ file, columns, compressors })
@@ -329,33 +333,49 @@ async function readCommonScatterRows(filePath, sensor) {
   }
 }
 
-export function buildCommonScatterPayload(rows, { eqp, sensor, filePath, imagePath = "" }) {
+function buildCommonPoint(row, axisColumn) {
+  const actTime = normalizeText(row.act_time)
+  const actTimeMs = parseDateTimeMs(row.act_time)
+  const value = normalizeNumber(row[axisColumn])
+  if (!actTime || actTimeMs === null || value === null) return null
+  const lotId = normalizeText(row.lotid)
+  return {
+    actTime,
+    actTimeMs,
+    value,
+    eqpId: normalizeText(row.eqp_id),
+    dispName: normalizeText(row.disp_name),
+    lotId,
+    rootLotId: lotId,
+    waferId: normalizeText(row.wafer_id),
+  }
+}
+
+export function buildCommonScatterPayload(rows, {
+  eqp,
+  sensor,
+  chStep = "",
+  filePath,
+  imagePath = "",
+}) {
   const normalizedEqp = normalizeEqp(eqp)
+  const axisColumn = chStep ? `${sensor}_${chStep}` : sensor
   const eqpMatch = resolveEqpMatches(rows, [eqp, basename(imagePath)])
   let invalidActTimeRows = 0
   let invalidValueRows = 0
   const chartPoints = rows.flatMap((row) => {
     if (!rowMatchesEqp(row, eqpMatch)) return []
-    const actTime = normalizeText(row.act_time)
     const actTimeMs = parseDateTimeMs(row.act_time)
-    const value = normalizeNumber(row[sensor])
-    if (!actTime || actTimeMs === null) {
+    if (!normalizeText(row.act_time) || actTimeMs === null) {
       invalidActTimeRows += 1
       return []
     }
+    const value = normalizeNumber(row[axisColumn])
     if (value === null) {
       invalidValueRows += 1
       return []
     }
-    return [{
-      actTime,
-      actTimeMs,
-      value,
-      eqpId: normalizeText(row.eqp_id),
-      dispName: normalizeText(row.disp_name),
-      lotId: normalizeText(row.lotid),
-      waferId: normalizeText(row.wafer_id),
-    }]
+    return [buildCommonPoint(row, axisColumn)]
   }).sort((left, right) => left.actTimeMs - right.actTimeMs)
   const mostRecentActTimeMs = chartPoints.at(-1)?.actTimeMs ?? null
   const recentThresholdMs = mostRecentActTimeMs === null
@@ -368,7 +388,7 @@ export function buildCommonScatterPayload(rows, { eqp, sensor, filePath, imagePa
 
   return {
     eqp: normalizedEqp,
-    axisColumn: sensor,
+    axisColumn,
     sourcePath: filePath,
     mostRecentActTimeMs,
     recentThresholdMs,
@@ -389,6 +409,47 @@ export function buildCommonScatterPayload(rows, { eqp, sensor, filePath, imagePa
   }
 }
 
+export function buildCommonIdentityPayload(rows, {
+  eqp,
+  sensor,
+  chStep,
+  filePath,
+  imagePath = "",
+}) {
+  const normalizedEqp = normalizeEqp(eqp)
+  const axisColumn = `${sensor}_${chStep}`
+  const eqpMatch = resolveEqpMatches(rows, [eqp, basename(imagePath)])
+  const groups = new Map()
+
+  rows.forEach((row) => {
+    const eqpCb = normalizeEqp(row.eqp_cb)
+    const point = buildCommonPoint(row, axisColumn)
+    if (!eqpCb || !point) return
+    const group = groups.get(eqpCb) ?? { eqpCb, isSelected: false, points: [] }
+    group.isSelected ||= rowMatchesEqp(row, eqpMatch)
+    group.points.push(point)
+    groups.set(eqpCb, group)
+  })
+
+  const eqpGroups = Array.from(groups.values()).map((group) => ({
+    ...group,
+    pointCount: group.points.length,
+    points: group.points.sort((left, right) => left.actTimeMs - right.actTimeMs),
+  })).sort((left, right) => (
+    Number(right.isSelected) - Number(left.isSelected)
+    || left.eqpCb.localeCompare(right.eqpCb, "ko", { numeric: true })
+  ))
+
+  return {
+    eqp: normalizedEqp,
+    axisColumn,
+    sourcePath: filePath,
+    groupCount: eqpGroups.length,
+    pointCount: eqpGroups.reduce((total, group) => total + group.pointCount, 0),
+    groups: eqpGroups,
+  }
+}
+
 export async function handleCommonAnomalyScatterRequest(req, res, url) {
   if (req.method !== "GET") {
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
@@ -400,17 +461,32 @@ export async function handleCommonAnomalyScatterRequest(req, res, url) {
     const imagePath = normalizeText(url.searchParams.get("path"))
     const eqp = normalizeText(url.searchParams.get("eqp"))
     const sensor = normalizeText(url.searchParams.get("sensor"))
-    if (!imagePath || !eqp || !sensor) {
-      sendJson(res, 400, { ok: false, error: "path, eqp, sensor 조건이 필요합니다." })
+    const chStep = normalizeText(url.searchParams.get("chStep"))
+    const mode = normalizeText(url.searchParams.get("mode")) || "scatter"
+    if (!imagePath || !eqp || !sensor || !chStep) {
+      sendJson(res, 400, { ok: false, error: "path, eqp, sensor, chStep 조건이 필요합니다." })
       return
     }
     assertPathSegment("eqp", normalizeEqp(eqp))
     assertPathSegment("sensor", sensor)
+    assertPathSegment("chStep", chStep)
     sourcePath = resolveCommonAnomalyDataPath(imagePath)
-    const rows = await readCommonScatterRows(sourcePath, sensor)
+    const axisColumn = `${sensor}_${chStep}`
+    const rows = await readCommonScatterRows(sourcePath, axisColumn)
+    if (mode === "identity") {
+      sendJson(res, 200, buildCommonIdentityPayload(rows, {
+        eqp,
+        sensor,
+        chStep,
+        filePath: sourcePath,
+        imagePath,
+      }))
+      return
+    }
     sendJson(res, 200, buildCommonScatterPayload(rows, {
       eqp,
       sensor,
+      chStep,
       filePath: sourcePath,
       imagePath,
     }))
