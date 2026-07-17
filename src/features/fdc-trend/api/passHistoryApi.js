@@ -5,7 +5,7 @@ async function parseResponse(response) {
 }
 
 export async function fetchPassHistory({ lineId, sdwt, desc }) {
-  const searchParams = new URLSearchParams({ lineId })
+  const searchParams = new URLSearchParams({ lineId, activeOnly: "true" })
   if (sdwt) searchParams.set("sdwt", sdwt)
   if (desc) searchParams.set("desc", desc)
   const response = await fetch(`/api/pass-history?${searchParams.toString()}`, {
@@ -40,6 +40,15 @@ export async function createPassHistory({ lineId, filePath, eqp, prcGroup, comme
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
     body: JSON.stringify({ lineId, filePath, eqp, prcGroup, comment, execDate }),
+  })
+  return parseResponse(response)
+}
+
+export async function createPassHistoryBatch({ records, comment, execDate }) {
+  const response = await fetch("/api/pass-history", {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ records, comment, execDate }),
   })
   return parseResponse(response)
 }

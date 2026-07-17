@@ -43,6 +43,7 @@ import { createHitHistory } from "../api/hitHistoryApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
 import {
   createPassHistory,
+  createPassHistoryBatch,
   deletePassHistory,
   fetchPassHistory,
   fetchSkipListData,
@@ -791,6 +792,92 @@ export const SkipChartDialog = memo(function SkipChartDialog({
           </Button>
           <Button type="button" onClick={handleSkipConfirm} disabled={createSkipMutation.isPending}>
             {createSkipMutation.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+            OK
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+})
+
+export const EqpAllSkipDialog = memo(function EqpAllSkipDialog({
+  eqp,
+  lineId,
+  loadTargets,
+  dataQueryKeyPrefix,
+  disabled = false,
+}) {
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [comment, setComment] = useState("")
+  const [clickedAt, setClickedAt] = useState("")
+  const refreshPassHistory = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["pass-history", lineId] }),
+    queryClient.invalidateQueries({ queryKey: ["skip-list-data", lineId] }),
+    queryClient.invalidateQueries({ queryKey: ["common-anomaly-skip-list", lineId] }),
+    queryClient.invalidateQueries({ queryKey: [dataQueryKeyPrefix, lineId] }),
+  ])
+  const createAllSkipMutation = useMutation({
+    mutationFn: async () => {
+      const targets = await loadTargets()
+      const uniqueTargets = Array.from(new Map(targets.map((target) => [
+        [target.filePath, target.eqp, target.prcGroup].join("\u0000"),
+        { lineId, ...target },
+      ])).values())
+      if (!uniqueTargets.length) throw new Error("일괄 SKIP할 ch_step 데이터가 없습니다.")
+      return createPassHistoryBatch({
+        records: uniqueTargets,
+        comment,
+        execDate: clickedAt || new Date().toISOString(),
+      })
+    },
+    onSuccess: async (result) => {
+      setOpen(false)
+      setComment("")
+      setClickedAt("")
+      await refreshPassHistory()
+      toast.success(`EQP ALL SKIP 완료 (${result.requestedRows?.toLocaleString() ?? 0}건)`)
+    },
+    onError: (error) => toast.error(error.message),
+  })
+  const handleOpenChange = (nextOpen) => {
+    if (createAllSkipMutation.isPending) return
+    setOpen(nextOpen)
+    if (nextOpen) {
+      setClickedAt(new Date().toISOString())
+      return
+    }
+    setComment("")
+    setClickedAt("")
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button type="button" variant="outline" size="sm" disabled={disabled}>
+          EQP ALL SKIP
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{eqp || "EQP 미지정"} ALL SKIP</DialogTitle>
+          <DialogDescription>
+            이 EQP의 실제 모든 ch_step을 각각 PASS 이력에 등록합니다.
+          </DialogDescription>
+        </DialogHeader>
+        <Input
+          value={comment}
+          onChange={(event) => setComment(event.target.value)}
+          placeholder="comment 입력 (선택)"
+          aria-label="EQP ALL SKIP comment"
+          autoFocus
+        />
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={createAllSkipMutation.isPending}>
+            취소
+          </Button>
+          <Button type="button" onClick={() => createAllSkipMutation.mutate()} disabled={createAllSkipMutation.isPending}>
+            {createAllSkipMutation.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
             OK
           </Button>
         </DialogFooter>
@@ -1664,6 +1751,28 @@ export function FdcTrendPage() {
                     <div className="flex min-w-0 items-center gap-2">
                       <Badge>EQP</Badge>
                       <h3 className="truncate text-sm font-semibold">{group.eqp}</h3>
+                      {!isSkipList ? (
+                        <EqpAllSkipDialog
+                          eqp={group.eqp}
+                          lineId={activeLine}
+                          dataQueryKeyPrefix="self-equipment-data"
+                          loadTargets={async () => {
+                            const payload = await fetchSelfEquipmentData({
+                              line: activeLine,
+                              pathSdwt: activeTeam,
+                              sdwt: activeTeamLabel,
+                              priorities,
+                              desc: activeDesc,
+                              eqpCh: group.rows[0]?.eqp ?? group.eqp,
+                              sensor: activeSensor,
+                              chStep: ALL_CH_STEPS,
+                            })
+                            return (payload.rows ?? []).map((row) => ({
+                              filePath: row.file_path,
+                            }))
+                          }}
+                        />
+                      ) : null}
                     </div>
                     <Badge variant="secondary">{group.rows.length.toLocaleString()} charts</Badge>
                   </header>

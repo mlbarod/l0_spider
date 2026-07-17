@@ -137,6 +137,9 @@ L0 Spider의 DB 접속정보는 `/appdata/l0_spider/db_info.pkl`에서 읽는다
 | `comment` | 팝업에서 입력한 한 줄 comment, 미입력 시 빈 문자열 |
 
 SKIP 상태인 차트는 상단에 `이상감지 SKIP 건` 배지와 하단에 `SKIP해제` 버튼을 표시한다. 해제가 완료되면 해당 차트 식별값의 `pass_history` 데이터를 삭제하고 배지를 제거한다.
+자설비와 공통부 이상감지의 EQP 카테고리 헤더에는 `EQP ALL SKIP` 버튼을 표시한다.
+이 버튼은 현재 EQP에 해당하는 실제 모든 `ch_step` 경로를 조회하여 각 `ch_step`을
+별도의 `pass_history` 행으로 한 번에 저장한다. `step = ALL`인 가상 행은 저장하지 않는다.
 
 공통부 이상감지의 SKIP도 같은 `/api/pass-history`와 팝업 구조를 사용한다. Chart drawing에
 사용하는 공통부 `data.parquet` 경로, 선택 EQP와 `prc_group`을 서버로 전달하며,
@@ -162,7 +165,7 @@ SKIP 상태인 차트는 상단에 `이상감지 SKIP 건` 배지와 하단에 `
 `ver = NA`인 행은 공통부 `SKIP LIST`에서 조회하며 자설비의 `SKIP LIST` 경로 복원
 대상에서는 제외한다.
 
-SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일반 SDWT 조회에서는 SKIP 등록 시각(`exec_date`)부터 72시간 동안 `latest_date`를 제외한 ERD 경로의 모든 식별값(`line_id`, `sdwt`, `desc`, `ver`, `recipe_id`, `priority`, `sensor`, `step`, `eqp`)이 같은 행을 동일 이상건으로 처리한다. 해당 행은 차트 목록뿐 아니라 STEP, `eqp_ch`, `sensor`, `ch_step`의 일반 이상건수 집계에서도 제외한다. 72시간이 지나면 SKIP 이력은 `SKIP LIST`에 남아 있지만 일반 이상건수 제외 조건에서는 만료된다.
+SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일반 SDWT 조회에서는 SKIP 등록 시각(`exec_date`)부터 72시간 동안 `latest_date`를 제외한 ERD 경로의 모든 식별값(`line_id`, `sdwt`, `desc`, `ver`, `recipe_id`, `priority`, `sensor`, `step`, `eqp`)이 같은 행을 동일 이상건으로 처리한다. 해당 행은 차트 목록뿐 아니라 STEP, `eqp_ch`, `sensor`, `ch_step`의 일반 이상건수 집계에서도 제외한다. 정확히 72시간이 지나면 일반 이상건과 SKIP 상태로부터 해제되고 `SKIP LIST`에서도 제거된다. 이 만료 처리는 조회 결과에서만 제외하는 UI 동작이며 `pass_history` 행은 삭제하지 않는다. 만료된 동일 식별 건을 다시 SKIP하면 기존 DB 행의 `knox_id`, `exec_date`, `comment`를 갱신하여 새로운 72시간 SKIP 기간을 시작한다.
 
 `SKIP LIST`를 선택하면 ERD 원본 목록 대신 선택 Line의 `pass_history`를 조회한다. 이후 Sensor Grade → STEP(`desc`) → `eqp_ch`(`eqp`) → `sensor` → `ch_step`(`step`) 필터와 차트 목록은 모두 해당 테이블의 구분값으로 생성한다. 최종 차트 경로는 다음 규칙으로 복원하며, SKIP 해제 시 목록을 다시 조회하여 해제된 차트를 즉시 제거한다.
 
@@ -270,8 +273,8 @@ SDWT 필터 마지막의 `SKIP LIST`를 선택하면 선택 Line에서 `ver = NA
 `line_id`, `sdwt`, `desc`, `priority`, `sensor`, `step`(`ch_step`), `eqp`의 7개 값이
 모두 같은 행을 동일 이상감지 건으로 판단한다. 이 비교에는 `ver`, `recipe_id`,
 `update_date`를 사용하지 않으며, 동일 건은 이미지 목록과 각 필터 건수에서 제외된다.
-72시간이 지나면 일반 이상감지 대상에 다시 포함되지만 SKIP 이력 자체는 사용자가
-해제할 때까지 공통부 `SKIP LIST`에 남는다.
+정확히 72시간이 지나면 일반 이상감지 대상에 다시 포함되고 공통부 `SKIP LIST`에서도
+제거된다. 만료된 `pass_history` 행은 DB에서 삭제하지 않으며 UI 조회에서만 제외한다.
 `이력저장`은 공통부용 기능이 별도로 정의될 때까지 비활성화한다.
 
 - 필터·경로 목록 API: `GET /api/common-anomaly-data`

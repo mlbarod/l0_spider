@@ -7,6 +7,7 @@ import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
 const ERD_FILE_ROOT = "/appdata/abnormal_trend/pic/erd"
 const COMMON_FILE_ROOT = "/appdata/abnormal_trend/pic/common"
 export const COMMON_PASS_HISTORY_VERSION = "NA"
+export const PASS_HISTORY_ACTIVE_DURATION_MS = 3 * 24 * 60 * 60 * 1000
 const helperPath = fileURLToPath(new URL("../scripts/pass_history.py", import.meta.url))
 const ALL_VALUES = "ALL"
 
@@ -31,6 +32,25 @@ function normalizeDbDate(value) {
   const match = text.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}:\d{2}))?/)
   if (!match) return text
   return !match[2] || match[2] === "00:00:00" ? match[1] : `${match[1]} ${match[2]}`
+}
+
+function parseDatabaseDate(value) {
+  if (value instanceof Date) return value.getTime()
+  const text = normalizeText(value)
+  if (!text) return Number.NaN
+  return Date.parse(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(text)
+    ? text.replace(" ", "T")
+    : text)
+}
+
+export function isActivePassHistoryRecord(
+  record,
+  nowMs = Date.now(),
+  durationMs = PASS_HISTORY_ACTIVE_DURATION_MS,
+) {
+  const execDateMs = parseDatabaseDate(record.exec_date)
+  const elapsedMs = nowMs - execDateMs
+  return Number.isFinite(execDateMs) && elapsedMs >= 0 && elapsedMs < durationMs
 }
 
 function uniqueCount(records, key, normalizeValue = normalizeText) {
@@ -102,9 +122,10 @@ function buildCommonDataPath(record) {
   return `${COMMON_FILE_ROOT}/${segments.join("/")}/data.parquet`
 }
 
-export function buildPassHistoryFilterPayload(records, filters) {
+export function buildPassHistoryFilterPayload(records, filters, nowMs = Date.now()) {
   const seenRecords = new Set()
   const uniqueRecords = records.filter((record) => {
+    if (!isActivePassHistoryRecord(record, nowMs)) return false
     if (normalizeText(record.ver) === COMMON_PASS_HISTORY_VERSION) return false
     const identity = passRecordIdentity(record)
     if (seenRecords.has(identity)) return false
@@ -206,9 +227,10 @@ export function buildPassHistoryFilterPayload(records, filters) {
   }
 }
 
-export function buildCommonPassHistoryFilterPayload(records, filters) {
+export function buildCommonPassHistoryFilterPayload(records, filters, nowMs = Date.now()) {
   const seenRecords = new Set()
   const commonRecords = records.filter((record) => {
+    if (!isActivePassHistoryRecord(record, nowMs)) return false
     if (normalizeText(record.line_id) !== filters.lineId) return false
     if (normalizeText(record.ver) !== COMMON_PASS_HISTORY_VERSION) return false
     const identity = passRecordIdentity(record)
@@ -345,7 +367,7 @@ async function readJsonBody(req) {
   let body = ""
   for await (const chunk of req) {
     body += chunk
-    if (body.length > 64 * 1024) throw new Error("요청 데이터가 너무 큽니다.")
+    if (body.length > 512 * 1024) throw new Error("요청 데이터가 너무 큽니다.")
   }
   if (!body.trim()) return {}
   try {
@@ -471,7 +493,12 @@ export async function handlePassHistoryRequest(req, res, url) {
         }))
         return
       }
-      sendJson(res, 200, { ok: true, records })
+      sendJson(res, 200, {
+        ok: true,
+        records: url.searchParams.get("activeOnly") === "true"
+          ? records.filter((record) => isActivePassHistoryRecord(record))
+          : records,
+      })
       return
     }
 
@@ -483,6 +510,21 @@ export async function handlePassHistoryRequest(req, res, url) {
       }
       const currentUser = await resolveCurrentUser(remoteIp)
       const body = await readJsonBody(req)
+      if (req.method === "POST" && Array.isArray(body.records)) {
+        if (!body.records.length || body.records.length > 500) {
+          sendJson(res, 400, { ok: false, error: "일괄 SKIP 대상은 1건 이상 500건 이하여야 합니다." })
+          return
+        }
+        const records = body.records.map((item) => buildRecord({
+          ...item,
+          comment: body.comment,
+          execDate: body.execDate,
+          knoxId: currentUser.knoxId,
+        }))
+        const result = await runPassHistoryHelper("insert-many", { records })
+        sendJson(res, 200, result)
+        return
+      }
       const record = buildRecord({ ...body, knoxId: currentUser.knoxId })
       const result = await runPassHistoryHelper(req.method === "POST" ? "insert" : "delete", record)
       sendJson(res, 200, result)

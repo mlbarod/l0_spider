@@ -19,7 +19,7 @@ import { fetchCurrentUser } from "../api/currentUserApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
 import { deletePassHistory, fetchPassHistory } from "../api/passHistoryApi"
 import { SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
-import { IdentityChartDialog, SkipChartDialog } from "./FdcTrendPage"
+import { EqpAllSkipDialog, IdentityChartDialog, SkipChartDialog } from "./FdcTrendPage"
 
 const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
@@ -551,7 +551,22 @@ export function CommonAnomalyPage() {
               {chartGroups.map((group) => (
                 <section key={group.eqp} className="min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm">
                   <header className="flex items-center justify-between gap-3 border-b bg-muted/60 px-4 py-3">
-                    <div className="flex min-w-0 items-center gap-2"><Badge>EQP</Badge><h3 className="truncate text-sm font-semibold">{group.eqp}</h3></div>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Badge>EQP</Badge>
+                      <h3 className="truncate text-sm font-semibold">{group.eqp}</h3>
+                      {!isSkipList ? (
+                        <EqpAllSkipDialog
+                          eqp={group.eqp}
+                          lineId={activeLine}
+                          dataQueryKeyPrefix="common-anomaly-data"
+                          loadTargets={async () => group.rows.map((row) => ({
+                            filePath: row.data_path,
+                            eqp: group.eqp,
+                            prcGroup: row.prc_group,
+                          }))}
+                        />
+                      ) : null}
+                    </div>
                     <Badge variant="secondary">{group.rows.length.toLocaleString()} images</Badge>
                   </header>
                   <div className="grid min-w-0 grid-cols-1 gap-4 p-4 md:grid-cols-2">
