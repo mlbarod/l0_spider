@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react"
 import path from "node:path"
 import process from "node:process"
 
+import { handleDashboardDataRequest } from "./server/dashboardData.mjs"
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
 import {
   handleCommonAnomalyDataRequest,
@@ -37,6 +38,11 @@ function mappingConfigApi() {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = new URL(req.url ?? "/", "http://localhost")
+        if (url.pathname === "/api/dashboard-data") {
+          handleDashboardDataRequest(req, res)
+          return
+        }
+
         if (url.pathname === "/api/current-user") {
           handleCurrentUserRequest(req, res)
           return

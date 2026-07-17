@@ -4,6 +4,8 @@ export const SPIDER_DATA_PATH_TEMPLATES = Object.freeze({
   erdData: `${PIC_ROOT}/erd/{latest_date}/{sdwt}/{step_desc}/{ver}/{ppid}/{grade}/{sensor}/{ch_step}/data.parquet`,
   stats: `${PIC_ROOT}/stats/{latest_date}_spider_step_stats.parquets`,
   statsExceptV: `${PIC_ROOT}/stats/{latest_date}_spider_step_stats_except_v.parquets`,
+  dashboardStats: `${PIC_ROOT}/stats/{latest_date}_spider_step_stats.parquets`,
+  dashboardDetail: `${PIC_ROOT}/path/{latest_date}`,
   commonalityRoot: `${PIC_ROOT}/erd_commonality`,
   commonalityImage: `${PIC_ROOT}/erd_commonality/{latest_date}/{sdwt}/{grade}/{step_seq}/{step_desc}/{ppid}/{ppid}/{sensor}_{ch_step}/img.png`,
   backupImage: `${PIC_ROOT}/backup/#appdata#abnormal_trend#pic#erd#{latest_date}#{sdwt}#{step_desc}#{ver}#{ppid}#{grade}#{sensor}#{ch_step}#{eqp}.png`,
@@ -13,6 +15,11 @@ export const SPIDER_DATA_PATH_TEMPLATES = Object.freeze({
   commonAnomalyData: `${PIC_ROOT}/common/{latest_date}/{sdwt}/{step_desc}/{grade}/{sensor}/{ch_step}/data.parquet`,
   commonAnomalyImage: `${PIC_ROOT}/common/{latest_date}/{sdwt}/{step_desc}/{grade}/{sensor}/{ch_step}/{eqp_cb}.png`,
   mappingConfig: "/appdata/l0_spider/mapping_config.json",
+})
+
+export const SPIDER_DASHBOARD_COLUMNS = Object.freeze({
+  stats: Object.freeze(["exec_date", "recipe_id", "priority", "ng", "total"]),
+  detail: Object.freeze(["sdwt", "desc", "recipe_id", "priority", "sensor"]),
 })
 
 export const SPIDER_DATA_PATH_NAMES = Object.freeze({
@@ -38,6 +45,14 @@ export function buildStatsPath(latestDate) {
 
 export function buildStatsExceptVPath(latestDate) {
   return fillPathTemplate(SPIDER_DATA_PATH_TEMPLATES.statsExceptV, { latest_date: latestDate })
+}
+
+export function buildDashboardStatsPath(latestDate) {
+  return fillPathTemplate(SPIDER_DATA_PATH_TEMPLATES.dashboardStats, { latest_date: latestDate })
+}
+
+export function buildDashboardDetailPath(latestDate) {
+  return fillPathTemplate(SPIDER_DATA_PATH_TEMPLATES.dashboardDetail, { latest_date: latestDate })
 }
 
 export function buildCommonalityImagePath(values) {

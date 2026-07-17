@@ -6,6 +6,7 @@ import { extname, join, normalize } from "node:path"
 import { fileURLToPath, URL } from "node:url"
 import { createServer as createViteServer } from "vite"
 
+import { handleDashboardDataRequest } from "./server/dashboardData.mjs"
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
 import { handleClickedCategoryHistoryRequest } from "./server/clickedCategoryHistory.mjs"
 import {
@@ -125,6 +126,13 @@ async function serveStatic(req, res) {
 
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`)
+
+  if (url.pathname === "/api/dashboard-data") {
+    handleDashboardDataRequest(req, res).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
 
   if (url.pathname === "/api/current-user") {
     handleCurrentUserRequest(req, res).catch((error) => {

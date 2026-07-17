@@ -1,32 +1,11 @@
-import { Activity, BookOpen, ChartNoAxesCombined, Gauge, Mail, Network, Radar, ScanSearch, TrendingUp, Users } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { Activity, BookOpen, ChartNoAxesCombined, Database, Gauge, Layers3, Mail, Network, Radar, ScanSearch, TrendingUp, TriangleAlert, Users } from "lucide-react"
 import { Link } from "react-router-dom"
-import {
-  CartesianGrid,
-  Cell,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts"
 
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
-import { FDC_LINES, getTeamsByLine, getTrendSteps } from "../utils/fdcTrendMockData"
-
-const CHART_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-  "var(--primary)",
-]
-const TREND_MONTHS = ["2025.12", "2026.01", "2026.02", "2026.03", "2026.04", "2026.05"]
+import { fetchDashboardSummary } from "../api/dashboardApi"
 
 const spiderApps = [
   {
@@ -124,148 +103,110 @@ const spiderSuites = [
   },
 ]
 
-function getTrendFactor(index, monthIndex) {
-  return 0.72 + monthIndex * 0.065 + ((index + monthIndex) % 3) * 0.035
+const DASHBOARD_METRICS = [
+  {
+    key: "monitoringSensorTotal",
+    label: "모니터링 센서 총합",
+    description: "TL Grade · total 합계",
+    unit: "개",
+    icon: Database,
+    accent: "border-l-sky-500",
+    iconStyle: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+  },
+  {
+    key: "detectedPpidCount",
+    label: "감지 PPID갯수",
+    description: "이상 감지 고유 recipe_id",
+    unit: "개",
+    icon: Layers3,
+    accent: "border-l-emerald-500",
+    iconStyle: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  {
+    key: "totalAnomalyCount",
+    label: "전체 이상건수",
+    description: "A/B · D · N · M 합계",
+    unit: "건",
+    icon: TriangleAlert,
+    accent: "border-l-rose-500",
+    iconStyle: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+  },
+  {
+    key: "abGradeCount",
+    label: "A/B Grade",
+    description: "A · B Grade ng 합계",
+    unit: "건",
+    icon: Gauge,
+    accent: "border-l-blue-500",
+    iconStyle: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  },
+  {
+    key: "dGradeCount",
+    label: "D Grade",
+    description: "D Grade ng 합계",
+    unit: "건",
+    icon: Gauge,
+    accent: "border-l-amber-500",
+    iconStyle: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
+  {
+    key: "nGradeCount",
+    label: "N Grade",
+    description: "N Grade ng 합계",
+    unit: "건",
+    icon: Gauge,
+    accent: "border-l-violet-500",
+    iconStyle: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  },
+  {
+    key: "mGradeCount",
+    label: "M Grade",
+    description: "M Grade ng 합계",
+    unit: "건",
+    icon: Gauge,
+    accent: "border-l-fuchsia-500",
+    iconStyle: "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400",
+  },
+]
+
+function formatMetricValue(value, isLoading) {
+  if (isLoading) return "…"
+  const number = Number(value)
+  return Number.isFinite(number) ? number.toLocaleString("ko-KR") : "—"
 }
 
-function buildDashboardData() {
-  const lineRows = FDC_LINES.map((lineId, lineIndex) => {
-    const teams = getTeamsByLine(lineId)
-    const count = teams.reduce((lineSum, teamId) => {
-      const steps = getTrendSteps({ lineId, teamId })
-      return lineSum + steps.reduce((stepSum, step) => stepSum + step.abnormalCount, 0)
-    }, 0)
-
-    return {
-      name: lineId,
-      count,
-      lineIndex,
-    }
-  }).sort((a, b) => b.count - a.count)
-
-  const teamRows = FDC_LINES.flatMap((lineId, lineIndex) =>
-    getTeamsByLine(lineId).map((teamId, teamIndex) => {
-      const steps = getTrendSteps({ lineId, teamId })
-      const count = steps.reduce((sum, step) => sum + step.abnormalCount, 0)
-
-      return {
-        name: teamId,
-        lineId,
-        count,
-        teamIndex: lineIndex * 4 + teamIndex,
-      }
-    }),
-  ).sort((a, b) => b.count - a.count)
-
-  const topLines = lineRows.slice(0, 6)
-  const topTeams = teamRows.slice(0, 6)
-
-  return {
-    lineRows,
-    teamRows,
-    lineTrendRows: TREND_MONTHS.map((month, monthIndex) => {
-      const row = { month }
-      topLines.forEach((line) => {
-        row[line.name] = Math.round(line.count * getTrendFactor(line.lineIndex, monthIndex))
-      })
-      return row
-    }),
-    teamTrendRows: TREND_MONTHS.map((month, monthIndex) => {
-      const row = { month }
-      topTeams.forEach((team) => {
-        row[team.name] = Math.round(team.count * getTrendFactor(team.teamIndex, monthIndex))
-      })
-      return row
-    }),
-    topLines,
-    topTeams,
-    totalCount: lineRows.reduce((sum, line) => sum + line.count, 0),
-  }
-}
-
-function DashboardCard({ title, description, badge, children }) {
+function DashboardMetricCard({ metric, value, isLoading }) {
+  const Icon = metric.icon
   return (
-    <section className="grid min-h-[300px] grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-2xl border bg-card shadow-sm">
-      <div className="flex items-start justify-between gap-3 border-b bg-muted/40 px-4 py-3">
-        <div className="min-w-0">
-          <h3 className="truncate text-sm font-semibold">{title}</h3>
-          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-        </div>
-        <Badge variant="secondary" className="shrink-0">{badge}</Badge>
+    <article className={cn(
+      "grid min-h-[150px] grid-rows-[auto_1fr_auto] rounded-2xl border border-l-4 bg-card p-4 shadow-sm",
+      metric.accent,
+    )}>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-semibold leading-5 text-foreground">{metric.label}</p>
+        <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", metric.iconStyle)}>
+          <Icon className="size-4.5" aria-hidden="true" />
+        </span>
       </div>
-      <div className="min-h-0 p-4">{children}</div>
-    </section>
-  )
-}
-
-function AnomalyPieChart({ data }) {
-  return (
-    <div className="grid h-full min-h-[240px] grid-cols-[minmax(0,1fr)_170px] gap-4">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie data={data} dataKey="count" nameKey="name" innerRadius={58} outerRadius={92} paddingAngle={2}>
-            {data.map((row, index) => (
-              <Cell key={row.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip />
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="grid content-center gap-2">
-        {data.slice(0, 6).map((row, index) => (
-          <div key={row.name} className="flex items-center justify-between gap-2 text-xs">
-            <span className="flex min-w-0 items-center gap-2">
-              <svg aria-hidden="true" viewBox="0 0 8 8" className="size-2 shrink-0">
-                <circle cx="4" cy="4" r="4" fill={CHART_COLORS[index % CHART_COLORS.length]} />
-              </svg>
-              <span className="truncate text-muted-foreground">{row.name}</span>
-            </span>
-            <span className="shrink-0 font-semibold tabular-nums">{row.count.toLocaleString()}</span>
-          </div>
-        ))}
+      <div className="flex items-end gap-1.5 py-3" aria-live="polite">
+        <strong className="text-3xl font-semibold tracking-tight tabular-nums xl:text-4xl">
+          {formatMetricValue(value, isLoading)}
+        </strong>
+        <span className="pb-1 text-sm font-medium text-muted-foreground">{metric.unit}</span>
       </div>
-    </div>
-  )
-}
-
-function AnomalyLineChart({ rows, series }) {
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
-        <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-        <XAxis
-          dataKey="month"
-          tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-          tickLine={false}
-          axisLine={{ stroke: "var(--border)" }}
-        />
-        <YAxis
-          tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-          tickLine={false}
-          axisLine={{ stroke: "var(--border)" }}
-          width={48}
-        />
-        <Tooltip />
-        {series.map((item, index) => (
-          <Line
-            key={item.name}
-            type="monotone"
-            dataKey={item.name}
-            stroke={CHART_COLORS[index % CHART_COLORS.length]}
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4 }}
-          />
-        ))}
-      </LineChart>
-    </ResponsiveContainer>
+      <p className="text-[11px] leading-4 text-muted-foreground">{metric.description}</p>
+    </article>
   )
 }
 
 function SelfEquipmentDashboard() {
-  const dashboard = buildDashboardData()
-  const linePieData = dashboard.lineRows.slice(0, 6)
-  const teamPieData = dashboard.teamRows.slice(0, 6)
+  const dashboardQuery = useQuery({
+    queryKey: ["spider-dashboard-summary"],
+    queryFn: fetchDashboardSummary,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  })
+  const metrics = dashboardQuery.data?.metrics
 
   return (
     <section className="grid gap-4">
@@ -273,28 +214,29 @@ function SelfEquipmentDashboard() {
         <div className="min-w-0">
           <h2 className="text-xl font-semibold tracking-tight">자설비 이상감지 Dashboard</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            현재 기준 이상건수와 과거 6개월 추이를 라인/분임조 단위로 확인합니다.
+            최신 SPIDER 통계 파일 기준 모니터링 범위와 이상감지 현황입니다.
           </p>
         </div>
-        <div className="rounded-xl border bg-card px-4 py-3 text-right shadow-sm">
-          <p className="text-xs font-medium text-muted-foreground">현재 이상건수</p>
-          <p className="text-2xl font-semibold tabular-nums">{dashboard.totalCount.toLocaleString()}</p>
-        </div>
+        <Badge variant="outline" className="h-7 px-3">
+          기준일시 {dashboardQuery.isError ? "조회 실패" : (dashboardQuery.data?.latestDate || "조회 중")}
+        </Badge>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <DashboardCard title="라인별 현재 이상건수" description="상위 6개 라인 기준 분포" badge={`${linePieData.length} lines`}>
-          <AnomalyPieChart data={linePieData} />
-        </DashboardCard>
-        <DashboardCard title="라인별 6개월 추이" description="상위 라인의 월별 이상건수 흐름" badge="6 months">
-          <AnomalyLineChart rows={dashboard.lineTrendRows} series={dashboard.topLines} />
-        </DashboardCard>
-        <DashboardCard title="분임조별 현재 이상건수" description="상위 6개 분임조 기준 분포" badge={`${teamPieData.length} teams`}>
-          <AnomalyPieChart data={teamPieData} />
-        </DashboardCard>
-        <DashboardCard title="분임조별 6개월 추이" description="상위 분임조의 월별 이상건수 흐름" badge="6 months">
-          <AnomalyLineChart rows={dashboard.teamTrendRows} series={dashboard.topTeams} />
-        </DashboardCard>
+      {dashboardQuery.isError ? (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          {dashboardQuery.error.message}
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
+        {DASHBOARD_METRICS.map((metric) => (
+          <DashboardMetricCard
+            key={metric.key}
+            metric={metric}
+            value={metrics?.[metric.key]}
+            isLoading={dashboardQuery.isLoading}
+          />
+        ))}
       </div>
     </section>
   )

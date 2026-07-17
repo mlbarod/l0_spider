@@ -96,6 +96,24 @@ node server.mjs
 
 ## Database References
 
+### 메인 대시보드 데이터
+
+SPIDER 메인 하단 대시보드는 `/appdata/abnormal_trend/pic/path` 아래에서
+`YYYY-MM-DD hh:mm:ss` 형식의 가장 최신 항목을 `{latest_date}`로 결정하고 다음 두
+Parquet 파일을 함께 읽는다.
+
+| 구분 | 경로 | 참조 컬럼 |
+| --- | --- | --- |
+| 전체 통계 | `/appdata/abnormal_trend/pic/stats/{latest_date}_spider_step_stats.parquets` | `exec_date`, `recipe_id`, `priority`, `ng`, `total` |
+| 세부 통계 | `/appdata/abnormal_trend/pic/path/{latest_date}` | `sdwt`, `desc`, `recipe_id`, `priority`, `sensor` |
+
+상단 KPI는 다음 기준으로 계산한다.
+
+- 모니터링 센서 총합: 전체 통계에서 `priority = 'TL'`인 행의 `total` 합계
+- 감지 PPID갯수: A/B/D/N/M Grade 중 `ng > 0`인 고유 `recipe_id` 수
+- 전체 이상건수: A/B/D/N/M Grade의 `ng` 합계
+- Grade별 건수: 해당 `priority`의 `ng` 합계 (`A/B`는 A, B, A/B 포함)
+
 L0 Spider의 DB 접속정보는 `/appdata/l0_spider/db_info.pkl`에서 읽는다. 아래 이력 테이블의 실제 INSERT/SELECT 기능은 해당 기능 개발 시 명시된 스키마를 기준으로 구현한다.
 
 ### `pass_history`
@@ -252,11 +270,11 @@ IP로 현재 사용자를 확인한 후 한 행을 INSERT한다. 자설비는 `c
 | --- | --- | --- | --- |
 | ERD 이상감지 데이터 | `data.parquet` | `/appdata/abnormal_trend/pic/erd/{latest_date}/{sdwt}/{step_desc}/{ver}/{ppid}/{grade}/{sensor}/{ch_step}/data.parquet` | `act_time` (x축), `{sensor}_{ch_step}` (y축), `eqp_cb` (차트별 EQP 필터), `eqp_id`, `disp_name`, `wafer_id`, `root_lot_id` (hover 표시) |
 | EQP 변경점 이력 | `{eqp}.parquet` | ERD `data.parquet`과 같은 디렉터리의 `{eqp}.parquet` | `date` (세로 점선 위치), `work_type` (점선 라벨), `ctttm_url`, `desc` |
-| stats 파일 | `{latest_date}_spider_step_stats.parquets` | `/appdata/abnormal_trend/pic/stats/{latest_date}_spider_step_stats.parquets` | 미정 (개발하면서 순차 정의) |
+| stats 파일 | `{latest_date}_spider_step_stats.parquets` | `/appdata/abnormal_trend/pic/stats/{latest_date}_spider_step_stats.parquets` | `exec_date`, `recipe_id`, `priority`, `ng`, `total` |
 | V제외 stats 파일 | `{latest_date}_spider_step_stats_except_v.parquets` | `/appdata/abnormal_trend/pic/stats/{latest_date}_spider_step_stats_except_v.parquets` | 미정 (개발하면서 순차 정의) |
 | 동일성 기준 이상 감지 그래프 | `img.png` | `/appdata/abnormal_trend/pic/erd_commonality/{latest_date}/{sdwt}/{grade}/{step_seq}/{step_desc}/{ppid}/{ppid}/{sensor}_{ch_step}/img.png` | 미정 (개발하면서 순차 정의) |
 | 이상감지 이력 이미지 | `#appdata#abnormal_trend#pic#erd#{latest_date}#{sdwt}#{step_desc}#{ver}#{ppid}#{grade}#{sensor}#{ch_step}#{eqp}.png` | `/appdata/abnormal_trend/pic/backup/#appdata#abnormal_trend#pic#erd#{latest_date}#{sdwt}#{step_desc}#{ver}#{ppid}#{grade}#{sensor}#{ch_step}#{eqp}.png` | 해당 없음 (이미지 파일) |
-| `latest_date` 결정 파일 | `{latest_date}` | `/appdata/abnormal_trend/pic/path/{latest_date}` | 해당 없음 (파일명 참조) |
+| `latest_date` 결정 및 대시보드 세부 파일 | `{latest_date}` | `/appdata/abnormal_trend/pic/path/{latest_date}` | `sdwt`, `desc`, `recipe_id`, `priority`, `sensor` |
 | 분임조별 ERD 이상감지 경로 데이터 | `df_path.parquet` | `/appdata/abnormal_trend/pic/path/{line}/{sdwt}/df_path.parquet` | `sdwt`, `desc`, `ver`, `recipe_id`, `priority`, `sensor`, `step`, `eqp`, `file_path`, `line_rev` |
 | 공통부 이상감지 경로 테이블 | `df_path.parquet` | `/appdata/abnormal_trend/pic/path_common/{line}/{sdwt}/df_path.parquet` | `file_path`, `sdwt`, `prc_group`, `date`, `priority`, `sensor`, `step`, `eqp`, `line_rev` |
 | 공통부 이상감지 데이터 | `data.parquet` | `/appdata/abnormal_trend/pic/common/{latest_date}/{sdwt}/{step_desc}/{grade}/{sensor}/{ch_step}/data.parquet` | `eqp_id`, `disp_name`, `lotid`, `wafer_id`, `act_time` (x축), `{sensor}_{ch_step}` (y축), `eqp_cb` (차트별 EQP 필터) |
