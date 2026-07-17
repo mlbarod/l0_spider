@@ -110,9 +110,10 @@ Parquet 파일을 함께 읽는다.
 상단 KPI는 다음 기준으로 계산한다.
 
 - 모니터링 센서 총합: 전체 통계에서 `priority = 'TL'`인 행의 `total` 합계
-- 감지 PPID갯수: A/B/D/N/M Grade 중 `ng > 0`인 고유 `recipe_id` 수
-- 전체 이상건수: A/B/D/N/M Grade의 `ng` 합계
-- Grade별 건수: 해당 `priority`의 `ng` 합계 (`A/B`는 A, B, A/B 포함)
+- 감지 PPID갯수: 세부 통계의 고유 `recipe_id` 수
+- 전체 이상건수: 세부 통계의 `sdwt`, `desc`, `recipe_id`, `priority`, `sensor` 조합 고유건수
+- A/B Grade: 세부 통계의 `priority`가 A 또는 B인 행에서 위 5개 컬럼 조합 고유건수
+- D/N/M Grade: 세부 통계에서 각 `priority`로 필터한 뒤 위 5개 컬럼 조합 고유건수
 
 L0 Spider의 DB 접속정보는 `/appdata/l0_spider/db_info.pkl`에서 읽는다. 아래 이력 테이블의 실제 INSERT/SELECT 기능은 해당 기능 개발 시 명시된 스키마를 기준으로 구현한다.
 

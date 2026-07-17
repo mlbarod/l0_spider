@@ -116,7 +116,7 @@ const DASHBOARD_METRICS = [
   {
     key: "detectedPpidCount",
     label: "감지 PPID갯수",
-    description: "이상 감지 고유 recipe_id",
+    description: "세부 파일 · 고유 recipe_id",
     unit: "개",
     icon: Layers3,
     accent: "border-l-emerald-500",
@@ -125,7 +125,7 @@ const DASHBOARD_METRICS = [
   {
     key: "totalAnomalyCount",
     label: "전체 이상건수",
-    description: "A/B · D · N · M 합계",
+    description: "세부 파일 · 5개 컬럼 고유조합",
     unit: "건",
     icon: TriangleAlert,
     accent: "border-l-rose-500",
@@ -134,7 +134,7 @@ const DASHBOARD_METRICS = [
   {
     key: "abGradeCount",
     label: "A/B Grade",
-    description: "A · B Grade ng 합계",
+    description: "A · B 필터 · 고유조합",
     unit: "건",
     icon: Gauge,
     accent: "border-l-blue-500",
@@ -143,7 +143,7 @@ const DASHBOARD_METRICS = [
   {
     key: "dGradeCount",
     label: "D Grade",
-    description: "D Grade ng 합계",
+    description: "D 필터 · 고유조합",
     unit: "건",
     icon: Gauge,
     accent: "border-l-amber-500",
@@ -152,7 +152,7 @@ const DASHBOARD_METRICS = [
   {
     key: "nGradeCount",
     label: "N Grade",
-    description: "N Grade ng 합계",
+    description: "N 필터 · 고유조합",
     unit: "건",
     icon: Gauge,
     accent: "border-l-violet-500",
@@ -161,7 +161,7 @@ const DASHBOARD_METRICS = [
   {
     key: "mGradeCount",
     label: "M Grade",
-    description: "M Grade ng 합계",
+    description: "M 필터 · 고유조합",
     unit: "건",
     icon: Gauge,
     accent: "border-l-fuchsia-500",
@@ -189,7 +189,7 @@ function DashboardMetricCard({ metric, value, isLoading }) {
         </span>
       </div>
       <div className="flex items-end gap-1.5 py-3" aria-live="polite">
-        <strong className="text-3xl font-semibold tracking-tight tabular-nums xl:text-4xl">
+        <strong className="text-2xl font-semibold tracking-tight tabular-nums xl:text-3xl">
           {formatMetricValue(value, isLoading)}
         </strong>
         <span className="pb-1 text-sm font-medium text-muted-foreground">{metric.unit}</span>
@@ -209,12 +209,12 @@ function SelfEquipmentDashboard() {
   const metrics = dashboardQuery.data?.metrics
 
   return (
-    <section className="grid gap-4">
+    <section className="mt-2 grid gap-5 border-t-2 border-border/80 pt-7">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-xl font-semibold tracking-tight">자설비 이상감지 Dashboard</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            최신 SPIDER 통계 파일 기준 모니터링 범위와 이상감지 현황입니다.
+            최신 SPIDER 전체·세부 파일 기준 모니터링 범위와 이상감지 현황입니다.
           </p>
         </div>
         <Badge variant="outline" className="h-7 px-3">
@@ -228,7 +228,7 @@ function SelfEquipmentDashboard() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
         {DASHBOARD_METRICS.map((metric) => (
           <DashboardMetricCard
             key={metric.key}

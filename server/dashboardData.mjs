@@ -49,30 +49,34 @@ function uniqueCount(rows, column) {
   return new Set(rows.map((row) => normalizeText(row[column])).filter(Boolean)).size
 }
 
-function gradeRows(statsRows, priorities) {
+function uniqueCombinationCount(rows, columns) {
+  return new Set(rows.map((row) => (
+    columns.map((column) => normalizeText(row[column])).join("\u0000")
+  ))).size
+}
+
+function gradeRows(rows, priorities) {
   const allowed = new Set(priorities)
-  return statsRows.filter((row) => allowed.has(normalizePriority(row.priority)))
+  return rows.filter((row) => allowed.has(normalizePriority(row.priority)))
 }
 
 export function buildDashboardSummary(statsRows, detailRows, source = {}) {
   const tlRows = gradeRows(statsRows, ["TL"])
-  const abRows = gradeRows(statsRows, ["A", "B", "A/B"])
-  const dRows = gradeRows(statsRows, ["D"])
-  const nRows = gradeRows(statsRows, ["N"])
-  const mRows = gradeRows(statsRows, ["M"])
-  const anomalyRows = [...abRows, ...dRows, ...nRows, ...mRows]
-  const detectedPpidRows = anomalyRows.filter((row) => normalizeNumber(row.ng) > 0)
+  const abRows = gradeRows(detailRows, ["A", "B"])
+  const dRows = gradeRows(detailRows, ["D"])
+  const nRows = gradeRows(detailRows, ["N"])
+  const mRows = gradeRows(detailRows, ["M"])
 
   return {
     latestDate: source.latestDate ?? "",
     metrics: {
       monitoringSensorTotal: sumColumn(tlRows, "total"),
-      detectedPpidCount: uniqueCount(detectedPpidRows, "recipe_id"),
-      totalAnomalyCount: sumColumn(anomalyRows, "ng"),
-      abGradeCount: sumColumn(abRows, "ng"),
-      dGradeCount: sumColumn(dRows, "ng"),
-      nGradeCount: sumColumn(nRows, "ng"),
-      mGradeCount: sumColumn(mRows, "ng"),
+      detectedPpidCount: uniqueCount(detailRows, "recipe_id"),
+      totalAnomalyCount: uniqueCombinationCount(detailRows, DASHBOARD_DETAIL_COLUMNS),
+      abGradeCount: uniqueCombinationCount(abRows, DASHBOARD_DETAIL_COLUMNS),
+      dGradeCount: uniqueCombinationCount(dRows, DASHBOARD_DETAIL_COLUMNS),
+      nGradeCount: uniqueCombinationCount(nRows, DASHBOARD_DETAIL_COLUMNS),
+      mGradeCount: uniqueCombinationCount(mRows, DASHBOARD_DETAIL_COLUMNS),
     },
     detailCounts: {
       rows: detailRows.length,
