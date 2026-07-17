@@ -434,19 +434,6 @@ async function generateScreenshots() {
     const commonCard = page.locator("article").filter({ hasText: "EQP-COMMON" }).first()
     await capture(page, "10-common-anomaly-image.png", { target: commonCard, highlights: [commonCard.getByRole("button", { name: "SKIP", exact: true }), commonCard.getByRole("button", { name: "동일성 차트" })] })
 
-    await goto(page, "/fdc-hard-limit", "FDC Hard Limit추천")
-    await page.getByRole("button", { name: "추천SPEC 조회" }).waitFor({ state: "visible" })
-    await page.getByRole("button", { name: "추천SPEC 조회" }).click()
-    await page.getByText("그래프 그리기").waitFor({ state: "visible" })
-    await capture(page, "11-fdc-hard-limit.png", { fullPage: true, highlights: [page.getByRole("button", { name: "추천SPEC 조회" }), page.getByRole("button", { name: "엑셀 다운로드" })] })
-
-    await goto(page, "/yield-hard-limit", "수율기반 Hard Limit추천")
-    await capture(page, "12-yield-hard-limit.png", { fullPage: true, highlights: [page.getByRole("button", { name: "조회" })] })
-
-    await goto(page, "/recipients", "이상감지 수신인 정비")
-    await page.getByLabel("이메일").fill("manual.test")
-    await capture(page, "14-recipients.png", { fullPage: true, highlights: [page.getByLabel("이메일"), page.getByRole("button", { name: "등록" }), page.getByRole("button", { name: "제거" })] })
-
     await goto(page, "/manual", "사용자 메뉴얼")
     await page.getByRole("heading", { name: "SPIDER PC 사용자 매뉴얼", exact: true }).waitFor({ state: "visible" })
     await capture(page, "15-manual-status.png")

@@ -13,6 +13,9 @@ const manualImageModules = import.meta.glob(
   [
     "../../../../docs/user-manual/images/*.png",
     "!../../../../docs/user-manual/images/13-history.png",
+    "!../../../../docs/user-manual/images/11-fdc-hard-limit.png",
+    "!../../../../docs/user-manual/images/12-yield-hard-limit.png",
+    "!../../../../docs/user-manual/images/14-recipients.png",
   ],
   { eager: true, import: "default", query: "?url" },
 )
