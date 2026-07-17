@@ -6,6 +6,7 @@ import process from "node:process"
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
 import {
   handleCommonAnomalyDataRequest,
+  handleCommonAnomalyImageRequest,
   handleCommonAnomalyScatterRequest,
 } from "./server/commonAnomalyData.mjs"
 import { handleHitHistoryRequest } from "./server/hitHistory.mjs"
@@ -63,6 +64,11 @@ function mappingConfigApi() {
 
         if (url.pathname === "/api/common-anomaly-scatter-data") {
           handleCommonAnomalyScatterRequest(req, res, url)
+          return
+        }
+
+        if (url.pathname === "/api/common-anomaly-image") {
+          handleCommonAnomalyImageRequest(req, res, url)
           return
         }
 

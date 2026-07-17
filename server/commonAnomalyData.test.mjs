@@ -6,6 +6,7 @@ import {
   buildCommonIdentityPayload,
   buildCommonScatterPayload,
   resolveCommonAnomalyDataPath,
+  resolveCommonAnomalyImagePath,
 } from "./commonAnomalyData.mjs"
 
 function createPathRow(overrides = {}) {
@@ -27,6 +28,16 @@ test("pic_server2를 pic로 바꾸고 마지막 png 파일명을 data.parquet으
   assert.equal(
     resolveCommonAnomalyDataPath(createPathRow().file_path),
     "/appdata/abnormal_trend/pic/common/2026-07-17/SDWT-1/ETCH/A/TEMP/10/data.parquet",
+  )
+})
+
+test("공통부 data.parquet 파일명을 eqp_cb png 파일명으로 바꾼다", () => {
+  assert.equal(
+    resolveCommonAnomalyImagePath(
+      "/appdata/abnormal_trend/pic/common/2026-07-17/SDWT-1/ETCH/A/TEMP/10/data.parquet",
+      "EQP-1.png",
+    ),
+    "/appdata/abnormal_trend/pic/common/2026-07-17/SDWT-1/ETCH/A/TEMP/10/EQP-1.png",
   )
 })
 
@@ -53,6 +64,31 @@ test("Line Name, sdwt, prc_group, eqp ALL, sensor 순서로 경로 행을 필터
   assert.equal(payload.eqps.length, 2)
   assert.equal(payload.rows.length, 2)
   assert.ok(payload.rows.every((row) => row.data_path.endsWith("/data.parquet")))
+  assert.deepEqual(payload.rows.map((row) => row.image_path), [
+    "/appdata/abnormal_trend/pic/common/2026-07-17/SDWT-1/ETCH/A/TEMP/10/EQP-1.png",
+    "/appdata/abnormal_trend/pic/common/2026-07-17/SDWT-1/ETCH/A/TEMP/10/EQP-2.png",
+  ])
+})
+
+test("이미지 파일명은 원본 file_path의 마지막 eqp_cb png 이름을 유지한다", () => {
+  const payload = buildCommonAnomalyPayload([
+    createPathRow({
+      eqp: "DISPLAY-EQP.png",
+      file_path: "/appdata/abnormal_trend/pic_server2/common/2026-07-17/SDWT-1/ETCH/A/TEMP/10/ACTUAL-EQP-CB.png",
+    }),
+  ], {
+    line: "P1L",
+    pathSdwt: "SDWT-1",
+    sdwt: "SDWT-1",
+    prcGroup: "ETCH",
+    eqp: "DISPLAY-EQP.png",
+    sensor: "TEMP",
+  })
+
+  assert.equal(
+    payload.rows[0].image_path,
+    "/appdata/abnormal_trend/pic/common/2026-07-17/SDWT-1/ETCH/A/TEMP/10/ACTUAL-EQP-CB.png",
+  )
 })
 
 test("공통부 scatter는 선택 eqp_cb와 sensor_ch_step 컬럼을 사용하고 lotid를 제공한다", () => {

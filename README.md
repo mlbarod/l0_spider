@@ -228,6 +228,7 @@ SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일
 | 분임조별 ERD 이상감지 경로 데이터 | `df_path.parquet` | `/appdata/abnormal_trend/pic/path/{line}/{sdwt}/df_path.parquet` | `sdwt`, `desc`, `ver`, `recipe_id`, `priority`, `sensor`, `step`, `eqp`, `file_path`, `line_rev` |
 | 공통부 이상감지 경로 테이블 | `df_path.parquet` | `/appdata/abnormal_trend/pic/path_common/{line}/{sdwt}/df_path.parquet` | `file_path`, `sdwt`, `prc_group`, `date`, `priority`, `sensor`, `step`, `eqp`, `line_rev` |
 | 공통부 이상감지 데이터 | `data.parquet` | `/appdata/abnormal_trend/pic/common/{latest_date}/{sdwt}/{step_desc}/{grade}/{sensor}/{ch_step}/data.parquet` | `eqp_id`, `disp_name`, `lotid`, `wafer_id`, `act_time` (x축), `{sensor}_{ch_step}` (y축), `eqp_cb` (차트별 EQP 필터) |
+| 공통부 이상감지 이미지 | `{eqp_cb}.png` | `/appdata/abnormal_trend/pic/common/{latest_date}/{sdwt}/{step_desc}/{grade}/{sensor}/{ch_step}/{eqp_cb}.png` | 해당 없음 (메인 카드 이미지 출력) |
 | 기준정보 매핑 | `mapping_config.json` | `/appdata/l0_spider/mapping_config.json` | `root.line_mapping` (`key`: SDWT 식별자, `value`: 라인), `root.sdwt_mapping` (`key`: SDWT 식별자, `value`: 표시명, key가 없으면 원본 SDWT 사용) |
 
 새 데이터 파일이나 참조 컬럼/키가 추가되면 이 표와
@@ -252,19 +253,17 @@ SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일
 → /appdata/abnormal_trend/pic/common/2026-07-17/SDWT-1/ETCH/A/TEMP/10/data.parquet
 ```
 
-Scatter chart는 `act_time`을 x축, 선택한 `{sensor}_{ch_step}` 컬럼을 y축으로 사용하고,
-테이블 행의 `eqp`와 parquet의 `eqp_cb`가 같은 데이터만 표시한다. 대소문자와
-채널 접미사 차이를 허용하며 직접 매칭되지 않으면 `eqp_id`를 확인하고,
-parquet의 `eqp_cb`가 하나뿐인 파일은 그 값을 사용한다. hover에는
-`eqp_id`, `disp_name`, `lotid`, `wafer_id`, `act_time`, 선택 sensor_ch_step 값을 표시한다.
-`동일성 차트`는 같은 `data.parquet`의 전체 `eqp_cb`를 자설비와 같은 UI로 비교하고,
+메인 카드에는 위 `data.parquet` 파일명을 선택 EQP의 `{eqp_cb}.png`로 바꾼 이미지를
+출력한다. 이미지 로드에 실패하면 카드에 최종 이미지 절대경로를 표시한다.
+
+`동일성 차트`는 `data.parquet`의 `act_time`과 `{sensor}_{ch_step}`을 사용하여 같은
+파일의 전체 `eqp_cb`를 자설비와 같은 UI로 비교하고,
 선택 EQP를 강조한다. `SKIP`은 자설비와 같은 팝업·등록·해제 UI를 사용한다.
 `이력저장`은 공통부용 기능이 별도로 정의될 때까지 비활성화한다.
-유효한 scatter 데이터가 없으면 차트 영역에 drawing 대상 `data.parquet` 절대경로와
-전체 행, EQP 매칭 행, 유효하지 않은 `act_time`/sensor_ch_step 값의 제외 건수를 표시한다.
 
 - 필터·경로 목록 API: `GET /api/common-anomaly-data`
-- Scatter 데이터 API: `GET /api/common-anomaly-scatter-data`
+- 이미지 API: `GET /api/common-anomaly-image`
+- 동일성 데이터 API: `GET /api/common-anomaly-scatter-data?mode=identity`
 - 서버 데이터 모듈: `server/commonAnomalyData.mjs`
 - 화면: `src/features/fdc-trend/pages/CommonAnomalyPage.jsx`
 

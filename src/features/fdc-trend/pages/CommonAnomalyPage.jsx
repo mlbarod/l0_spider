@@ -1,18 +1,8 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react"
-import { ArrowLeft, ArrowUp, Check, ChevronRight, Loader2 } from "lucide-react"
+import { memo, useMemo, useRef, useState } from "react"
+import { ArrowLeft, ArrowUp, Check, ChevronRight, ImageOff, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import {
-  CartesianGrid,
-  ResponsiveContainer,
-  Scatter,
-  ScatterChart,
-  Tooltip as RechartsTooltip,
-  XAxis,
-  YAxis,
-} from "recharts"
-
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
@@ -20,9 +10,9 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 import {
+  buildCommonAnomalyImageUrl,
   fetchCommonAnomalyData,
   fetchCommonAnomalyIdentityData,
-  fetchCommonAnomalyScatterData,
 } from "../api/commonAnomalyApi"
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
@@ -34,10 +24,6 @@ const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
 const ALL_EQPS = "ALL"
 const COMMON_PASS_HISTORY_VERSION = "COMMON"
-const CHART_MARGIN = Object.freeze({ top: 42, right: 18, bottom: 28, left: 16 })
-const Y_AXIS_WIDTH = 64
-const X_AXIS_HEIGHT = 30
-const MAX_RENDERED_POINTS = 800
 
 function SelectRow({ label, meta, selected, onClick }) {
   return (
@@ -170,88 +156,12 @@ function buildCommonRecordPassHistoryKey(record) {
   ].map((value) => String(value ?? "")).join("\u0000")
 }
 
-function formatActTimeTick(value) {
-  if (Number.isFinite(Number(value))) {
-    return new Date(Number(value)).toISOString().slice(0, 10).replaceAll("-", "/")
-  }
-  return String(value ?? "").slice(0, 10).replaceAll("-", "/")
-}
-
-function numericDomain(values, fallbackPadding) {
-  const finiteValues = values.filter(Number.isFinite)
-  if (!finiteValues.length) return [0, 1]
-  const minimum = Math.min(...finiteValues)
-  const maximum = Math.max(...finiteValues)
-  if (minimum !== maximum) {
-    const padding = (maximum - minimum) * 0.025
-    return [minimum - padding, maximum + padding]
-  }
-  const padding = Math.abs(minimum) * 0.05 || fallbackPadding
-  return [minimum - padding, maximum + padding]
-}
-
-function samplePoints(points) {
-  if (points.length <= MAX_RENDERED_POINTS) return points
-  const sampled = [points[0]]
-  const interval = (points.length - 1) / (MAX_RENDERED_POINTS - 1)
-  for (let index = 1; index < MAX_RENDERED_POINTS - 1; index += 1) {
-    sampled.push(points[Math.round(index * interval)])
-  }
-  sampled.push(points.at(-1))
-  return sampled
-}
-
-function ScatterPointTooltip({ active, payload, axisColumn }) {
-  const point = payload?.[0]?.payload
-  if (!active || !point) return null
-  const rows = [
-    ["eqp_id", point.eqpId],
-    ["disp_name", point.dispName],
-    ["lotid", point.lotId],
-    ["wafer_id", point.waferId],
-    ["act_time", point.actTime],
-    [axisColumn, point.value],
-  ]
-  return (
-    <div className="grid gap-1 rounded-md border bg-background/95 px-3 py-2 text-xs shadow-lg">
-      {rows.map(([label, value]) => (
-        <div key={label} className="grid grid-cols-[80px_minmax(0,1fr)] gap-2">
-          <span className="text-muted-foreground">{label}</span>
-          <span className="max-w-64 break-all font-medium">{String(value ?? "-")}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function getZoomPoint(event, chart, domains) {
-  if (!chart || !event) return null
-  const bounds = chart.getBoundingClientRect()
-  const plotLeft = CHART_MARGIN.left + Y_AXIS_WIDTH
-  const plotRight = bounds.width - CHART_MARGIN.right
-  const plotTop = CHART_MARGIN.top
-  const plotBottom = bounds.height - CHART_MARGIN.bottom - X_AXIS_HEIGHT
-  const pixelX = Math.min(Math.max(event.clientX - bounds.left, plotLeft), plotRight)
-  const pixelY = Math.min(Math.max(event.clientY - bounds.top, plotTop), plotBottom)
-  const xRatio = (pixelX - plotLeft) / Math.max(plotRight - plotLeft, 1)
-  const yRatio = (pixelY - plotTop) / Math.max(plotBottom - plotTop, 1)
-  return {
-    x: domains.x[0] + xRatio * (domains.x[1] - domains.x[0]),
-    y: domains.y[1] - yRatio * (domains.y[1] - domains.y[0]),
-    pixelX,
-    pixelY,
-  }
-}
-
-const CommonScatterCard = memo(function CommonScatterCard({ row, lineId, passRecord }) {
+const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({ row, lineId, passRecord }) {
   const eqp = stripPngExtension(row.eqp)
   const queryClient = useQueryClient()
-  const cardRef = useRef(null)
-  const chartRef = useRef(null)
-  const zoomStartRef = useRef(null)
-  const [isNearViewport, setIsNearViewport] = useState(false)
-  const [zoomDomain, setZoomDomain] = useState(null)
+  const [imageFailed, setImageFailed] = useState(false)
   const isSkipped = Boolean(passRecord)
+  const imageUrl = buildCommonAnomalyImageUrl(row.image_path)
   const identityRow = useMemo(() => ({
     ...row,
     file_path: row.data_path,
@@ -279,78 +189,8 @@ const CommonScatterCard = memo(function CommonScatterCard({ row, lineId, passRec
     })
   }
 
-  useEffect(() => {
-    const card = cardRef.current
-    if (!card || typeof IntersectionObserver === "undefined") {
-      setIsNearViewport(true)
-      return undefined
-    }
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) return
-      setIsNearViewport(true)
-      observer.disconnect()
-    }, { rootMargin: "600px 0px" })
-    observer.observe(card)
-    return () => observer.disconnect()
-  }, [])
-
-  const chartQuery = useQuery({
-    queryKey: ["common-anomaly-scatter-data", row.data_path, eqp, row.sensor, row.step],
-    queryFn: () => fetchCommonAnomalyScatterData({
-      filePath: row.data_path,
-      eqp,
-      sensor: row.sensor,
-      chStep: row.step,
-    }),
-    enabled: Boolean(isNearViewport && row.data_path && eqp && row.sensor && row.step),
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
-  const points = chartQuery.data?.points ?? EMPTY_LIST
-  const axisColumn = chartQuery.data?.axisColumn ?? `${row.sensor}_${row.step}`
-  const baseDomain = useMemo(() => ({
-    x: numericDomain(points.map((point) => point.actTimeMs), 60 * 60 * 1000),
-    y: numericDomain(points.map((point) => point.value), 1),
-  }), [points])
-  const renderedPoints = useMemo(() => {
-    const visible = zoomDomain
-      ? points.filter((point) => (
-          point.actTimeMs >= zoomDomain.x[0]
-          && point.actTimeMs <= zoomDomain.x[1]
-          && point.value >= zoomDomain.y[0]
-          && point.value <= zoomDomain.y[1]
-        ))
-      : points
-    return {
-      recent: samplePoints(visible.filter((point) => point.isRecent)),
-      previous: samplePoints(visible.filter((point) => !point.isRecent)),
-    }
-  }, [points, zoomDomain])
-
-  const handlePointerDown = (event) => {
-    if (event.button !== 0) return
-    const point = getZoomPoint(event, chartRef.current, zoomDomain ?? baseDomain)
-    if (!point) return
-    event.preventDefault()
-    event.currentTarget.setPointerCapture?.(event.pointerId)
-    zoomStartRef.current = point
-  }
-  const handlePointerUp = (event) => {
-    const start = zoomStartRef.current
-    if (!start) return
-    const end = getZoomPoint(event, chartRef.current, zoomDomain ?? baseDomain)
-    if (end && Math.abs(end.pixelX - start.pixelX) > 4 && Math.abs(end.pixelY - start.pixelY) > 4) {
-      setZoomDomain({
-        x: [Math.min(start.x, end.x), Math.max(start.x, end.x)],
-        y: [Math.min(start.y, end.y), Math.max(start.y, end.y)],
-      })
-    }
-    event.currentTarget.releasePointerCapture?.(event.pointerId)
-    zoomStartRef.current = null
-  }
-
   return (
-    <article ref={cardRef} className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border bg-card shadow-sm">
+    <article className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border bg-card shadow-sm">
       <header className="border-b bg-muted/50 px-3 py-2">
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
@@ -361,94 +201,27 @@ const CommonScatterCard = memo(function CommonScatterCard({ row, lineId, passRec
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {isSkipped ? <Badge variant="destructive">이상감지 SKIP 건</Badge> : null}
-            {chartQuery.data ? <Badge variant="secondary">{points.length.toLocaleString()} 매</Badge> : null}
             <Badge variant="outline">{row.priority ? `${row.priority}등급` : "등급 미지정"}</Badge>
           </div>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
-          <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-red-500" /> 이상감지 data</span>
-          <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-gray-400" /> 이전 데이터</span>
-          <span>드래그 확대 · 더블클릭 원복</span>
-        </div>
       </header>
       <div className="grid min-h-[320px] place-items-center bg-background p-3">
-        {!isNearViewport ? (
-          <div className="text-sm text-muted-foreground">화면에 표시할 차트를 준비 중입니다.</div>
-        ) : chartQuery.isLoading ? (
-          <div className="grid justify-items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-            공통부 이상감지 데이터를 불러오는 중입니다.
-          </div>
-        ) : chartQuery.isError ? (
-          <div className="grid max-w-md gap-2 px-4 text-center text-sm text-destructive">
-            <span>{chartQuery.error.message}</span>
-            {chartQuery.error.sourcePath ? <code className="break-all text-xs">{chartQuery.error.sourcePath}</code> : null}
-          </div>
-        ) : points.length ? (
-          <div
-            ref={chartRef}
-            className="relative h-[320px] w-full min-w-0 cursor-crosshair select-none touch-none"
-            onPointerDown={handlePointerDown}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={() => { zoomStartRef.current = null }}
-            onDoubleClick={() => setZoomDomain(null)}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={CHART_MARGIN}>
-                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="actTimeMs"
-                  type="number"
-                  name="act_time"
-                  height={X_AXIS_HEIGHT}
-                  domain={zoomDomain?.x ?? baseDomain.x}
-                  allowDataOverflow={Boolean(zoomDomain)}
-                  scale="time"
-                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                  tickFormatter={formatActTimeTick}
-                  label={{ value: "act_time", position: "insideBottom", offset: -18, fontSize: 11 }}
-                />
-                <YAxis
-                  dataKey="value"
-                  type="number"
-                  name={axisColumn}
-                  width={Y_AXIS_WIDTH}
-                  domain={zoomDomain?.y ?? baseDomain.y}
-                  allowDataOverflow={Boolean(zoomDomain)}
-                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                  tickFormatter={(value) => Number(value).toFixed(2)}
-                />
-                <RechartsTooltip
-                  content={<ScatterPointTooltip axisColumn={axisColumn} />}
-                  cursor={false}
-                  isAnimationActive={false}
-                  animationDuration={0}
-                />
-                <Scatter data={renderedPoints.previous} dataKey="value" fill="#9ca3af" isAnimationActive={false} />
-                <Scatter data={renderedPoints.recent} dataKey="value" fill="#ef4444" isAnimationActive={false} />
-              </ScatterChart>
-            </ResponsiveContainer>
+        {imageFailed ? (
+          <div className="grid max-w-full justify-items-center gap-3 px-4 text-center text-sm text-muted-foreground">
+            <ImageOff className="size-8 text-destructive" aria-hidden="true" />
+            <p className="font-medium text-destructive">공통부 이상감지 이미지를 불러오지 못했습니다.</p>
+            <code className="max-w-full break-all rounded-md bg-muted px-3 py-2 text-left text-xs text-muted-foreground">
+              {row.image_path}
+            </code>
           </div>
         ) : (
-          <div className="grid max-w-full justify-items-center gap-3 px-4 text-center text-sm text-muted-foreground">
-            <p>{eqp}에 해당하는 유효한 scatter 데이터가 없습니다.</p>
-            <code className="max-w-full break-all rounded-md bg-muted px-3 py-2 text-left text-xs text-muted-foreground">
-              {chartQuery.data?.sourcePath ?? row.data_path}
-            </code>
-            {chartQuery.data?.diagnostics ? (
-              <>
-                <p className="text-xs">
-                  전체 {chartQuery.data.diagnostics.totalRows.toLocaleString()}건 · EQP 매칭 {chartQuery.data.diagnostics.eqpMatchedRows.toLocaleString()}건 ·
-                  act_time 제외 {chartQuery.data.diagnostics.invalidActTimeRows.toLocaleString()}건 · sensor_ch_step 값 제외 {chartQuery.data.diagnostics.invalidValueRows.toLocaleString()}건
-                </p>
-                {chartQuery.data.diagnostics.availableEqpCbs?.length ? (
-                  <p className="max-w-full break-all text-left text-xs">
-                    parquet eqp_cb: {chartQuery.data.diagnostics.availableEqpCbs.join(", ")}
-                  </p>
-                ) : null}
-              </>
-            ) : null}
-          </div>
+          <img
+            src={imageUrl}
+            alt={`${eqp} 공통부 이상감지`}
+            className="max-h-[520px] w-full object-contain"
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+          />
         )}
       </div>
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/20 px-3 py-2.5">
@@ -752,21 +525,21 @@ export function CommonAnomalyPage() {
         <section className="grid min-w-0 gap-3">
           <div className="flex items-end justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold">Scatter chart</h2>
+              <h2 className="text-base font-semibold">이상감지 Image</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                sensor를 선택하면 공통부 data.parquet의 act_time과 sensor_ch_step 값을 표시합니다.
+                sensor를 선택하면 공통부 경로의 data.parquet 파일명을 eqp_cb.png로 바꾼 이미지를 표시합니다.
               </p>
             </div>
             {sensorIsSelected ? (
               <div className="flex items-center gap-2">
                 <Badge variant="secondary">{chartGroups.length.toLocaleString()} EQP categories</Badge>
-                <Badge variant="outline">{chartRows.length.toLocaleString()} charts</Badge>
+                <Badge variant="outline">{chartRows.length.toLocaleString()} images</Badge>
               </div>
             ) : null}
           </div>
           {!sensorIsSelected ? (
             <div className="grid min-h-52 place-items-center rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
-              prc_group, eqp와 sensor를 선택하면 scatter chart가 표시됩니다.
+              prc_group, eqp와 sensor를 선택하면 이상감지 이미지가 표시됩니다.
             </div>
           ) : chartGroups.length ? (
             <div className="grid min-w-0 gap-5">
@@ -774,11 +547,11 @@ export function CommonAnomalyPage() {
                 <section key={group.eqp} className="min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm">
                   <header className="flex items-center justify-between gap-3 border-b bg-muted/60 px-4 py-3">
                     <div className="flex min-w-0 items-center gap-2"><Badge>EQP</Badge><h3 className="truncate text-sm font-semibold">{group.eqp}</h3></div>
-                    <Badge variant="secondary">{group.rows.length.toLocaleString()} charts</Badge>
+                    <Badge variant="secondary">{group.rows.length.toLocaleString()} images</Badge>
                   </header>
                   <div className="grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2 xl:grid-cols-3">
                     {group.rows.map((row) => (
-                      <CommonScatterCard
+                        <CommonAnomalyImageCard
                         key={row.id}
                         row={row}
                         lineId={activeLine}

@@ -9,6 +9,7 @@ import { createServer as createViteServer } from "vite"
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
 import {
   handleCommonAnomalyDataRequest,
+  handleCommonAnomalyImageRequest,
   handleCommonAnomalyScatterRequest,
 } from "./server/commonAnomalyData.mjs"
 import { handleHitHistoryRequest } from "./server/hitHistory.mjs"
@@ -163,6 +164,11 @@ const server = createServer((req, res) => {
     handleCommonAnomalyScatterRequest(req, res, url).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
+    return
+  }
+
+  if (url.pathname === "/api/common-anomaly-image") {
+    handleCommonAnomalyImageRequest(req, res, url)
     return
   }
 

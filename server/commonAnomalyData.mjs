@@ -1,5 +1,5 @@
-import { statSync } from "node:fs"
-import { basename, resolve, sep } from "node:path"
+import { createReadStream, existsSync, statSync } from "node:fs"
+import { basename, dirname, join, resolve, sep } from "node:path"
 
 import { asyncBufferFromFile, parquetReadObjects } from "hyparquet"
 import { compressors } from "hyparquet-compressors"
@@ -213,6 +213,13 @@ export function resolveCommonAnomalyDataPath(imagePath) {
   return filePath
 }
 
+export function resolveCommonAnomalyImagePath(dataPath, eqpCb) {
+  const filePath = resolveCommonAnomalyDataPath(dataPath)
+  const normalizedEqpCb = normalizeEqp(eqpCb)
+  assertPathSegment("eqp_cb", normalizedEqpCb)
+  return join(dirname(filePath), `${normalizedEqpCb}.png`)
+}
+
 export function buildCommonAnomalyPayload(rows, filters) {
   const baseRows = rows.filter((row) => (
     row.line_rev === filters.line && row.sdwt === filters.sdwt
@@ -259,11 +266,15 @@ export function buildCommonAnomalyPayload(rows, filters) {
     prcGroups,
     eqps,
     sensors,
-    rows: chartRows.map((row, index) => ({
-      ...row,
-      id: `${index}-${row.file_path}`,
-      data_path: resolveCommonAnomalyDataPath(row.file_path),
-    })),
+    rows: chartRows.map((row, index) => {
+      const dataPath = resolveCommonAnomalyDataPath(row.file_path)
+      return {
+        ...row,
+        id: `${index}-${row.file_path}`,
+        data_path: dataPath,
+        image_path: resolveCommonAnomalyImagePath(dataPath, basename(row.file_path)),
+      }
+    }),
   }
 }
 
@@ -301,6 +312,34 @@ export async function handleCommonAnomalyDataRequest(req, res, url) {
       error: `공통부 이상감지 경로 데이터를 불러오지 못했습니다: ${error.message}`,
     })
   }
+}
+
+export function handleCommonAnomalyImageRequest(req, res, url) {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    sendJson(res, 405, { ok: false, error: "Method not allowed" })
+    return
+  }
+
+  const requestedPath = normalizeText(url.searchParams.get("path")).replaceAll("pic_server2", "pic")
+  const filePath = resolve(requestedPath)
+  if (!filePath.startsWith(`${COMMON_DATA_ROOT}${sep}`) || !filePath.toLowerCase().endsWith(".png")) {
+    sendJson(res, 403, { ok: false, error: "허용되지 않은 공통부 이상감지 이미지 경로입니다." })
+    return
+  }
+  if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+    sendJson(res, 404, { ok: false, error: "공통부 이상감지 이미지 파일이 없습니다.", path: filePath })
+    return
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "image/png",
+    "Cache-Control": "private, max-age=300",
+  })
+  if (req.method === "HEAD") {
+    res.end()
+    return
+  }
+  createReadStream(filePath).pipe(res)
 }
 
 async function readCommonScatterRows(filePath, axisColumn) {

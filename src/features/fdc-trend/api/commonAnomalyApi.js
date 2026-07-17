@@ -42,3 +42,7 @@ export function fetchCommonAnomalyScatterData(options) {
 export function fetchCommonAnomalyIdentityData(options) {
   return fetchCommonChartData({ ...options, mode: "identity" })
 }
+
+export function buildCommonAnomalyImageUrl(filePath) {
+  return `/api/common-anomaly-image?path=${encodeURIComponent(filePath)}`
+}
