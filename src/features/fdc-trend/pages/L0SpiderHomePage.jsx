@@ -1,4 +1,4 @@
-import { Activity, BookOpen, ChartNoAxesCombined, Gauge, History, Mail, Network, Radar, ScanSearch, TrendingUp } from "lucide-react"
+import { Activity, BookOpen, ChartNoAxesCombined, Gauge, Mail, Network, Radar, ScanSearch, TrendingUp } from "lucide-react"
 import { Link } from "react-router-dom"
 import {
   CartesianGrid,
@@ -73,20 +73,13 @@ const spiderApps = [
     active: true,
   },
   {
-    icon: History,
-    title: "과거 이상감지 이력",
-    subtitle: "이력저장된 이상감지 chart를 라인과 분임조 기준으로 조회합니다.",
-    category: "History",
-    href: "/history",
-    active: true,
-  },
-  {
     icon: BookOpen,
     title: "사용자 메뉴얼",
-    subtitle: "SPIDER 사용자 메뉴얼 이미지와 원본 파일 경로를 확인합니다.",
+    subtitle: "SPIDER의 메뉴와 기능별 상세 사용 방법을 확인합니다.",
     category: "Manual",
     href: "/manual",
     active: true,
+    status: "운영중",
   },
   {
     icon: Mail,

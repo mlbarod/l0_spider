@@ -360,7 +360,7 @@ async function capture(page, name, { highlights = [], fullPage = false, target }
 
 async function goto(page, path, title) {
   currentStage = `화면 이동: ${title} (${path})`
-  await page.goto(`${baseUrl}${path}`)
+  await page.goto(`${baseUrl}${path}`, { timeout: 60_000, waitUntil: "domcontentloaded" })
   await page.getByRole("heading", { name: title, exact: true }).first().waitFor({ state: "visible" })
 }
 
@@ -443,15 +443,13 @@ async function generateScreenshots() {
     await goto(page, "/yield-hard-limit", "수율기반 Hard Limit추천")
     await capture(page, "12-yield-hard-limit.png", { fullPage: true, highlights: [page.getByRole("button", { name: "조회" })] })
 
-    await goto(page, "/history", "과거 이상감지 이력")
-    await capture(page, "13-history.png", { fullPage: true })
-
     await goto(page, "/recipients", "이상감지 수신인 정비")
     await page.getByLabel("이메일").fill("manual.test")
     await capture(page, "14-recipients.png", { fullPage: true, highlights: [page.getByLabel("이메일"), page.getByRole("button", { name: "등록" }), page.getByRole("button", { name: "제거" })] })
 
     await goto(page, "/manual", "사용자 메뉴얼")
-    await capture(page, "15-manual-status.png", { fullPage: true })
+    await page.getByRole("heading", { name: "SPIDER PC 사용자 매뉴얼", exact: true }).waitFor({ state: "visible" })
+    await capture(page, "15-manual-status.png")
   } finally {
     await browser.close()
   }

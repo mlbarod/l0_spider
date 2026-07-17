@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { ArrowLeft, Download, FileImage, LineChart, MailPlus, Save, Search, Trash2 } from "lucide-react"
+import { ArrowLeft, Download, FileImage, LineChart, MailPlus, Search } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import {
@@ -42,7 +42,6 @@ import {
   getRecipientRows,
   getSpiderAnomalyRows,
   getSpiderCommonalityRows,
-  getSpiderHistoryRows,
   getSpiderSummaryRows,
   getTeamsByLine,
   getYieldSpecRows,
@@ -59,16 +58,6 @@ const PAGE_META = {
     title: "공통부 이상감지",
     category: "Common",
     description: "공통부 이상 step과 ch_step 이미지를 센서 단위로 조회합니다.",
-  },
-  history: {
-    title: "과거 이상감지 이력",
-    category: "History",
-    description: "이력저장된 이상감지 chart를 라인과 분임조 기준으로 확인합니다.",
-  },
-  manual: {
-    title: "사용자 메뉴얼",
-    category: "Manual",
-    description: "Streamlit 앱에서 사용하던 사용자 매뉴얼 이미지 경로를 표시합니다.",
   },
   hardSpec: {
     title: "FDC Hard Limit추천",
@@ -380,70 +369,6 @@ function FilterBar({ line, sdwt, sdwtOptions = getSdwtOptionsByLine(line), onLin
   )
 }
 
-function HistoryPage() {
-  const rows = getSpiderHistoryRows()
-  const [selectedId, setSelectedId] = useState(rows[0]?.id ?? "")
-  const selectedRow = rows.find((row) => row.id === selectedId) ?? rows[0]
-
-  return (
-    <>
-      <FilterBar line={DEFAULT_LINE} sdwt={getSdwtOptionsByLine(DEFAULT_LINE)[0]} onLineChange={() => {}} onSdwtChange={() => {}} />
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <SimpleTable
-          columns={[
-            { key: "update_date", label: "update_date" },
-            { key: "sdwt", label: "sdwt" },
-            { key: "sensor", label: "sensor", cellClassName: "font-medium" },
-            { key: "eqp", label: "eqp" },
-            {
-              key: "action",
-              label: "삭제",
-              render: () => <Trash2 className="size-4 text-muted-foreground" aria-hidden="true" />,
-            },
-          ]}
-          rows={rows}
-          selectedId={selectedId}
-          onSelectRow={(row) => setSelectedId(row.id)}
-        />
-        <section className="grid content-start gap-3">
-          <div className="rounded-lg border bg-card p-4">
-            <h2 className="text-sm font-semibold">저장 이력 Chart</h2>
-            <p className="mt-1 truncate text-xs text-muted-foreground">{selectedRow?.file_path}</p>
-          </div>
-          <TrendPreviewChart row={getSpiderAnomalyRows()[0]} />
-          <Button type="button" variant="outline" size="sm">
-            <Save className="size-4" aria-hidden="true" />
-            이력저장 경로 확인
-          </Button>
-        </section>
-      </div>
-      <SourcePathBar paths={[SPIDER_FILE_PATHS.backupRoot]} />
-    </>
-  )
-}
-
-function ManualPage() {
-  return (
-    <>
-      <section className="grid min-h-[520px] place-items-center rounded-lg border bg-card p-8 text-center">
-        <div className="grid max-w-xl justify-items-center gap-4">
-          <div className="flex size-16 items-center justify-center rounded-lg border bg-muted">
-            <FileImage className="size-8 text-muted-foreground" aria-hidden="true" />
-          </div>
-          <div>
-            <h2 className="text-base font-semibold">사용자 메뉴얼 이미지</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              개발 환경에서는 실제 `/appdata` 이미지를 브라우저에서 직접 읽지 않고, 원본 Streamlit 앱의 이미지 경로를 데이터 소스로 표시합니다.
-            </p>
-          </div>
-          <code className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">{SPIDER_FILE_PATHS.manualImage}</code>
-        </div>
-      </section>
-      <SourcePathBar paths={[SPIDER_FILE_PATHS.manualImage]} />
-    </>
-  )
-}
-
 function HardSpecPage() {
   const [line, setLine] = useState(HARD_SPEC_DEFAULT_LINE)
   const [stepSeq, setStepSeq] = useState("")
@@ -746,14 +671,12 @@ function OptionChecklist({ title, options, selected, onToggle }) {
 }
 
 export function SpiderFeaturePage({ type }) {
-  const meta = PAGE_META[type] ?? PAGE_META.manual
+  const meta = PAGE_META[type] ?? PAGE_META.hardSpec
 
   return (
     <PageShell title={meta.title} category={meta.category} description={meta.description}>
       {type === "matching" ? <MatchingPage /> : null}
       {type === "common" ? <MatchingPage common /> : null}
-      {type === "history" ? <HistoryPage /> : null}
-      {type === "manual" ? <ManualPage /> : null}
       {type === "hardSpec" ? <HardSpecPage /> : null}
       {type === "yieldSpec" ? <YieldSpecPage /> : null}
       {type === "recipients" ? <RecipientsPage /> : null}

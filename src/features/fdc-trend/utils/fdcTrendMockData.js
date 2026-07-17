@@ -1,6 +1,5 @@
 import {
   SPIDER_DATA_PATH_TEMPLATES,
-  buildBackupImagePath,
   buildErdDataPath,
 } from "@/config/spiderDataPaths.mjs"
 
@@ -104,13 +103,11 @@ export const SPIDER_FILE_PATHS = Object.freeze({
   unitModel: "/appdata/abnormal_trend/pic/unit_model.parquet",
   hardLimit: "/appdata/abnormal_trend/pic/HARD_LIMIT.parquet",
   hardSpecImage: "/appdata/abnormal_trend/pic/recommand_spec.png",
-  manualImage: "/appdata/abnormal_trend/code/manual.png",
   yieldRoot: "/appdata/abnormal_trend/pic/yh/P1F_CHH",
   yieldImage: "/appdata/abnormal_trend/pic/yh/P1F_CHH/yh_desc.png",
   hardSpecChartRoot: "/appdata/abnormal_trend/pic/erd_hard_spec",
   hardSpecServerChartRoot: "/appdata/abnormal_trend/pic_server2/erd_hard_spec",
   mErdRoot: "/appdata/m_erdtsum_data_agg",
-  backupRoot: SPIDER_DATA_PATH_TEMPLATES.backupImage,
 })
 const LINE_FACTORS = Object.freeze(Object.fromEntries(FDC_LINES.map((lineId, index) => [lineId, index])))
 
@@ -338,28 +335,6 @@ export function getSpiderCommonalityRows() {
     recipe_id: row.recipe_id,
     ch_step: `${1200 + index * 7}@001`,
     file_path: `${SPIDER_FILE_PATHS.commonalityRoot}/2026-05-29/${row.sdwt}/${index % 2 === 0 ? "A(c)" : "B(c)"}/${row.desc}/${row.recipe_id}/${row.sensor.replaceAll(" ", "_")}_T/${1200 + index * 7}@001/img.png`,
-  }))
-}
-
-export function getSpiderHistoryRows() {
-  return getSpiderAnomalyRows().slice(0, 8).map((row, index) => ({
-    id: `history-${row.id}`,
-    update_date: `2026-05-${String(22 + (index % 7)).padStart(2, "0")}`,
-    line_id: row.line_id,
-    sdwt: row.sdwt,
-    file_path: buildBackupImagePath({
-      latest_date: row.date,
-      sdwt: row.sdwt,
-      step_desc: row.desc,
-      ver: row.ver,
-      ppid: row.ppid,
-      grade: row.grade,
-      sensor: row.sensor.replaceAll(" ", "_"),
-      ch_step: row.ch_step,
-      eqp: row.eqp.replace(".png", ""),
-    }),
-    sensor: row.sensor,
-    eqp: row.eqp.replace(".png", ""),
   }))
 }
 

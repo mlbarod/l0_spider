@@ -5,6 +5,7 @@ import { CommonAnomalyPage } from "./pages/CommonAnomalyPage"
 import { FdcTrendPage } from "./pages/FdcTrendPage"
 import { L0SpiderHomePage } from "./pages/L0SpiderHomePage"
 import { SpiderFeaturePage } from "./pages/SpiderFeaturePage"
+import { UserManualPage } from "./pages/UserManualPage"
 
 const fdcTrendChildren = [
   {
@@ -24,12 +25,8 @@ const fdcTrendChildren = [
     element: <CommonAnomalyPage />,
   },
   {
-    path: "history",
-    element: <SpiderFeaturePage type="history" />,
-  },
-  {
     path: "manual",
-    element: <SpiderFeaturePage type="manual" />,
+    element: <UserManualPage />,
   },
   {
     path: "fdc-hard-limit",
