@@ -4,9 +4,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 
 const THEME_STORAGE_KEY = "l0_spider-theme-light"
-const COLOR_STORAGE_KEY = "l0_spider-theme-color"
+const COLOR_STORAGE_KEY = "l0_spider-theme-color-v2"
 const DEFAULT_THEME = "light"
-const DEFAULT_COLOR = "violet"
+const DEFAULT_COLOR = "sky"
 const VALID_THEMES = new Set(["light", "dark", "system"])
 const VALID_COLORS = new Set([
   "violet",

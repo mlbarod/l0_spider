@@ -190,27 +190,6 @@ function buildDashboardData() {
   }
 }
 
-function SpiderMark() {
-  return (
-    <div className="relative flex size-28 items-center justify-center rounded-full border bg-card shadow-sm">
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 120 120"
-        className="size-20 text-primary"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="60" cy="62" r="18" strokeWidth="6" />
-        <circle cx="60" cy="36" r="10" strokeWidth="6" />
-        <path d="M44 54 22 38M43 64 18 64M45 74 24 91M76 54 98 38M77 64 102 64M75 74 96 91" strokeWidth="6" />
-        <path d="M51 31 40 18M69 31 80 18M50 78 40 104M70 78 80 104" strokeWidth="5" />
-      </svg>
-    </div>
-  )
-}
-
 function DashboardCard({ title, description, badge, children }) {
   return (
     <section className="grid min-h-[320px] grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-2xl border bg-card shadow-sm">
@@ -399,7 +378,7 @@ export function L0SpiderHomePage() {
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto bg-background">
       <section className="shrink-0 border-b bg-card px-6 py-8">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-8">
+        <div className="mx-auto w-full max-w-5xl">
           <div className="min-w-0 space-y-3">
             <Badge variant="outline">L0 Spider</Badge>
             <div>
@@ -409,7 +388,6 @@ export function L0SpiderHomePage() {
               </p>
             </div>
           </div>
-          <SpiderMark />
         </div>
       </section>
 

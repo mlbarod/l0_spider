@@ -181,23 +181,45 @@
 :root[data-theme-color="sky"] {
   --primary: hsl(204 94% 45%);
   --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(204 70% 96%);
+  --secondary-foreground: hsl(204 70% 28%);
+  --muted: hsl(204 38% 96%);
+  --muted-foreground: hsl(204 22% 43%);
   --accent: hsl(204 90% 94%);
   --accent-foreground: hsl(204 80% 30%);
+  --border: hsl(204 38% 88%);
+  --input: hsl(204 38% 88%);
+  --ring: hsl(204 94% 45%);
   --sidebar-primary: hsl(204 94% 38%);
   --sidebar-primary-foreground: hsl(0 0% 98%);
   --sidebar-ring: hsl(204 94% 45%);
   --chart-1: hsl(204 94% 45%);
+  --chart-2: hsl(196 88% 46%);
+  --chart-3: hsl(212 88% 56%);
+  --chart-4: hsl(188 82% 42%);
+  --chart-5: hsl(220 82% 62%);
 }
 
 .dark[data-theme-color="sky"] {
   --primary: hsl(204 90% 70%);
   --primary-foreground: hsl(204 60% 16%);
+  --secondary: hsl(204 24% 22%);
+  --secondary-foreground: hsl(204 55% 88%);
+  --muted: hsl(204 18% 20%);
+  --muted-foreground: hsl(204 24% 70%);
   --accent: hsl(204 32% 28%);
   --accent-foreground: hsl(204 70% 88%);
+  --border: hsl(204 20% 30%);
+  --input: hsl(204 20% 30%);
+  --ring: hsl(204 90% 70%);
   --sidebar-primary: hsl(204 80% 60%);
   --sidebar-primary-foreground: hsl(204 90% 96%);
   --sidebar-ring: hsl(204 90% 70%);
   --chart-1: hsl(204 88% 64%);
+  --chart-2: hsl(196 82% 62%);
+  --chart-3: hsl(212 84% 70%);
+  --chart-4: hsl(188 76% 58%);
+  --chart-5: hsl(220 78% 74%);
 }
 
 :root[data-theme-color="rose"] {

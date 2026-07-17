@@ -230,10 +230,14 @@ SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일
 ```
 
 Scatter chart는 `act_time`을 x축, 선택한 `{sensor}` 컬럼을 y축으로 사용하고,
-테이블 행의 `eqp`와 parquet의 `eqp_cb`가 같은 데이터만 표시한다. hover에는
+테이블 행의 `eqp`와 parquet의 `eqp_cb`가 같은 데이터만 표시한다. 대소문자와
+채널 접미사 차이를 허용하며 직접 매칭되지 않으면 `eqp_id`를 확인하고,
+parquet의 `eqp_cb`가 하나뿐인 파일은 그 값을 사용한다. hover에는
 `eqp_id`, `disp_name`, `lotid`, `wafer_id`, `act_time`, 선택 sensor 값을 표시한다.
-차트 카드의 `SKIP`, `동일성 차트`, `변경점이력`, `이력저장` 버튼은 자설비
+차트 카드의 `SKIP`, `동일성 차트`, `이력저장` 버튼은 자설비
 이상감지와 동일하게 배치했으며, 공통부용 버튼 기능이 별도로 정의될 때까지 비활성화한다.
+유효한 scatter 데이터가 없으면 차트 영역에 drawing 대상 `data.parquet` 절대경로와
+전체 행, EQP 매칭 행, 유효하지 않은 `act_time`/sensor 값의 제외 건수를 표시한다.
 
 - 필터·경로 목록 API: `GET /api/common-anomaly-data`
 - Scatter 데이터 API: `GET /api/common-anomaly-scatter-data`

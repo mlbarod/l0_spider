@@ -344,8 +344,24 @@ const CommonScatterCard = memo(function CommonScatterCard({ row }) {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="px-4 text-center text-sm text-muted-foreground">
-            {eqp}에 해당하는 유효한 scatter 데이터가 없습니다.
+          <div className="grid max-w-full justify-items-center gap-3 px-4 text-center text-sm text-muted-foreground">
+            <p>{eqp}에 해당하는 유효한 scatter 데이터가 없습니다.</p>
+            <code className="max-w-full break-all rounded-md bg-muted px-3 py-2 text-left text-xs text-muted-foreground">
+              {chartQuery.data?.sourcePath ?? row.data_path}
+            </code>
+            {chartQuery.data?.diagnostics ? (
+              <>
+                <p className="text-xs">
+                  전체 {chartQuery.data.diagnostics.totalRows.toLocaleString()}건 · EQP 매칭 {chartQuery.data.diagnostics.eqpMatchedRows.toLocaleString()}건 ·
+                  act_time 제외 {chartQuery.data.diagnostics.invalidActTimeRows.toLocaleString()}건 · sensor 값 제외 {chartQuery.data.diagnostics.invalidValueRows.toLocaleString()}건
+                </p>
+                {chartQuery.data.diagnostics.availableEqpCbs?.length ? (
+                  <p className="max-w-full break-all text-left text-xs">
+                    parquet eqp_cb: {chartQuery.data.diagnostics.availableEqpCbs.join(", ")}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
           </div>
         )}
       </div>
@@ -353,7 +369,6 @@ const CommonScatterCard = memo(function CommonScatterCard({ row }) {
         <Button type="button" variant="outline" size="sm" disabled title="버튼 기능 정의 예정">SKIP</Button>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Button type="button" variant="outline" size="sm" className="h-9 px-[0.9rem] text-sm" disabled title="버튼 기능 정의 예정">동일성 차트</Button>
-          <Button type="button" variant="outline" size="sm" className="h-9 px-[0.9rem] text-sm" disabled title="버튼 기능 정의 예정">변경점이력</Button>
           <Button type="button" variant="outline" size="sm" className="h-9 px-[0.9rem] text-sm" disabled title="버튼 기능 정의 예정">이력저장</Button>
         </div>
       </footer>

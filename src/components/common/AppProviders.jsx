@@ -10,7 +10,7 @@ export function AppProviders({ children }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" defaultColor="violet">
+      <ThemeProvider defaultTheme="light" defaultColor="sky">
         {children}
         <Toaster richColors position="top-center" />
       </ThemeProvider>

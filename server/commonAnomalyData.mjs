@@ -1,5 +1,5 @@
 import { statSync } from "node:fs"
-import { resolve, sep } from "node:path"
+import { basename, resolve, sep } from "node:path"
 
 import { asyncBufferFromFile, parquetReadObjects } from "hyparquet"
 import { compressors } from "hyparquet-compressors"
@@ -42,14 +42,33 @@ function normalizeEqp(value) {
   return normalizeText(value).replace(/\.png$/i, "")
 }
 
+function canonicalEqp(value) {
+  return normalizeEqp(value).toLocaleUpperCase("en-US")
+}
+
 function normalizeNumber(value) {
   if (value === null || value === undefined || value === "") return null
-  const number = Number(value)
+  const number = Number(typeof value === "string" ? value.replaceAll(",", "").trim() : value)
   return Number.isFinite(number) ? number : null
 }
 
 function parseDateTimeMs(value) {
+  if (value instanceof Date) {
+    const milliseconds = value.getTime()
+    return Number.isFinite(milliseconds) ? milliseconds : null
+  }
+
   const text = normalizeText(value)
+  if (text && Number.isFinite(Number(text))) {
+    const numericValue = Number(text)
+    if (!Number.isFinite(numericValue)) return null
+    const absoluteValue = Math.abs(numericValue)
+    if (absoluteValue >= 1e17) return numericValue / 1e6
+    if (absoluteValue >= 1e14) return numericValue / 1e3
+    if (absoluteValue < 1e11) return numericValue * 1e3
+    return numericValue
+  }
+
   const match = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?)?/)
   if (!match) return null
 
@@ -63,6 +82,72 @@ function parseDateTimeMs(value) {
     Number(second),
     Number(fraction.slice(0, 3).padEnd(3, "0")),
   )
+}
+
+function isDelimitedEqpPrefix(shorter, longer) {
+  return longer.startsWith(shorter) && /^[-_@:#/\\]/.test(longer.slice(shorter.length))
+}
+
+function eqpIdentifiersMatch(left, right) {
+  if (!left || !right) return false
+  if (left === right) return true
+  return isDelimitedEqpPrefix(left, right) || isDelimitedEqpPrefix(right, left)
+}
+
+function resolveEqpMatches(rows, candidates) {
+  const candidateKeys = Array.from(new Set(candidates.map(canonicalEqp).filter(Boolean)))
+  const availableEqps = Array.from(new Set(
+    rows.map((row) => normalizeEqp(row.eqp_cb)).filter(Boolean),
+  )).sort((left, right) => left.localeCompare(right, "ko", { numeric: true }))
+  const exactMatches = availableEqps.filter((value) => candidateKeys.includes(canonicalEqp(value)))
+  let matchedEqps = exactMatches.length
+    ? exactMatches
+    : availableEqps.filter((value) => candidateKeys.some((candidate) => (
+        eqpIdentifiersMatch(candidate, canonicalEqp(value))
+      )))
+  let matchStrategy = exactMatches.length
+    ? "eqp_cb-exact"
+    : matchedEqps.length
+    ? "eqp_cb-prefix"
+    : "none"
+
+  const availableEqpIds = Array.from(new Set(
+    rows.map((row) => normalizeEqp(row.eqp_id)).filter(Boolean),
+  )).sort((left, right) => left.localeCompare(right, "ko", { numeric: true }))
+  let matchedEqpIdKeys = new Set()
+  if (!matchedEqps.length) {
+    matchedEqpIdKeys = new Set(availableEqpIds
+      .filter((value) => candidateKeys.some((candidate) => (
+        eqpIdentifiersMatch(candidate, canonicalEqp(value))
+      )))
+      .map(canonicalEqp))
+    matchedEqps = Array.from(new Set(rows
+      .filter((row) => matchedEqpIdKeys.has(canonicalEqp(row.eqp_id)))
+      .map((row) => normalizeEqp(row.eqp_cb))
+      .filter(Boolean)))
+    if (matchedEqps.length) matchStrategy = "eqp_id"
+  }
+
+  if (!matchedEqps.length && availableEqps.length === 1) {
+    matchedEqps = availableEqps
+    matchStrategy = "single-eqp-cb"
+  }
+
+  return {
+    availableEqps,
+    availableEqpIds,
+    candidateKeys,
+    matchedEqps,
+    matchStrategy,
+    matchedKeys: new Set(matchedEqps.map(canonicalEqp)),
+    matchedEqpIdKeys,
+  }
+}
+
+function rowMatchesEqp(row, eqpMatch) {
+  return eqpMatch.matchStrategy === "eqp_id"
+    ? eqpMatch.matchedEqpIdKeys.has(canonicalEqp(row.eqp_id))
+    : eqpMatch.matchedKeys.has(canonicalEqp(row.eqp_cb))
 }
 
 function assertPathSegment(name, value) {
@@ -244,14 +329,24 @@ async function readCommonScatterRows(filePath, sensor) {
   }
 }
 
-export function buildCommonScatterPayload(rows, { eqp, sensor, filePath }) {
+export function buildCommonScatterPayload(rows, { eqp, sensor, filePath, imagePath = "" }) {
   const normalizedEqp = normalizeEqp(eqp)
+  const eqpMatch = resolveEqpMatches(rows, [eqp, basename(imagePath)])
+  let invalidActTimeRows = 0
+  let invalidValueRows = 0
   const chartPoints = rows.flatMap((row) => {
-    if (normalizeEqp(row.eqp_cb) !== normalizedEqp) return []
+    if (!rowMatchesEqp(row, eqpMatch)) return []
     const actTime = normalizeText(row.act_time)
-    const actTimeMs = parseDateTimeMs(actTime)
+    const actTimeMs = parseDateTimeMs(row.act_time)
     const value = normalizeNumber(row[sensor])
-    if (!actTime || actTimeMs === null || value === null) return []
+    if (!actTime || actTimeMs === null) {
+      invalidActTimeRows += 1
+      return []
+    }
+    if (value === null) {
+      invalidValueRows += 1
+      return []
+    }
     return [{
       actTime,
       actTimeMs,
@@ -280,6 +375,17 @@ export function buildCommonScatterPayload(rows, { eqp, sensor, filePath }) {
     pointCount: points.length,
     points,
     changeHistory: [],
+    diagnostics: {
+      totalRows: rows.length,
+      eqpMatchedRows: rows.filter((row) => rowMatchesEqp(row, eqpMatch)).length,
+      invalidActTimeRows,
+      invalidValueRows,
+      requestedEqps: eqpMatch.candidateKeys,
+      matchedEqpCbs: eqpMatch.matchedEqps,
+      availableEqpCbs: eqpMatch.availableEqps.slice(0, 20),
+      availableEqpIds: eqpMatch.availableEqpIds.slice(0, 20),
+      matchStrategy: eqpMatch.matchStrategy,
+    },
   }
 }
 
@@ -302,7 +408,12 @@ export async function handleCommonAnomalyScatterRequest(req, res, url) {
     assertPathSegment("sensor", sensor)
     sourcePath = resolveCommonAnomalyDataPath(imagePath)
     const rows = await readCommonScatterRows(sourcePath, sensor)
-    sendJson(res, 200, buildCommonScatterPayload(rows, { eqp, sensor, filePath: sourcePath }))
+    sendJson(res, 200, buildCommonScatterPayload(rows, {
+      eqp,
+      sensor,
+      filePath: sourcePath,
+      imagePath,
+    }))
   } catch (error) {
     sendJson(res, 500, {
       ok: false,
