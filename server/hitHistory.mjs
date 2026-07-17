@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process"
 import { fileURLToPath, URL } from "node:url"
 
-import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
+import { resolveCurrentUser } from "./currentUser.mjs"
 import { parsePassHistoryPath } from "./passHistory.mjs"
 
 const helperPath = fileURLToPath(new URL("../scripts/hit_history.py", import.meta.url))
@@ -107,14 +107,9 @@ export async function handleHitHistoryRequest(req, res) {
   }
 
   try {
-    const remoteIp = getRemoteIp(req)
-    if (!remoteIp) {
-      sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
-      return
-    }
     const [body, currentUser] = await Promise.all([
       readJsonBody(req),
-      resolveCurrentUser(remoteIp),
+      resolveCurrentUser(req),
     ])
     const record = buildHitHistoryRecord({
       ...body,
@@ -123,6 +118,6 @@ export async function handleHitHistoryRequest(req, res) {
     const result = await runHitHistoryHelper(record)
     sendJson(res, 200, result)
   } catch (error) {
-    sendJson(res, 500, { ok: false, error: error.message })
+    sendJson(res, error.statusCode || 500, { ok: false, error: error.message })
   }
 }

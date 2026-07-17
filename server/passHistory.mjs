@@ -2,7 +2,7 @@ import { spawn } from "node:child_process"
 import { relative, resolve, sep } from "node:path"
 import { fileURLToPath, URL } from "node:url"
 
-import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
+import { resolveCurrentUser } from "./currentUser.mjs"
 
 const ERD_FILE_ROOT = "/appdata/abnormal_trend/pic/erd"
 const COMMON_FILE_ROOT = "/appdata/abnormal_trend/pic/common"
@@ -503,12 +503,7 @@ export async function handlePassHistoryRequest(req, res, url) {
     }
 
     if (req.method === "POST" || req.method === "DELETE") {
-      const remoteIp = getRemoteIp(req)
-      if (!remoteIp) {
-        sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
-        return
-      }
-      const currentUser = await resolveCurrentUser(remoteIp)
+      const currentUser = await resolveCurrentUser(req)
       const body = await readJsonBody(req)
       if (req.method === "POST" && Array.isArray(body.records)) {
         if (!body.records.length || body.records.length > 500) {
@@ -533,6 +528,6 @@ export async function handlePassHistoryRequest(req, res, url) {
 
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
   } catch (error) {
-    sendJson(res, 500, { ok: false, error: error.message })
+    sendJson(res, error.statusCode || 500, { ok: false, error: error.message })
   }
 }

@@ -1,5 +1,6 @@
 import { Outlet, createBrowserRouter } from "react-router-dom"
 
+import { AuthAutoLoginGate, authRoutes } from "@/features/auth"
 import { fdcTrendRoutes } from "@/features/fdc-trend"
 
 function RootShell() {
@@ -14,6 +15,12 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: <RootShell />,
-    children: fdcTrendRoutes,
+    children: [
+      ...authRoutes,
+      {
+        element: <AuthAutoLoginGate />,
+        children: fdcTrendRoutes,
+      },
+    ],
   },
 ])

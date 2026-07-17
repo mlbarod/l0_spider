@@ -28,71 +28,47 @@ LIVE_RELOAD=0 PORT=5173 node server.mjs
 
 정적 모드에서 `BUILD_ON_START=0`을 설정하면 기존 `dist`를 재빌드하지 않고 제공한다.
 
-## Defect SPIDER 접속자 `knox_id` 식별 구조
+## SSO 인증 구조
 
-참고 저장소: [`mlbarod/defect_spider_for_p3d`](https://github.com/mlbarod/defect_spider_for_p3d)<br>
-확인 기준 커밋: [`4f7ebbcaa83a6f1189fd52798d6c88a6bdcf004a`](https://github.com/mlbarod/defect_spider_for_p3d/commit/4f7ebbcaa83a6f1189fd52798d6c88a6bdcf004a) (`2026-07-10`)
+참고 저장소: [`pjw7536/template2`](https://github.com/pjw7536/template2)
 
-Defect SPIDER는 요청 헤더나 쿠키에서 `knox_id`를 직접 읽지 않는다. 서버에서 접속자의 IP를 구한 뒤 승인된 IP 정보와 사용자 정보를 DB에서 조인하여 `knox_id`를 역조회한다.
+SPIDER 접속자는 더 이상 IP 주소와 내부 `user_info` DB 조인으로 식별하지 않는다. template2와 같은 OIDC `id_token` + 서버 세션 구조를 사용하며, SSO claim의 `loginid`를 `knoxId`, `username`을 사용자명으로 사용한다.
 
 ```text
-사용자 STEP 선택
-  → GET /api/click-history?lineName=...&selectStep=...
-  → Node 서버가 접속 IP 추출 및 정규화
-  → Python loader의 REMOTE_ADDR 환경변수로 전달
-  → v_ipms_ip_info에서 승인된 IP 조회
-  → user_info와 SUB_USER_ID = knox_id로 조인
-  → 첫 번째 조회 행의 knox_id 사용
-  → 클릭 이력 테이블 저장
+SPIDER 접속
+  → GET /api/v1/auth/me
+  → 미인증이면 GET /api/v1/auth/login
+  → ADFS/OIDC authorize (response_type=id_token, response_mode=form_post)
+  → POST /auth/google/callback/
+  → id_token 서명/issuer/audience/만료 및 nonce 검증
+  → loginid/username claim을 서버 세션에 저장
+  → 원래 SPIDER URL로 복귀
 ```
 
-세부 처리 순서는 다음과 같다.
+API 경로는 template2와 동일하다.
 
-1. 사용자가 main/FCC/개별 챔버 화면에서 STEP을 선택하면 프런트엔드가 `lineName`, `selectStep`, cache-busting용 `t`를 포함한 `/api/click-history` 요청을 보낸다. 요청 실패는 화면 흐름을 막지 않도록 비동기로 무시한다. 참고: [`src/main.jsx`](https://github.com/mlbarod/defect_spider_for_p3d/blob/4f7ebbcaa83a6f1189fd52798d6c88a6bdcf004a/src/main.jsx#L242-L267), [`src/main.jsx`](https://github.com/mlbarod/defect_spider_for_p3d/blob/4f7ebbcaa83a6f1189fd52798d6c88a6bdcf004a/src/main.jsx#L3066-L3071)
-2. Node 서버의 `getRemoteIp(req)`는 `x-forwarded-for` → `x-real-ip` → `req.socket.remoteAddress` 순서로 접속 IP를 결정한다. `x-forwarded-for`에 여러 값이 있으면 첫 번째 값을 사용하고, IPv4-mapped IPv6의 `::ffff:` 접두사는 제거한다. 참고: [`server.mjs`](https://github.com/mlbarod/defect_spider_for_p3d/blob/4f7ebbcaa83a6f1189fd52798d6c88a6bdcf004a/server.mjs#L57-L64)
-3. `/api/click-history` handler는 Python의 `click-history` 명령을 실행하면서 정규화한 IP를 `REMOTE_ADDR` 환경변수로 넘긴다. 운영 서버와 Vite 개발 서버가 같은 방식을 사용한다. 참고: [`server.mjs`](https://github.com/mlbarod/defect_spider_for_p3d/blob/4f7ebbcaa83a6f1189fd52798d6c88a6bdcf004a/server.mjs#L143-L150), [`server.mjs`](https://github.com/mlbarod/defect_spider_for_p3d/blob/4f7ebbcaa83a6f1189fd52798d6c88a6bdcf004a/server.mjs#L213-L225)
-4. Python loader는 `REMOTE_ADDR`을 읽고 로컬 `db_info.pkl`의 DB 접속정보로 아래 쿼리를 실행한다. `v_ipms_ip_info`에서 접속 IP와 일치하면서 `STATUS = '승인'`인 행만 선택한 후, `user_info.knox_id = v_ipms_ip_info.SUB_USER_ID` 조건으로 조인한다. 참고: [`scripts/data_loader.py`](https://github.com/mlbarod/defect_spider_for_p3d/blob/4f7ebbcaa83a6f1189fd52798d6c88a6bdcf004a/scripts/data_loader.py#L244-L297)
+| Method | Path | 설명 |
+| --- | --- | --- |
+| `GET` | `/api/v1/auth/config` | 브라우저용 OIDC 설정 |
+| `GET` | `/api/v1/auth/login` | nonce/state 생성 후 IdP 이동 |
+| `POST` | `/auth/google/callback/` | form_post callback 처리 |
+| `GET` | `/api/v1/auth/me` | 세션의 `knoxId`, `username` 조회 |
+| `GET/POST` | `/api/v1/auth/logout` | 로컬 세션 및 IdP 로그아웃 |
 
-   ```sql
-   WITH A AS (
-       SELECT IP_ADDR, SUB_USER_ID, USER_NAME
-       FROM v_ipms_ip_info
-       WHERE IP_ADDR = %s AND STATUS = '승인'
-   )
-   SELECT ip, knox_id, sdwt, available
-   FROM user_info
-   JOIN A ON knox_id = SUB_USER_ID
-   ```
+필수 환경변수는 [`.env.example`](.env.example)을 참고한다. Node는 `.env` 파일을 자동으로 읽지 않으므로 배포 프로세스 또는 서비스 설정에서 환경변수를 주입해야 한다. 운영 callback은 교차 사이트 `form_post`이므로 HTTPS와 `SESSION_COOKIE_SECURE=1`, `SESSION_COOKIE_SAMESITE=None`을 사용한다.
 
-5. 조회 결과가 없거나 첫 번째 행의 `knox_id`가 비어 있으면 클릭 이력을 저장하지 않고 각각 `승인된 접속자 정보를 찾지 못했습니다`, `접속자 knox_id를 찾지 못했습니다` 오류를 반환한다. 정상 조회 시 `(line_name, select_step, 현재시각, knox_id)`를 `clicked_category_history`와 `clicked_history_defect`에 저장한다. 참고: [`scripts/data_loader.py`](https://github.com/mlbarod/defect_spider_for_p3d/blob/4f7ebbcaa83a6f1189fd52798d6c88a6bdcf004a/scripts/data_loader.py#L429-L465), [`scripts/data_loader.py`](https://github.com/mlbarod/defect_spider_for_p3d/blob/4f7ebbcaa83a6f1189fd52798d6c88a6bdcf004a/scripts/data_loader.py#L468-L518)
+`OIDC_VERIFY_TOKEN`은 기본적으로 활성화되어 ADFS 인증서로 토큰 서명과 표준 claim을 검증한다. template2의 검증 비활성 동작을 일시적으로 재현해야 하는 진단 환경에서만 `OIDC_VERIFY_TOKEN=0`을 사용할 수 있으며, 운영에서는 사용하지 않는다.
 
-주의사항:
+SKIP/클릭/HIT 이력의 `knox_id` 역시 요청 본문이나 접속 IP가 아니라 인증된 서버 세션에서만 가져온다. 이력 DB 기능은 계속 `DB_INFO_PATH`의 DB 접속정보를 사용한다.
 
-- 현재 구현에서 `knox_id` 식별은 단순 첫 화면 접속 시점이 아니라 사용자가 STEP을 선택하여 `/api/click-history`가 호출될 때 수행된다.
-- `/api/client-ip`는 정규화된 IP만 반환하며 현재 프런트엔드의 `knox_id` 식별 흐름에서는 사용하지 않는다.
-- 역방향 프록시 환경에서는 프록시가 `x-forwarded-for` 또는 `x-real-ip`를 신뢰할 수 있는 값으로 덮어쓰도록 구성해야 한다. 애플리케이션에 직접 접근할 수 있는 환경에서 클라이언트가 이 헤더를 임의로 지정하면 다른 IP로 위장할 수 있다.
-- 공용 IP, NAT 또는 중복 IP 매핑 환경에서는 IP만으로 사용자를 유일하게 식별할 수 없으므로 운영 DB의 승인 IP 정책과 일대일 매핑 여부를 보장해야 한다.
+## SSO 개발 시작 복원 지점
 
-### L0 Spider 적용
+SSO 적용 전 커밋 `dab366567ae1af07ed849a72cbff1d1c50e441ad`를 다음 두 참조로 보존한다.
 
-L0 Spider는 위 구조를 `/api/current-user`에 적용한다. 자설비 이상감지 화면 진입 시 이 API를 한 번 호출하며, 성공 응답의 `knoxId`를 우측 상단의 `{knox_id}님 안녕하세요!` 문구에 사용한다. 동일 IP의 성공 응답은 서버에서 5분 동안 캐시하고, 프런트엔드는 화면 세션 동안 재조회하지 않는다.
+- 태그: `sso-development-start`
+- 백업 브랜치: `backup/sso-development-start`
 
-- Node 처리: `server/currentUser.mjs`
-- DB 조회 helper: `scripts/current_user.py`
-- 프런트엔드 API: `src/features/fdc-trend/api/currentUserApi.js`
-- 화면 표시: `src/features/fdc-trend/pages/FdcTrendPage.jsx`
-
-Python helper가 사용하는 PyMySQL을 설치한다.
-
-```bash
-python3 -m pip install -r scripts/requirements.txt
-```
-
-DB 접속정보 pickle의 기본 위치는 `/appdata/l0_spider/db_info.pkl`이다. 예외적으로 다른 위치를 사용할 때만 서버 실행 환경에 `DB_INFO_PATH`를 지정한다. `db_info.pkl`은 비밀번호를 포함하므로 Git 추적 대상에서 제외되어 있다.
-
-```bash
-node server.mjs
-```
+SSO 변경과 분리된 원본 상태를 확인하려면 `git switch backup/sso-development-start`를 사용한다. 현재 변경을 보존하면서 별도 복원 브랜치를 만들려면 `git switch -c restore/pre-sso sso-development-start`를 사용한다.
 
 ## Database References
 
@@ -118,7 +94,7 @@ L0 Spider의 DB 접속정보는 `/appdata/l0_spider/db_info.pkl`에서 읽는다
 | `exec_date` | `TIMESTAMP` |
 | `comment` | `VARCHAR` |
 
-자설비 이상감지의 SKIP 기능은 `/api/pass-history`를 사용한다. GET은 현재 필터의 `line_id`, `sdwt`, `desc`에 해당하는 SKIP 상태를 조회하고, POST는 SKIP을 등록하며, DELETE는 같은 차트 식별값의 SKIP 데이터를 삭제한다. POST/DELETE 시 브라우저는 `lineId`와 `filePath`만 차트 식별정보로 전달하고, 서버가 ERD 경로를 파싱하여 아래 값으로 매핑한다. `knox_id`는 요청 본문을 신뢰하지 않고 접속 IP 기반 현재 사용자 조회 결과를 사용한다.
+자설비 이상감지의 SKIP 기능은 `/api/pass-history`를 사용한다. GET은 현재 필터의 `line_id`, `sdwt`, `desc`에 해당하는 SKIP 상태를 조회하고, POST는 SKIP을 등록하며, DELETE는 같은 차트 식별값의 SKIP 데이터를 삭제한다. POST/DELETE 시 브라우저는 `lineId`와 `filePath`만 차트 식별정보로 전달하고, 서버가 ERD 경로를 파싱하여 아래 값으로 매핑한다. `knox_id`는 요청 본문을 신뢰하지 않고 SSO 인증 세션에서 가져온다.
 
 | `pass_history` 컬럼 | SKIP 저장값 |
 | --- | --- |
@@ -189,7 +165,7 @@ SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일
 
 자설비 이상감지 Chart의 `이력저장` 버튼은 `POST /api/hit-history`를 호출한다.
 서버는 Chart drawing에 사용한 ERD 이미지 경로를 파싱하고 아래 규칙으로 저장한다.
-`knox_id`는 요청 본문이 아니라 접속 IP 기반 현재 사용자 조회 결과를 사용한다.
+`knox_id`는 요청 본문이 아니라 SSO 인증 세션의 현재 사용자 값을 사용한다.
 
 | `hit_history` 컬럼 | 이력저장 값 |
 | --- | --- |
@@ -217,8 +193,8 @@ SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일
 | `update_date` | `TIMESTAMP` |
 | `knox_id` | `VARCHAR` |
 
-`POST /api/clicked-category-history`는 실제 Drawing 결과 경로를 서버에서 파싱하고 접속
-IP로 현재 사용자를 확인한 후 한 행을 INSERT한다. 자설비는 `ch_step`, 동일성은
+`POST /api/clicked-category-history`는 실제 Drawing 결과 경로를 서버에서 파싱하고 SSO
+세션의 현재 사용자를 확인한 후 한 행을 INSERT한다. 자설비는 `ch_step`, 동일성은
 `ch_step`, 공통부는 마지막 필터인 `sensor`를 새로 선택할 때 호출한다. 필터를 다시
 클릭해 선택 해제하거나 SKIP LIST를 조회하는 동작은 저장하지 않는다.
 
@@ -229,7 +205,7 @@ IP로 현재 사용자를 확인한 후 한 행을 INSERT한다. 자설비는 `c
 | 공통부 | 선택 Line Name + `(c)` | `data.parquet` Drawing 경로 | `data.parquet` Drawing 경로 | `data.parquet` Drawing 경로 | `sensor` 클릭 시각 |
 
 한 번의 Drawing 결과에 여러 grade 또는 sensor가 포함되면 중복을 제거한 리스트 문자열로
-저장한다. `knox_id`는 모든 App에서 접속 IP 기반 현재 사용자 값을 사용한다.
+저장한다. `knox_id`는 모든 App에서 SSO 인증 세션의 현재 사용자 값을 사용한다.
 
 현재 확인된 정보에는 `VARCHAR` 길이, 기본키, 인덱스, NULL 허용 여부와 기본값이 포함되어 있지 않으므로 각 표에서는 별도로 가정하지 않는다.
 

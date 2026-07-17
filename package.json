@@ -8,6 +8,7 @@
     "manual:screenshots": "node scripts/generate-user-manual-screenshots.mjs",
     "preview": "node server.mjs",
     "start": "node server.mjs",
+    "test": "node --test server/*.test.mjs",
     "lint": "eslint ."
   },
   "dependencies": {

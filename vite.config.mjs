@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react"
 import path from "node:path"
 import process from "node:process"
 
+import { handleAuthRequest, isAuthPath } from "./server/auth.mjs"
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
 import {
   handleCommonAnomalyDataRequest,
@@ -37,6 +38,14 @@ function mappingConfigApi() {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = new URL(req.url ?? "/", "http://localhost")
+        if (isAuthPath(url.pathname)) {
+          handleAuthRequest(req, res, url).catch((error) => {
+            res.writeHead(error.statusCode || 500, { "Content-Type": "application/json; charset=utf-8" })
+            res.end(JSON.stringify({ ok: false, error: error.message }))
+          })
+          return
+        }
+
         if (url.pathname === "/api/current-user") {
           handleCurrentUserRequest(req, res)
           return

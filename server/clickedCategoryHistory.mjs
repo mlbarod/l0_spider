@@ -2,7 +2,7 @@ import { spawn } from "node:child_process"
 import { relative, resolve, sep } from "node:path"
 import { fileURLToPath, URL } from "node:url"
 
-import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
+import { resolveCurrentUser } from "./currentUser.mjs"
 import { parsePassHistoryPath } from "./passHistory.mjs"
 
 const COMMON_FILE_ROOT = "/appdata/abnormal_trend/pic/common"
@@ -155,15 +155,10 @@ export async function handleClickedCategoryHistoryRequest(req, res) {
     return
   }
   try {
-    const remoteIp = getRemoteIp(req)
-    if (!remoteIp) {
-      sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
-      return
-    }
-    const [body, currentUser] = await Promise.all([readJsonBody(req), resolveCurrentUser(remoteIp)])
+    const [body, currentUser] = await Promise.all([readJsonBody(req), resolveCurrentUser(req)])
     const record = buildClickedCategoryHistoryRecord({ ...body, knoxId: currentUser.knoxId })
     sendJson(res, 200, await runHelper(record))
   } catch (error) {
-    sendJson(res, 500, { ok: false, error: error.message })
+    sendJson(res, error.statusCode || 500, { ok: false, error: error.message })
   }
 }

@@ -1,5 +1,6 @@
 export async function fetchCurrentUser() {
-  const response = await fetch("/api/current-user", {
+  const response = await fetch("/api/v1/auth/me", {
+    credentials: "include",
     headers: { Accept: "application/json" },
   })
   const payload = await response.json().catch(() => ({}))
