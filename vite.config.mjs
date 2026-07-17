@@ -4,6 +4,10 @@ import path from "node:path"
 import process from "node:process"
 
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
+import {
+  handleCommonAnomalyDataRequest,
+  handleCommonAnomalyScatterRequest,
+} from "./server/commonAnomalyData.mjs"
 import { handleHitHistoryRequest } from "./server/hitHistory.mjs"
 import {
   handleCommonalityDataRequest,
@@ -14,6 +18,7 @@ import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
 import { handlePassHistoryRequest } from "./server/passHistory.mjs"
 import {
   handleErdFileRequest,
+  handleErdScatterDataRequest,
   handleSelfEquipmentDataRequest,
 } from "./server/selfEquipmentData.mjs"
 
@@ -51,6 +56,16 @@ function mappingConfigApi() {
           return
         }
 
+        if (url.pathname === "/api/common-anomaly-data") {
+          handleCommonAnomalyDataRequest(req, res, url)
+          return
+        }
+
+        if (url.pathname === "/api/common-anomaly-scatter-data") {
+          handleCommonAnomalyScatterRequest(req, res, url)
+          return
+        }
+
         if (url.pathname === "/api/commonality-image") {
           handleCommonalityImageRequest(req, res, url)
           return
@@ -68,6 +83,11 @@ function mappingConfigApi() {
 
         if (url.pathname === "/api/self-equipment-data") {
           handleSelfEquipmentDataRequest(req, res, url)
+          return
+        }
+
+        if (url.pathname === "/api/erd-scatter-data") {
+          handleErdScatterDataRequest(req, res, url)
           return
         }
 

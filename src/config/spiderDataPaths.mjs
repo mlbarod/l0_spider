@@ -9,6 +9,8 @@ export const SPIDER_DATA_PATH_TEMPLATES = Object.freeze({
   backupImage: `${PIC_ROOT}/backup/#appdata#abnormal_trend#pic#erd#{latest_date}#{sdwt}#{step_desc}#{ver}#{ppid}#{grade}#{sensor}#{ch_step}#{eqp}.png`,
   latestDateFile: `${PIC_ROOT}/path/{latest_date}`,
   teamErdPath: `${PIC_ROOT}/path/{line}/{sdwt}/df_path.parquet`,
+  commonAnomalyPath: `${PIC_ROOT}/path_common/{line}/{sdwt}/df_path.parquet`,
+  commonAnomalyData: `${PIC_ROOT}/common/{latest_date}/{sdwt}/{step_desc}/{grade}/{sensor}/{ch_step}/data.parquet`,
   mappingConfig: "/appdata/l0_spider/mapping_config.json",
 })
 
@@ -51,6 +53,14 @@ export function buildLatestDateFilePath(latestDate) {
 
 export function buildTeamErdPath({ line, sdwt }) {
   return fillPathTemplate(SPIDER_DATA_PATH_TEMPLATES.teamErdPath, { line, sdwt })
+}
+
+export function buildCommonAnomalyPath({ line, sdwt }) {
+  return fillPathTemplate(SPIDER_DATA_PATH_TEMPLATES.commonAnomalyPath, { line, sdwt })
+}
+
+export function buildCommonAnomalyDataPath(values) {
+  return fillPathTemplate(SPIDER_DATA_PATH_TEMPLATES.commonAnomalyData, values)
 }
 
 export function resolveLatestDateFile(fileNames) {

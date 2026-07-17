@@ -7,6 +7,10 @@ import { fileURLToPath, URL } from "node:url"
 import { createServer as createViteServer } from "vite"
 
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
+import {
+  handleCommonAnomalyDataRequest,
+  handleCommonAnomalyScatterRequest,
+} from "./server/commonAnomalyData.mjs"
 import { handleHitHistoryRequest } from "./server/hitHistory.mjs"
 import {
   handleCommonalityDataRequest,
@@ -143,6 +147,20 @@ const server = createServer((req, res) => {
 
   if (url.pathname === "/api/commonality-data") {
     handleCommonalityDataRequest(req, res, url).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/common-anomaly-data") {
+    handleCommonAnomalyDataRequest(req, res, url).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/common-anomaly-scatter-data") {
+    handleCommonAnomalyScatterRequest(req, res, url).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
     return

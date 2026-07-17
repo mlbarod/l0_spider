@@ -54,6 +54,7 @@ const spiderApps = [
     category: "Common",
     href: "/common-anomaly",
     active: true,
+    status: "운영중",
   },
   {
     icon: Gauge,

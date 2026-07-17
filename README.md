@@ -203,10 +203,42 @@ SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일
 | 이상감지 이력 이미지 | `#appdata#abnormal_trend#pic#erd#{latest_date}#{sdwt}#{step_desc}#{ver}#{ppid}#{grade}#{sensor}#{ch_step}#{eqp}.png` | `/appdata/abnormal_trend/pic/backup/#appdata#abnormal_trend#pic#erd#{latest_date}#{sdwt}#{step_desc}#{ver}#{ppid}#{grade}#{sensor}#{ch_step}#{eqp}.png` | 해당 없음 (이미지 파일) |
 | `latest_date` 결정 파일 | `{latest_date}` | `/appdata/abnormal_trend/pic/path/{latest_date}` | 해당 없음 (파일명 참조) |
 | 분임조별 ERD 이상감지 경로 데이터 | `df_path.parquet` | `/appdata/abnormal_trend/pic/path/{line}/{sdwt}/df_path.parquet` | `sdwt`, `desc`, `ver`, `recipe_id`, `priority`, `sensor`, `step`, `eqp`, `file_path`, `line_rev` |
+| 공통부 이상감지 경로 테이블 | `df_path.parquet` | `/appdata/abnormal_trend/pic/path_common/{line}/{sdwt}/df_path.parquet` | `file_path`, `sdwt`, `prc_group`, `date`, `priority`, `sensor`, `step`, `eqp`, `line_rev` |
+| 공통부 이상감지 데이터 | `data.parquet` | `/appdata/abnormal_trend/pic/common/{latest_date}/{sdwt}/{step_desc}/{grade}/{sensor}/{ch_step}/data.parquet` | `eqp_id`, `disp_name`, `lotid`, `wafer_id`, `act_time` (x축), `{sensor}` (y축), `eqp_cb` (차트별 EQP 필터) |
 | 기준정보 매핑 | `mapping_config.json` | `/appdata/l0_spider/mapping_config.json` | `root.line_mapping` (`key`: SDWT 식별자, `value`: 라인), `root.sdwt_mapping` (`key`: SDWT 식별자, `value`: 표시명, key가 없으면 원본 SDWT 사용) |
 
 새 데이터 파일이나 참조 컬럼/키가 추가되면 이 표와
 `src/config/spiderDataPaths.mjs`를 함께 업데이트한다.
+
+### 공통부 이상감지 App
+
+`/common-anomaly`은 공통부 이상감지 경로 테이블을 기준으로 `Line Name` → `SDWT` →
+`prc_group` → `eqp` → `sensor` 순서의 필터를 제공한다. `Line Name`은 테이블의
+`line_rev`와 비교하고 나머지 필터는 같은 이름의 컬럼과 비교한다. `eqp` 필터에는
+선택한 `prc_group`의 전체 설비를 조회하는 `ALL` 항목이 포함된다.
+
+최종 필터 결과의 각 `file_path`는 아래 순서로 공통부 `data.parquet` 경로로 변환한다.
+
+1. 경로 문자열의 `pic_server2`를 `pic`로 변경한다.
+2. 경로의 마지막 `.png` 파일명을 `data.parquet`으로 변경한다.
+
+예를 들어 아래 경로는 같은 디렉터리의 공통부 parquet 파일로 변환된다.
+
+```text
+/appdata/abnormal_trend/pic_server2/common/2026-07-17/SDWT-1/ETCH/A/TEMP/10/EQP-1.png
+→ /appdata/abnormal_trend/pic/common/2026-07-17/SDWT-1/ETCH/A/TEMP/10/data.parquet
+```
+
+Scatter chart는 `act_time`을 x축, 선택한 `{sensor}` 컬럼을 y축으로 사용하고,
+테이블 행의 `eqp`와 parquet의 `eqp_cb`가 같은 데이터만 표시한다. hover에는
+`eqp_id`, `disp_name`, `lotid`, `wafer_id`, `act_time`, 선택 sensor 값을 표시한다.
+차트 카드의 `SKIP`, `동일성 차트`, `변경점이력`, `이력저장` 버튼은 자설비
+이상감지와 동일하게 배치했으며, 공통부용 버튼 기능이 별도로 정의될 때까지 비활성화한다.
+
+- 필터·경로 목록 API: `GET /api/common-anomaly-data`
+- Scatter 데이터 API: `GET /api/common-anomaly-scatter-data`
+- 서버 데이터 모듈: `server/commonAnomalyData.mjs`
+- 화면: `src/features/fdc-trend/pages/CommonAnomalyPage.jsx`
 
 ### 동일성 최신날짜
 
