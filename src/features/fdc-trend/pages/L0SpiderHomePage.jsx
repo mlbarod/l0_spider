@@ -1,4 +1,4 @@
-import { Activity, BookOpen, ChartNoAxesCombined, Gauge, Mail, Network, Radar, ScanSearch, TrendingUp } from "lucide-react"
+import { Activity, BookOpen, ChartNoAxesCombined, Gauge, Mail, Network, Radar, ScanSearch, TrendingUp, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 import {
   CartesianGrid,
@@ -371,16 +371,30 @@ export function L0SpiderHomePage() {
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto bg-background">
       <section className="shrink-0 border-b bg-card px-6 py-8">
-        <div className="mx-auto w-full max-w-5xl">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-3">
             <Badge variant="outline">L0 Spider</Badge>
             <div>
-              <h1 className="text-5xl font-semibold tracking-tight text-foreground">SPIDER</h1>
+              <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">ETCH SPIDER</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
                 L0 공정 이상감지와 Hard Limit 추천 기능을 한 화면에서 시작합니다.
               </p>
             </div>
           </div>
+          <aside
+            className="flex shrink-0 items-center gap-3 rounded-xl border bg-background/80 px-4 py-3 shadow-sm"
+            aria-label="개발 및 운영 담당자"
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+              <Users className="size-4.5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground">개발 · 운영</p>
+              <p className="mt-0.5 whitespace-nowrap text-sm font-medium text-foreground">
+                담당자 : 최상현, 강태환
+              </p>
+            </div>
+          </aside>
         </div>
       </section>
 
