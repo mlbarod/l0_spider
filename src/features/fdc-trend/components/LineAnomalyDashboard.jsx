@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   ArrowDown,
@@ -62,7 +62,7 @@ const CHART_COLORS = [
 ]
 const MAX_TREND_LINES = 8
 const TABLE_PAGE_SIZE = 8
-const TREND_PERIOD_OPTIONS = Object.freeze([30, 90, 180])
+const TREND_PERIOD_OPTIONS = Object.freeze([10, 30, 90, 180])
 
 function formatCount(value) {
   const number = Number(value)
@@ -71,6 +71,11 @@ function formatCount(value) {
 
 function formatDisplayDate(value) {
   return value ? value.replaceAll("-", ".") : "—"
+}
+
+function formatDisplayDateTime(value) {
+  if (!value) return "—"
+  return `${formatDisplayDate(value.slice(0, 10))} ${value.slice(11)}`
 }
 
 function getPresetStartDate(endDate, days) {
@@ -316,18 +321,13 @@ function LineSummaryTable({ rows }) {
 }
 
 export function LineAnomalyDashboard() {
-  const initializedRef = useRef(false)
   const [appliedFilters, setAppliedFilters] = useState({})
-  const [draftStartDate, setDraftStartDate] = useState("")
-  const [draftEndDate, setDraftEndDate] = useState("")
   const [draftLines, setDraftLines] = useState([])
   const [hiddenLines, setHiddenLines] = useState(() => new Set())
-  const [trendPeriodDays, setTrendPeriodDays] = useState(30)
+  const [trendPeriodDays, setTrendPeriodDays] = useState(10)
   const dashboardQuery = useQuery({
     queryKey: [
       "spider-line-dashboard",
-      appliedFilters.startDate ?? "default",
-      appliedFilters.endDate ?? "default",
       (appliedFilters.lines ?? []).join("\u0000"),
     ],
     queryFn: ({ signal }) => fetchDashboardSummary({ ...appliedFilters, signal }),
@@ -337,7 +337,7 @@ export function LineAnomalyDashboard() {
   })
   const dashboard = dashboardQuery.data?.lineDashboard
   const trendPresetFilters = useMemo(() => {
-    if (!dashboard || trendPeriodDays === null) return null
+    if (!dashboard) return null
     const endDate = dashboard.options.maxDate
     return {
       startDate: getPresetStartDate(endDate, trendPeriodDays),
@@ -348,7 +348,7 @@ export function LineAnomalyDashboard() {
   const trendQuery = useQuery({
     queryKey: [
       "spider-line-dashboard-trend",
-      trendPeriodDays ?? "filter",
+      trendPeriodDays,
       trendPresetFilters?.startDate ?? "",
       trendPresetFilters?.endDate ?? "",
       (trendPresetFilters?.lines ?? []).join("\u0000"),
@@ -359,17 +359,7 @@ export function LineAnomalyDashboard() {
     retry: false,
     placeholderData: (previousData) => previousData,
   })
-  const trendDashboard = trendPeriodDays === null
-    ? dashboard
-    : trendQuery.data?.lineDashboard
-
-  useEffect(() => {
-    if (!dashboard || initializedRef.current) return
-    initializedRef.current = true
-    setDraftStartDate(dashboard.filters.startDate)
-    setDraftEndDate(dashboard.filters.endDate)
-    setDraftLines(dashboard.filters.lines ?? [])
-  }, [dashboard])
+  const trendDashboard = trendQuery.data?.lineDashboard
 
   const displayedLines = useMemo(
     () => (trendDashboard?.lineSummary ?? []).slice(0, MAX_TREND_LINES).map((row) => row.lineId),
@@ -394,41 +384,28 @@ export function LineAnomalyDashboard() {
     ))
   ), [dashboard?.lineSummary])
 
-  const filterError = !draftStartDate || !draftEndDate
-    ? "조회 시작일과 종료일을 입력하세요."
-    : draftStartDate > draftEndDate ? "조회 시작일은 종료일보다 늦을 수 없습니다." : ""
-
   function applyFilters(nextLines = draftLines) {
-    if (filterError || dashboardQuery.isFetching) return
-    const nextFilters = { startDate: draftStartDate, endDate: draftEndDate, lines: nextLines }
+    if (dashboardQuery.isFetching) return
+    const nextFilters = { lines: nextLines }
     const isSame = JSON.stringify(nextFilters) === JSON.stringify(appliedFilters)
     setHiddenLines(new Set())
-    setTrendPeriodDays(null)
     if (isSame) dashboardQuery.refetch()
     else setAppliedFilters(nextFilters)
   }
 
   function resetFilters() {
     if (!dashboard) return
-    setDraftStartDate(dashboard.options.defaultStartDate)
-    setDraftEndDate(dashboard.options.defaultEndDate)
     setDraftLines([])
     setHiddenLines(new Set())
-    setTrendPeriodDays(30)
+    setTrendPeriodDays(10)
     setAppliedFilters({})
   }
 
   function selectLine(lineId) {
     if (!lineId || dashboardQuery.isFetching) return
-    setDraftStartDate(dashboard.filters.startDate)
-    setDraftEndDate(dashboard.filters.endDate)
     setDraftLines([lineId])
     setHiddenLines(new Set())
-    setAppliedFilters({
-      startDate: dashboard.filters.startDate,
-      endDate: dashboard.filters.endDate,
-      lines: [lineId],
-    })
+    setAppliedFilters({ lines: [lineId] })
   }
 
   if (dashboardQuery.isPending && !dashboard) {
@@ -469,37 +446,28 @@ export function LineAnomalyDashboard() {
           </p>
         </div>
         <Badge variant="outline" className="h-7 px-3">
-          최신 데이터 {summary.latestDate ? formatDisplayDate(summary.latestDate) : "없음"}
+          최신 데이터 {summary.latestDateTime ? formatDisplayDateTime(summary.latestDateTime) : "없음"}
         </Badge>
       </div>
 
       <form
-        className="grid items-end gap-3 rounded-xl border bg-card p-4 shadow-sm lg:grid-cols-[170px_170px_minmax(220px,1fr)_auto_auto]"
+        className="grid items-end gap-3 rounded-xl border bg-card p-4 shadow-sm lg:grid-cols-[minmax(260px,1fr)_auto_auto]"
         onSubmit={(event) => {
           event.preventDefault()
           applyFilters()
         }}
       >
-        <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
-          조회 시작일
-          <Input type="date" value={draftStartDate} min={options.minDate} max={options.maxDate} onChange={(event) => setDraftStartDate(event.target.value)} />
-        </label>
-        <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
-          조회 종료일
-          <Input type="date" value={draftEndDate} min={options.minDate} max={options.maxDate} onChange={(event) => setDraftEndDate(event.target.value)} />
-        </label>
         <div className="grid gap-1.5 text-xs font-medium text-muted-foreground">
           라인 선택
           <LineMultiSelect lines={options.lines} selectedLines={draftLines} onChange={setDraftLines} disabled={!options.lines.length} />
         </div>
-        <Button type="submit" disabled={Boolean(filterError) || dashboardQuery.isFetching}>
+        <Button type="submit" disabled={dashboardQuery.isFetching}>
           {dashboardQuery.isFetching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
           조회
         </Button>
         <Button type="button" variant="outline" onClick={resetFilters} disabled={dashboardQuery.isFetching}>
           <RotateCcw className="size-4" /> 초기화
         </Button>
-        {filterError ? <p className="text-xs text-destructive lg:col-span-5">{filterError}</p> : null}
       </form>
 
       {dashboardQuery.isError ? (
@@ -508,10 +476,9 @@ export function LineAnomalyDashboard() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
         <KpiCard label="모니터링 센서 총합" value={formatCount(summary.monitoringSensorTotal)} unit="개" description="조회 최신 시각 · TL total 합계" />
         <KpiCard label="전체 이상 건수" value={formatCount(summary.totalAbnormalCount)} unit="건" description={`${formatDisplayDate(dashboard.filters.startDate)} ~ ${formatDisplayDate(dashboard.filters.endDate)}`} />
-        <KpiCard label="최신일 이상 건수" value={formatCount(summary.latestDateCount)} unit="건" description={summary.latestDate ? formatDisplayDate(summary.latestDate) : "조회 기간 내 파일 없음"} />
         <KpiCard label="A/B Grade" value={formatCount(summary.abGradeCount)} unit="건" description="A · B Grade 고유건수" />
         <KpiCard label="D Grade" value={formatCount(summary.dGradeCount)} unit="건" description="D Grade 고유건수" />
         <KpiCard label="N Grade" value={formatCount(summary.nGradeCount)} unit="건" description="N Grade 고유건수" />
@@ -519,7 +486,9 @@ export function LineAnomalyDashboard() {
         <KpiCard
           label="전일 대비"
           value={<ChangeText value={summary.changeFromPreviousDay} className="text-xl xl:text-2xl" />}
-          description={summary.previousDate ? `${formatDisplayDate(summary.previousDate)} 대비` : "비교 데이터 없음"}
+          description={summary.previousDateTime
+            ? `${formatDisplayDateTime(summary.previousDateTime)} 대비`
+            : "동일 시각 비교 데이터 없음"}
         />
       </div>
 
@@ -545,6 +514,7 @@ export function LineAnomalyDashboard() {
                       radius={[0, 4, 4, 0]}
                       maxBarSize={22}
                       className="cursor-pointer"
+                      isAnimationActive={false}
                       onClick={(entry) => selectLine(entry?.lineId ?? entry?.payload?.lineId)}
                     >
                       <LabelList
@@ -570,9 +540,6 @@ export function LineAnomalyDashboard() {
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
-              {trendPeriodDays === null ? (
-                <Badge variant="secondary" className="h-7 px-2.5">조회기간</Badge>
-              ) : null}
               {TREND_PERIOD_OPTIONS.map((days) => (
                 <Button
                   key={days}
@@ -596,11 +563,11 @@ export function LineAnomalyDashboard() {
             </div>
           </div>
           <div className="h-[330px] p-3">
-            {trendQuery.isPending && trendPeriodDays !== null && !trendDashboard ? (
+            {trendQuery.isPending && !trendDashboard ? (
               <div className="grid h-[310px] place-items-center text-sm text-muted-foreground">
                 <span className="flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> 과거 추이를 불러오는 중입니다.</span>
               </div>
-            ) : trendQuery.isError && trendPeriodDays !== null ? (
+            ) : trendQuery.isError ? (
               <EmptyChart message={trendQuery.error.message} />
             ) : displayedLines.length && trendRows.length ? (
               <ResponsiveContainer width="100%" height="100%">

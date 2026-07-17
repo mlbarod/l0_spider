@@ -7,6 +7,7 @@ import {
   LINE_ANOMALY_ID_COLUMNS,
   buildDashboardSummary,
   buildLineDashboardPayload,
+  getPreviousDashboardDateTime,
   resolveDashboardDateRange,
   selectLatestDashboardFilePerDate,
 } from "./dashboardData.mjs"
@@ -120,6 +121,8 @@ function buildLinePayload(overrides = {}, rows = datedRows) {
     defaultEndDate: "2026-07-16",
     monitoringSensorTotal: 150,
     lines: [],
+    comparisonDateTime: "2026-07-15 08:00:00",
+    comparisonRows: datedRows[0].rows,
     ...overrides,
   })
 }
@@ -131,10 +134,12 @@ test("sdwt를 라인으로 매핑한 뒤 날짜·라인별 5개 컬럼 고유조
     totalAbnormalCount: 5,
     abnormalLineCount: 2,
     latestDate: "2026-07-16",
+    latestDateTime: "2026-07-16 08:00:00",
     latestDateCount: 2,
     topLine: "P1",
     topLineCount: 3,
     previousDate: "2026-07-15",
+    previousDateTime: "2026-07-15 08:00:00",
     changeFromPreviousDay: -1,
     monitoringSensorTotal: 150,
     abGradeCount: 3,
@@ -204,6 +209,8 @@ test("같은 날짜의 여러 시각 파일 중 hh:mm:ss가 가장 최신인 파
   const payload = buildLinePayload({
     startDate: "2026-07-15",
     endDate: "2026-07-15",
+    comparisonDateTime: "",
+    comparisonRows: [],
   }, [sameDayFiles[1]])
 
   assert.equal(payload.summary.totalAbnormalCount, 3)
@@ -227,6 +234,8 @@ test("하루 조회는 해당 날짜만 집계하며 전일 파일이 없으면 
     startDate: "2026-07-16",
     endDate: "2026-07-16",
     lines: ["P1"],
+    comparisonDateTime: "",
+    comparisonRows: [],
   }, [datedRows[1]])
 
   assert.equal(payload.summary.totalAbnormalCount, 1)
@@ -242,6 +251,8 @@ test("데이터가 없는 기간에 선택 라인은 0건으로 표시하고 비
     startDate: "2026-07-20",
     endDate: "2026-07-21",
     lines: ["P1"],
+    comparisonDateTime: "",
+    comparisonRows: [],
   }, [])
 
   assert.equal(payload.summary.totalAbnormalCount, 0)
@@ -251,6 +262,27 @@ test("데이터가 없는 기간에 선택 라인은 0건으로 표시하고 비
     { date: "2026-07-20", lineId: "P1", abnormalCount: 0 },
     { date: "2026-07-21", lineId: "P1", abnormalCount: 0 },
   ])
+})
+
+test("전일 비교 파일명은 최신 파일의 D-1 동일 hh:mm:ss로 계산한다", () => {
+  assert.equal(
+    getPreviousDashboardDateTime("2026-07-17 16:30:45"),
+    "2026-07-16 16:30:45",
+  )
+  assert.equal(getPreviousDashboardDateTime("2026-07-17 25:00:00"), null)
+})
+
+test("전일 대비는 기간 집계 파일이 아니라 D-1 동일 시각 파일 행으로 계산한다", () => {
+  const payload = buildLinePayload({
+    comparisonDateTime: "2026-07-15 08:00:00",
+    comparisonRows: [
+      { sdwt: "S1", desc: "OLDER", recipe_id: "R10", priority: "A", sensor: "TEMP", eqp: "EQ1" },
+    ],
+  })
+
+  assert.equal(payload.summary.latestDateCount, 2)
+  assert.equal(payload.summary.changeFromPreviousDay, 1)
+  assert.equal(payload.lineSummary.find((row) => row.lineId === "P1").previousDateCount, 1)
 })
 
 test("기본 조회 시작일과 종료일은 모두 가장 최신 데이터 날짜이며 잘못된 날짜를 거부한다", () => {

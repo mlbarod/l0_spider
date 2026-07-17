@@ -114,6 +114,12 @@ function shiftDate(dateText, days) {
   return formatUtcDate(parsed.date)
 }
 
+export function getPreviousDashboardDateTime(dateTime) {
+  if (!isValidDateTimeFileName(dateTime)) return null
+  const previousDate = shiftDate(dateTime.slice(0, 10), -1)
+  return previousDate ? `${previousDate} ${dateTime.slice(11)}` : null
+}
+
 function enumerateDates(startDate, endDate) {
   const start = parseDateParts(startDate)?.date
   const end = parseDateParts(endDate)?.date
@@ -239,16 +245,14 @@ export function buildDashboardSummary(statsRows, detailRows, source = {}) {
 export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
   const sdwtLineLookup = buildSdwtLineLookup(mappingConfig)
   const requestedLines = validateRequestedLines(filters.lines ?? [], mappingConfig)
-  const fileDates = new Set()
   const combinationsByDateLine = new Map()
   const combinationsByDateLineGrade = new Map()
+  const comparisonCombinationsByLine = new Map()
   const actualLines = new Set()
 
   datedRows.forEach(({ dateTime, rows }) => {
     const date = normalizeText(dateTime).slice(0, 10)
     if (!parseDateParts(date)) return
-    fileDates.add(date)
-
     rows.forEach((row) => {
       const lineId = sdwtLineLookup.get(normalizeText(row.sdwt))
       if (!lineId) return
@@ -269,6 +273,21 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
     })
   })
 
+  const comparisonDateTime = normalizeText(filters.comparisonDateTime)
+  const hasPreviousData = isValidDateTimeFileName(comparisonDateTime)
+  if (hasPreviousData) {
+    ;(filters.comparisonRows ?? []).forEach((row) => {
+      const lineId = sdwtLineLookup.get(normalizeText(row.sdwt))
+      if (!lineId) return
+      actualLines.add(lineId)
+      const combinations = comparisonCombinationsByLine.get(lineId) ?? new Set()
+      combinations.add(
+        LINE_ANOMALY_ID_COLUMNS.map((column) => normalizeText(row[column])).join("\u0000"),
+      )
+      comparisonCombinationsByLine.set(lineId, combinations)
+    })
+  }
+
   const availableLines = Array.from(actualLines).sort(compareLineIds)
   const selectedLines = requestedLines.length ? requestedLines : availableLines
   const dates = enumerateDates(filters.startDate, filters.endDate)
@@ -276,14 +295,20 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
   const getGradeCount = (date, lineId, priorities) => priorities.reduce((sum, priority) => (
     sum + (combinationsByDateLineGrade.get(`${date}\u0000${lineId}\u0000${priority}`)?.size ?? 0)
   ), 0)
-  const latestDate = Array.from(fileDates).sort(compareDateTexts).at(-1) ?? null
-  const previousDate = latestDate ? shiftDate(latestDate, -1) : null
-  const hasPreviousData = Boolean(previousDate && fileDates.has(previousDate))
+  const latestDateTime = datedRows
+    .map((item) => item.dateTime)
+    .filter(isValidDateTimeFileName)
+    .sort(compareDateTexts)
+    .at(-1) ?? null
+  const latestDate = latestDateTime?.slice(0, 10) ?? null
+  const previousDate = hasPreviousData ? comparisonDateTime.slice(0, 10) : null
 
   const lineSummary = selectedLines.map((lineId) => {
     const totalCount = dates.reduce((sum, date) => sum + getCount(date, lineId), 0)
     const latestDateCount = latestDate ? getCount(latestDate, lineId) : 0
-    const previousDateCount = hasPreviousData ? getCount(previousDate, lineId) : null
+    const previousDateCount = hasPreviousData
+      ? (comparisonCombinationsByLine.get(lineId)?.size ?? 0)
+      : null
     const lastAbnormalDate = [...dates].reverse().find((date) => getCount(date, lineId) > 0) ?? null
     return {
       lineId,
@@ -337,10 +362,12 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
       totalAbnormalCount,
       abnormalLineCount: lineSummary.filter((row) => row.totalCount > 0).length,
       latestDate,
+      latestDateTime,
       latestDateCount,
       topLine: topLineRow?.lineId ?? null,
       topLineCount: topLineRow?.totalCount ?? 0,
       previousDate: hasPreviousData ? previousDate : null,
+      previousDateTime: hasPreviousData ? comparisonDateTime : null,
       changeFromPreviousDay: previousDateCount === null ? null : latestDateCount - previousDateCount,
       monitoringSensorTotal: normalizeNumber(filters.monitoringSensorTotal),
       abGradeCount: sumGradeCount(["A", "B"]),
@@ -352,6 +379,7 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
     dailyTrend,
     meta: {
       filesRead: datedRows.length,
+      comparisonFileRead: hasPreviousData,
       unmappedRows: datedRows.reduce((count, item) => (
         count + item.rows.filter((row) => !sdwtLineLookup.has(normalizeText(row.sdwt))).length
       ), 0),
@@ -455,12 +483,22 @@ export async function getDashboardSummary(requestedFilters = {}) {
     dateRange.endDate,
   )
   const latestFile = selectedFiles.at(-1) ?? null
+  const comparisonDateTime = latestFile
+    ? getPreviousDashboardDateTime(latestFile.dateTime)
+    : null
+  const comparisonFile = comparisonDateTime
+    ? dateFiles.find((file) => file.dateTime === comparisonDateTime) ?? null
+    : null
+  const filesToRead = Array.from(new Map(
+    [...selectedFiles, ...(comparisonFile ? [comparisonFile] : [])]
+      .map((file) => [file.dateTime, file]),
+  ).values())
   const statsPath = latestFile ? buildDashboardStatsPath(latestFile.dateTime) : ""
 
   const [mappingConfig, statsRows, fileRows] = await Promise.all([
     readDashboardMapping(),
     latestFile ? readParquetRows(statsPath, DASHBOARD_STATS_COLUMNS) : [],
-    mapWithConcurrency(selectedFiles, async (file) => ({
+    mapWithConcurrency(filesToRead, async (file) => ({
       ...file,
       rows: await readParquetRows(file.filePath, DASHBOARD_DETAIL_COLUMNS),
     })),
@@ -485,6 +523,8 @@ export async function getDashboardSummary(requestedFilters = {}) {
       ...dateRange,
       lines: requestedLines,
       monitoringSensorTotal: baseSummary.metrics.monitoringSensorTotal,
+      comparisonDateTime: comparisonFile?.dateTime ?? "",
+      comparisonRows: comparisonFile ? (rowsByDateTime.get(comparisonFile.dateTime) ?? []) : [],
     }),
     sourcePaths: {
       ...baseSummary.sourcePaths,
