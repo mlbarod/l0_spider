@@ -4,6 +4,7 @@ import { CommonalityAnomalyPage } from "./pages/CommonalityAnomalyPage"
 import { CommonAnomalyPage } from "./pages/CommonAnomalyPage"
 import { FdcTrendPage } from "./pages/FdcTrendPage"
 import { L0SpiderHomePage } from "./pages/L0SpiderHomePage"
+import { MyEqpRegistrationPage } from "./pages/MyEqpRegistrationPage"
 import { SpiderFeaturePage } from "./pages/SpiderFeaturePage"
 import { UserManualPage } from "./pages/UserManualPage"
 
@@ -15,6 +16,10 @@ const fdcTrendChildren = [
   {
     path: "self-equipment",
     element: <FdcTrendPage />,
+  },
+  {
+    path: "my-eqp",
+    element: <MyEqpRegistrationPage />,
   },
   {
     path: "matching-anomaly",

@@ -1,4 +1,4 @@
-import { Activity, BookOpen, ChartNoAxesCombined, Gauge, Mail, Network, Radar, ScanSearch, TrendingUp, Users } from "lucide-react"
+import { Activity, BookOpen, ChartNoAxesCombined, Gauge, Mail, Network, Radar, ScanSearch, Settings2, TrendingUp, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
@@ -13,6 +13,15 @@ const spiderApps = [
     subtitle: "STEP과 FDC 센서를 기준으로 설비별 이상 Trend를 확인합니다.",
     category: "FDC Trend",
     href: "/self-equipment",
+    active: true,
+    status: "운영중",
+  },
+  {
+    icon: Settings2,
+    title: "My EQP 등록",
+    subtitle: "모니터링할 라인과 설비, 조회 기간을 개인 기준정보로 등록합니다.",
+    category: "My EQP",
+    href: "/my-eqp",
     active: true,
     status: "운영중",
   },
