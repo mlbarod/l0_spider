@@ -3,6 +3,7 @@ import test from "node:test"
 
 import {
   SKIP_EXCLUSION_DURATION_MS,
+  buildSelfEquipmentPayload,
   excludeRecentlySkippedRows,
   filterMyEqpRows,
 } from "./selfEquipmentData.mjs"
@@ -76,7 +77,28 @@ test("My EQP는 등록된 sdwt와 eqp가 모두 일치하는 이상건만 남긴
     createRow({ sdwt: "SDWT-2", eqp: "EQP-1.png" }),
     createRow({ sdwt: "SDWT-1", eqp: "EQP-2.png" }),
   ]
-  const registrations = [{ sdwt: "SDWT-1", eqp: "EQP-1" }]
+  const registrations = [{ sdwt: "sdwt-1", eqp: "eqp-1" }]
 
   assert.deepEqual(filterMyEqpRows(rows, registrations), [rows[0]])
+})
+
+test("My EQP 전체 Sensor Grade 조건에서는 모든 등급의 STEP을 제공한다", () => {
+  const rows = [
+    createRow({ priority: "A", desc: "STEP-A" }),
+    createRow({ priority: "D", desc: "STEP-D" }),
+    createRow({ priority: "M", desc: "STEP-M" }),
+  ]
+  const payload = buildSelfEquipmentPayload(rows, {
+    line: "P1L",
+    pathSdwt: "__MY_EQP__",
+    sdwt: "MY EQP",
+    includeAllSdwt: true,
+    priorities: ["A", "B", "D", "N", "M"],
+    desc: "",
+    eqpCh: "",
+    sensor: "",
+    chStep: "",
+  })
+
+  assert.deepEqual(payload.steps.map((step) => step.desc), ["STEP-A", "STEP-D", "STEP-M"])
 })

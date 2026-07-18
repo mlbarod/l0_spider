@@ -73,6 +73,14 @@ function normalizeSkipEqp(value) {
   return String(value ?? "").trim().replace(/\.png$/i, "")
 }
 
+function normalizeMyEqpMatchValue(value) {
+  return String(value ?? "").trim().toLocaleUpperCase("en-US")
+}
+
+function buildMyEqpMatchKey(sdwt, eqp) {
+  return `${normalizeMyEqpMatchValue(sdwt)}\u0000${normalizeMyEqpMatchValue(normalizeSkipEqp(eqp))}`
+}
+
 function buildSkipComparisonKey(row) {
   return [
     row.line_rev ?? row.line_id,
@@ -260,11 +268,9 @@ export function buildSelfEquipmentPayload(rows, filters) {
 
 export function filterMyEqpRows(rows, registrationRecords) {
   const registrationKeys = new Set(registrationRecords.map((record) => (
-    `${String(record.sdwt ?? "").trim()}\u0000${normalizeSkipEqp(record.eqp)}`
+    buildMyEqpMatchKey(record.sdwt, record.eqp)
   )))
-  return rows.filter((row) => registrationKeys.has(
-    `${String(row.sdwt ?? "").trim()}\u0000${normalizeSkipEqp(row.eqp)}`,
-  ))
+  return rows.filter((row) => registrationKeys.has(buildMyEqpMatchKey(row.sdwt, row.eqp)))
 }
 
 function readFilters(url) {
@@ -358,6 +364,9 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
     ])
     const sourceRows = dataSources.flatMap((source) => source.rows)
     const registeredRows = filterMyEqpRows(sourceRows, registrationRecords)
+    const availablePriorities = Array.from(new Set(
+      registeredRows.map((row) => String(row.priority ?? "").trim()).filter(Boolean),
+    )).sort((left, right) => left.localeCompare(right, "ko", { numeric: true }))
     const visibleRows = excludeRecentlySkippedRows(registeredRows, passRecordGroups.flat())
     const payload = buildSelfEquipmentPayload(visibleRows, {
       ...filters,
@@ -369,9 +378,12 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
       ...payload,
       counts: {
         ...payload.counts,
+        sourceRows: sourceRows.length,
+        matchedRegistrationRows: registeredRows.length,
         registeredEqps: new Set(registrationRecords.map((record) => normalizeSkipEqp(record.eqp))).size,
         excludedSkipRows: registeredRows.length - visibleRows.length,
       },
+      availablePriorities,
       sourcePaths: dataSources.map((source) => source.filePath),
     })
   } catch (error) {

@@ -1461,12 +1461,12 @@ export function FdcTrendPage() {
     queries.team,
   )
   const gradeOptions = useMemo(() => {
-    if (!isSkipList) return SENSOR_GRADES
+    if (!isSkipList && !isMyEqp) return SENSOR_GRADES
     return Array.from(new Set(
       (dataQuery.data?.availablePriorities ?? EMPTY_LIST)
         .map((priority) => (["A", "B"].includes(priority) ? "A/B" : priority)),
-    ))
-  }, [dataQuery.data?.availablePriorities, isSkipList])
+    )).filter((grade) => SENSOR_GRADES.includes(grade))
+  }, [dataQuery.data?.availablePriorities, isMyEqp, isSkipList])
   const filteredGrades = filterItems(
     gradeOptions.map((grade) => ({ value: grade, label: grade })),
     queries.grade,
@@ -1536,11 +1536,17 @@ export function FdcTrendPage() {
   const handleLineChange = (line) => {
     setSelectedLine(line)
     setSelectedTeam("")
+    if (activeTeam === MY_EQP_TEAM) setSelectedGrades(["A/B"])
     setQueries((current) => ({ ...current, team: "", step: "", eqpCh: "", sensor: "", chStep: "" }))
     resetStepAndSensor()
   }
   const handleTeamChange = (team) => {
     setSelectedTeam(team)
+    if (team === MY_EQP_TEAM) {
+      setSelectedGrades([...SENSOR_GRADES])
+    } else if (activeTeam === MY_EQP_TEAM) {
+      setSelectedGrades(["A/B"])
+    }
     resetStepAndSensor()
   }
   const toggleGrade = (grade) => {
@@ -1815,6 +1821,15 @@ export function FdcTrendPage() {
         {dataQuery.isError ? (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {dataQuery.error.message}
+          </div>
+        ) : null}
+        {isMyEqp
+          && !dataQuery.isLoading
+          && (dataQuery.data?.counts?.registeredEqps ?? 0) > 0
+          && (dataQuery.data?.counts?.matchedRegistrationRows ?? 0) === 0 ? (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+            등록된 SDWT·EQP와 일치하는 자설비 이상건을 찾지 못했습니다.
+            원본 이상건 {(dataQuery.data?.counts?.sourceRows ?? 0).toLocaleString()}건에서 매칭 결과가 없습니다.
           </div>
         ) : null}
         {!isSkipList && passHistoryQuery.isError ? (
