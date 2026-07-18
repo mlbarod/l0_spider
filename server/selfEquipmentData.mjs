@@ -74,7 +74,11 @@ function normalizeSkipEqp(value) {
 }
 
 function normalizeMyEqpMatchValue(value) {
-  return String(value ?? "").trim().toLocaleUpperCase("en-US")
+  return String(value ?? "")
+    .normalize("NFKC")
+    .trim()
+    .toLocaleUpperCase("en-US")
+    .replace(/[^\p{L}\p{N}]/gu, "")
 }
 
 function buildMyEqpMatchKey(sdwt, eqp) {
@@ -182,7 +186,7 @@ function sortByLabel(items, labelColumn) {
 export function buildSelfEquipmentPayload(rows, filters) {
   const priorities = new Set(filters.priorities)
   const baseRows = rows.filter((row) => (
-    row.line_rev === filters.line
+    (filters.includeAllLines || row.line_rev === filters.line)
     && (filters.includeAllSdwt || row.sdwt === filters.sdwt)
     && priorities.has(row.priority)
   ))
@@ -266,11 +270,17 @@ export function buildSelfEquipmentPayload(rows, filters) {
   }
 }
 
-export function filterMyEqpRows(rows, registrationRecords) {
+export function filterMyEqpRows(rows, registrationRecords, { sdwtMatchedBySource = false } = {}) {
   const registrationKeys = new Set(registrationRecords.map((record) => (
-    buildMyEqpMatchKey(record.sdwt, record.eqp)
+    sdwtMatchedBySource
+      ? normalizeMyEqpMatchValue(normalizeSkipEqp(record.eqp))
+      : buildMyEqpMatchKey(record.sdwt, record.eqp)
   )))
-  return rows.filter((row) => registrationKeys.has(buildMyEqpMatchKey(row.sdwt, row.eqp)))
+  return rows.filter((row) => registrationKeys.has(
+    sdwtMatchedBySource
+      ? normalizeMyEqpMatchValue(normalizeSkipEqp(row.eqp))
+      : buildMyEqpMatchKey(row.sdwt, row.eqp),
+  ))
 }
 
 function readFilters(url) {
@@ -348,22 +358,63 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
     Object.entries(mapping.line_mapping)
       .filter(([, line]) => line === filters.line)
       .forEach(([pathSdwt]) => {
-        pathBySdwt.set(mapping.sdwt_mapping[pathSdwt] ?? pathSdwt, pathSdwt)
-        pathBySdwt.set(pathSdwt, pathSdwt)
+        pathBySdwt.set(normalizeMyEqpMatchValue(mapping.sdwt_mapping[pathSdwt] ?? pathSdwt), pathSdwt)
+        pathBySdwt.set(normalizeMyEqpMatchValue(pathSdwt), pathSdwt)
       })
-    const paths = Array.from(new Set(
-      registrationRecords.map((record) => pathBySdwt.get(String(record.sdwt ?? "").trim())).filter(Boolean),
-    ))
+    const registrationsWithPath = registrationRecords.map((record) => ({
+      ...record,
+      pathSdwt: pathBySdwt.get(normalizeMyEqpMatchValue(record.sdwt)) ?? "",
+    }))
+    const registrationsByPath = new Map()
+    registrationsWithPath.forEach((record) => {
+      if (!record.pathSdwt) return
+      const pathRecords = registrationsByPath.get(record.pathSdwt) ?? []
+      pathRecords.push(record)
+      registrationsByPath.set(record.pathSdwt, pathRecords)
+    })
+    const paths = Array.from(registrationsByPath.keys())
     const sdwts = Array.from(new Set(
       registrationRecords.map((record) => String(record.sdwt ?? "").trim()).filter(Boolean),
     ))
 
     const [dataSources, passRecordGroups] = await Promise.all([
-      Promise.all(paths.map((pathSdwt) => readTeamErdRows({ line: filters.line, pathSdwt }))),
+      Promise.all(paths.map(async (pathSdwt) => ({
+        ...(await readTeamErdRows({ line: filters.line, pathSdwt })),
+        pathSdwt,
+        registrations: registrationsByPath.get(pathSdwt) ?? [],
+      }))),
       Promise.all(sdwts.map((sdwt) => listPassHistoryRecords({ lineId: filters.line, sdwt }))),
     ])
     const sourceRows = dataSources.flatMap((source) => source.rows)
-    const registeredRows = filterMyEqpRows(sourceRows, registrationRecords)
+    const registeredRows = dataSources.flatMap((source) => filterMyEqpRows(
+      source.rows,
+      source.registrations,
+      { sdwtMatchedBySource: true },
+    ))
+    const registrationConditions = registrationsWithPath.map((record) => {
+      const source = dataSources.find((item) => item.pathSdwt === record.pathSdwt)
+      const sourceLineRows = source?.rows ?? []
+      const matchedRows = record.pathSdwt
+        ? filterMyEqpRows(sourceLineRows, [record], { sdwtMatchedBySource: true }).length
+        : 0
+      return {
+        sdwt: String(record.sdwt ?? "").trim(),
+        eqp: normalizeSkipEqp(record.eqp),
+        normalizedEqp: normalizeMyEqpMatchValue(normalizeSkipEqp(record.eqp)),
+        pathSdwt: record.pathSdwt,
+        matchedRows,
+      }
+    })
+    const sourceSamples = dataSources.map((source) => {
+      const sourceLineRows = source.rows
+      return {
+        pathSdwt: source.pathSdwt,
+        sdwts: Array.from(new Set(sourceLineRows.map((row) => String(row.sdwt ?? "").trim()).filter(Boolean))),
+        eqps: Array.from(new Set(sourceLineRows.map((row) => normalizeSkipEqp(row.eqp)).filter(Boolean)))
+          .sort((left, right) => left.localeCompare(right, "ko", { numeric: true }))
+          .slice(0, 100),
+      }
+    })
     const availablePriorities = Array.from(new Set(
       registeredRows.map((row) => String(row.priority ?? "").trim()).filter(Boolean),
     )).sort((left, right) => left.localeCompare(right, "ko", { numeric: true }))
@@ -372,6 +423,7 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
       ...filters,
       pathSdwt: "__MY_EQP__",
       sdwt: "MY EQP",
+      includeAllLines: true,
       includeAllSdwt: true,
     })
     sendJson(res, 200, {
@@ -384,6 +436,10 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
         excludedSkipRows: registeredRows.length - visibleRows.length,
       },
       availablePriorities,
+      diagnostics: {
+        registrationConditions,
+        sourceSamples,
+      },
       sourcePaths: dataSources.map((source) => source.filePath),
     })
   } catch (error) {

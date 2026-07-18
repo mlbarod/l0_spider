@@ -82,16 +82,27 @@ test("My EQP는 등록된 sdwt와 eqp가 모두 일치하는 이상건만 남긴
   assert.deepEqual(filterMyEqpRows(rows, registrations), [rows[0]])
 })
 
+test("SDWT 파일 경로가 매칭된 뒤에는 EQP의 구분자와 대소문자 차이를 허용한다", () => {
+  const row = createRow({ sdwt: "원본-SDWT", eqp: "EQP-01_CH A.png" })
+  const registrations = [{ sdwt: "화면 표시 SDWT", eqp: "eqp01-cha" }]
+
+  assert.deepEqual(
+    filterMyEqpRows([row], registrations, { sdwtMatchedBySource: true }),
+    [row],
+  )
+})
+
 test("My EQP 전체 Sensor Grade 조건에서는 모든 등급의 STEP을 제공한다", () => {
   const rows = [
     createRow({ priority: "A", desc: "STEP-A" }),
-    createRow({ priority: "D", desc: "STEP-D" }),
+    createRow({ priority: "D", desc: "STEP-D", line_rev: "INTERNAL-LINE-NAME" }),
     createRow({ priority: "M", desc: "STEP-M" }),
   ]
   const payload = buildSelfEquipmentPayload(rows, {
     line: "P1L",
     pathSdwt: "__MY_EQP__",
     sdwt: "MY EQP",
+    includeAllLines: true,
     includeAllSdwt: true,
     priorities: ["A", "B", "D", "N", "M"],
     desc: "",

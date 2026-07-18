@@ -1823,6 +1823,60 @@ export function FdcTrendPage() {
             {dataQuery.error.message}
           </div>
         ) : null}
+        {isMyEqp && dataQuery.data?.diagnostics ? (
+          <Card className="gap-3 border-sky-500/30 bg-sky-500/5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4">
+              <div>
+                <CardTitle className="text-sm">MY EQP 실제 조회 조건 · 디버깅</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  SDWT 매핑 경로별로 등록 EQP와 자설비 원본 EQP를 비교한 결과입니다.
+                </p>
+              </div>
+              <Badge variant="outline">
+                {(dataQuery.data.diagnostics.registrationConditions?.length ?? 0).toLocaleString()}개 조건
+              </Badge>
+            </div>
+            <CardContent className="px-4">
+              <div className="max-h-64 overflow-auto rounded-lg border bg-background">
+                <Table>
+                  <TableHeader className="sticky top-0 z-10 bg-muted">
+                    <TableRow>
+                      <TableHead>등록 SDWT</TableHead>
+                      <TableHead>실제 조회 EQP</TableHead>
+                      <TableHead>정규화 EQP Key</TableHead>
+                      <TableHead>조회 SDWT 경로</TableHead>
+                      <TableHead className="text-right">매칭 행</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(dataQuery.data.diagnostics.registrationConditions ?? EMPTY_LIST).map((condition, index) => (
+                      <TableRow key={`${condition.sdwt}-${condition.eqp}-${index}`}>
+                        <TableCell className="font-mono text-xs">{condition.sdwt || "-"}</TableCell>
+                        <TableCell className="font-mono text-xs">{condition.eqp || "-"}</TableCell>
+                        <TableCell className="font-mono text-xs">{condition.normalizedEqp || "-"}</TableCell>
+                        <TableCell className="font-mono text-xs">{condition.pathSdwt || "매핑 실패"}</TableCell>
+                        <TableCell className={cn(
+                          "text-right text-xs font-semibold tabular-nums",
+                          condition.matchedRows ? "text-foreground" : "text-destructive",
+                        )}>
+                          {condition.matchedRows?.toLocaleString() ?? 0}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <details className="mt-3 rounded-lg border bg-background px-3 py-2 text-xs">
+                <summary className="cursor-pointer font-medium text-foreground">
+                  자설비 원본 SDWT·EQP 표본 보기
+                </summary>
+                <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-5 text-muted-foreground">
+                  {JSON.stringify(dataQuery.data.diagnostics.sourceSamples ?? EMPTY_LIST, null, 2)}
+                </pre>
+              </details>
+            </CardContent>
+          </Card>
+        ) : null}
         {isMyEqp
           && !dataQuery.isLoading
           && (dataQuery.data?.counts?.registeredEqps ?? 0) > 0
