@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  buildMyEqpDebugRows,
   buildMyEqpRegistrationPayload,
   handleMyEqpRegistrationRequest,
   resolveRegistrationUserId,
@@ -17,6 +18,9 @@ test("My EQP 등록 요청을 DB 컬럼용 값으로 정규화한다", () => {
     comment: " 점검 대상 ",
   }, " user01 ")
 
+  assert.match(payload.execDate, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+  delete payload.execDate
+
   assert.deepEqual(payload, {
     line: "P1D",
     sdwt: "DREAMS P1D",
@@ -26,6 +30,23 @@ test("My EQP 등록 요청을 DB 컬럼용 값으로 정규화한다", () => {
     comment: "점검 대상",
     knoxId: "user01",
   })
+})
+
+test("복수 선택한 EQP를 EQP별 개별 DB 행으로 만든다", () => {
+  const rows = buildMyEqpDebugRows({
+    line: "P1D",
+    sdwt: "DREAMS P1D",
+    prcGroup: "OXIDE ETCH",
+    eqps: ["EQP01_CH_A", "EQP02_CH_B"],
+    execDate: "2026-07-18 14:30:00",
+    periode: 15,
+    comment: "점검 대상",
+    knoxId: "user01",
+  })
+
+  assert.equal(rows.length, 2)
+  assert.deepEqual(rows.map((row) => row.eqp), ["EQP01_CH_A", "EQP02_CH_B"])
+  assert.ok(rows.every((row) => row.line === "P1D" && row.periode === 15))
 })
 
 test("knox_id 조회에 실패하면 접속 IP를 사용한다", async () => {

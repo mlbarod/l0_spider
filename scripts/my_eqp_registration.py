@@ -33,6 +33,7 @@ def insert_registration(payload, db_info):
             payload["sdwt"],
             payload["prcGroup"],
             eqp,
+            payload["execDate"],
             payload["periode"],
             payload["comment"],
             payload["knoxId"],
@@ -40,9 +41,9 @@ def insert_registration(payload, db_info):
         for eqp in eqps
     ]
     query = """
-        INSERT INTO `myeqp_regist`
+        INSERT INTO `myeqp_info`
             (`line`, `sdwt`, `prc_group`, `eqp`, `exec_date`, `periode`, `comment`, `knox_id`)
-        VALUES (%s, %s, %s, %s, NOW(), %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
     """
 
     with pymysql.connect(

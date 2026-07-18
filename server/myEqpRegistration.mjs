@@ -24,6 +24,15 @@ function uniqueTextValues(values) {
   return Array.from(new Set(values.map(normalizeText).filter(Boolean)))
 }
 
+function formatDatabaseTimestamp(date = new Date()) {
+  const pad = (value) => String(value).padStart(2, "0")
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+  ].join("-") + ` ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
 async function readJsonBody(req) {
   let body = ""
   for await (const chunk of req) {
@@ -66,10 +75,24 @@ export function buildMyEqpRegistrationPayload(body, knoxId) {
     sdwt,
     prcGroup,
     eqps,
+    execDate: formatDatabaseTimestamp(),
     periode,
     comment,
     knoxId: normalizedKnoxId,
   }
+}
+
+export function buildMyEqpDebugRows(payload) {
+  return payload.eqps.map((eqp) => ({
+    line: payload.line,
+    sdwt: payload.sdwt,
+    prc_group: payload.prcGroup,
+    eqp,
+    exec_date: payload.execDate,
+    periode: payload.periode,
+    comment: payload.comment,
+    knox_id: payload.knoxId,
+  }))
 }
 
 export async function resolveRegistrationUserId(remoteIp, resolver = resolveCurrentUser) {
@@ -132,6 +155,7 @@ export async function handleMyEqpRegistrationRequest(req, res) {
     return
   }
 
+  let debugRows = []
   try {
     const remoteIp = getRemoteIp(req)
     if (!remoteIp) {
@@ -144,9 +168,15 @@ export async function handleMyEqpRegistrationRequest(req, res) {
       resolveRegistrationUserId(remoteIp),
     ])
     const payload = buildMyEqpRegistrationPayload(body, userId)
+    debugRows = buildMyEqpDebugRows(payload)
     const result = await runRegistrationHelper(payload)
     sendJson(res, 200, { ...result, knoxId: userId })
   } catch (error) {
-    sendJson(res, 500, { ok: false, error: error.message })
+    sendJson(res, 500, {
+      ok: false,
+      error: error.message,
+      table: "myeqp_info",
+      debugRows,
+    })
   }
 }

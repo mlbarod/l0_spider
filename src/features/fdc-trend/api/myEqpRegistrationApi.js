@@ -14,7 +14,10 @@ export async function createMyEqpRegistration({
   const payload = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(payload.error || "My EQP 기준정보를 저장하지 못했습니다.")
+    const error = new Error(payload.error || "My EQP 기준정보를 저장하지 못했습니다.")
+    error.table = payload.table
+    error.debugRows = Array.isArray(payload.debugRows) ? payload.debugRows : []
+    throw error
   }
   return payload
 }
