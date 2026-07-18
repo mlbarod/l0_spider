@@ -109,8 +109,11 @@ const spiderSuites = [
   },
 ]
 
-function SpiderAppCard({ app }) {
+function SpiderAppCard({ app, animationIndex = 0 }) {
   const isOperating = app.status === "운영중"
+  const animationStyle = {
+    "--spider-app-enter-delay": `${animationIndex * 55}ms`,
+  }
   const content = (
     <div
       className={cn(
@@ -165,12 +168,17 @@ function SpiderAppCard({ app }) {
       href={app.href}
       target="_blank"
       rel="noreferrer"
-      className="group relative block h-full"
+      className="spider-app-enter group relative block h-full"
+      style={animationStyle}
     >
       {content}
     </a>
   ) : (
-    <Link to={app.href} className="group relative block h-full">
+    <Link
+      to={app.href}
+      className="spider-app-enter group relative block h-full"
+      style={animationStyle}
+    >
       {content}
     </Link>
   )
@@ -215,10 +223,10 @@ export function L0SpiderHomePage() {
               <p className="mt-1 text-xs text-muted-foreground">L0 Spider 기반 이상감지와 Hard Limit 추천 기능입니다.</p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
-              {spiderApps.map((app) => (
+              {spiderApps.map((app, index) => (
                 app.empty
                   ? <div key={app.key} className="min-h-[140px]" aria-hidden="true" />
-                  : <SpiderAppCard key={app.title} app={app} />
+                  : <SpiderAppCard key={app.title} app={app} animationIndex={index} />
               ))}
             </div>
           </section>
@@ -228,8 +236,12 @@ export function L0SpiderHomePage() {
               <p className="mt-1 text-xs text-muted-foreground">L1과 L3 데이터를 활용한 이상감지 App입니다.</p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
-              {spiderSuites.map((app) => (
-                <SpiderAppCard key={app.title} app={app} />
+              {spiderSuites.map((app, index) => (
+                <SpiderAppCard
+                  key={app.title}
+                  app={app}
+                  animationIndex={spiderApps.length + index}
+                />
               ))}
             </div>
           </section>

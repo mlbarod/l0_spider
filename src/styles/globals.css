@@ -82,6 +82,24 @@
 
 @layer utilities {
 
+  @keyframes spider-app-enter {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 14px, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .spider-app-enter {
+    animation: spider-app-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--spider-app-enter-delay, 0ms);
+    will-change: opacity, transform;
+  }
+
   /* @theme 도구 에러를 피하기 위해 Heartbeat 애니메이션을 여기서 정의합니다. */
   @keyframes heartbeat {
     0% {
@@ -102,6 +120,14 @@
 
   .animate-heartbeat {
     animation: var(--animate-heartbeat, heartbeat 2s infinite ease-in-out);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spider-app-enter {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
   }
 }
 
