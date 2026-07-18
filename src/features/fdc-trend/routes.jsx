@@ -34,14 +34,6 @@ const fdcTrendChildren = [
     element: <UserManualPage />,
   },
   {
-    path: "fdc-hard-limit",
-    element: <SpiderFeaturePage type="hardSpec" />,
-  },
-  {
-    path: "yield-hard-limit",
-    element: <SpiderFeaturePage type="yieldSpec" />,
-  },
-  {
     path: "recipients",
     element: <SpiderFeaturePage type="recipients" />,
   },

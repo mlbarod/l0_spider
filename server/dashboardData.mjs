@@ -124,11 +124,15 @@ export function selectPreviousDashboardFileAtSameTime(dateFiles, latestDateTime)
   const previousDateTime = getPreviousDashboardDateTime(latestDateTime)
   if (!previousDateTime) return null
   const previousDate = previousDateTime.slice(0, 10)
-  const sameTime = previousDateTime.slice(11)
-  return dateFiles.find((file) => (
-    file.dateTime.slice(0, 10) === previousDate
-    && file.dateTime.slice(11) === sameTime
-  )) ?? null
+  const sameHourMinute = previousDateTime.slice(11, 16)
+  return dateFiles
+    .filter((file) => (
+      isValidDateTimeFileName(file.dateTime)
+      && file.dateTime.slice(0, 10) === previousDate
+      && file.dateTime.slice(11, 16) === sameHourMinute
+    ))
+    .sort((left, right) => compareDateTexts(left.dateTime, right.dateTime))
+    .at(-1) ?? null
 }
 
 function enumerateDates(startDate, endDate) {

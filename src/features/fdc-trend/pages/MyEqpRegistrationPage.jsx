@@ -4,7 +4,6 @@ import {
   Check,
   ChevronRight,
   Clock3,
-  Database,
   Loader2,
   MessageSquareText,
   Save,
@@ -389,10 +388,6 @@ export function MyEqpRegistrationPage() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-lg font-semibold tracking-tight">My EQP 등록</h1>
-                <Badge variant="outline" className="gap-1.5 text-[11px]">
-                  <Database className="size-3" aria-hidden="true" />
-                  erdtsum_info 읽기 전용
-                </Badge>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 자설비 이상감지에서 집중 모니터링할 설비와 조회 기간을 등록합니다.
@@ -411,16 +406,13 @@ export function MyEqpRegistrationPage() {
       <main className="w-full flex-1 px-4 py-5 sm:px-6 lg:px-8">
         <div className="mx-auto grid w-full max-w-[1680px] gap-5">
           <section aria-labelledby="filter-title">
-            <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+            <div className="mb-3">
               <div>
                 <h2 id="filter-title" className="text-base font-semibold">설비 기준정보 선택</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
                   왼쪽부터 순서대로 선택하면 다음 조건이 활성화됩니다.
                 </p>
               </div>
-              <p className="rounded-full bg-muted px-3 py-1.5 text-[11px] text-muted-foreground">
-                EQP 표시 형식: main_disp_name
-              </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">

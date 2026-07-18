@@ -391,30 +391,6 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
       source.registrations,
       { sdwtMatchedBySource: true },
     ))
-    const registrationConditions = registrationsWithPath.map((record) => {
-      const source = dataSources.find((item) => item.pathSdwt === record.pathSdwt)
-      const sourceLineRows = source?.rows ?? []
-      const matchedRows = record.pathSdwt
-        ? filterMyEqpRows(sourceLineRows, [record], { sdwtMatchedBySource: true }).length
-        : 0
-      return {
-        sdwt: String(record.sdwt ?? "").trim(),
-        eqp: normalizeSkipEqp(record.eqp),
-        normalizedEqp: normalizeMyEqpMatchValue(normalizeSkipEqp(record.eqp)),
-        pathSdwt: record.pathSdwt,
-        matchedRows,
-      }
-    })
-    const sourceSamples = dataSources.map((source) => {
-      const sourceLineRows = source.rows
-      return {
-        pathSdwt: source.pathSdwt,
-        sdwts: Array.from(new Set(sourceLineRows.map((row) => String(row.sdwt ?? "").trim()).filter(Boolean))),
-        eqps: Array.from(new Set(sourceLineRows.map((row) => normalizeSkipEqp(row.eqp)).filter(Boolean)))
-          .sort((left, right) => left.localeCompare(right, "ko", { numeric: true }))
-          .slice(0, 100),
-      }
-    })
     const availablePriorities = Array.from(new Set(
       registeredRows.map((row) => String(row.priority ?? "").trim()).filter(Boolean),
     )).sort((left, right) => left.localeCompare(right, "ko", { numeric: true }))
@@ -436,10 +412,6 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
         excludedSkipRows: registeredRows.length - visibleRows.length,
       },
       availablePriorities,
-      diagnostics: {
-        registrationConditions,
-        sourceSamples,
-      },
       sourcePaths: dataSources.map((source) => source.filePath),
     })
   } catch (error) {

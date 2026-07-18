@@ -1,4 +1,4 @@
-import { Activity, BookOpen, ChartNoAxesCombined, Gauge, Mail, Network, Radar, ScanSearch, Settings2, TrendingUp, Users } from "lucide-react"
+import { Activity, BookOpen, ChartNoAxesCombined, Gauge, Mail, Network, Radar, ScanSearch, Settings2, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
@@ -39,16 +39,14 @@ const spiderApps = [
     title: "FDC Hard Limit추천",
     subtitle: "FDC 분포 기반 Hard Limit 후보를 추천합니다.",
     category: "Limit",
-    href: "/fdc-hard-limit",
+    href: "http://mem-etch-spider.samsungds.net:32603/",
     active: true,
+    external: true,
+    status: "운영중",
   },
   {
-    icon: TrendingUp,
-    title: "수율기반 Hard Limit추천",
-    subtitle: "수율 영향도를 반영한 Hard Limit 후보를 추천합니다.",
-    category: "Yield",
-    href: "/yield-hard-limit",
-    active: true,
+    key: "yield-hard-limit-placeholder",
+    empty: true,
   },
   {
     icon: Settings2,
@@ -60,6 +58,14 @@ const spiderApps = [
     status: "운영중",
   },
   {
+    icon: Mail,
+    title: "이상감지 수신인 정비",
+    subtitle: "이상감지 메일 수신 대상과 priority 조건을 관리합니다.",
+    category: "Recipients",
+    href: "/recipients",
+    active: true,
+  },
+  {
     icon: BookOpen,
     title: "사용자 메뉴얼",
     subtitle: "SPIDER의 메뉴와 기능별 상세 사용 방법을 확인합니다.",
@@ -67,14 +73,6 @@ const spiderApps = [
     href: "/manual",
     active: true,
     status: "운영중",
-  },
-  {
-    icon: Mail,
-    title: "이상감지 수신인 정비",
-    subtitle: "이상감지 메일 수신 대상과 priority 조건을 관리합니다.",
-    category: "Recipients",
-    href: "/recipients",
-    active: true,
   },
 ]
 
@@ -218,7 +216,9 @@ export function L0SpiderHomePage() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
               {spiderApps.map((app) => (
-                <SpiderAppCard key={app.title} app={app} />
+                app.empty
+                  ? <div key={app.key} className="min-h-[140px]" aria-hidden="true" />
+                  : <SpiderAppCard key={app.title} app={app} />
               ))}
             </div>
           </section>
