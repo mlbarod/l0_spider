@@ -100,6 +100,38 @@
     will-change: opacity, transform;
   }
 
+  @keyframes ch-step-gather {
+    from {
+      opacity: 0.86;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes ch-step-expand {
+    from {
+      opacity: 0.86;
+      transform: translateY(-6px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-ch-step-gather {
+    animation: ch-step-gather 140ms ease-out;
+  }
+
+  .animate-ch-step-expand {
+    animation: ch-step-expand 160ms ease-out;
+  }
+
   /* @theme 도구 에러를 피하기 위해 Heartbeat 애니메이션을 여기서 정의합니다. */
   @keyframes heartbeat {
     0% {
@@ -127,6 +159,11 @@
       animation: none;
       opacity: 1;
       transform: none;
+    }
+
+    .animate-ch-step-gather,
+    .animate-ch-step-expand {
+      animation: none;
     }
   }
 }

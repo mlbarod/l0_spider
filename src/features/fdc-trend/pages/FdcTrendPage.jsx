@@ -2,7 +2,6 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "rea
 import { ArrowLeft, ArrowUp, Check, ChevronRight, Loader2 } from "lucide-react"
 import { Link, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 import {
   CartesianGrid,
@@ -59,6 +58,7 @@ import {
   fetchSelfEquipmentData,
 } from "../api/selfEquipmentApi"
 import { SENSOR_GRADES, SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
+import { getLowestChStepRowsByPpid } from "../utils/chStepGrouping.mjs"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 
 const EMPTY_MAPPING = Object.freeze({})
@@ -81,29 +81,6 @@ function expandPriorities(grades) {
   return Array.from(new Set(
     grades.flatMap((grade) => (grade === "A/B" ? ["A", "B"] : [grade])),
   ))
-}
-
-function getChStepNumber(value) {
-  const numberText = String(value ?? "").split("@")[0].match(/-?\d+(?:\.\d+)?/)?.[0]
-  const number = Number(numberText)
-  return Number.isFinite(number) ? number : null
-}
-
-function getLowestChStepRows(rows) {
-  if (rows.length < 2) return rows
-  const numericSteps = rows
-    .map((row) => getChStepNumber(row.step))
-    .filter((value) => value !== null)
-
-  if (numericSteps.length) {
-    const lowestStep = Math.min(...numericSteps)
-    return rows.filter((row) => getChStepNumber(row.step) === lowestStep)
-  }
-
-  const lowestStep = rows
-    .map((row) => String(row.step ?? ""))
-    .sort((left, right) => left.localeCompare(right, "ko", { numeric: true }))[0]
-  return rows.filter((row) => String(row.step ?? "") === lowestStep)
 }
 
 function SelectRow({ label, meta, selected, multiple = false, onClick }) {
@@ -1081,7 +1058,7 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, a
           <div className="flex min-w-0 items-center gap-3">
             <h3 className="shrink-0 text-sm font-semibold">{eqp || "EQP 미지정"}</h3>
             <p className="truncate text-[11px] text-muted-foreground">
-              {row.recipe_id || "PPID 미지정"} · {row.sensor || "sensor 미지정"}
+              {row.recipe_id || "PPID 미지정"} · {row.sensor || "sensor 미지정"} · {row.step || "ch_step 미지정"}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -1328,7 +1305,11 @@ export function FdcTrendPage() {
   const [selectedEqpCh, setSelectedEqpCh] = useState("")
   const [selectedSensor, setSelectedSensor] = useState("")
   const [selectedChStep, setSelectedChStep] = useState("")
-  const [gatheredChSteps, setGatheredChSteps] = useState({ contextKey: "", eqps: EMPTY_EQP_SET })
+  const [gatheredChSteps, setGatheredChSteps] = useState({
+    contextKey: "",
+    eqps: EMPTY_EQP_SET,
+    lastEqp: "",
+  })
   const [queries, setQueries] = useState({
     line: "",
     team: "",
@@ -1489,11 +1470,34 @@ export function FdcTrendPage() {
     return Array.from(groups, ([eqp, rows]) => ({ eqp, rows }))
       .sort((left, right) => left.eqp.localeCompare(right.eqp, "ko", { numeric: true }))
   }, [chartRows])
-  const visibleChartGroups = useMemo(() => chartGroups.map((group) => ({
-    ...group,
-    gathered: gatheredEqps.has(group.eqp),
-    visibleRows: gatheredEqps.has(group.eqp) ? getLowestChStepRows(group.rows) : group.rows,
-  })), [chartGroups, gatheredEqps])
+  const visibleChartGroups = useMemo(() => chartGroups.map((group) => {
+    const gathered = gatheredEqps.has(group.eqp)
+    const visibleRows = gathered ? getLowestChStepRowsByPpid(group.rows) : group.rows
+    return {
+      ...group,
+      gathered,
+      visibleRows,
+      visibleRowIds: new Set(visibleRows.map((row) => row.id)),
+      animate: gatheredChSteps.contextKey === gatherContextKey
+        && gatheredChSteps.lastEqp === group.eqp,
+    }
+  }), [chartGroups, gatherContextKey, gatheredChSteps.contextKey, gatheredChSteps.lastEqp, gatheredEqps])
+  const allSkipLoadTargetsByEqp = useMemo(() => {
+    if (isSkipList) return new Map()
+    return new Map(chartGroups.map((group) => [group.eqp, async () => {
+      const payload = await fetchSelfEquipmentData({
+        line: activeLine,
+        pathSdwt: activeTeam,
+        sdwt: activeTeamLabel,
+        priorities,
+        desc: activeDesc,
+        eqpCh: group.rows[0]?.eqp ?? group.eqp,
+        sensor: activeSensor,
+        chStep: ALL_CH_STEPS,
+      })
+      return (payload.rows ?? []).map((targetRow) => ({ filePath: targetRow.file_path }))
+    }]))
+  }, [activeDesc, activeLine, activeSensor, activeTeam, activeTeamLabel, chartGroups, isSkipList, priorities])
 
   const filteredLines = filterItems(
     lines.map((line) => ({ value: line, label: formatLineDisplayName(line) })),
@@ -1658,7 +1662,7 @@ export function FdcTrendPage() {
       const nextEqps = new Set(current.contextKey === gatherContextKey ? current.eqps : EMPTY_EQP_SET)
       if (nextEqps.has(eqp)) nextEqps.delete(eqp)
       else nextEqps.add(eqp)
-      return { contextKey: gatherContextKey, eqps: nextEqps }
+      return { contextKey: gatherContextKey, eqps: nextEqps, lastEqp: eqp }
     })
   }
 
@@ -1934,42 +1938,27 @@ export function FdcTrendPage() {
                       {group.gathered ? ` / ${group.rows.length.toLocaleString()}` : ""} charts
                     </Badge>
                   </header>
-                  <div className="grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2 xl:grid-cols-3">
-                    <AnimatePresence initial={false} mode="popLayout">
-                      {group.visibleRows.map((row) => (
-                        <motion.div
-                          layout
-                          key={row.id}
-                          initial={{ opacity: 0, y: 14 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -12, transition: { duration: 0.18 } }}
-                          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                        >
+                  <div
+                    className={cn(
+                      "grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2 xl:grid-cols-3",
+                      group.animate && (group.gathered ? "animate-ch-step-gather" : "animate-ch-step-expand"),
+                    )}
+                  >
+                    {group.rows.map((row) => {
+                      const isVisible = group.visibleRowIds.has(row.id)
+                      return (
+                        <div key={row.id} className={cn(!isVisible && "hidden")} aria-hidden={!isVisible}>
                           <ErdScatterCard
                             row={row}
                             lineId={activeLine}
                             passRecord={isSkipList
                               ? row.pass_history
                               : passHistoryByKey.get(buildChartPassHistoryKey(activeLine, row))}
-                            allSkipLoadTargets={isSkipList ? null : async () => {
-                              const payload = await fetchSelfEquipmentData({
-                                line: activeLine,
-                                pathSdwt: activeTeam,
-                                sdwt: activeTeamLabel,
-                                priorities,
-                                desc: activeDesc,
-                                eqpCh: group.rows[0]?.eqp ?? group.eqp,
-                                sensor: activeSensor,
-                                chStep: ALL_CH_STEPS,
-                              })
-                              return (payload.rows ?? []).map((targetRow) => ({
-                                filePath: targetRow.file_path,
-                              }))
-                            }}
+                            allSkipLoadTargets={allSkipLoadTargetsByEqp.get(group.eqp) ?? null}
                           />
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
+                        </div>
+                      )
+                    })}
                   </div>
                 </section>
               ))}
