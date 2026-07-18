@@ -228,7 +228,7 @@ export function MyEqpRegistrationPage() {
       if (error.debugRows?.length) {
         setSaveFailure({
           message: error.message,
-          table: error.table || "myeqp_info",
+          table: error.table || "myeqp_regist",
           rows: error.debugRows,
         })
       }
@@ -589,7 +589,7 @@ export function MyEqpRegistrationPage() {
           <DialogHeader>
             <DialogTitle>My EQP 저장 실패 데이터</DialogTitle>
             <DialogDescription>
-              {saveFailure?.message} 아래는 {saveFailure?.table ?? "myeqp_info"} 테이블에 저장하려던 데이터입니다.
+              {saveFailure?.message} 아래는 {saveFailure?.table ?? "myeqp_regist"} 테이블에 저장하려던 데이터입니다.
             </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-auto rounded-lg border">

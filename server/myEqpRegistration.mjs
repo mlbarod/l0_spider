@@ -175,7 +175,7 @@ export async function handleMyEqpRegistrationRequest(req, res) {
     sendJson(res, 500, {
       ok: false,
       error: error.message,
-      table: "myeqp_info",
+      table: "myeqp_regist",
       debugRows,
     })
   }

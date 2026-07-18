@@ -41,7 +41,7 @@ def insert_registration(payload, db_info):
         for eqp in eqps
     ]
     query = """
-        INSERT INTO `myeqp_info`
+        INSERT INTO `myeqp_regist`
             (`line`, `sdwt`, `prc_group`, `eqp`, `exec_date`, `periode`, `comment`, `knox_id`)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
     """
