@@ -6,6 +6,7 @@ import {
   Clock3,
   Database,
   Loader2,
+  MessageSquareText,
   Save,
   Search,
   Settings2,
@@ -17,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import { fetchLineMapping } from "../api/mappingConfigApi"
@@ -25,7 +27,7 @@ import { SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 
 const EMPTY_MAPPING = Object.freeze({})
-const ALL_EQP = "ALL"
+const EMPTY_LIST = Object.freeze([])
 
 function matchesQuery(value, query) {
   return String(value).toLocaleLowerCase("ko").includes(query.trim().toLocaleLowerCase("ko"))
@@ -37,6 +39,8 @@ function FilterPanel({
   description,
   options,
   selectedValue,
+  selectedValues = EMPTY_LIST,
+  multiple = false,
   onSelect,
   query,
   onQueryChange,
@@ -44,20 +48,22 @@ function FilterPanel({
   isLoading = false,
   emptyMessage,
 }) {
+  const hasSelection = multiple ? selectedValues.length > 0 : Boolean(selectedValue)
+
   return (
     <Card className={cn(
       "min-h-[300px] gap-0 overflow-hidden py-0 transition-shadow",
-      selectedValue && "border-primary/35 shadow-md shadow-primary/5",
+      hasSelection && "border-primary/35 shadow-md shadow-primary/5",
     )}>
       <CardHeader className={cn(
         "gap-1 border-b px-4 py-4",
-        selectedValue ? "bg-primary/5" : "bg-muted/30",
+        hasSelection ? "bg-primary/5" : "bg-muted/30",
       )}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <span className={cn(
               "grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold",
-              selectedValue ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+              hasSelection ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
             )}>
               {step}
             </span>
@@ -66,7 +72,9 @@ function FilterPanel({
           {isLoading ? (
             <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label="로딩 중" />
           ) : (
-            <Badge variant="secondary" className="shrink-0 tabular-nums">{options.length}</Badge>
+            <Badge variant="secondary" className="shrink-0 tabular-nums">
+              {multiple && selectedValues.length ? `${selectedValues.length} 선택` : options.length}
+            </Badge>
           )}
         </div>
         <CardDescription className="pl-8 text-xs leading-5">{description}</CardDescription>
@@ -92,7 +100,9 @@ function FilterPanel({
         ) : (
           <div className="grid gap-1.5">
             {options.map((option) => {
-              const selected = selectedValue === option.value
+              const selected = multiple
+                ? selectedValues.includes(option.value)
+                : selectedValue === option.value
               return (
                 <button
                   key={option.value}
@@ -110,7 +120,14 @@ function FilterPanel({
                   {option.meta ? (
                     <span className="shrink-0 text-[11px] text-muted-foreground">{option.meta}</span>
                   ) : null}
-                  {selected ? (
+                  {multiple ? (
+                    <span className={cn(
+                      "grid size-4 shrink-0 place-items-center rounded border",
+                      selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background",
+                    )}>
+                      <Check className={cn("size-3", !selected && "text-transparent")} aria-hidden="true" />
+                    </span>
+                  ) : selected ? (
                     <Check className="size-3.5 shrink-0" aria-hidden="true" />
                   ) : (
                     <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -149,8 +166,9 @@ export function MyEqpRegistrationPage() {
   const [selectedLine, setSelectedLine] = useState("")
   const [selectedSdwt, setSelectedSdwt] = useState("")
   const [selectedPrcGroup, setSelectedPrcGroup] = useState("")
-  const [selectedEqp, setSelectedEqp] = useState("")
+  const [selectedEqps, setSelectedEqps] = useState([])
   const [monitoringDays, setMonitoringDays] = useState("")
+  const [comment, setComment] = useState("")
   const [queries, setQueries] = useState({ line: "", sdwt: "", prcGroup: "", eqp: "" })
 
   const mappingQuery = useQuery({
@@ -203,9 +221,7 @@ export function MyEqpRegistrationPage() {
       .sort((left, right) => left.label.localeCompare(right.label, "ko", { numeric: true }))
   }, [activePrcGroup, sdwtReferenceRows])
   const eqpValues = useMemo(() => new Set(eqpRows.map((row) => row.label)), [eqpRows])
-  const activeEqp = selectedEqp === ALL_EQP && eqpRows.length > 0
-    ? ALL_EQP
-    : eqpValues.has(selectedEqp) ? selectedEqp : ""
+  const activeEqps = selectedEqps.filter((eqp) => eqpValues.has(eqp))
 
   const lineOptions = lines
     .map((line) => ({ value: line, label: formatLineDisplayName(line) }))
@@ -214,18 +230,15 @@ export function MyEqpRegistrationPage() {
   const prcGroupOptions = prcGroups
     .map((group) => ({ value: group, label: group }))
     .filter((option) => matchesQuery(option.label, queries.prcGroup))
-  const eqpOptions = (eqpRows.length ? [
-    { value: ALL_EQP, label: "ALL", meta: `${eqpRows.length.toLocaleString()}대` },
-    ...eqpRows.map((row) => ({ value: row.label, label: row.label })),
-  ] : []).filter((option) => matchesQuery(option.label, queries.eqp))
+  const eqpOptions = eqpRows
+    .map((row) => ({ value: row.label, label: row.label }))
+    .filter((option) => matchesQuery(option.label, queries.eqp))
 
-  const selectedEqpLabel = activeEqp === ALL_EQP
-    ? `ALL (${eqpRows.length.toLocaleString()}대)`
-    : activeEqp
+  const selectedEqpLabel = activeEqps.join(", ")
   const parsedMonitoringDays = Number(monitoringDays)
   const hasValidMonitoringDays = Number.isInteger(parsedMonitoringDays) && parsedMonitoringDays > 0
   const isReadyToSave = Boolean(
-    activeLine && activeSdwt && activePrcGroup && activeEqp && hasValidMonitoringDays,
+    activeLine && activeSdwt && activePrcGroup && activeEqps.length > 0 && hasValidMonitoringDays,
   )
 
   const changeQuery = (key, value) => {
@@ -236,21 +249,29 @@ export function MyEqpRegistrationPage() {
     setSelectedLine(line)
     setSelectedSdwt("")
     setSelectedPrcGroup("")
-    setSelectedEqp("")
+    setSelectedEqps([])
     setQueries((current) => ({ ...current, sdwt: "", prcGroup: "", eqp: "" }))
   }
 
   const handleSdwtChange = (sdwt) => {
     setSelectedSdwt(sdwt)
     setSelectedPrcGroup("")
-    setSelectedEqp("")
+    setSelectedEqps([])
     setQueries((current) => ({ ...current, prcGroup: "", eqp: "" }))
   }
 
   const handlePrcGroupChange = (prcGroup) => {
     setSelectedPrcGroup(prcGroup)
-    setSelectedEqp("")
+    setSelectedEqps([])
     setQueries((current) => ({ ...current, eqp: "" }))
+  }
+
+  const toggleEqp = (eqp) => {
+    setSelectedEqps((current) => (
+      current.includes(eqp)
+        ? current.filter((item) => item !== eqp)
+        : [...current, eqp]
+    ))
   }
 
   return (
@@ -340,10 +361,11 @@ export function MyEqpRegistrationPage() {
               <FilterPanel
                 step="4"
                 title="EQP"
-                description="개별 설비 또는 ALL을 선택하세요."
+                description="모니터링할 설비를 복수 선택할 수 있습니다."
                 options={eqpOptions}
-                selectedValue={activeEqp}
-                onSelect={setSelectedEqp}
+                selectedValues={activeEqps}
+                multiple
+                onSelect={toggleEqp}
                 query={queries.eqp}
                 onQueryChange={(value) => changeQuery("eqp", value)}
                 disabled={!activePrcGroup || referenceQuery.isLoading}
@@ -377,7 +399,7 @@ export function MyEqpRegistrationPage() {
               <SelectionItem label="Line Name" value={formatLineDisplayName(activeLine)} complete={Boolean(activeLine)} />
               <SelectionItem label="SDWT" value={activeSdwtLabel} complete={Boolean(activeSdwt)} />
               <SelectionItem label="PRC Group" value={activePrcGroup} complete={Boolean(activePrcGroup)} />
-              <SelectionItem label="EQP" value={selectedEqpLabel} complete={Boolean(activeEqp)} />
+              <SelectionItem label="EQP" value={selectedEqpLabel} complete={activeEqps.length > 0} />
             </CardContent>
           </Card>
 
@@ -419,6 +441,30 @@ export function MyEqpRegistrationPage() {
                     ? "1 이상의 정수로 입력하세요."
                     : "1 이상의 일수를 직접 입력할 수 있습니다."}
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="gap-4 py-5">
+            <CardHeader className="gap-1 px-5 sm:px-6">
+              <div className="flex items-center gap-2">
+                <MessageSquareText className="size-4 text-primary" aria-hidden="true" />
+                <CardTitle className="text-base">Comment</CardTitle>
+              </div>
+              <CardDescription className="text-xs">My EQP 기준정보에 필요한 설명이나 참고사항을 입력하세요.</CardDescription>
+            </CardHeader>
+            <CardContent className="px-5 sm:px-6">
+              <div className="max-w-3xl">
+                <label htmlFor="my-eqp-comment" className="mb-2 block text-xs font-medium text-foreground">
+                  비고 입력 <span className="font-normal text-muted-foreground">(선택)</span>
+                </label>
+                <Textarea
+                  id="my-eqp-comment"
+                  value={comment}
+                  onChange={(event) => setComment(event.target.value)}
+                  placeholder="설비 선택 사유나 모니터링 시 참고할 내용을 입력하세요."
+                  className="min-h-28 resize-y text-sm leading-6"
+                />
               </div>
             </CardContent>
           </Card>

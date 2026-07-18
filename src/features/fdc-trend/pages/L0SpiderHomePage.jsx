@@ -17,15 +17,6 @@ const spiderApps = [
     status: "운영중",
   },
   {
-    icon: Settings2,
-    title: "My EQP 등록",
-    subtitle: "모니터링할 라인과 설비, 조회 기간을 개인 기준정보로 등록합니다.",
-    category: "My EQP",
-    href: "/my-eqp",
-    active: true,
-    status: "운영중",
-  },
-  {
     icon: ChartNoAxesCombined,
     title: "동일성 이상감지",
     subtitle: "동일 조건 간 신호 분포 차이를 비교해 이상 패턴을 찾습니다.",
@@ -58,6 +49,15 @@ const spiderApps = [
     category: "Yield",
     href: "/yield-hard-limit",
     active: true,
+  },
+  {
+    icon: Settings2,
+    title: "My EQP 등록",
+    subtitle: "모니터링할 라인과 설비, 조회 기간을 개인 기준정보로 등록합니다.",
+    category: "My EQP",
+    href: "/my-eqp",
+    active: true,
+    status: "운영중",
   },
   {
     icon: BookOpen,
