@@ -33,6 +33,12 @@ function formatDatabaseTimestamp(date = new Date()) {
   ].join("-") + ` ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
+function normalizeDatabaseTimestamp(value) {
+  const text = normalizeText(value)
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/)
+  return match ? `${match[1]} ${match[2]}` : text
+}
+
 async function readJsonBody(req) {
   let body = ""
   for await (const chunk of req) {
@@ -95,6 +101,55 @@ export function buildMyEqpDebugRows(payload) {
   }))
 }
 
+export function groupMyEqpRegistrationRecords(records, nowMs = Date.now()) {
+  const groups = new Map()
+
+  records.forEach((record) => {
+    const normalized = {
+      line: normalizeText(record?.line),
+      sdwt: normalizeText(record?.sdwt),
+      prcGroup: normalizeText(record?.prc_group),
+      eqp: normalizeText(record?.eqp),
+      execDate: normalizeDatabaseTimestamp(record?.exec_date),
+      periode: Number(record?.periode),
+      comment: String(record?.comment ?? ""),
+      knoxId: normalizeText(record?.knox_id),
+    }
+    if (!normalized.line || !normalized.sdwt || !normalized.prcGroup || !normalized.eqp) return
+
+    const groupKey = [
+      normalized.line,
+      normalized.sdwt,
+      normalized.prcGroup,
+      normalized.execDate,
+      normalized.periode,
+      normalized.comment,
+      normalized.knoxId,
+    ].join("\u0000")
+    const group = groups.get(groupKey) ?? { ...normalized, eqps: [] }
+    if (!group.eqps.includes(normalized.eqp)) group.eqps.push(normalized.eqp)
+    groups.set(groupKey, group)
+  })
+
+  return Array.from(groups.values()).map((group) => {
+    group.eqps.sort((left, right) => left.localeCompare(right, "ko", { numeric: true }))
+    const execDateMs = Date.parse(group.execDate.replace(" ", "T"))
+    const expiresAtMs = execDateMs + group.periode * 24 * 60 * 60 * 1000
+    return {
+      id: [group.line, group.sdwt, group.prcGroup, group.execDate, group.comment].join("|"),
+      line: group.line,
+      sdwt: group.sdwt,
+      prcGroup: group.prcGroup,
+      eqps: group.eqps,
+      execDate: group.execDate,
+      periode: group.periode,
+      comment: group.comment,
+      expiresAt: Number.isFinite(expiresAtMs) ? formatDatabaseTimestamp(new Date(expiresAtMs)) : "",
+      active: Number.isFinite(expiresAtMs) && expiresAtMs > nowMs,
+    }
+  }).sort((left, right) => right.execDate.localeCompare(left.execDate))
+}
+
 export async function resolveRegistrationUserId(remoteIp, resolver = resolveCurrentUser) {
   try {
     const currentUser = await resolver(remoteIp)
@@ -104,9 +159,9 @@ export async function resolveRegistrationUserId(remoteIp, resolver = resolveCurr
   }
 }
 
-function runRegistrationHelper(payload) {
+function runRegistrationHelper(action, payload) {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn("python3", ["-B", helperPath], {
+    const child = spawn("python3", ["-B", helperPath, action], {
       env: process.env,
       stdio: ["pipe", "pipe", "pipe"],
     })
@@ -149,8 +204,17 @@ function runRegistrationHelper(payload) {
   })
 }
 
-export async function handleMyEqpRegistrationRequest(req, res) {
-  if (req.method !== "POST") {
+export async function listMyEqpRegistrationRecords({ line, knoxId, activeOnly = false }) {
+  const result = await runRegistrationHelper("list", {
+    line: normalizeText(line),
+    knoxId: normalizeText(knoxId),
+    activeOnly: Boolean(activeOnly),
+  })
+  return Array.isArray(result.records) ? result.records : []
+}
+
+export async function handleMyEqpRegistrationRequest(req, res, url) {
+  if (!new Set(["GET", "POST", "DELETE"]).has(req.method)) {
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
     return
   }
@@ -163,13 +227,40 @@ export async function handleMyEqpRegistrationRequest(req, res) {
       return
     }
 
-    const [body, userId] = await Promise.all([
-      readJsonBody(req),
-      resolveRegistrationUserId(remoteIp),
-    ])
+    const userId = await resolveRegistrationUserId(remoteIp)
+
+    if (req.method === "GET") {
+      const line = normalizeText(url.searchParams.get("line"))
+      if (!line) {
+        sendJson(res, 400, { ok: false, error: "Line Name이 필요합니다." })
+        return
+      }
+      const activeOnly = url.searchParams.get("activeOnly") === "true"
+      const records = await listMyEqpRegistrationRecords({ line, knoxId: userId, activeOnly })
+      sendJson(res, 200, {
+        ok: true,
+        registrations: groupMyEqpRegistrationRecords(records),
+      })
+      return
+    }
+
+    const body = await readJsonBody(req)
+    if (req.method === "DELETE") {
+      const payload = buildMyEqpRegistrationPayload({
+        ...body,
+        eqps: body.eqps,
+        periode: body.periode,
+      }, userId)
+      payload.execDate = normalizeDatabaseTimestamp(body.execDate)
+      if (!payload.execDate) throw new Error("등록 시점 정보가 필요합니다.")
+      const result = await runRegistrationHelper("delete", payload)
+      sendJson(res, 200, result)
+      return
+    }
+
     const payload = buildMyEqpRegistrationPayload(body, userId)
     debugRows = buildMyEqpDebugRows(payload)
-    const result = await runRegistrationHelper(payload)
+    const result = await runRegistrationHelper("insert", payload)
     sendJson(res, 200, { ...result, knoxId: userId })
   } catch (error) {
     sendJson(res, 500, {

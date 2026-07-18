@@ -42,6 +42,7 @@ import { createClickedCategoryHistory } from "../api/clickedCategoryHistoryApi"
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { createHitHistory } from "../api/hitHistoryApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
+import { fetchMyEqpRegistrations } from "../api/myEqpRegistrationApi"
 import {
   createPassHistory,
   createPassHistoryBatch,
@@ -52,6 +53,7 @@ import {
 import {
   fetchErdIdentityData,
   fetchErdScatterData,
+  fetchMyEqpEquipmentData,
   fetchSelfEquipmentData,
 } from "../api/selfEquipmentApi"
 import { SENSOR_GRADES, SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
@@ -64,6 +66,8 @@ const ALL_SENSORS = "ALL"
 const ALL_CH_STEPS = "ALL"
 const SKIP_LIST_TEAM = "__SKIP_LIST__"
 const SKIP_LIST_LABEL = "SKIP LIST"
+const MY_EQP_TEAM = "__MY_EQP__"
+const MY_EQP_LABEL = "MY EQP"
 const SCATTER_CHART_MARGIN = Object.freeze({ top: 42, right: 18, bottom: 28, left: 16 })
 const SCATTER_Y_AXIS_WIDTH = 64
 const SCATTER_X_AXIS_HEIGHT = 30
@@ -1318,23 +1322,34 @@ export function FdcTrendPage() {
     [lineMapping],
   )
   const activeLine = lines.includes(selectedLine) ? selectedLine : (lines[0] ?? "")
+  const myEqpRegistrationsQuery = useQuery({
+    queryKey: ["my-eqp-registrations", activeLine, true],
+    queryFn: () => fetchMyEqpRegistrations({ line: activeLine, activeOnly: true }),
+    enabled: Boolean(activeLine),
+    staleTime: 15 * 1000,
+    refetchInterval: 30 * 1000,
+    retry: false,
+  })
+  const hasActiveMyEqp = Boolean(myEqpRegistrationsQuery.data?.length)
   const teamOptions = useMemo(
     () => [
       ...Object.entries(lineMapping)
         .filter(([, line]) => line === activeLine)
         .map(([key]) => ({ key, label: sdwtMapping[key] ?? key })),
+      ...(hasActiveMyEqp ? [{ key: MY_EQP_TEAM, label: MY_EQP_LABEL }] : []),
       ...(activeLine ? [{ key: SKIP_LIST_TEAM, label: SKIP_LIST_LABEL }] : []),
     ],
-    [activeLine, lineMapping, sdwtMapping],
+    [activeLine, hasActiveMyEqp, lineMapping, sdwtMapping],
   )
   const activeTeam = teamOptions.some((team) => team.key === selectedTeam)
     ? selectedTeam
     : (teamOptions[0]?.key ?? "")
   const activeTeamLabel = teamOptions.find((team) => team.key === activeTeam)?.label ?? ""
   const isSkipList = activeTeam === SKIP_LIST_TEAM
+  const isMyEqp = activeTeam === MY_EQP_TEAM
   const priorities = useMemo(() => expandPriorities(selectedGrades), [selectedGrades])
   const dataQueryKey = [
-    isSkipList ? "skip-list-data" : "self-equipment-data",
+    isSkipList ? "skip-list-data" : isMyEqp ? "my-eqp-equipment-data" : "self-equipment-data",
     activeLine,
     activeTeam,
     activeTeamLabel,
@@ -1349,6 +1364,15 @@ export function FdcTrendPage() {
     queryFn: () => isSkipList
       ? fetchSkipListData({
           lineId: activeLine,
+          priorities,
+          desc: selectedDesc,
+          eqpCh: selectedEqpCh,
+          sensor: selectedSensor,
+          chStep: selectedChStep,
+        })
+      : isMyEqp
+      ? fetchMyEqpEquipmentData({
+          line: activeLine,
           priorities,
           desc: selectedDesc,
           eqpCh: selectedEqpCh,
@@ -1394,6 +1418,7 @@ export function FdcTrendPage() {
     }),
     enabled: Boolean(
       !isSkipList
+      && !isMyEqp
       && activeLine
       && activeTeamLabel
       && activeDesc
@@ -1534,7 +1559,7 @@ export function FdcTrendPage() {
 
     try {
       const queryKey = [
-        "self-equipment-data",
+        isMyEqp ? "my-eqp-equipment-data" : "self-equipment-data",
         activeLine,
         activeTeam,
         activeTeamLabel,
@@ -1546,16 +1571,25 @@ export function FdcTrendPage() {
       ]
       const payload = await queryClient.fetchQuery({
         queryKey,
-        queryFn: () => fetchSelfEquipmentData({
-          line: activeLine,
-          pathSdwt: activeTeam,
-          sdwt: activeTeamLabel,
-          priorities,
-          desc: selectedDesc,
-          eqpCh: selectedEqpCh,
-          sensor: selectedSensor,
-          chStep: nextChStep,
-        }),
+        queryFn: () => isMyEqp
+          ? fetchMyEqpEquipmentData({
+              line: activeLine,
+              priorities,
+              desc: selectedDesc,
+              eqpCh: selectedEqpCh,
+              sensor: selectedSensor,
+              chStep: nextChStep,
+            })
+          : fetchSelfEquipmentData({
+              line: activeLine,
+              pathSdwt: activeTeam,
+              sdwt: activeTeamLabel,
+              priorities,
+              desc: selectedDesc,
+              eqpCh: selectedEqpCh,
+              sensor: selectedSensor,
+              chStep: nextChStep,
+            }),
       })
       const filePaths = (payload.rows ?? []).map((row) => row.file_path)
       if (!filePaths.length) return
@@ -1769,6 +1803,11 @@ export function FdcTrendPage() {
         </div>
         {mappingQuery.isError ? (
           <p className="border-t px-6 py-2 text-xs text-destructive">{mappingQuery.error.message}</p>
+        ) : null}
+        {myEqpRegistrationsQuery.isError ? (
+          <p className="border-t px-6 py-2 text-xs text-destructive">
+            My EQP 등록 조건을 불러오지 못했습니다: {myEqpRegistrationsQuery.error.message}
+          </p>
         ) : null}
       </section>
 

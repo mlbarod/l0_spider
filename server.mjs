@@ -27,6 +27,7 @@ import { handlePassHistoryRequest } from "./server/passHistory.mjs"
 import {
   handleErdFileRequest,
   handleErdScatterDataRequest,
+  handleMyEqpEquipmentDataRequest,
   handleSelfEquipmentDataRequest,
 } from "./server/selfEquipmentData.mjs"
 
@@ -219,7 +220,7 @@ const server = createServer((req, res) => {
   }
 
   if (url.pathname === "/api/my-eqp-registration") {
-    handleMyEqpRegistrationRequest(req, res).catch((error) => {
+    handleMyEqpRegistrationRequest(req, res, url).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
     return
@@ -227,6 +228,13 @@ const server = createServer((req, res) => {
 
   if (url.pathname === "/api/self-equipment-data") {
     handleSelfEquipmentDataRequest(req, res, url).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/my-eqp-equipment-data") {
+    handleMyEqpEquipmentDataRequest(req, res, url).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
     return

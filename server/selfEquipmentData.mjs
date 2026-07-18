@@ -5,6 +5,12 @@ import { asyncBufferFromFile, parquetReadObjects } from "hyparquet"
 import { compressors } from "hyparquet-compressors"
 
 import { buildTeamErdPath } from "../src/config/spiderDataPaths.mjs"
+import { getRemoteIp } from "./currentUser.mjs"
+import { readLineMapping } from "./mappingConfig.mjs"
+import {
+  listMyEqpRegistrationRecords,
+  resolveRegistrationUserId,
+} from "./myEqpRegistration.mjs"
 import { listPassHistoryRecords } from "./passHistory.mjs"
 
 export const TEAM_ERD_COLUMNS = Object.freeze([
@@ -111,7 +117,7 @@ export function excludeRecentlySkippedRows(
     : rows
 }
 
-async function readTeamErdRows({ line, pathSdwt }) {
+export async function readTeamErdRows({ line, pathSdwt }) {
   assertPathSegment("line", line)
   assertPathSegment("pathSdwt", pathSdwt)
 
@@ -169,7 +175,7 @@ export function buildSelfEquipmentPayload(rows, filters) {
   const priorities = new Set(filters.priorities)
   const baseRows = rows.filter((row) => (
     row.line_rev === filters.line
-    && row.sdwt === filters.sdwt
+    && (filters.includeAllSdwt || row.sdwt === filters.sdwt)
     && priorities.has(row.priority)
   ))
   const steps = sortByLabel(aggregateBy(baseRows, "desc", (desc, stepRows) => ({
@@ -252,6 +258,15 @@ export function buildSelfEquipmentPayload(rows, filters) {
   }
 }
 
+export function filterMyEqpRows(rows, registrationRecords) {
+  const registrationKeys = new Set(registrationRecords.map((record) => (
+    `${String(record.sdwt ?? "").trim()}\u0000${normalizeSkipEqp(record.eqp)}`
+  )))
+  return rows.filter((row) => registrationKeys.has(
+    `${String(row.sdwt ?? "").trim()}\u0000${normalizeSkipEqp(row.eqp)}`,
+  ))
+}
+
 function readFilters(url) {
   return {
     line: url.searchParams.get("line")?.trim() ?? "",
@@ -296,6 +311,73 @@ export async function handleSelfEquipmentDataRequest(req, res, url) {
     sendJson(res, 500, {
       ok: false,
       error: `분임조별 ERD 이상감지 경로 데이터를 불러오지 못했습니다: ${error.message}`,
+    })
+  }
+}
+
+export async function handleMyEqpEquipmentDataRequest(req, res, url) {
+  if (req.method !== "GET") {
+    sendJson(res, 405, { ok: false, error: "Method not allowed" })
+    return
+  }
+
+  try {
+    const filters = readFilters(url)
+    if (!filters.line) {
+      sendJson(res, 400, { ok: false, error: "line 조건이 필요합니다." })
+      return
+    }
+    const remoteIp = getRemoteIp(req)
+    if (!remoteIp) {
+      sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
+      return
+    }
+
+    const userId = await resolveRegistrationUserId(remoteIp)
+    const [registrationRecords, mapping] = await Promise.all([
+      listMyEqpRegistrationRecords({ line: filters.line, knoxId: userId, activeOnly: true }),
+      readLineMapping(),
+    ])
+    const pathBySdwt = new Map()
+    Object.entries(mapping.line_mapping)
+      .filter(([, line]) => line === filters.line)
+      .forEach(([pathSdwt]) => {
+        pathBySdwt.set(mapping.sdwt_mapping[pathSdwt] ?? pathSdwt, pathSdwt)
+        pathBySdwt.set(pathSdwt, pathSdwt)
+      })
+    const paths = Array.from(new Set(
+      registrationRecords.map((record) => pathBySdwt.get(String(record.sdwt ?? "").trim())).filter(Boolean),
+    ))
+    const sdwts = Array.from(new Set(
+      registrationRecords.map((record) => String(record.sdwt ?? "").trim()).filter(Boolean),
+    ))
+
+    const [dataSources, passRecordGroups] = await Promise.all([
+      Promise.all(paths.map((pathSdwt) => readTeamErdRows({ line: filters.line, pathSdwt }))),
+      Promise.all(sdwts.map((sdwt) => listPassHistoryRecords({ lineId: filters.line, sdwt }))),
+    ])
+    const sourceRows = dataSources.flatMap((source) => source.rows)
+    const registeredRows = filterMyEqpRows(sourceRows, registrationRecords)
+    const visibleRows = excludeRecentlySkippedRows(registeredRows, passRecordGroups.flat())
+    const payload = buildSelfEquipmentPayload(visibleRows, {
+      ...filters,
+      pathSdwt: "__MY_EQP__",
+      sdwt: "MY EQP",
+      includeAllSdwt: true,
+    })
+    sendJson(res, 200, {
+      ...payload,
+      counts: {
+        ...payload.counts,
+        registeredEqps: new Set(registrationRecords.map((record) => normalizeSkipEqp(record.eqp))).size,
+        excludedSkipRows: registeredRows.length - visibleRows.length,
+      },
+      sourcePaths: dataSources.map((source) => source.filePath),
+    })
+  } catch (error) {
+    sendJson(res, 500, {
+      ok: false,
+      error: `My EQP 이상감지 데이터를 불러오지 못했습니다: ${error.message}`,
     })
   }
 }

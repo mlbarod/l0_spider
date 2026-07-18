@@ -4,6 +4,7 @@ import test from "node:test"
 import {
   buildMyEqpDebugRows,
   buildMyEqpRegistrationPayload,
+  groupMyEqpRegistrationRecords,
   handleMyEqpRegistrationRequest,
   resolveRegistrationUserId,
 } from "./myEqpRegistration.mjs"
@@ -49,6 +50,29 @@ test("복수 선택한 EQP를 EQP별 개별 DB 행으로 만든다", () => {
   assert.ok(rows.every((row) => row.line === "P1D" && row.periode === 15))
 })
 
+test("동일 저장 조건의 EQP 행을 하나의 등록 조건으로 묶고 만료를 계산한다", () => {
+  const records = ["EQP01_CH_A", "EQP02_CH_B"].map((eqp) => ({
+    line: "P1D",
+    sdwt: "DREAMS P1D",
+    prc_group: "OXIDE ETCH",
+    eqp,
+    exec_date: "2026-07-18 10:00:00",
+    periode: 7,
+    comment: "점검 대상",
+    knox_id: "user01",
+  }))
+
+  const groups = groupMyEqpRegistrationRecords(records, Date.parse("2026-07-20T10:00:00"))
+
+  assert.equal(groups.length, 1)
+  assert.deepEqual(groups[0].eqps, ["EQP01_CH_A", "EQP02_CH_B"])
+  assert.equal(groups[0].expiresAt, "2026-07-25 10:00:00")
+  assert.equal(groups[0].active, true)
+
+  const expiredGroups = groupMyEqpRegistrationRecords(records, Date.parse("2026-07-25T10:00:00"))
+  assert.equal(expiredGroups[0].active, false)
+})
+
 test("knox_id 조회에 실패하면 접속 IP를 사용한다", async () => {
   const userId = await resolveRegistrationUserId("10.20.30.40", async () => {
     throw new Error("사용자 없음")
@@ -78,7 +102,7 @@ test("Comment가 90자를 초과하면 거부한다", () => {
   }, "user01"), /90자 이내/)
 })
 
-test("My EQP 등록 API는 POST만 허용한다", async () => {
+test("My EQP 등록 API는 GET, POST, DELETE 외 요청을 거부한다", async () => {
   const response = {
     statusCode: null,
     body: "",
@@ -90,7 +114,7 @@ test("My EQP 등록 API는 POST만 허용한다", async () => {
     },
   }
 
-  await handleMyEqpRegistrationRequest({ method: "GET" }, response)
+  await handleMyEqpRegistrationRequest({ method: "PUT" }, response)
 
   assert.equal(response.statusCode, 405)
   assert.equal(JSON.parse(response.body).error, "Method not allowed")

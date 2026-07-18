@@ -4,6 +4,7 @@ import test from "node:test"
 import {
   SKIP_EXCLUSION_DURATION_MS,
   excludeRecentlySkippedRows,
+  filterMyEqpRows,
 } from "./selfEquipmentData.mjs"
 
 const NOW = Date.parse("2026-07-16T12:00:00+09:00")
@@ -69,3 +70,13 @@ test("SKIP 등록 후 정확히 3일이 지나면 일반 이상건수에 다시 
   assert.deepEqual(excludeRecentlySkippedRows([row], [expiredRecord], NOW), [row])
 })
 
+test("My EQP는 등록된 sdwt와 eqp가 모두 일치하는 이상건만 남긴다", () => {
+  const rows = [
+    createRow({ sdwt: "SDWT-1", eqp: "EQP-1.png" }),
+    createRow({ sdwt: "SDWT-2", eqp: "EQP-1.png" }),
+    createRow({ sdwt: "SDWT-1", eqp: "EQP-2.png" }),
+  ]
+  const registrations = [{ sdwt: "SDWT-1", eqp: "EQP-1" }]
+
+  assert.deepEqual(filterMyEqpRows(rows, registrations), [rows[0]])
+})

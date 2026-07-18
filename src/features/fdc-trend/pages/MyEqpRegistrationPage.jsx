@@ -10,8 +10,9 @@ import {
   Save,
   Search,
   Settings2,
+  Trash2,
 } from "lucide-react"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
 
@@ -39,7 +40,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import { fetchLineMapping } from "../api/mappingConfigApi"
-import { createMyEqpRegistration } from "../api/myEqpRegistrationApi"
+import {
+  createMyEqpRegistration,
+  deleteMyEqpRegistration,
+  fetchMyEqpRegistrations,
+} from "../api/myEqpRegistrationApi"
 import { fetchMyEqpReference } from "../api/myEqpReferenceApi"
 import { SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
@@ -196,6 +201,7 @@ function SelectionItem({ label, value, complete }) {
 }
 
 export function MyEqpRegistrationPage() {
+  const queryClient = useQueryClient()
   const [selectedLine, setSelectedLine] = useState("")
   const [selectedSdwt, setSelectedSdwt] = useState("")
   const [selectedPrcGroup, setSelectedPrcGroup] = useState("")
@@ -203,6 +209,7 @@ export function MyEqpRegistrationPage() {
   const [monitoringDays, setMonitoringDays] = useState("")
   const [comment, setComment] = useState("")
   const [saveFailure, setSaveFailure] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
   const [queries, setQueries] = useState({ line: "", sdwt: "", prcGroup: "", eqp: "" })
 
   const mappingQuery = useQuery({
@@ -219,6 +226,7 @@ export function MyEqpRegistrationPage() {
     mutationFn: createMyEqpRegistration,
     onSuccess: (result) => {
       setSaveFailure(null)
+      queryClient.invalidateQueries({ queryKey: ["my-eqp-registrations"] })
       toast.success("My EQP 기준정보를 저장했습니다.", {
         description: `${result.requestedRows?.toLocaleString() ?? 0}개 EQP 저장 완료`,
       })
@@ -244,6 +252,23 @@ export function MyEqpRegistrationPage() {
     [lineMapping],
   )
   const activeLine = lines.includes(selectedLine) ? selectedLine : (lines[0] ?? "")
+  const registrationsQuery = useQuery({
+    queryKey: ["my-eqp-registrations", activeLine, false],
+    queryFn: () => fetchMyEqpRegistrations({ line: activeLine }),
+    enabled: Boolean(activeLine),
+    staleTime: 15 * 1000,
+    refetchInterval: 30 * 1000,
+    retry: false,
+  })
+  const deleteMutation = useMutation({
+    mutationFn: deleteMyEqpRegistration,
+    onSuccess: (result) => {
+      setDeleteTarget(null)
+      queryClient.invalidateQueries({ queryKey: ["my-eqp-registrations"] })
+      toast.success(`My EQP 기준정보를 삭제했습니다. (${result.affectedRows?.toLocaleString() ?? 0}행)`)
+    },
+    onError: (error) => toast.error(error.message),
+  })
   const sdwtOptions = useMemo(() => Object.entries(lineMapping)
     .filter(([, line]) => line === activeLine)
     .map(([value]) => ({ value, label: sdwtMapping[value] ?? value }))
@@ -470,6 +495,74 @@ export function MyEqpRegistrationPage() {
             ) : null}
           </section>
 
+          <section className="grid gap-3" aria-labelledby="registered-my-eqp-title">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 id="registered-my-eqp-title" className="text-base font-semibold">등록된 My EQP 조건</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {formatLineDisplayName(activeLine)} Line에 등록한 기준정보입니다.
+                </p>
+              </div>
+              <Badge variant="secondary">
+                {(registrationsQuery.data?.length ?? 0).toLocaleString()}건
+              </Badge>
+            </div>
+
+            {registrationsQuery.isLoading ? (
+              <Card className="grid min-h-32 place-items-center py-6 text-sm text-muted-foreground">
+                <Loader2 className="size-5 animate-spin" aria-label="등록 조건 로딩 중" />
+              </Card>
+            ) : registrationsQuery.isError ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                등록 조건 조회 오류: {registrationsQuery.error.message}
+              </div>
+            ) : registrationsQuery.data?.length ? (
+              <div className="grid gap-3">
+                {registrationsQuery.data.map((registration) => (
+                  <Card key={registration.id} className="gap-4 py-5">
+                    <CardHeader className="gap-3 px-5 sm:px-6">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant={registration.active ? "default" : "secondary"}>
+                            {registration.active ? "모니터링 중" : "기간 만료"}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            등록 {registration.execDate} · 만료 {registration.expiresAt || "-"}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setDeleteTarget(registration)}
+                        >
+                          <Trash2 className="size-3.5" aria-hidden="true" />
+                          삭제
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="grid gap-3 px-5 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+                      <SelectionItem label="Line Name" value={formatLineDisplayName(registration.line)} complete />
+                      <SelectionItem label="SDWT" value={registration.sdwt} complete />
+                      <SelectionItem label="PRC Group" value={registration.prcGroup} complete />
+                      <SelectionItem label="EQP" value={registration.eqps.join(", ")} complete />
+                    </CardContent>
+                    <div className="grid gap-2 border-t px-5 pt-4 text-xs sm:grid-cols-[auto_minmax(0,1fr)] sm:px-6">
+                      <span className="font-medium text-foreground">모니터링 기간 {registration.periode}일</span>
+                      <span className="break-words text-muted-foreground sm:text-right">
+                        Comment: {registration.comment || "-"}
+                      </span>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="grid min-h-32 place-items-center px-5 py-6 text-center text-sm text-muted-foreground">
+                선택한 Line에 등록된 My EQP 조건이 없습니다.
+              </Card>
+            )}
+          </section>
+
           <Card className="gap-4 py-5">
             <CardHeader className="gap-1 px-5 sm:px-6">
               <CardTitle className="text-base">선택 조건</CardTitle>
@@ -578,6 +671,46 @@ export function MyEqpRegistrationPage() {
           </section>
         </div>
       </main>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !deleteMutation.isPending) setDeleteTarget(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>My EQP 조건을 삭제할까요?</DialogTitle>
+            <DialogDescription>
+              {deleteTarget?.sdwt} · {deleteTarget?.prcGroup}에 등록한 EQP
+              {deleteTarget?.eqps.length ? ` ${deleteTarget.eqps.length}개` : ""}가 모두 삭제됩니다.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleteMutation.isPending}
+              onClick={() => setDeleteTarget(null)}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!deleteTarget || deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate(deleteTarget)}
+            >
+              {deleteMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Trash2 className="size-4" aria-hidden="true" />
+              )}
+              삭제
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={Boolean(saveFailure)}
