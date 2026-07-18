@@ -48,6 +48,7 @@ import {
 } from "../utils/fdcTrendMockData"
 import { fetchHardSpecMeta, fetchHardSpecRecommendations } from "../api/fdcTrendApi"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
+import { ResizableFilterArea } from "../components/ResizableFilterArea"
 
 const PAGE_META = {
   matching: {
@@ -348,31 +349,33 @@ function MatchingPage({ common = false }) {
 
 function FilterBar({ line, sdwt, sdwtOptions = getSdwtOptionsByLine(line), onLineChange, onSdwtChange }) {
   return (
-    <section className="grid gap-3 rounded-lg border bg-card p-4">
-      <h2 className="text-sm font-semibold">조회조건 설정</h2>
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="grid gap-1.5">
-          <Label className="text-xs">라인 선택</Label>
-          <Tabs value={line} onValueChange={onLineChange}>
-            <TabsList>
-              {FDC_LINES.map((lineId) => (
-                <TabsTrigger key={lineId} value={lineId}>{formatLineDisplayName(lineId)}</TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+    <ResizableFilterArea defaultHeight={132} minHeight={104} maxHeight={480}>
+      <section className="grid h-full content-start gap-3 overflow-auto rounded-lg border bg-card p-4">
+        <h2 className="text-sm font-semibold">조회조건 설정</h2>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="grid gap-1.5">
+            <Label className="text-xs">라인 선택</Label>
+            <Tabs value={line} onValueChange={onLineChange}>
+              <TabsList>
+                {FDC_LINES.map((lineId) => (
+                  <TabsTrigger key={lineId} value={lineId}>{formatLineDisplayName(lineId)}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="text-xs">분임조 선택</Label>
+            <Tabs value={sdwt} onValueChange={onSdwtChange}>
+              <TabsList>
+                {sdwtOptions.map((option) => (
+                  <TabsTrigger key={option} value={option}>{option}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
-        <div className="grid gap-1.5">
-          <Label className="text-xs">분임조 선택</Label>
-          <Tabs value={sdwt} onValueChange={onSdwtChange}>
-            <TabsList>
-              {sdwtOptions.map((option) => (
-                <TabsTrigger key={option} value={option}>{option}</TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
-      </div>
-    </section>
+      </section>
+    </ResizableFilterArea>
   )
 }
 
@@ -478,8 +481,9 @@ function HardSpecPage() {
 
   return (
     <>
-      <section className="grid gap-4 rounded-lg border bg-card p-4">
-        <div className="flex flex-wrap items-end gap-3">
+      <ResizableFilterArea defaultHeight={172} minHeight={112} maxHeight={520}>
+        <section className="grid h-full content-start gap-4 overflow-auto rounded-lg border bg-card p-4">
+          <div className="flex flex-wrap items-end gap-3">
           <Select value={line} onValueChange={handleLineChange}>
             <SelectTrigger className="w-[180px]"><SelectValue placeholder="라인ID 선택해주세요" /></SelectTrigger>
             <SelectContent>
@@ -508,13 +512,14 @@ function HardSpecPage() {
             <Download className="size-4" aria-hidden="true" />
             엑셀 다운로드
           </Button>
-        </div>
-        {warningMessages.length ? (
-          <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            {warningMessages[0]}
           </div>
-        ) : null}
-      </section>
+          {warningMessages.length ? (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+              {warningMessages[0]}
+            </div>
+          ) : null}
+        </section>
+      </ResizableFilterArea>
 
       <SimpleTable
         columns={[
@@ -569,8 +574,9 @@ function YieldSpecPage() {
 
   return (
     <>
-      <section className="grid gap-4 rounded-lg border bg-card p-4">
-        <div className="flex flex-wrap items-end gap-3">
+      <ResizableFilterArea defaultHeight={142} minHeight={104} maxHeight={480}>
+        <section className="grid h-full content-start gap-4 overflow-auto rounded-lg border bg-card p-4">
+          <div className="flex flex-wrap items-end gap-3">
           <Select value={stepSeq} onValueChange={setStepSeq}>
             <SelectTrigger className="w-[220px]"><SelectValue placeholder="Step seq 를 선택해주세요." /></SelectTrigger>
             <SelectContent>{STEP_SEQ_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
@@ -583,9 +589,10 @@ function YieldSpecPage() {
             <Search className="size-4" aria-hidden="true" />
             조회
           </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">g_min, g_max : 수율 상위 50% 물량의 MIN MAX / b_min, b_max : 수율 하위 50% 물량의 MIN MAX</p>
-      </section>
+          </div>
+          <p className="text-xs text-muted-foreground">g_min, g_max : 수율 상위 50% 물량의 MIN MAX / b_min, b_max : 수율 하위 50% 물량의 MIN MAX</p>
+        </section>
+      </ResizableFilterArea>
       <SimpleTable
         columns={[
           { key: "step_seq", label: "step_seq" },
@@ -632,8 +639,9 @@ function RecipientsPage() {
 
   return (
     <>
-      <section className="grid gap-4 rounded-lg border bg-card p-4">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+      <ResizableFilterArea defaultHeight={176} minHeight={112} maxHeight={560}>
+        <section className="grid h-full content-start gap-4 overflow-auto rounded-lg border bg-card p-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)_minmax(0,1fr)_auto]">
           <div className="grid gap-1.5">
             <Label htmlFor="recipient-email">이메일</Label>
             <Input id="recipient-email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="t1232.kang" />
@@ -647,8 +655,9 @@ function RecipientsPage() {
             </Button>
             <Button type="button" variant="outline" onClick={remove}>제거</Button>
           </div>
-        </div>
-      </section>
+          </div>
+        </section>
+      </ResizableFilterArea>
       <SimpleTable
         columns={[
           { key: "email", label: "email", cellClassName: "font-medium" },

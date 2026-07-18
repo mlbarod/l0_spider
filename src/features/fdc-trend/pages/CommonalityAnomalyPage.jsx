@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 import { createClickedCategoryHistory } from "../api/clickedCategoryHistoryApi"
+import { ResizableFilterArea } from "../components/ResizableFilterArea"
 import {
   buildCommonalityImageUrl,
   fetchCommonalityData,
@@ -290,8 +291,9 @@ export function CommonalityAnomalyPage() {
       </header>
 
       <section className="shrink-0 border-b bg-card">
-        <div className="overflow-x-auto px-6 py-3">
-          <div className="grid h-[300px] min-w-[900px] grid-cols-4 gap-4">
+        <ResizableFilterArea defaultHeight={316} minHeight={160} maxHeight={720}>
+          <div className="h-full overflow-x-auto px-6 py-2">
+            <div className="grid h-full min-w-[900px] grid-cols-4 gap-4">
             <FilterCard
               title="Line Name"
               badge={lines.length}
@@ -379,8 +381,9 @@ export function CommonalityAnomalyPage() {
                 />
               ))}
             </FilterCard>
+            </div>
           </div>
-        </div>
+        </ResizableFilterArea>
       </section>
 
       <main className="grid min-w-0 gap-4 p-4">

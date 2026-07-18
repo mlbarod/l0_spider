@@ -2,6 +2,7 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "rea
 import { ArrowLeft, ArrowUp, Check, ChevronRight, Loader2 } from "lucide-react"
 import { Link, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 import {
   CartesianGrid,
@@ -39,6 +40,7 @@ import {
 import { cn } from "@/lib/utils"
 
 import { createClickedCategoryHistory } from "../api/clickedCategoryHistoryApi"
+import { ResizableFilterArea } from "../components/ResizableFilterArea"
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { createHitHistory } from "../api/hitHistoryApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
@@ -73,11 +75,35 @@ const SCATTER_Y_AXIS_WIDTH = 64
 const SCATTER_X_AXIS_HEIGHT = 30
 const MAX_RENDERED_POINTS_PER_SERIES = 800
 const MAX_IDENTITY_POINTS_PER_EQP = 600
+const EMPTY_EQP_SET = new Set()
 
 function expandPriorities(grades) {
   return Array.from(new Set(
     grades.flatMap((grade) => (grade === "A/B" ? ["A", "B"] : [grade])),
   ))
+}
+
+function getChStepNumber(value) {
+  const numberText = String(value ?? "").split("@")[0].match(/-?\d+(?:\.\d+)?/)?.[0]
+  const number = Number(numberText)
+  return Number.isFinite(number) ? number : null
+}
+
+function getLowestChStepRows(rows) {
+  if (rows.length < 2) return rows
+  const numericSteps = rows
+    .map((row) => getChStepNumber(row.step))
+    .filter((value) => value !== null)
+
+  if (numericSteps.length) {
+    const lowestStep = Math.min(...numericSteps)
+    return rows.filter((row) => getChStepNumber(row.step) === lowestStep)
+  }
+
+  const lowestStep = rows
+    .map((row) => String(row.step ?? ""))
+    .sort((left, right) => left.localeCompare(right, "ko", { numeric: true }))[0]
+  return rows.filter((row) => String(row.step ?? "") === lowestStep)
 }
 
 function SelectRow({ label, meta, selected, multiple = false, onClick }) {
@@ -1302,6 +1328,7 @@ export function FdcTrendPage() {
   const [selectedEqpCh, setSelectedEqpCh] = useState("")
   const [selectedSensor, setSelectedSensor] = useState("")
   const [selectedChStep, setSelectedChStep] = useState("")
+  const [gatheredChSteps, setGatheredChSteps] = useState({ contextKey: "", eqps: EMPTY_EQP_SET })
   const [queries, setQueries] = useState({
     line: "",
     team: "",
@@ -1409,6 +1436,17 @@ export function FdcTrendPage() {
   const activeEqpCh = dataQuery.data?.filters?.eqpCh ?? ""
   const activeSensor = dataQuery.data?.filters?.sensor ?? ""
   const activeChStep = dataQuery.data?.filters?.chStep ?? ""
+  const gatherContextKey = [
+    activeLine,
+    activeTeam,
+    activeDesc,
+    activeEqpCh,
+    activeSensor,
+    activeChStep,
+  ].join("\u0000")
+  const gatheredEqps = gatheredChSteps.contextKey === gatherContextKey
+    ? gatheredChSteps.eqps
+    : EMPTY_EQP_SET
   const passHistoryQuery = useQuery({
     queryKey: ["pass-history", activeLine, activeTeamLabel, activeDesc],
     queryFn: () => fetchPassHistory({
@@ -1451,6 +1489,11 @@ export function FdcTrendPage() {
     return Array.from(groups, ([eqp, rows]) => ({ eqp, rows }))
       .sort((left, right) => left.eqp.localeCompare(right.eqp, "ko", { numeric: true }))
   }, [chartRows])
+  const visibleChartGroups = useMemo(() => chartGroups.map((group) => ({
+    ...group,
+    gathered: gatheredEqps.has(group.eqp),
+    visibleRows: gatheredEqps.has(group.eqp) ? getLowestChStepRows(group.rows) : group.rows,
+  })), [chartGroups, gatheredEqps])
 
   const filteredLines = filterItems(
     lines.map((line) => ({ value: line, label: formatLineDisplayName(line) })),
@@ -1610,6 +1653,14 @@ export function FdcTrendPage() {
       toast.error(`클릭이력 저장 실패: ${error.message}`)
     }
   }
+  const toggleGatheredChSteps = (eqp) => {
+    setGatheredChSteps((current) => {
+      const nextEqps = new Set(current.contextKey === gatherContextKey ? current.eqps : EMPTY_EQP_SET)
+      if (nextEqps.has(eqp)) nextEqps.delete(eqp)
+      else nextEqps.add(eqp)
+      return { contextKey: gatherContextKey, eqps: nextEqps }
+    })
+  }
 
   return (
     <div ref={pageRef} className="relative flex h-full min-h-0 min-w-0 flex-col overflow-y-auto bg-muted/30">
@@ -1642,8 +1693,9 @@ export function FdcTrendPage() {
       </header>
 
       <section className="shrink-0 border-b bg-card">
-        <div className="overflow-x-auto px-6 py-2">
-          <div className="grid h-[320px] min-w-[1640px] grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,.8fr)_minmax(0,1.45fr)_minmax(0,1.15fr)_minmax(0,1.2fr)_minmax(0,1.05fr)] gap-4">
+        <ResizableFilterArea defaultHeight={332} minHeight={160} maxHeight={720}>
+          <div className="h-full overflow-x-auto px-6 py-2">
+            <div className="grid h-full min-w-[1640px] grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,.8fr)_minmax(0,1.45fr)_minmax(0,1.15fr)_minmax(0,1.2fr)_minmax(0,1.05fr)] gap-4">
             <FilterCard
               title="Line Name"
               badge={lines.length ? `${lines.length}` : null}
@@ -1805,8 +1857,9 @@ export function FdcTrendPage() {
                 />
               ))}
             </FilterCard>
+            </div>
           </div>
-        </div>
+        </ResizableFilterArea>
         {mappingQuery.isError ? (
           <p className="border-t px-6 py-2 text-xs text-destructive">{mappingQuery.error.message}</p>
         ) : null}
@@ -1859,41 +1912,64 @@ export function FdcTrendPage() {
             </div>
           ) : chartGroups.length ? (
             <div className="grid min-w-0 gap-5">
-              {chartGroups.map((group) => (
+              {visibleChartGroups.map((group) => (
                 <section key={group.eqp} className="min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm">
                   <header className="flex items-center justify-between gap-3 border-b bg-muted/60 px-4 py-3">
                     <div className="flex min-w-0 items-center gap-2">
                       <Badge>EQP</Badge>
                       <h3 className="truncate text-sm font-semibold">{group.eqp}</h3>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 shrink-0 px-2.5 text-xs"
+                        aria-pressed={group.gathered}
+                        onClick={() => toggleGatheredChSteps(group.eqp)}
+                      >
+                        {group.gathered ? "ch_step 전체보기" : "ch_step 모아보기"}
+                      </Button>
                     </div>
-                    <Badge variant="secondary">{group.rows.length.toLocaleString()} charts</Badge>
+                    <Badge variant="secondary">
+                      {group.visibleRows.length.toLocaleString()}
+                      {group.gathered ? ` / ${group.rows.length.toLocaleString()}` : ""} charts
+                    </Badge>
                   </header>
                   <div className="grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2 xl:grid-cols-3">
-                    {group.rows.map((row) => (
-                      <ErdScatterCard
-                        key={row.id}
-                        row={row}
-                        lineId={activeLine}
-                        passRecord={isSkipList
-                          ? row.pass_history
-                          : passHistoryByKey.get(buildChartPassHistoryKey(activeLine, row))}
-                        allSkipLoadTargets={isSkipList ? null : async () => {
-                          const payload = await fetchSelfEquipmentData({
-                            line: activeLine,
-                            pathSdwt: activeTeam,
-                            sdwt: activeTeamLabel,
-                            priorities,
-                            desc: activeDesc,
-                            eqpCh: group.rows[0]?.eqp ?? group.eqp,
-                            sensor: activeSensor,
-                            chStep: ALL_CH_STEPS,
-                          })
-                          return (payload.rows ?? []).map((targetRow) => ({
-                            filePath: targetRow.file_path,
-                          }))
-                        }}
-                      />
-                    ))}
+                    <AnimatePresence initial={false} mode="popLayout">
+                      {group.visibleRows.map((row) => (
+                        <motion.div
+                          layout
+                          key={row.id}
+                          initial={{ opacity: 0, y: 14 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -12, transition: { duration: 0.18 } }}
+                          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                        >
+                          <ErdScatterCard
+                            row={row}
+                            lineId={activeLine}
+                            passRecord={isSkipList
+                              ? row.pass_history
+                              : passHistoryByKey.get(buildChartPassHistoryKey(activeLine, row))}
+                            allSkipLoadTargets={isSkipList ? null : async () => {
+                              const payload = await fetchSelfEquipmentData({
+                                line: activeLine,
+                                pathSdwt: activeTeam,
+                                sdwt: activeTeamLabel,
+                                priorities,
+                                desc: activeDesc,
+                                eqpCh: group.rows[0]?.eqp ?? group.eqp,
+                                sensor: activeSensor,
+                                chStep: ALL_CH_STEPS,
+                              })
+                              return (payload.rows ?? []).map((targetRow) => ({
+                                filePath: targetRow.file_path,
+                              }))
+                            }}
+                          />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
                   </div>
                 </section>
               ))}

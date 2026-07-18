@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 import { createClickedCategoryHistory } from "../api/clickedCategoryHistoryApi"
+import { ResizableFilterArea } from "../components/ResizableFilterArea"
 import {
   buildCommonAnomalyImageUrl,
   fetchCommonAnomalyData,
@@ -479,8 +480,9 @@ export function CommonAnomalyPage() {
       </header>
 
       <section className="shrink-0 border-b bg-card">
-        <div className="overflow-x-auto px-6 py-2">
-          <div className="grid h-[320px] min-w-[1120px] grid-cols-5 gap-4">
+        <ResizableFilterArea defaultHeight={332} minHeight={160} maxHeight={720}>
+          <div className="h-full overflow-x-auto px-6 py-2">
+            <div className="grid h-full min-w-[1120px] grid-cols-5 gap-4">
             <FilterCard
               title="Line Name"
               badge={lines.length || null}
@@ -570,8 +572,9 @@ export function CommonAnomalyPage() {
                 }} />
               ))}
             </FilterCard>
+            </div>
           </div>
-        </div>
+        </ResizableFilterArea>
         {mappingQuery.isError ? <p className="border-t px-6 py-2 text-xs text-destructive">{mappingQuery.error.message}</p> : null}
       </section>
 

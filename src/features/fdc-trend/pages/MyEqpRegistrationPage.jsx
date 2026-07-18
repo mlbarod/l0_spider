@@ -39,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import { fetchLineMapping } from "../api/mappingConfigApi"
+import { ResizableFilterArea } from "../components/ResizableFilterArea"
 import {
   createMyEqpRegistration,
   deleteMyEqpRegistration,
@@ -87,7 +88,7 @@ function FilterPanel({
 
   return (
     <Card className={cn(
-      "min-h-[300px] gap-0 overflow-hidden py-0 transition-shadow",
+      "h-full min-h-[300px] gap-0 overflow-hidden py-0 transition-shadow",
       hasSelection && "border-primary/35 shadow-md shadow-primary/5",
     )}>
       <CardHeader className={cn(
@@ -127,7 +128,7 @@ function FilterPanel({
           />
         </div>
       </div>
-      <CardContent className="max-h-[218px] min-h-0 flex-1 overflow-y-auto bg-background/60 p-2.5">
+      <CardContent className="min-h-0 flex-1 overflow-y-auto bg-background/60 p-2.5">
         {disabled || options.length === 0 ? (
           <div className="grid min-h-32 place-items-center px-5 text-center text-xs leading-5 text-muted-foreground">
             {isLoading ? "기준정보를 불러오는 중입니다." : emptyMessage}
@@ -415,7 +416,9 @@ export function MyEqpRegistrationPage() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+            <ResizableFilterArea defaultHeight={324} minHeight={220} maxHeight={760}>
+              <div className="h-full overflow-y-auto pb-1">
+                <div className="grid min-h-full gap-4 md:grid-cols-2 md:auto-rows-[minmax(300px,1fr)] 2xl:h-full 2xl:grid-cols-4 2xl:grid-rows-1">
               <FilterPanel
                 step="1"
                 title="Line Name"
@@ -469,7 +472,9 @@ export function MyEqpRegistrationPage() {
                 isLoading={referenceQuery.isFetching && Boolean(activePrcGroup)}
                 emptyMessage={activePrcGroup ? "해당 PRC Group의 EQP가 없습니다." : "PRC Group을 먼저 선택하세요."}
               />
-            </div>
+                </div>
+              </div>
+            </ResizableFilterArea>
 
             {mappingQuery.isError || referenceQuery.isError ? (
               <div className="mt-3 grid gap-2">
