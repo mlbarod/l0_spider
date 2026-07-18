@@ -11,8 +11,9 @@ import {
   Search,
   Settings2,
 } from "lucide-react"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -22,12 +23,15 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import { fetchLineMapping } from "../api/mappingConfigApi"
+import { createMyEqpRegistration } from "../api/myEqpRegistrationApi"
 import { fetchMyEqpReference } from "../api/myEqpReferenceApi"
 import { SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 
 const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
+const ALL_EQP = "ALL"
+const MAX_COMMENT_LENGTH = 90
 
 function matchesQuery(value, query) {
   return String(value).toLocaleLowerCase("ko").includes(query.trim().toLocaleLowerCase("ko"))
@@ -42,6 +46,7 @@ function FilterPanel({
   selectedValues = EMPTY_LIST,
   multiple = false,
   onSelect,
+  isOptionDisabled,
   query,
   onQueryChange,
   disabled = false,
@@ -103,14 +108,16 @@ function FilterPanel({
               const selected = multiple
                 ? selectedValues.includes(option.value)
                 : selectedValue === option.value
+              const optionDisabled = isOptionDisabled?.(option) ?? false
               return (
                 <button
                   key={option.value}
                   type="button"
                   onClick={() => onSelect(option.value)}
+                  disabled={optionDisabled}
                   className={cn(
                     "flex min-h-9 w-full items-center gap-2 rounded-md border border-transparent px-3 py-2 text-left text-xs transition",
-                    "hover:border-border hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "hover:border-border hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40",
                     selected && "border-primary/30 bg-primary/10 text-primary",
                   )}
                 >
@@ -181,6 +188,15 @@ export function MyEqpRegistrationPage() {
     staleTime: 5 * 60 * 1000,
     retry: false,
   })
+  const registrationMutation = useMutation({
+    mutationFn: createMyEqpRegistration,
+    onSuccess: (result) => {
+      toast.success("My EQP 기준정보를 저장했습니다.", {
+        description: `${result.requestedRows?.toLocaleString() ?? 0}개 EQP 저장 완료`,
+      })
+    },
+    onError: (error) => toast.error(error.message),
+  })
 
   const lineMapping = mappingQuery.data?.line_mapping ?? SPIDER_LINE_REV
   const sdwtMapping = mappingQuery.data?.sdwt_mapping ?? EMPTY_MAPPING
@@ -221,7 +237,9 @@ export function MyEqpRegistrationPage() {
       .sort((left, right) => left.label.localeCompare(right.label, "ko", { numeric: true }))
   }, [activePrcGroup, sdwtReferenceRows])
   const eqpValues = useMemo(() => new Set(eqpRows.map((row) => row.label)), [eqpRows])
-  const activeEqps = selectedEqps.filter((eqp) => eqpValues.has(eqp))
+  const activeEqps = selectedEqps.includes(ALL_EQP) && eqpRows.length > 0
+    ? [ALL_EQP]
+    : selectedEqps.filter((eqp) => eqpValues.has(eqp))
 
   const lineOptions = lines
     .map((line) => ({ value: line, label: formatLineDisplayName(line) }))
@@ -230,11 +248,14 @@ export function MyEqpRegistrationPage() {
   const prcGroupOptions = prcGroups
     .map((group) => ({ value: group, label: group }))
     .filter((option) => matchesQuery(option.label, queries.prcGroup))
-  const eqpOptions = eqpRows
-    .map((row) => ({ value: row.label, label: row.label }))
-    .filter((option) => matchesQuery(option.label, queries.eqp))
+  const eqpOptions = (eqpRows.length ? [
+    { value: ALL_EQP, label: "ALL", meta: `${eqpRows.length.toLocaleString()}대` },
+    ...eqpRows.map((row) => ({ value: row.label, label: row.label })),
+  ] : []).filter((option) => matchesQuery(option.label, queries.eqp))
 
-  const selectedEqpLabel = activeEqps.join(", ")
+  const selectedEqpLabel = activeEqps.includes(ALL_EQP)
+    ? `ALL (${eqpRows.length.toLocaleString()}대)`
+    : activeEqps.join(", ")
   const parsedMonitoringDays = Number(monitoringDays)
   const hasValidMonitoringDays = Number.isInteger(parsedMonitoringDays) && parsedMonitoringDays > 0
   const isReadyToSave = Boolean(
@@ -267,11 +288,32 @@ export function MyEqpRegistrationPage() {
   }
 
   const toggleEqp = (eqp) => {
+    if (eqp === ALL_EQP) {
+      setSelectedEqps((current) => current.includes(ALL_EQP) ? [] : [ALL_EQP])
+      return
+    }
+
     setSelectedEqps((current) => (
       current.includes(eqp)
         ? current.filter((item) => item !== eqp)
-        : [...current, eqp]
+        : [...current.filter((item) => item !== ALL_EQP), eqp]
     ))
+  }
+
+  const handleSave = () => {
+    if (!isReadyToSave || registrationMutation.isPending) return
+
+    const eqps = activeEqps.includes(ALL_EQP)
+      ? eqpRows.map((row) => row.label)
+      : activeEqps
+    registrationMutation.mutate({
+      line: activeLine,
+      sdwt: activeSdwtLabel,
+      prcGroup: activePrcGroup,
+      eqps,
+      periode: parsedMonitoringDays,
+      comment,
+    })
   }
 
   return (
@@ -361,11 +403,12 @@ export function MyEqpRegistrationPage() {
               <FilterPanel
                 step="4"
                 title="EQP"
-                description="모니터링할 설비를 복수 선택할 수 있습니다."
+                description="복수 선택할 수 있으며, ALL은 단독으로 선택됩니다."
                 options={eqpOptions}
                 selectedValues={activeEqps}
                 multiple
                 onSelect={toggleEqp}
+                isOptionDisabled={(option) => activeEqps.includes(ALL_EQP) && option.value !== ALL_EQP}
                 query={queries.eqp}
                 onQueryChange={(value) => changeQuery("eqp", value)}
                 disabled={!activePrcGroup || referenceQuery.isLoading}
@@ -403,69 +446,74 @@ export function MyEqpRegistrationPage() {
             </CardContent>
           </Card>
 
-          <Card className="gap-4 py-5">
-            <CardHeader className="gap-1 px-5 sm:px-6">
-              <div className="flex items-center gap-2">
-                <Clock3 className="size-4 text-primary" aria-hidden="true" />
-                <CardTitle className="text-base">모니터링 기간</CardTitle>
-              </div>
-              <CardDescription className="text-xs">자설비 이상감지에서 조회할 최근 기간을 일 단위로 입력하세요.</CardDescription>
-            </CardHeader>
-            <CardContent className="px-5 sm:px-6">
-              <div className="max-w-md">
-                <label htmlFor="monitoring-days" className="mb-2 block text-xs font-medium text-foreground">
+          <Card className="gap-0 overflow-hidden py-0">
+            <CardContent className="grid p-0 lg:grid-cols-2">
+              <section className="p-5 sm:p-6" aria-labelledby="monitoring-period-title">
+                <div className="flex items-center gap-2">
+                  <Clock3 className="size-4 text-primary" aria-hidden="true" />
+                  <h2 id="monitoring-period-title" className="text-base font-semibold">모니터링 기간</h2>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  자설비 이상감지에서 조회할 최근 기간을 일 단위로 입력하세요.
+                </p>
+                <label htmlFor="monitoring-days" className="mb-2 mt-5 block text-xs font-medium text-foreground">
                   기간 입력
                 </label>
-                <div className="relative">
-                  <Input
-                    id="monitoring-days"
-                    type="number"
-                    min="1"
-                    step="1"
-                    inputMode="numeric"
-                    value={monitoringDays}
-                    onChange={(event) => setMonitoringDays(event.target.value)}
-                    placeholder="모니터링 기간을 입력하세요"
-                    className="h-12 pr-14 text-base font-semibold"
-                    aria-describedby="monitoring-days-help"
-                  />
-                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
-                    일
-                  </span>
+                <div className="max-w-md">
+                  <div className="relative">
+                    <Input
+                      id="monitoring-days"
+                      type="number"
+                      min="1"
+                      step="1"
+                      inputMode="numeric"
+                      value={monitoringDays}
+                      onChange={(event) => setMonitoringDays(event.target.value)}
+                      placeholder="모니터링 기간을 입력하세요"
+                      className="h-12 pr-14 text-base font-semibold"
+                      aria-describedby="monitoring-days-help"
+                    />
+                    <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                      일
+                    </span>
+                  </div>
+                  <p id="monitoring-days-help" className={cn(
+                    "mt-2 text-xs",
+                    monitoringDays && !hasValidMonitoringDays ? "text-destructive" : "text-muted-foreground",
+                  )}>
+                    {monitoringDays && !hasValidMonitoringDays
+                      ? "1 이상의 정수로 입력하세요."
+                      : "1 이상의 일수를 직접 입력할 수 있습니다."}
+                  </p>
                 </div>
-                <p id="monitoring-days-help" className={cn(
-                  "mt-2 text-xs",
-                  monitoringDays && !hasValidMonitoringDays ? "text-destructive" : "text-muted-foreground",
-                )}>
-                  {monitoringDays && !hasValidMonitoringDays
-                    ? "1 이상의 정수로 입력하세요."
-                    : "1 이상의 일수를 직접 입력할 수 있습니다."}
+              </section>
+              <section
+                className="border-t p-5 sm:p-6 lg:border-l lg:border-t-0"
+                aria-labelledby="my-eqp-comment-title"
+              >
+                <div className="flex items-center gap-2">
+                  <MessageSquareText className="size-4 text-primary" aria-hidden="true" />
+                  <h2 id="my-eqp-comment-title" className="text-base font-semibold">Comment</h2>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  My EQP 기준정보에 필요한 설명이나 참고사항을 입력하세요.
                 </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="gap-4 py-5">
-            <CardHeader className="gap-1 px-5 sm:px-6">
-              <div className="flex items-center gap-2">
-                <MessageSquareText className="size-4 text-primary" aria-hidden="true" />
-                <CardTitle className="text-base">Comment</CardTitle>
-              </div>
-              <CardDescription className="text-xs">My EQP 기준정보에 필요한 설명이나 참고사항을 입력하세요.</CardDescription>
-            </CardHeader>
-            <CardContent className="px-5 sm:px-6">
-              <div className="max-w-3xl">
-                <label htmlFor="my-eqp-comment" className="mb-2 block text-xs font-medium text-foreground">
+                <label htmlFor="my-eqp-comment" className="mb-2 mt-5 block text-xs font-medium text-foreground">
                   비고 입력 <span className="font-normal text-muted-foreground">(선택)</span>
                 </label>
                 <Textarea
                   id="my-eqp-comment"
                   value={comment}
-                  onChange={(event) => setComment(event.target.value)}
+                  onChange={(event) => setComment(event.target.value.slice(0, MAX_COMMENT_LENGTH))}
+                  maxLength={MAX_COMMENT_LENGTH}
                   placeholder="설비 선택 사유나 모니터링 시 참고할 내용을 입력하세요."
-                  className="min-h-28 resize-y text-sm leading-6"
+                  className="min-h-24 resize-none text-sm leading-6"
+                  aria-describedby="my-eqp-comment-count"
                 />
-              </div>
+                <p id="my-eqp-comment-count" className="mt-2 text-right text-xs tabular-nums text-muted-foreground">
+                  {comment.length}/{MAX_COMMENT_LENGTH}
+                </p>
+              </section>
             </CardContent>
           </Card>
 
@@ -480,10 +528,15 @@ export function MyEqpRegistrationPage() {
               type="button"
               size="lg"
               className="h-12 min-w-52 rounded-xl text-base shadow-lg shadow-primary/15"
-              disabled={!isReadyToSave}
+              disabled={!isReadyToSave || registrationMutation.isPending}
+              onClick={handleSave}
             >
-              <Save className="size-5" aria-hidden="true" />
-              My EQP 저장
+              {registrationMutation.isPending ? (
+                <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Save className="size-5" aria-hidden="true" />
+              )}
+              {registrationMutation.isPending ? "저장 중…" : "My EQP 저장"}
             </Button>
           </section>
         </div>

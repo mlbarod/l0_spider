@@ -22,6 +22,7 @@ import {
 import { handleLatestCommonalityPathRequest } from "./server/latestCommonalityPath.mjs"
 import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
 import { handleMyEqpReferenceRequest } from "./server/myEqpReference.mjs"
+import { handleMyEqpRegistrationRequest } from "./server/myEqpRegistration.mjs"
 import { handlePassHistoryRequest } from "./server/passHistory.mjs"
 import {
   handleErdFileRequest,
@@ -212,6 +213,13 @@ const server = createServer((req, res) => {
 
   if (url.pathname === "/api/my-eqp-reference") {
     handleMyEqpReferenceRequest(req, res).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/my-eqp-registration") {
+    handleMyEqpRegistrationRequest(req, res).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
     return
