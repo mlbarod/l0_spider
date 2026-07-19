@@ -1703,10 +1703,10 @@ export function FdcTrendPage() {
             <FilterCard
               title="Line Name"
               badge={lines.length ? `${lines.length}` : null}
-              disabled={mappingQuery.isLoading || lines.length === 0}
-              placeholder={mappingQuery.isLoading ? "로딩 중…" : "선택 가능한 Line이 없습니다."}
+              disabled={lines.length === 0}
+              placeholder="선택 가능한 Line이 없습니다."
               isActive={Boolean(activeLine)}
-              isLoading={mappingQuery.isFetching}
+              isLoading={mappingQuery.isFetching && lines.length === 0}
               query={queries.line}
               onQueryChange={(value) => setQuery("line", value)}
             >
