@@ -5,6 +5,7 @@ import { asyncBufferFromFile, parquetReadObjects } from "hyparquet"
 import { compressors } from "hyparquet-compressors"
 
 import { buildTeamErdPath } from "../src/config/spiderDataPaths.mjs"
+import { getLruEntry, setLruEntry } from "./boundedCache.mjs"
 import { getRemoteIp } from "./currentUser.mjs"
 import { readLineMapping } from "./mappingConfig.mjs"
 import {
@@ -31,6 +32,9 @@ const ERD_BACKUP_ROOT = "/appdata/abnormal_trend/pic/backup"
 const ALL_EQP_CHANNELS = "ALL"
 const ALL_SENSORS = "ALL"
 const ALL_CH_STEPS = "ALL"
+const PARQUET_CACHE_MAX_ENTRIES = 1
+const ERD_SCATTER_CACHE_MAX_ENTRIES = 1
+const ERD_HISTORY_CACHE_MAX_ENTRIES = 1
 export const SKIP_EXCLUSION_DURATION_MS = 3 * 24 * 60 * 60 * 1000
 const parquetCache = new Map()
 const erdScatterCache = new Map()
@@ -135,7 +139,7 @@ export async function readTeamErdRows({ line, pathSdwt }) {
 
   const filePath = buildTeamErdPath({ line, sdwt: pathSdwt })
   const fileStat = statSync(filePath)
-  const cached = parquetCache.get(filePath)
+  const cached = getLruEntry(parquetCache, filePath)
 
   if (cached?.mtimeMs === fileStat.mtimeMs && cached?.size === fileStat.size) {
     return { filePath, rows: cached.rows }
@@ -147,7 +151,12 @@ export async function readTeamErdRows({ line, pathSdwt }) {
     columns: TEAM_ERD_COLUMNS,
     compressors,
   })).map(normalizeRow)
-  parquetCache.set(filePath, { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows })
+  setLruEntry(
+    parquetCache,
+    filePath,
+    { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows },
+    PARQUET_CACHE_MAX_ENTRIES,
+  )
 
   return { filePath, rows }
 }
@@ -447,7 +456,7 @@ export function resolveErdDataFilePath(imagePath) {
 async function readErdScatterRows(filePath, axisColumn) {
   const fileStat = statSync(filePath)
   const cacheKey = `${filePath}\u0000${axisColumn}`
-  const cached = erdScatterCache.get(cacheKey)
+  const cached = getLruEntry(erdScatterCache, cacheKey)
 
   if (cached?.mtimeMs === fileStat.mtimeMs && cached?.size === fileStat.size) {
     return cached.rows
@@ -467,7 +476,12 @@ async function readErdScatterRows(filePath, axisColumn) {
       axisColumn,
     ]
     const rows = await parquetReadObjects({ file, columns, compressors })
-    erdScatterCache.set(cacheKey, { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows })
+    setLruEntry(
+      erdScatterCache,
+      cacheKey,
+      { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows },
+      ERD_SCATTER_CACHE_MAX_ENTRIES,
+    )
     return rows
   })()
   erdScatterPending.set(cacheKey, readPromise)
@@ -481,7 +495,7 @@ async function readErdScatterRows(filePath, axisColumn) {
 
 async function readErdHistoryRows(filePath) {
   const fileStat = statSync(filePath)
-  const cached = erdHistoryCache.get(filePath)
+  const cached = getLruEntry(erdHistoryCache, filePath)
 
   if (cached?.mtimeMs === fileStat.mtimeMs && cached?.size === fileStat.size) {
     return cached.rows
@@ -493,7 +507,12 @@ async function readErdHistoryRows(filePath) {
     const file = await asyncBufferFromFile(filePath)
     const columns = ["date", "ctttm_url", "work_type", "desc"]
     const rows = await parquetReadObjects({ file, columns, compressors })
-    erdHistoryCache.set(filePath, { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows })
+    setLruEntry(
+      erdHistoryCache,
+      filePath,
+      { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows },
+      ERD_HISTORY_CACHE_MAX_ENTRIES,
+    )
     return rows
   })()
   erdHistoryPending.set(filePath, readPromise)

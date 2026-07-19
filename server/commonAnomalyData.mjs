@@ -5,6 +5,7 @@ import { asyncBufferFromFile, parquetReadObjects } from "hyparquet"
 import { compressors } from "hyparquet-compressors"
 
 import { buildCommonAnomalyPath } from "../src/config/spiderDataPaths.mjs"
+import { getLruEntry, setLruEntry } from "./boundedCache.mjs"
 import { COMMON_PASS_HISTORY_VERSION, listPassHistoryRecords } from "./passHistory.mjs"
 
 export const COMMON_ANOMALY_COLUMNS = Object.freeze([
@@ -21,6 +22,8 @@ export const COMMON_ANOMALY_COLUMNS = Object.freeze([
 
 const COMMON_DATA_ROOT = "/appdata/abnormal_trend/pic/common"
 const ALL_EQPS = "ALL"
+const PATH_TABLE_CACHE_MAX_ENTRIES = 1
+const SCATTER_CACHE_MAX_ENTRIES = 1
 export const COMMON_SKIP_EXCLUSION_DURATION_MS = 3 * 24 * 60 * 60 * 1000
 const pathTableCache = new Map()
 const scatterCache = new Map()
@@ -222,7 +225,7 @@ async function readCommonPathRows({ line, pathSdwt }) {
   assertPathSegment("pathSdwt", pathSdwt)
   const filePath = buildCommonAnomalyPath({ line, sdwt: pathSdwt })
   const fileStat = statSync(filePath)
-  const cached = pathTableCache.get(filePath)
+  const cached = getLruEntry(pathTableCache, filePath)
   if (cached?.mtimeMs === fileStat.mtimeMs && cached?.size === fileStat.size) {
     return { filePath, rows: cached.rows }
   }
@@ -233,7 +236,12 @@ async function readCommonPathRows({ line, pathSdwt }) {
     columns: COMMON_ANOMALY_COLUMNS,
     compressors,
   })).map(normalizePathRow)
-  pathTableCache.set(filePath, { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows })
+  setLruEntry(
+    pathTableCache,
+    filePath,
+    { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows },
+    PATH_TABLE_CACHE_MAX_ENTRIES,
+  )
   return { filePath, rows }
 }
 
@@ -409,7 +417,7 @@ export function handleCommonAnomalyImageRequest(req, res, url) {
 async function readCommonScatterRows(filePath, axisColumn) {
   const fileStat = statSync(filePath)
   const cacheKey = `${filePath}\u0000${axisColumn}`
-  const cached = scatterCache.get(cacheKey)
+  const cached = getLruEntry(scatterCache, cacheKey)
   if (cached?.mtimeMs === fileStat.mtimeMs && cached?.size === fileStat.size) return cached.rows
   if (scatterPending.has(cacheKey)) return scatterPending.get(cacheKey)
 
@@ -425,7 +433,12 @@ async function readCommonScatterRows(filePath, axisColumn) {
       "eqp_cb",
     ]))
     const rows = await parquetReadObjects({ file, columns, compressors })
-    scatterCache.set(cacheKey, { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows })
+    setLruEntry(
+      scatterCache,
+      cacheKey,
+      { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows },
+      SCATTER_CACHE_MAX_ENTRIES,
+    )
     return rows
   })()
   scatterPending.set(cacheKey, readPromise)

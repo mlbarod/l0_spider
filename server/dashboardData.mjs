@@ -10,6 +10,7 @@ import {
   SPIDER_DATA_PATH_TEMPLATES,
   buildDashboardStatsPath,
 } from "../src/config/spiderDataPaths.mjs"
+import { getLruEntry, setLruEntry } from "./boundedCache.mjs"
 import { mappingConfigPath, readLineMapping } from "./mappingConfig.mjs"
 
 export const DASHBOARD_STATS_COLUMNS = SPIDER_DASHBOARD_COLUMNS.stats
@@ -18,9 +19,13 @@ export const LINE_ANOMALY_ID_COLUMNS = Object.freeze(["desc", "recipe_id", "prio
 
 const DASHBOARD_PATH_ROOT = process.env.SPIDER_DASHBOARD_PATH_ROOT
   ?? dirname(SPIDER_DATA_PATH_TEMPLATES.dashboardDetail)
-const READ_CONCURRENCY = 4
+const READ_CONCURRENCY = 1
+const PARQUET_CACHE_MAX_ENTRIES = 1
+const DASHBOARD_AGGREGATE_CACHE_MAX_ENTRIES = 32
 const parquetCache = new Map()
 const parquetPending = new Map()
+const dashboardAggregateCache = new Map()
+const dashboardAggregatePending = new Map()
 const dashboardFileListCache = new Map()
 let mappingCache = null
 
@@ -221,17 +226,14 @@ function validateRequestedLines(lines, mappingConfig) {
   return requestedLines
 }
 
-export function buildDashboardSummary(statsRows, detailRows, source = {}) {
-  const tlRows = gradeRows(statsRows, ["TL"])
+function buildDashboardDetailSummary(detailRows) {
   const abRows = gradeRows(detailRows, ["A", "B"])
   const dRows = gradeRows(detailRows, ["D"])
   const nRows = gradeRows(detailRows, ["N"])
   const mRows = gradeRows(detailRows, ["M"])
 
   return {
-    latestDate: source.latestDate ?? "",
     metrics: {
-      monitoringSensorTotal: sumColumn(tlRows, "total"),
       detectedPpidCount: uniqueCount(detailRows, "recipe_id"),
       totalAnomalyCount: uniqueCombinationCount(detailRows, LINE_ANOMALY_ID_COLUMNS),
       abGradeCount: uniqueCombinationCount(abRows, LINE_ANOMALY_ID_COLUMNS),
@@ -246,6 +248,18 @@ export function buildDashboardSummary(statsRows, detailRows, source = {}) {
       recipeIds: uniqueCount(detailRows, "recipe_id"),
       sensors: uniqueCount(detailRows, "sensor"),
     },
+  }
+}
+
+function buildDashboardSummaryFromDetailSummary(statsRows, detailSummary, source = {}) {
+  const tlRows = gradeRows(statsRows, ["TL"])
+  return {
+    latestDate: source.latestDate ?? "",
+    metrics: {
+      monitoringSensorTotal: sumColumn(tlRows, "total"),
+      ...detailSummary.metrics,
+    },
+    detailCounts: detailSummary.detailCounts,
     sourcePaths: {
       stats: source.statsPath ?? "",
       detail: source.detailPath ?? "",
@@ -257,60 +271,84 @@ export function buildDashboardSummary(statsRows, detailRows, source = {}) {
   }
 }
 
-export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
-  const sdwtLineLookup = buildSdwtLineLookup(mappingConfig)
-  const requestedLines = validateRequestedLines(filters.lines ?? [], mappingConfig)
-  const combinationsByDateLine = new Map()
-  const combinationsByDateLineGrade = new Map()
-  const comparisonCombinationsByLine = new Map()
+export function buildDashboardSummary(statsRows, detailRows, source = {}) {
+  return buildDashboardSummaryFromDetailSummary(
+    statsRows,
+    buildDashboardDetailSummary(detailRows),
+    source,
+  )
+}
+
+function aggregateDashboardLineRows(rows, sdwtLineLookup) {
+  const combinationsByLine = new Map()
+  const combinationsByLineGrade = new Map()
   const actualLines = new Set()
+  let unmappedRows = 0
 
-  datedRows.forEach(({ dateTime, rows }) => {
-    const date = normalizeText(dateTime).slice(0, 10)
-    if (!parseDateParts(date)) return
-    rows.forEach((row) => {
-      const lineId = sdwtLineLookup.get(normalizeText(row.sdwt))
-      if (!lineId) return
-      actualLines.add(lineId)
-      const dateLineKey = `${date}\u0000${lineId}`
-      const combinations = combinationsByDateLine.get(dateLineKey) ?? new Set()
-      const combinationKey = LINE_ANOMALY_ID_COLUMNS
-        .map((column) => normalizeText(row[column]))
-        .join("\u0000")
-      combinations.add(combinationKey)
-      combinationsByDateLine.set(dateLineKey, combinations)
+  rows.forEach((row) => {
+    const lineId = sdwtLineLookup.get(normalizeText(row.sdwt))
+    if (!lineId) {
+      unmappedRows += 1
+      return
+    }
+    actualLines.add(lineId)
+    const combinationKey = LINE_ANOMALY_ID_COLUMNS
+      .map((column) => normalizeText(row[column]))
+      .join("\u0000")
+    const combinations = combinationsByLine.get(lineId) ?? new Set()
+    combinations.add(combinationKey)
+    combinationsByLine.set(lineId, combinations)
 
-      const priority = normalizePriority(row.priority)
-      const dateLineGradeKey = `${dateLineKey}\u0000${priority}`
-      const gradeCombinations = combinationsByDateLineGrade.get(dateLineGradeKey) ?? new Set()
-      gradeCombinations.add(combinationKey)
-      combinationsByDateLineGrade.set(dateLineGradeKey, gradeCombinations)
-    })
+    const priority = normalizePriority(row.priority)
+    const gradeKey = `${lineId}\u0000${priority}`
+    const gradeCombinations = combinationsByLineGrade.get(gradeKey) ?? new Set()
+    gradeCombinations.add(combinationKey)
+    combinationsByLineGrade.set(gradeKey, gradeCombinations)
+  })
+
+  const countsByLine = new Map(
+    Array.from(combinationsByLine, ([lineId, combinations]) => [lineId, combinations.size]),
+  )
+  const gradeCountsByLine = new Map()
+  combinationsByLineGrade.forEach((combinations, gradeKey) => {
+    const [lineId, priority] = gradeKey.split("\u0000")
+    const counts = gradeCountsByLine.get(lineId) ?? new Map()
+    counts.set(priority, combinations.size)
+    gradeCountsByLine.set(lineId, counts)
+  })
+
+  return { countsByLine, gradeCountsByLine, actualLines, unmappedRows }
+}
+
+function buildLineDashboardPayloadFromAggregates(
+  datedAggregates,
+  comparisonAggregate,
+  mappingConfig,
+  filters,
+) {
+  const requestedLines = validateRequestedLines(filters.lines ?? [], mappingConfig)
+  const actualLines = new Set()
+  const aggregatesByDate = new Map()
+  datedAggregates.forEach((aggregate) => {
+    aggregate.actualLines.forEach((lineId) => actualLines.add(lineId))
+    const date = normalizeText(aggregate.dateTime).slice(0, 10)
+    if (parseDateParts(date)) aggregatesByDate.set(date, aggregate)
   })
 
   const comparisonDateTime = normalizeText(filters.comparisonDateTime)
   const hasPreviousData = isValidDateTimeFileName(comparisonDateTime)
-  if (hasPreviousData) {
-    ;(filters.comparisonRows ?? []).forEach((row) => {
-      const lineId = sdwtLineLookup.get(normalizeText(row.sdwt))
-      if (!lineId) return
-      actualLines.add(lineId)
-      const combinations = comparisonCombinationsByLine.get(lineId) ?? new Set()
-      combinations.add(
-        LINE_ANOMALY_ID_COLUMNS.map((column) => normalizeText(row[column])).join("\u0000"),
-      )
-      comparisonCombinationsByLine.set(lineId, combinations)
-    })
+  if (hasPreviousData && comparisonAggregate) {
+    comparisonAggregate.actualLines.forEach((lineId) => actualLines.add(lineId))
   }
 
   const availableLines = Array.from(actualLines).sort(compareLineIds)
   const selectedLines = requestedLines.length ? requestedLines : availableLines
   const dates = enumerateDates(filters.startDate, filters.endDate)
-  const getCount = (date, lineId) => combinationsByDateLine.get(`${date}\u0000${lineId}`)?.size ?? 0
+  const getCount = (date, lineId) => aggregatesByDate.get(date)?.countsByLine.get(lineId) ?? 0
   const getGradeCount = (date, lineId, priorities) => priorities.reduce((sum, priority) => (
-    sum + (combinationsByDateLineGrade.get(`${date}\u0000${lineId}\u0000${priority}`)?.size ?? 0)
+    sum + (aggregatesByDate.get(date)?.gradeCountsByLine.get(lineId)?.get(priority) ?? 0)
   ), 0)
-  const latestDateTime = datedRows
+  const latestDateTime = datedAggregates
     .map((item) => item.dateTime)
     .filter(isValidDateTimeFileName)
     .sort(compareDateTexts)
@@ -325,7 +363,7 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
     ), 0)
     const latestDateCount = latestDate ? getCount(latestDate, lineId) : 0
     const previousDateCount = hasPreviousData
-      ? (comparisonCombinationsByLine.get(lineId)?.size ?? 0)
+      ? (comparisonAggregate?.countsByLine.get(lineId) ?? 0)
       : null
     const lastAbnormalDate = [...dates].reverse().find((date) => getCount(date, lineId) > 0) ?? null
     return {
@@ -397,18 +435,44 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
     lineSummary,
     dailyTrend,
     meta: {
-      filesRead: datedRows.length,
+      filesRead: datedAggregates.length,
       comparisonFileRead: hasPreviousData,
-      unmappedRows: datedRows.reduce((count, item) => (
-        count + item.rows.filter((row) => !sdwtLineLookup.has(normalizeText(row.sdwt))).length
-      ), 0),
+      unmappedRows: datedAggregates.reduce((sum, item) => sum + item.unmappedRows, 0),
     },
   }
 }
 
+export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
+  const sdwtLineLookup = buildSdwtLineLookup(mappingConfig)
+  const rowsByDate = new Map()
+  datedRows.forEach(({ dateTime, rows }) => {
+    const date = normalizeText(dateTime).slice(0, 10)
+    if (!parseDateParts(date)) return
+    const item = rowsByDate.get(date) ?? { dateTime, rows: [] }
+    item.rows.push(...rows)
+    if (compareDateTexts(item.dateTime, dateTime) < 0) item.dateTime = dateTime
+    rowsByDate.set(date, item)
+  })
+
+  const comparisonDateTime = normalizeText(filters.comparisonDateTime)
+  const datedAggregates = Array.from(rowsByDate.values(), ({ dateTime, rows }) => ({
+    dateTime,
+    ...aggregateDashboardLineRows(rows, sdwtLineLookup),
+  }))
+  const comparisonAggregate = isValidDateTimeFileName(comparisonDateTime)
+    ? aggregateDashboardLineRows(filters.comparisonRows ?? [], sdwtLineLookup)
+    : null
+  return buildLineDashboardPayloadFromAggregates(
+    datedAggregates,
+    comparisonAggregate,
+    mappingConfig,
+    filters,
+  )
+}
+
 async function readParquetRows(filePath, columns) {
   const fileStat = await stat(filePath)
-  const cached = parquetCache.get(filePath)
+  const cached = getLruEntry(parquetCache, filePath)
   if (cached?.mtimeMs === fileStat.mtimeMs && cached?.size === fileStat.size) {
     return cached.rows
   }
@@ -417,7 +481,12 @@ async function readParquetRows(filePath, columns) {
   const pending = (async () => {
     const file = await asyncBufferFromFile(filePath)
     const rows = await parquetReadObjects({ file, columns, compressors })
-    parquetCache.set(filePath, { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows })
+    setLruEntry(
+      parquetCache,
+      filePath,
+      { mtimeMs: fileStat.mtimeMs, size: fileStat.size, rows },
+      PARQUET_CACHE_MAX_ENTRIES,
+    )
     return rows
   })()
   parquetPending.set(filePath, pending)
@@ -425,6 +494,57 @@ async function readParquetRows(filePath, columns) {
     return await pending
   } finally {
     parquetPending.delete(filePath)
+  }
+}
+
+async function readDashboardAggregate(fileInfo, mappingConfig, includeDetailSummary) {
+  const fileStat = await stat(fileInfo.filePath)
+  const cached = getLruEntry(dashboardAggregateCache, fileInfo.filePath)
+  if (
+    cached?.mtimeMs === fileStat.mtimeMs
+    && cached?.size === fileStat.size
+    && cached?.mappingConfig === mappingConfig
+    && (!includeDetailSummary || cached.detailSummary)
+  ) {
+    return cached.aggregate
+  }
+
+  const pendingKey = `${fileInfo.filePath}\u0000${includeDetailSummary ? "detail" : "line"}`
+  if (dashboardAggregatePending.has(pendingKey)) {
+    return dashboardAggregatePending.get(pendingKey)
+  }
+
+  const pending = (async () => {
+    const parquetFile = await asyncBufferFromFile(fileInfo.filePath)
+    const rows = await parquetReadObjects({
+      file: parquetFile,
+      columns: DASHBOARD_DETAIL_COLUMNS,
+      compressors,
+    })
+    const aggregate = {
+      dateTime: fileInfo.dateTime,
+      ...aggregateDashboardLineRows(rows, buildSdwtLineLookup(mappingConfig)),
+      detailSummary: includeDetailSummary ? buildDashboardDetailSummary(rows) : null,
+    }
+    setLruEntry(
+      dashboardAggregateCache,
+      fileInfo.filePath,
+      {
+        mtimeMs: fileStat.mtimeMs,
+        size: fileStat.size,
+        mappingConfig,
+        detailSummary: aggregate.detailSummary,
+        aggregate,
+      },
+      DASHBOARD_AGGREGATE_CACHE_MAX_ENTRIES,
+    )
+    return aggregate
+  })()
+  dashboardAggregatePending.set(pendingKey, pending)
+  try {
+    return await pending
+  } finally {
+    dashboardAggregatePending.delete(pendingKey)
   }
 }
 
@@ -511,37 +631,51 @@ export async function getDashboardSummary(requestedFilters = {}) {
   ).values())
   const statsPath = latestFile ? buildDashboardStatsPath(latestFile.dateTime) : ""
 
-  const [mappingConfig, statsRows, fileRows] = await Promise.all([
-    readDashboardMapping(),
+  const mappingConfig = await readDashboardMapping()
+  const [statsRows, fileAggregates] = await Promise.all([
     latestFile ? readParquetRows(statsPath, DASHBOARD_STATS_COLUMNS) : [],
-    mapWithConcurrency(filesToRead, async (file) => ({
-      ...file,
-      rows: await readParquetRows(file.filePath, DASHBOARD_DETAIL_COLUMNS),
-    })),
+    mapWithConcurrency(filesToRead, (file) => readDashboardAggregate(
+      file,
+      mappingConfig,
+      file.dateTime === latestFile?.dateTime,
+    )),
   ])
 
-  const rowsByDateTime = new Map(fileRows.map((file) => [file.dateTime, file.rows]))
-  const latestDetailRows = latestFile ? (rowsByDateTime.get(latestFile.dateTime) ?? []) : []
-  const datedRows = selectedFiles.map((file) => ({
-    dateTime: file.dateTime,
-    rows: rowsByDateTime.get(file.dateTime) ?? [],
-  }))
+  const aggregatesByDateTime = new Map(
+    fileAggregates.map((aggregate) => [aggregate.dateTime, aggregate]),
+  )
+  const emptyDetailSummary = buildDashboardDetailSummary([])
+  const latestAggregate = latestFile ? aggregatesByDateTime.get(latestFile.dateTime) : null
+  const datedAggregates = selectedFiles
+    .map((file) => aggregatesByDateTime.get(file.dateTime))
+    .filter(Boolean)
+  const comparisonAggregate = comparisonFile
+    ? aggregatesByDateTime.get(comparisonFile.dateTime) ?? null
+    : null
   const requestedLines = requestedFilters.lines ?? []
-  const baseSummary = buildDashboardSummary(statsRows, latestDetailRows, {
+  const baseSummary = buildDashboardSummaryFromDetailSummary(
+    statsRows,
+    latestAggregate?.detailSummary ?? emptyDetailSummary,
+    {
     latestDate: latestFile?.dateTime ?? "",
     statsPath,
     detailPath: latestFile?.filePath ?? "",
-  })
+    },
+  )
 
   return {
     ...baseSummary,
-    lineDashboard: buildLineDashboardPayload(datedRows, mappingConfig, {
-      ...dateRange,
-      lines: requestedLines,
-      monitoringSensorTotal: baseSummary.metrics.monitoringSensorTotal,
-      comparisonDateTime: comparisonFile?.dateTime ?? "",
-      comparisonRows: comparisonFile ? (rowsByDateTime.get(comparisonFile.dateTime) ?? []) : [],
-    }),
+    lineDashboard: buildLineDashboardPayloadFromAggregates(
+      datedAggregates,
+      comparisonAggregate,
+      mappingConfig,
+      {
+        ...dateRange,
+        lines: requestedLines,
+        monitoringSensorTotal: baseSummary.metrics.monitoringSensorTotal,
+        comparisonDateTime: comparisonFile?.dateTime ?? "",
+      },
+    ),
     sourcePaths: {
       ...baseSummary.sourcePaths,
       historyRoot: DASHBOARD_PATH_ROOT,
