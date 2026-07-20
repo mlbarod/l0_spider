@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light only">
+    <title>SPIDER 이상감지 Mailing Report</title>
+    <style>
+      @media only screen and (max-width: 760px) {
+        .report-shell { width: 100% !important; }
+        .kpi-cell { display: inline-block !important; width: 50% !important; box-sizing: border-box !important; }
+        .content-padding { padding-right: 16px !important; padding-left: 16px !important; }
+        .mobile-block { display: block !important; width: 100% !important; box-sizing: border-box !important; }
+        .mobile-button { display: block !important; margin-top: 14px !important; text-align: left !important; }
+        .detail-table { min-width: 680px !important; }
+      }
+    </style>
+  </head>
+  <body style="margin:0; padding:0; background-color:#f4f6f8; color:#172033; font-family:Pretendard, 'Noto Sans KR', Arial, sans-serif; -webkit-text-size-adjust:100%;">
+    <!--
+      Mailing template variables
+      - spider_base_url: protocol/host only, without a trailing slash
+      - generated_at, latest_date_time, start_date, end_date, previous_date_time
+      - monitoring_sensor_total, total_abnormal_count, ab_grade_count,
+        d_grade_count, n_grade_count, m_grade_count
+      - change_from_previous_day: formatted text such as "▲ 12건", "▼ 3건", or "변동 없음"
+      - change_color: #d97706 for increase, #059669 for decrease, #667085 for no change
+      - rows: line_name, sdwt, sensor_grade, abnormal_count
+
+      The sender must render this file as a Jinja-compatible HTML template with HTML
+      auto-escaping enabled. The urlencode filters in each LINK preserve the selected
+      Line Name, SDWT, and Sensor Grade in the self-equipment URL.
+    -->
+    <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">
+      {{ latest_date_time }} 기준 SPIDER 라인별 이상감지 현황입니다.
+    </div>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; border-collapse:collapse; background-color:#f4f6f8;">
+      <tr>
+        <td align="center" style="padding:28px 12px 36px;">
+          <table role="presentation" width="1120" cellspacing="0" cellpadding="0" border="0" class="report-shell" style="width:1120px; max-width:1120px; border-collapse:separate;">
+            <tr>
+              <td class="kpi-cell" width="16.66%" valign="top" style="width:16.66%; padding:4px;">
+                <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
+                  <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">모니터링 센서 총합</td></tr>
+                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ monitoring_sensor_total }} <span style="color:#667085; font-size:12px; font-weight:600;">개</span></td></tr>
+                  <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">조회 최신 시각 · TL total 합계</td></tr>
+                </table>
+              </td>
+              <td class="kpi-cell" width="16.66%" valign="top" style="width:16.66%; padding:4px;">
+                <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
+                  <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">전체 이상 건수</td></tr>
+                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ total_abnormal_count }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
+                  <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">{{ start_date }} ~ {{ end_date }}</td></tr>
+                </table>
+              </td>
+              <td class="kpi-cell" width="13.33%" valign="top" style="width:13.33%; padding:4px;">
+                <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
+                  <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">A/B Grade</td></tr>
+                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ ab_grade_count }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
+                  <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">A · B Grade 고유건수</td></tr>
+                </table>
+              </td>
+              <td class="kpi-cell" width="13.33%" valign="top" style="width:13.33%; padding:4px;">
+                <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
+                  <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">D Grade</td></tr>
+                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ d_grade_count }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
+                  <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">D Grade 고유건수</td></tr>
+                </table>
+              </td>
+              <td class="kpi-cell" width="13.33%" valign="top" style="width:13.33%; padding:4px;">
+                <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
+                  <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">N Grade</td></tr>
+                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ n_grade_count }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
+                  <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">N Grade 고유건수</td></tr>
+                </table>
+              </td>
+              <td class="kpi-cell" width="13.33%" valign="top" style="width:13.33%; padding:4px;">
+                <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
+                  <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">M Grade</td></tr>
+                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ m_grade_count }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
+                  <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">M Grade 고유건수</td></tr>
+                </table>
+              </td>
+              <td class="kpi-cell" width="13.33%" valign="top" style="width:13.33%; padding:4px;">
+                <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
+                  <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">전일 대비</td></tr>
+                  <tr><td style="padding:3px 14px; color:{{ change_color }}; font-size:20px; line-height:31px; font-weight:700; letter-spacing:-0.4px; white-space:nowrap;">{{ change_from_previous_day }}</td></tr>
+                  <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">{{ previous_date_time }} 대비</td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td colspan="7" class="content-padding" style="padding:24px 4px 0;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; border-collapse:collapse;">
+                  <tr>
+                    <td class="mobile-block" valign="middle">
+                      <div style="color:#172033; font-size:20px; line-height:28px; font-weight:700; letter-spacing:-0.3px;">SPIDER 이상감지 Mailing Report</div>
+                      <div style="margin-top:5px; color:#667085; font-size:12px; line-height:18px;">최신 데이터 {{ latest_date_time }} · 메일 생성 {{ generated_at }}</div>
+                    </td>
+                    <td class="mobile-block mobile-button" align="right" valign="middle">
+                      <a href="{{ spider_base_url }}/" target="_blank" rel="noopener noreferrer" style="display:inline-block; padding:12px 20px; border-radius:9px; background-color:#2563eb; color:#ffffff; font-size:13px; line-height:18px; font-weight:700; text-decoration:none; box-shadow:0 3px 8px rgba(37,99,235,0.22);">SPIDER 메인화면 &nbsp;→</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td colspan="7" class="content-padding" style="padding:14px 4px 0;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; border:1px solid #dfe3e8; border-radius:12px; border-collapse:separate; border-spacing:0; background-color:#ffffff; overflow:hidden; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
+                  <tr>
+                    <td style="padding:16px 18px 13px; border-bottom:1px solid #eaecf0;">
+                      <div style="color:#172033; font-size:15px; line-height:22px; font-weight:700;">Line · SDWT · Sensor Grade별 이상 현황</div>
+                      <div style="margin-top:3px; color:#667085; font-size:11px; line-height:17px;">LINK를 누르면 선택 조건이 적용된 자설비 이상감지 화면으로 이동합니다.</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0; overflow-x:auto;">
+                      <table role="table" width="100%" cellspacing="0" cellpadding="0" border="0" class="detail-table" style="width:100%; min-width:760px; border-collapse:collapse;">
+                        <thead>
+                          <tr style="background-color:#f8fafc;">
+                            <th align="left" scope="col" style="padding:12px 16px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">Line Name</th>
+                            <th align="left" scope="col" style="padding:12px 16px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">SDWT</th>
+                            <th align="center" scope="col" style="padding:12px 16px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">Sensor Grade</th>
+                            <th align="right" scope="col" style="padding:12px 16px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">이상건수</th>
+                            <th align="center" scope="col" style="width:112px; padding:12px 16px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">LINK</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for row in rows %}
+                          <tr>
+                            <td style="padding:13px 16px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700;">{{ row.line_name }}</td>
+                            <td style="padding:13px 16px; border-bottom:1px solid #f0f2f5; color:#344054; font-size:13px; line-height:19px;">{{ row.sdwt }}</td>
+                            <td align="center" style="padding:13px 16px; border-bottom:1px solid #f0f2f5;">
+                              <span style="display:inline-block; min-width:34px; padding:3px 9px; border:1px solid #bfdbfe; border-radius:999px; background-color:#eff6ff; color:#1d4ed8; font-size:11px; line-height:16px; font-weight:700;">{{ row.sensor_grade }}</span>
+                            </td>
+                            <td align="right" style="padding:13px 16px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700; white-space:nowrap;">{{ row.abnormal_count }}건</td>
+                            <td align="center" style="padding:10px 16px; border-bottom:1px solid #f0f2f5;">
+                              <a href="{{ spider_base_url }}/self-equipment?line={{ row.line_name | urlencode }}&amp;sdwt={{ row.sdwt | urlencode }}&amp;grade={{ row.sensor_grade | urlencode }}" target="_blank" rel="noopener noreferrer" style="display:inline-block; min-width:58px; padding:7px 12px; border:1px solid #2563eb; border-radius:7px; background-color:#ffffff; color:#2563eb; font-size:11px; line-height:15px; font-weight:700; text-align:center; text-decoration:none;">LINK&nbsp; ↗</a>
+                            </td>
+                          </tr>
+                          {% else %}
+                          <tr>
+                            <td colspan="5" align="center" style="padding:34px 16px; color:#667085; font-size:13px; line-height:20px;">조회 조건에 해당하는 이상건이 없습니다.</td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td colspan="7" align="center" style="padding:20px 12px 0; color:#98a2b3; font-size:10px; line-height:16px;">
+                본 메일은 SPIDER 이상감지 시스템에서 자동 발송되었습니다.<br>
+                상세 데이터는 SPIDER 웹서비스에서 확인해 주세요.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
