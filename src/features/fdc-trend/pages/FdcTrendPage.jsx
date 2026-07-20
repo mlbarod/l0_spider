@@ -61,7 +61,6 @@ import { SENSOR_GRADES, SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 import { getLowestChStepRowsByPpid } from "../utils/chStepGrouping.mjs"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 import {
-  MAX_RENDERED_POINTS_PER_SERIES,
   buildIdentityChartPoints,
   samplePoints,
   selectRenderedIdentityPoints,
@@ -132,13 +131,15 @@ function FilterCard({
   children,
 }) {
   const contentRef = useRef(null)
+  const localScrollPositionRef = useRef(0)
+  const activeScrollPositionRef = scrollPositionRef ?? localScrollPositionRef
   const isRestoringScrollRef = useRef(false)
 
   useLayoutEffect(() => {
-    if (!scrollPositionRef || !contentRef.current) return undefined
+    if (!contentRef.current) return undefined
 
     const content = contentRef.current
-    const savedScrollTop = scrollPositionRef.current
+    const savedScrollTop = activeScrollPositionRef.current
     isRestoringScrollRef.current = true
     content.scrollTop = savedScrollTop
     const animationFrame = requestAnimationFrame(() => {
@@ -194,8 +195,8 @@ function FilterCard({
         ref={contentRef}
         className="min-h-0 overflow-y-auto overflow-x-hidden bg-background/60 p-2"
         onScroll={(event) => {
-          if (scrollPositionRef && !isRestoringScrollRef.current) {
-            scrollPositionRef.current = event.currentTarget.scrollTop
+          if (!isRestoringScrollRef.current) {
+            activeScrollPositionRef.current = event.currentTarget.scrollTop
           }
         }}
       >
@@ -1268,7 +1269,7 @@ export function FdcTrendPage() {
   const [selectedEqpCh, setSelectedEqpCh] = useState("")
   const [selectedSensor, setSelectedSensor] = useState("")
   const [selectedChStep, setSelectedChStep] = useState("")
-  const [gatheredChSteps, setGatheredChSteps] = useState({
+  const [expandedChSteps, setExpandedChSteps] = useState({
     contextKey: "",
     eqps: EMPTY_EQP_SET,
     lastEqp: "",
@@ -1388,8 +1389,8 @@ export function FdcTrendPage() {
     activeSensor,
     activeChStep,
   ].join("\u0000")
-  const gatheredEqps = gatheredChSteps.contextKey === gatherContextKey
-    ? gatheredChSteps.eqps
+  const expandedEqps = expandedChSteps.contextKey === gatherContextKey
+    ? expandedChSteps.eqps
     : EMPTY_EQP_SET
   const passHistoryQuery = useQuery({
     queryKey: ["pass-history", activeLine, activeTeamLabel, activeDesc],
@@ -1434,17 +1435,17 @@ export function FdcTrendPage() {
       .sort((left, right) => left.eqp.localeCompare(right.eqp, "ko", { numeric: true }))
   }, [chartRows])
   const visibleChartGroups = useMemo(() => chartGroups.map((group) => {
-    const gathered = gatheredEqps.has(group.eqp)
+    const gathered = !expandedEqps.has(group.eqp)
     const visibleRows = gathered ? getLowestChStepRowsByPpid(group.rows) : group.rows
     return {
       ...group,
       gathered,
       visibleRows,
       visibleRowIds: new Set(visibleRows.map((row) => row.id)),
-      animate: gatheredChSteps.contextKey === gatherContextKey
-        && gatheredChSteps.lastEqp === group.eqp,
+      animate: expandedChSteps.contextKey === gatherContextKey
+        && expandedChSteps.lastEqp === group.eqp,
     }
-  }), [chartGroups, gatherContextKey, gatheredChSteps.contextKey, gatheredChSteps.lastEqp, gatheredEqps])
+  }), [chartGroups, expandedChSteps.contextKey, expandedChSteps.lastEqp, expandedEqps, gatherContextKey])
   const allSkipLoadTargetsByEqp = useMemo(() => {
     if (isSkipList) return new Map()
     return new Map(chartGroups.map((group) => [group.eqp, async () => {
@@ -1621,7 +1622,7 @@ export function FdcTrendPage() {
     }
   }
   const toggleGatheredChSteps = (eqp) => {
-    setGatheredChSteps((current) => {
+    setExpandedChSteps((current) => {
       const nextEqps = new Set(current.contextKey === gatherContextKey ? current.eqps : EMPTY_EQP_SET)
       if (nextEqps.has(eqp)) nextEqps.delete(eqp)
       else nextEqps.add(eqp)
