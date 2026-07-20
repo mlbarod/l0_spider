@@ -61,7 +61,7 @@ const spiderApps = [
   },
   {
     icon: Mail,
-    title: "이상감지 Mailing Report 수신인 등록",
+    title: "Mailing Report 수신인 등록",
     subtitle: "Line과 SDWT별 이상감지 Mailing 수신 대상을 등록합니다.",
     category: "Recipients",
     href: "/recipients",
