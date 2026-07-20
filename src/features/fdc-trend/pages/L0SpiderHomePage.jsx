@@ -1,9 +1,11 @@
-import { Activity, BookOpen, ChartNoAxesCombined, Gauge, Mail, Network, Radar, ScanSearch, Settings2, Users } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { Activity, BookOpen, CalendarClock, ChartNoAxesCombined, Gauge, Mail, Network, Radar, ScanSearch, Settings2, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
+import { fetchDashboardSummary } from "../api/dashboardApi"
 import { LineAnomalyDashboard } from "../components/LineAnomalyDashboard"
 
 const spiderApps = [
@@ -184,6 +186,36 @@ function SpiderAppCard({ app, animationIndex = 0 }) {
   )
 }
 
+function LatestDataCard() {
+  const dashboardQuery = useQuery({
+    queryKey: ["spider-line-dashboard", ""],
+    queryFn: ({ signal }) => fetchDashboardSummary({ signal }),
+    staleTime: 60 * 1000,
+    retry: false,
+  })
+  const latestDateTime = dashboardQuery.data?.lineDashboard?.summary?.latestDateTime ?? ""
+  const displayDateTime = latestDateTime
+    ? `${latestDateTime.slice(0, 10).replaceAll("-", ".")} ${latestDateTime.slice(11)}`
+    : dashboardQuery.isPending ? "조회 중" : "확인 불가"
+
+  return (
+    <aside
+      className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 shadow-sm"
+      aria-label="SPIDER 최신 데이터 시각"
+    >
+      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+        <CalendarClock className="size-4.5" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold tracking-wide text-muted-foreground">LATEST DATA</p>
+        <p className="mt-0.5 whitespace-nowrap text-sm font-semibold tabular-nums text-foreground">
+          {displayDateTime}
+        </p>
+      </div>
+    </aside>
+  )
+}
+
 export function L0SpiderHomePage() {
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto bg-background">
@@ -198,20 +230,23 @@ export function L0SpiderHomePage() {
               </p>
             </div>
           </div>
-          <aside
-            className="mb-0.5 flex shrink-0 items-center gap-3 rounded-xl border border-border/80 bg-muted/40 px-4 py-3 shadow-sm"
-            aria-label="개발 및 운영 담당자"
-          >
-            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-              <Users className="size-4.5" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground">개발 · 운영</p>
-              <p className="mt-0.5 whitespace-nowrap text-sm font-medium text-foreground">
-                담당자 : 최상현, 강태환
-              </p>
-            </div>
-          </aside>
+          <div className="mb-0.5 grid shrink-0 gap-2">
+            <LatestDataCard />
+            <aside
+              className="flex items-center gap-3 rounded-xl border border-border/80 bg-muted/40 px-4 py-3 shadow-sm"
+              aria-label="개발 및 운영 담당자"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <Users className="size-4.5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold tracking-wide text-muted-foreground">개발 · 운영</p>
+                <p className="mt-0.5 whitespace-nowrap text-sm font-medium text-foreground">
+                  담당자 : 최상현, 강태환
+                </p>
+              </div>
+            </aside>
+          </div>
         </div>
       </section>
 

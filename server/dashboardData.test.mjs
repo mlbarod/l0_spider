@@ -158,6 +158,8 @@ test("sdwt를 라인으로 매핑한 뒤 날짜·라인별 5개 컬럼 고유조
       changeCount: -1,
       lastAbnormalDate: "2026-07-16",
       ratio: 60,
+      sdwts: ["SDWT 1", "SDWT 2"],
+      sensorGrades: ["A/B"],
     },
     {
       lineId: "P2",
@@ -168,6 +170,8 @@ test("sdwt를 라인으로 매핑한 뒤 날짜·라인별 5개 컬럼 고유조
       changeCount: 0,
       lastAbnormalDate: "2026-07-16",
       ratio: 40,
+      sdwts: ["SDWT 3"],
+      sensorGrades: ["D"],
     },
   ])
   assert.equal(payload.meta.unmappedRows, 2)

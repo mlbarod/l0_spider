@@ -48,6 +48,7 @@ import {
 import { cn } from "@/lib/utils"
 
 import { fetchDashboardSummary } from "../api/dashboardApi"
+import { buildSelfEquipmentDetailUrl } from "../utils/dashboardLinks.mjs"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 
 const CHART_COLORS = [
@@ -294,7 +295,7 @@ function LineSummaryTable({ rows }) {
                 <TableCell className="text-right tabular-nums">{row.ratio.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}%</TableCell>
                 <TableCell className="text-center">
                   <Button variant="ghost" size="sm" asChild>
-                    <Link to={`/self-equipment?line=${encodeURIComponent(row.lineId)}`}>
+                    <Link to={buildSelfEquipmentDetailUrl(row)}>
                       상세 <ExternalLink className="size-3.5" />
                     </Link>
                   </Button>

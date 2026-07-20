@@ -207,6 +207,34 @@ function buildSdwtLineLookup(mappingConfig) {
   return lookup
 }
 
+function buildSdwtDisplayLookup(mappingConfig) {
+  const lineMapping = mappingConfig?.line_mapping ?? {}
+  const sdwtMapping = mappingConfig?.sdwt_mapping ?? {}
+  const lookup = new Map()
+
+  Object.keys(lineMapping).forEach((sdwtKey) => {
+    const key = normalizeText(sdwtKey)
+    const displaySdwt = normalizeText(sdwtMapping[sdwtKey]) || key
+    if (!key || !displaySdwt) return
+    lookup.set(key, displaySdwt)
+    lookup.set(displaySdwt, displaySdwt)
+  })
+
+  return lookup
+}
+
+function normalizeSensorGrade(priority) {
+  const value = normalizePriority(priority)
+  return value === "A" || value === "B" ? "A/B" : value
+}
+
+function compareSensorGrades(left, right) {
+  const order = new Map([["A/B", 0], ["D", 1], ["N", 2], ["M", 3]])
+  const leftOrder = order.get(left) ?? Number.MAX_SAFE_INTEGER
+  const rightOrder = order.get(right) ?? Number.MAX_SAFE_INTEGER
+  return leftOrder - rightOrder || compareLineIds(left, right)
+}
+
 function getKnownLines(mappingConfig) {
   return new Set(
     Object.values(mappingConfig?.line_mapping ?? {}).map(normalizeText).filter(Boolean),
@@ -279,9 +307,11 @@ export function buildDashboardSummary(statsRows, detailRows, source = {}) {
   )
 }
 
-function aggregateDashboardLineRows(rows, sdwtLineLookup) {
+function aggregateDashboardLineRows(rows, sdwtLineLookup, sdwtDisplayLookup) {
   const combinationsByLine = new Map()
   const combinationsByLineGrade = new Map()
+  const sdwtsByLine = new Map()
+  const sensorGradesByLine = new Map()
   const actualLines = new Set()
   let unmappedRows = 0
 
@@ -292,6 +322,14 @@ function aggregateDashboardLineRows(rows, sdwtLineLookup) {
       return
     }
     actualLines.add(lineId)
+    const sdwt = sdwtDisplayLookup.get(normalizeText(row.sdwt)) ?? normalizeText(row.sdwt)
+    const sdwts = sdwtsByLine.get(lineId) ?? new Set()
+    if (sdwt) sdwts.add(sdwt)
+    sdwtsByLine.set(lineId, sdwts)
+    const sensorGrade = normalizeSensorGrade(row.priority)
+    const sensorGrades = sensorGradesByLine.get(lineId) ?? new Set()
+    if (sensorGrade) sensorGrades.add(sensorGrade)
+    sensorGradesByLine.set(lineId, sensorGrades)
     const combinationKey = LINE_ANOMALY_ID_COLUMNS
       .map((column) => normalizeText(row[column]))
       .join("\u0000")
@@ -317,7 +355,14 @@ function aggregateDashboardLineRows(rows, sdwtLineLookup) {
     gradeCountsByLine.set(lineId, counts)
   })
 
-  return { countsByLine, gradeCountsByLine, actualLines, unmappedRows }
+  return {
+    countsByLine,
+    gradeCountsByLine,
+    sdwtsByLine,
+    sensorGradesByLine,
+    actualLines,
+    unmappedRows,
+  }
 }
 
 function buildLineDashboardPayloadFromAggregates(
@@ -355,6 +400,9 @@ function buildLineDashboardPayloadFromAggregates(
     .at(-1) ?? null
   const latestDate = latestDateTime?.slice(0, 10) ?? null
   const previousDate = hasPreviousData ? comparisonDateTime.slice(0, 10) : null
+  const getLineValues = (property, lineId) => Array.from(new Set(
+    datedAggregates.flatMap((aggregate) => Array.from(aggregate[property].get(lineId) ?? [])),
+  ))
 
   const lineSummary = selectedLines.map((lineId) => {
     const totalCount = dates.reduce((sum, date) => sum + getCount(date, lineId), 0)
@@ -375,6 +423,8 @@ function buildLineDashboardPayloadFromAggregates(
       changeCount: previousDateCount === null ? null : latestDateCount - previousDateCount,
       lastAbnormalDate,
       ratio: 0,
+      sdwts: getLineValues("sdwtsByLine", lineId).sort(compareLineIds),
+      sensorGrades: getLineValues("sensorGradesByLine", lineId).sort(compareSensorGrades),
     }
   })
 
@@ -444,6 +494,7 @@ function buildLineDashboardPayloadFromAggregates(
 
 export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
   const sdwtLineLookup = buildSdwtLineLookup(mappingConfig)
+  const sdwtDisplayLookup = buildSdwtDisplayLookup(mappingConfig)
   const rowsByDate = new Map()
   datedRows.forEach(({ dateTime, rows }) => {
     const date = normalizeText(dateTime).slice(0, 10)
@@ -457,10 +508,14 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
   const comparisonDateTime = normalizeText(filters.comparisonDateTime)
   const datedAggregates = Array.from(rowsByDate.values(), ({ dateTime, rows }) => ({
     dateTime,
-    ...aggregateDashboardLineRows(rows, sdwtLineLookup),
+    ...aggregateDashboardLineRows(rows, sdwtLineLookup, sdwtDisplayLookup),
   }))
   const comparisonAggregate = isValidDateTimeFileName(comparisonDateTime)
-    ? aggregateDashboardLineRows(filters.comparisonRows ?? [], sdwtLineLookup)
+    ? aggregateDashboardLineRows(
+      filters.comparisonRows ?? [],
+      sdwtLineLookup,
+      sdwtDisplayLookup,
+    )
     : null
   return buildLineDashboardPayloadFromAggregates(
     datedAggregates,
@@ -523,7 +578,11 @@ async function readDashboardAggregate(fileInfo, mappingConfig, includeDetailSumm
     })
     const aggregate = {
       dateTime: fileInfo.dateTime,
-      ...aggregateDashboardLineRows(rows, buildSdwtLineLookup(mappingConfig)),
+      ...aggregateDashboardLineRows(
+        rows,
+        buildSdwtLineLookup(mappingConfig),
+        buildSdwtDisplayLookup(mappingConfig),
+      ),
       detailSummary: includeDetailSummary ? buildDashboardDetailSummary(rows) : null,
     }
     setLruEntry(
