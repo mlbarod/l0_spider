@@ -21,6 +21,7 @@ import {
 } from "./server/commonalityData.mjs"
 import { handleLatestCommonalityPathRequest } from "./server/latestCommonalityPath.mjs"
 import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
+import { handleMailingRegistrationRequest } from "./server/mailingRegistration.mjs"
 import { handleMyEqpReferenceRequest } from "./server/myEqpReference.mjs"
 import { handleMyEqpRegistrationRequest } from "./server/myEqpRegistration.mjs"
 import { handlePassHistoryRequest } from "./server/passHistory.mjs"
@@ -221,6 +222,13 @@ const server = createServer((req, res) => {
 
   if (url.pathname === "/api/my-eqp-registration") {
     handleMyEqpRegistrationRequest(req, res, url).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/mailing-registration") {
+    handleMailingRegistrationRequest(req, res, url).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
     return

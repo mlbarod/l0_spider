@@ -4,6 +4,7 @@ import { CommonalityAnomalyPage } from "./pages/CommonalityAnomalyPage"
 import { CommonAnomalyPage } from "./pages/CommonAnomalyPage"
 import { FdcTrendPage } from "./pages/FdcTrendPage"
 import { L0SpiderHomePage } from "./pages/L0SpiderHomePage"
+import { MailingRegistrationPage } from "./pages/MailingRegistrationPage"
 import { MyEqpRegistrationPage } from "./pages/MyEqpRegistrationPage"
 import { SpiderFeaturePage } from "./pages/SpiderFeaturePage"
 import { UserManualPage } from "./pages/UserManualPage"
@@ -35,7 +36,7 @@ const fdcTrendChildren = [
   },
   {
     path: "recipients",
-    element: <SpiderFeaturePage type="recipients" />,
+    element: <MailingRegistrationPage />,
   },
   {
     path: "defect-spider",
