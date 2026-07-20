@@ -3,6 +3,7 @@ import test from "node:test"
 
 import {
   MAILING_PRIORITIES,
+  buildMailingDeletePayload,
   buildMailingDebugRow,
   buildMailingRegistrationPayload,
   handleMailingRegistrationRequest,
@@ -61,7 +62,19 @@ test("SDWT 미선택과 잘못된 knox_id는 거부한다", () => {
   )
 })
 
-test("Mailing 등록 API는 GET, POST 외 요청을 거부한다", async () => {
+test("Line 삭제 요청은 knox_id와 삭제 대상 SDWT를 정규화한다", () => {
+  const payload = buildMailingDeletePayload({
+    knoxId: " user01 ",
+    line: " P1D ",
+    sdwts: ["DREAMS P1D", " DREAMS P1D ", "NAND P1D"],
+  })
+
+  assert.equal(payload.knoxId, "user01")
+  assert.equal(payload.line, "P1D")
+  assert.deepEqual(payload.sdwts, ["DREAMS P1D", "NAND P1D"])
+})
+
+test("Mailing 등록 API는 GET, POST, DELETE 외 요청을 거부한다", async () => {
   const response = {
     statusCode: null,
     body: "",
@@ -73,7 +86,7 @@ test("Mailing 등록 API는 GET, POST 외 요청을 거부한다", async () => {
     },
   }
 
-  await handleMailingRegistrationRequest({ method: "DELETE" }, response)
+  await handleMailingRegistrationRequest({ method: "PUT" }, response)
 
   assert.equal(response.statusCode, 405)
   assert.equal(JSON.parse(response.body).error, "Method not allowed")

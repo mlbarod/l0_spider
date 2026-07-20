@@ -14,6 +14,25 @@ export async function createMailingRegistration({ knoxId, sdwts }) {
     const error = new Error(payload.error || "Mailing 기준정보를 저장하지 못했습니다.")
     error.table = payload.table
     error.debugRow = payload.debugRow
+    error.dbErrorCode = payload.dbErrorCode
+    error.dbErrorDetail = payload.dbErrorDetail
+    throw error
+  }
+  return payload
+}
+
+export async function deleteMailingRegistrationLine({ knoxId, line, sdwts }) {
+  const response = await fetch("/api/mailing-registration", {
+    method: "DELETE",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ knoxId, line, sdwts }),
+  })
+  const payload = await readPayload(response)
+
+  if (!response.ok) {
+    const error = new Error(payload.error || "Mailing Line 조건을 삭제하지 못했습니다.")
+    error.dbErrorCode = payload.dbErrorCode
+    error.dbErrorDetail = payload.dbErrorDetail
     throw error
   }
   return payload

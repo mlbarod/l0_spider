@@ -10,6 +10,7 @@ import {
   MailPlus,
   Search,
   Send,
+  Trash2,
   UserRound,
 } from "lucide-react"
 import { Link } from "react-router-dom"
@@ -40,6 +41,7 @@ import { cn } from "@/lib/utils"
 import { fetchCurrentUser } from "../api/currentUserApi"
 import {
   createMailingRegistration,
+  deleteMailingRegistrationLine,
   fetchMailingRegistrations,
 } from "../api/mailingRegistrationApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
@@ -202,6 +204,7 @@ export function MailingRegistrationPage() {
   const [sdwtQuery, setSdwtQuery] = useState("")
   const [urlTarget, setUrlTarget] = useState(null)
   const [saveFailure, setSaveFailure] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   const currentUserQuery = useQuery({
     queryKey: ["current-user"],
@@ -282,6 +285,23 @@ export function MailingRegistrationPage() {
     lineMapping,
     sdwtMapping,
   ), [lineMapping, registrationsQuery.data, sdwtMapping])
+  const lineDeleteGroups = useMemo(() => {
+    const groups = new Map()
+    registrationRows.forEach((row) => {
+      if (!row.line) return
+      const group = groups.get(row.line) ?? {
+        line: row.line,
+        knoxId: row.knoxId,
+        sdwts: new Set(),
+        grades: new Set(),
+        firstRowId: row.id,
+      }
+      group.sdwts.add(row.sdwt)
+      group.grades.add(row.grade)
+      groups.set(row.line, group)
+    })
+    return groups
+  }, [registrationRows])
 
   const registrationMutation = useMutation({
     mutationFn: createMailingRegistration,
@@ -296,8 +316,28 @@ export function MailingRegistrationPage() {
     },
     onError: (error) => {
       toast.error(error.message)
-      if (error.debugRow) setSaveFailure({ message: error.message, row: error.debugRow })
+      if (error.debugRow) {
+        setSaveFailure({
+          message: error.message,
+          row: error.debugRow,
+          dbErrorCode: error.dbErrorCode,
+          dbErrorDetail: error.dbErrorDetail,
+        })
+      }
     },
+  })
+  const deleteMutation = useMutation({
+    mutationFn: deleteMailingRegistrationLine,
+    onSuccess: (result) => {
+      const deletedLine = deleteTarget?.line ?? result.line
+      const deletedKnoxId = deleteTarget?.knoxId ?? validLookupKnoxId
+      setDeleteTarget(null)
+      queryClient.invalidateQueries({ queryKey: ["mailing-registrations", deletedKnoxId] })
+      toast.success(`${formatLineDisplayName(deletedLine)} Line Mailing 조건을 삭제했습니다.`, {
+        description: `DB 반영 ${result.affectedRows?.toLocaleString() ?? 0}행`,
+      })
+    },
+    onError: (error) => toast.error(error.message),
   })
 
   const isReadyToSave = Boolean(
@@ -513,7 +553,7 @@ export function MailingRegistrationPage() {
                         <TableHead>Line Name</TableHead>
                         <TableHead>SDWT</TableHead>
                         <TableHead>Grade</TableHead>
-                        <TableHead className="w-36 text-right">URL</TableHead>
+                        <TableHead className="w-64 text-right">관리</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -528,16 +568,37 @@ export function MailingRegistrationPage() {
                           <TableCell>{row.sdwt}</TableCell>
                           <TableCell><Badge variant="outline">{row.grade}</Badge></TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={!row.line}
-                              onClick={() => showUrl(row)}
-                            >
-                              <Link2 className="size-3.5" aria-hidden="true" />
-                              링크확인
-                            </Button>
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={!row.line}
+                                onClick={() => showUrl(row)}
+                              >
+                                <Link2 className="size-3.5" aria-hidden="true" />
+                                링크확인
+                              </Button>
+                              {lineDeleteGroups.get(row.line)?.firstRowId === row.id ? (
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => {
+                                    const group = lineDeleteGroups.get(row.line)
+                                    setDeleteTarget({
+                                      line: group.line,
+                                      knoxId: group.knoxId,
+                                      sdwts: Array.from(group.sdwts),
+                                      grades: Array.from(group.grades),
+                                    })
+                                  }}
+                                >
+                                  <Trash2 className="size-3.5" aria-hidden="true" />
+                                  Line 삭제
+                                </Button>
+                              ) : null}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -584,12 +645,68 @@ export function MailingRegistrationPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !deleteMutation.isPending) setDeleteTarget(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{formatLineDisplayName(deleteTarget?.line)} Line을 삭제할까요?</DialogTitle>
+            <DialogDescription>
+              {deleteTarget?.knoxId}에 등록된 해당 Line의 SDWT
+              {deleteTarget?.sdwts?.length ? ` ${deleteTarget.sdwts.length}개` : ""}와 Grade
+              {deleteTarget?.grades?.length ? ` ${deleteTarget.grades.length}개` : ""}가 모두 DB에서 삭제됩니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border bg-destructive/5 px-4 py-3 text-sm">
+            <p className="font-semibold">삭제 Line: {formatLineDisplayName(deleteTarget?.line)}</p>
+            <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">
+              SDWT: {deleteTarget?.sdwts?.join(", ") || "-"}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleteMutation.isPending}
+              onClick={() => setDeleteTarget(null)}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!deleteTarget || deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate({
+                knoxId: deleteTarget.knoxId,
+                line: deleteTarget.line,
+                sdwts: deleteTarget.sdwts,
+              })}
+            >
+              {deleteMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Trash2 className="size-4" aria-hidden="true" />
+              )}
+              DB에서 Line 삭제
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={Boolean(saveFailure)} onOpenChange={(open) => !open && setSaveFailure(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Mailing 등록 실패 데이터</DialogTitle>
             <DialogDescription>{saveFailure?.message}</DialogDescription>
           </DialogHeader>
+          {saveFailure?.dbErrorCode ? (
+            <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 font-mono text-xs text-destructive">
+              DB error {saveFailure.dbErrorCode}: {saveFailure.dbErrorDetail}
+            </p>
+          ) : null}
           <div className="overflow-auto rounded-lg border">
             <Table>
               <TableHeader>

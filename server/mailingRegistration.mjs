@@ -67,6 +67,13 @@ export function buildMailingRegistrationPayload(body) {
   }
 }
 
+export function buildMailingDeletePayload(body) {
+  const payload = buildMailingRegistrationPayload(body)
+  const line = normalizeText(body?.line)
+  if (!line) throw new Error("삭제할 Line Name이 필요합니다.")
+  return { ...payload, line }
+}
+
 export function normalizeMailingRecords(records) {
   if (!Array.isArray(records)) return []
 
@@ -122,7 +129,10 @@ function runMailingHelper(action, payload) {
       }
       if (!result.ok) {
         if (stderr.trim()) console.error(`[mailing-registration] ${stderr.trim()}`)
-        reject(new Error(result.error || "Mailing 기준정보를 처리하지 못했습니다."))
+        const error = new Error(result.error || "Mailing 기준정보를 처리하지 못했습니다.")
+        error.dbErrorCode = result.dbErrorCode
+        error.dbErrorDetail = result.dbErrorDetail
+        reject(error)
         return
       }
       resolvePromise(result)
@@ -132,7 +142,7 @@ function runMailingHelper(action, payload) {
 }
 
 export async function handleMailingRegistrationRequest(req, res, url) {
-  if (!new Set(["GET", "POST"]).has(req.method)) {
+  if (!new Set(["GET", "POST", "DELETE"]).has(req.method)) {
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
     return
   }
@@ -149,7 +159,15 @@ export async function handleMailingRegistrationRequest(req, res, url) {
       return
     }
 
-    const payload = buildMailingRegistrationPayload(await readJsonBody(req))
+    const body = await readJsonBody(req)
+    if (req.method === "DELETE") {
+      const payload = buildMailingDeletePayload(body)
+      const result = await runMailingHelper("delete_line", payload)
+      sendJson(res, 200, result)
+      return
+    }
+
+    const payload = buildMailingRegistrationPayload(body)
     debugRow = buildMailingDebugRow(payload)
     const result = await runMailingHelper("insert", payload)
     sendJson(res, 200, {
@@ -166,6 +184,8 @@ export async function handleMailingRegistrationRequest(req, res, url) {
       error: error.message,
       table: "email",
       debugRow,
+      dbErrorCode: error.dbErrorCode,
+      dbErrorDetail: error.dbErrorDetail,
     })
   }
 }
