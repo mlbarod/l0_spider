@@ -201,13 +201,13 @@ function LatestDataCard() {
   return (
     <aside
       className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 shadow-sm"
-      aria-label="SPIDER 최신 데이터 시각"
+      aria-label="마지막 알고리즘 수행 시간"
     >
       <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
         <CalendarClock className="size-4.5" aria-hidden="true" />
       </span>
       <div className="min-w-0">
-        <p className="text-[11px] font-semibold tracking-wide text-muted-foreground">LATEST DATA</p>
+        <p className="text-[11px] font-semibold tracking-wide text-muted-foreground">마지막 알고리즘 수행 시간</p>
         <p className="mt-0.5 whitespace-nowrap text-sm font-semibold tabular-nums text-foreground">
           {displayDateTime}
         </p>
@@ -230,7 +230,7 @@ export function L0SpiderHomePage() {
               </p>
             </div>
           </div>
-          <div className="mb-0.5 grid shrink-0 gap-2">
+          <div className="mb-0.5 flex shrink-0 flex-col gap-2 lg:flex-row lg:items-stretch">
             <LatestDataCard />
             <aside
               className="flex items-center gap-3 rounded-xl border border-border/80 bg-muted/40 px-4 py-3 shadow-sm"
