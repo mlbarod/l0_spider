@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { buildErdScatterPayload } from "./selfEquipmentData.mjs"
+import { buildErdIdentityPayload, buildErdScatterPayload } from "./selfEquipmentData.mjs"
 
 test("각 차트의 가장 최신 act_time에서 과거 26시간까지 recent로 표시한다", () => {
   const payload = buildErdScatterPayload([
@@ -35,4 +35,43 @@ test("각 차트의 가장 최신 act_time에서 과거 26시간까지 recent로
   assert.equal(payload.mostRecentActTimeMs, Date.UTC(2026, 6, 15, 15))
   assert.equal(payload.recentThresholdMs, Date.UTC(2026, 6, 14, 13))
   assert.deepEqual(payload.points.map((point) => point.isRecent), [false, true, true])
+})
+
+test("동일성 차트의 선택 EQP 원본 데이터는 단일 차트와 동일하다", () => {
+  const rows = [
+    {
+      eqp_cb: "EQP-1",
+      eqp_id: "EQP-ID-1",
+      act_time: "2026-07-15 13:00:00",
+      TEMP_STEP: 1,
+    },
+    {
+      eqp_cb: "EQP-2",
+      eqp_id: "EQP-ID-2",
+      act_time: "2026-07-15 14:00:00",
+      TEMP_STEP: 99,
+    },
+    {
+      eqp_cb: "EQP-1",
+      eqp_id: "EQP-ID-1",
+      act_time: "2026-07-15 15:00:00",
+      TEMP_STEP: 2,
+    },
+  ]
+  const options = {
+    eqp: "EQP-1",
+    axisColumn: "TEMP_STEP",
+    filePath: "/tmp/data.parquet",
+  }
+  const scatter = buildErdScatterPayload(rows, { ...options, latestDate: "2026-07-15" })
+  const identity = buildErdIdentityPayload(rows, options)
+  const selectedGroup = identity.groups.find((group) => group.isSelected)
+
+  assert.equal(identity.groups[0], selectedGroup)
+  assert.equal(selectedGroup.eqpCb, "EQP-1")
+  assert.equal(selectedGroup.pointCount, scatter.pointCount)
+  assert.deepEqual(
+    selectedGroup.points.map(({ actTime, value, eqpId }) => ({ actTime, value, eqpId })),
+    scatter.points.map(({ actTime, value, eqpId }) => ({ actTime, value, eqpId })),
+  )
 })

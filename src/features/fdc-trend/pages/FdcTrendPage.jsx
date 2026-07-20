@@ -60,6 +60,12 @@ import {
 import { SENSOR_GRADES, SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 import { getLowestChStepRowsByPpid } from "../utils/chStepGrouping.mjs"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
+import {
+  MAX_RENDERED_POINTS_PER_SERIES,
+  buildIdentityChartPoints,
+  samplePoints,
+  selectRenderedIdentityPoints,
+} from "../utils/identityChart.mjs"
 
 const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
@@ -73,8 +79,6 @@ const MY_EQP_LABEL = "MY EQP"
 const SCATTER_CHART_MARGIN = Object.freeze({ top: 42, right: 18, bottom: 28, left: 16 })
 const SCATTER_Y_AXIS_WIDTH = 64
 const SCATTER_X_AXIS_HEIGHT = 30
-const MAX_RENDERED_POINTS_PER_SERIES = 800
-const MAX_IDENTITY_POINTS_PER_EQP = 600
 const EMPTY_EQP_SET = new Set()
 
 function expandPriorities(grades) {
@@ -288,18 +292,6 @@ function numericDomain(values, fallbackPadding) {
   return [minimum - padding, maximum + padding]
 }
 
-function samplePoints(points, limit = MAX_RENDERED_POINTS_PER_SERIES) {
-  if (points.length <= limit) return points
-
-  const sampled = [points[0]]
-  const interval = (points.length - 1) / (limit - 1)
-  for (let index = 1; index < limit - 1; index += 1) {
-    sampled.push(points[Math.round(index * interval)])
-  }
-  sampled.push(points.at(-1))
-  return sampled
-}
-
 function drawZoomOverlay(element, start, end) {
   if (!element || !start || !end) return
 
@@ -345,6 +337,7 @@ function ScatterPointTooltip({ active, payload, axisColumn, lotIdLabel = "root_l
   if (!active || !point) return null
 
   const rows = [
+    ...(point.eqpCb ? [["eqp_cb", point.eqpCb]] : []),
     ["eqp_id", point.eqpId],
     ["disp_name", point.dispName],
     ["wafer_id", point.waferId],
@@ -364,6 +357,19 @@ function ScatterPointTooltip({ active, payload, axisColumn, lotIdLabel = "root_l
         </div>
       ))}
     </div>
+  )
+}
+
+function IdentityScatterPoint({ cx, cy, payload }) {
+  if (!Number.isFinite(cx) || !Number.isFinite(cy) || !payload) return null
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={3}
+      fill={payload.isSelected ? "#ef4444" : "#9ca3af"}
+      stroke="none"
+    />
   )
 }
 
@@ -425,46 +431,11 @@ export function IdentityChartDialog({
     ),
     [groups],
   )
-  const identityPoints = useMemo(
-    () => groups.flatMap((group, groupIndex) => {
-      const firstTime = group.points[0]?.actTimeMs ?? 0
-      const lastTime = group.points.at(-1)?.actTimeMs ?? firstTime
-      const timeRange = lastTime - firstTime
-      return group.points.map((point) => ({
-        ...point,
-        eqpCb: group.eqpCb,
-        isSelected: group.isSelected,
-        identityX: groupIndex + (timeRange ? (point.actTimeMs - firstTime) / timeRange : 0.5),
-      }))
-    }),
-    [groups],
+  const identityPoints = useMemo(() => buildIdentityChartPoints(groups), [groups])
+  const renderedIdentitySeries = useMemo(
+    () => selectRenderedIdentityPoints(groups, identityPoints, zoomDomain),
+    [groups, identityPoints, zoomDomain],
   )
-  const renderedIdentitySeries = useMemo(() => {
-    const visiblePoints = zoomDomain
-      ? identityPoints.filter((point) => (
-        point.identityX >= zoomDomain.x[0]
-        && point.identityX <= zoomDomain.x[1]
-        && point.value >= zoomDomain.y[0]
-        && point.value <= zoomDomain.y[1]
-      ))
-      : identityPoints
-    const groupLimit = Math.min(
-      MAX_IDENTITY_POINTS_PER_EQP,
-      Math.max(60, Math.floor(2400 / Math.max(groups.length, 1))),
-    )
-    const byGroup = new Map()
-    visiblePoints.forEach((point) => {
-      const points = byGroup.get(point.eqpCb) ?? []
-      points.push(point)
-      byGroup.set(point.eqpCb, points)
-    })
-    const sampledPoints = Array.from(byGroup.values()).flatMap((points) => samplePoints(points, groupLimit))
-
-    return {
-      selected: sampledPoints.filter((point) => point.isSelected),
-      others: sampledPoints.filter((point) => !point.isSelected),
-    }
-  }, [groups.length, identityPoints, zoomDomain])
   const fullXDomain = [0, Math.max(groups.length, 1)]
   const xTicks = groups.map((_, index) => index + 0.5)
   const identityXAxisHeight = Math.min(
@@ -685,18 +656,10 @@ export function IdentityChartDialog({
                   />
                 ))}
                 <Scatter
-                  data={renderedIdentitySeries.others}
+                  data={renderedIdentitySeries.points}
                   dataKey="value"
-                  shape="circle"
+                  shape={<IdentityScatterPoint />}
                   fill="#9ca3af"
-                  stroke="none"
-                  isAnimationActive={false}
-                />
-                <Scatter
-                  data={renderedIdentitySeries.selected}
-                  dataKey="value"
-                  shape="circle"
-                  fill="#ef4444"
                   stroke="none"
                   isAnimationActive={false}
                 />
