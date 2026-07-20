@@ -383,7 +383,7 @@ export function MailingRegistrationPage() {
               <MailPlus className="size-5" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <h1 className="text-lg font-semibold tracking-tight">이상감지 수신인 등록</h1>
+              <h1 className="text-lg font-semibold tracking-tight">이상감지 Mailing Report 수신인 등록</h1>
               <p className="mt-1 text-xs text-muted-foreground">
                 Line과 SDWT 조건별 이상감지 Mailing 대상자를 등록합니다.
               </p>

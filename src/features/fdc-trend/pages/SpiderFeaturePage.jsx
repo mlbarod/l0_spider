@@ -72,7 +72,7 @@ const PAGE_META = {
     description: "P1F 수율 상/하위 그룹의 FDC 분포 차이로 Spec 후보를 조회합니다.",
   },
   recipients: {
-    title: "이상감지 수신인 등록",
+    title: "이상감지 Mailing Report 수신인 등록",
     category: "Recipients",
     description: "이상감지 메일 수신 대상과 sdwt, priority 조건을 등록하거나 제거합니다.",
   },
