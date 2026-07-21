@@ -19,9 +19,20 @@ test("Mailing 등록 요청은 SDWT를 중복 제거하고 priority를 고정한
 
   assert.deepEqual(payload, {
     knoxId: "user01",
+    knoxIds: ["user01"],
     sdwts: ["DREAMS P1D", "NAND P1D"],
     priorities: [...MAILING_PRIORITIES],
   })
+})
+
+test("복수 수신인 knox_id를 정규화하고 중복 제거한다", () => {
+  const payload = buildMailingRegistrationPayload({
+    knoxIds: ["user01", " user02@samsung.com ", "user01"],
+    sdwts: ["DREAMS P1D"],
+  })
+
+  assert.equal(payload.knoxId, "user01")
+  assert.deepEqual(payload.knoxIds, ["user01", "user02"])
 })
 
 test("VARCHAR 컬럼에 저장할 복수 값을 JSON 배열 문자열로 만든다", () => {

@@ -3,6 +3,7 @@ import { fileURLToPath, URL } from "node:url"
 
 const helperPath = fileURLToPath(new URL("../scripts/mailing_registration.py", import.meta.url))
 const MAX_KNOX_ID_LENGTH = 128
+const MAX_KNOX_ID_COUNT = 100
 const MAX_SDWT_COUNT = 500
 const MAX_SDWT_LENGTH = 160
 
@@ -50,7 +51,13 @@ async function readJsonBody(req) {
 }
 
 export function buildMailingRegistrationPayload(body) {
-  const knoxId = normalizeKnoxId(body?.knoxId)
+  const requestedKnoxIds = Array.isArray(body?.knoxIds) && body.knoxIds.length
+    ? body.knoxIds
+    : [body?.knoxId]
+  if (requestedKnoxIds.length > MAX_KNOX_ID_COUNT) {
+    throw new Error(`knox_id는 ${MAX_KNOX_ID_COUNT}명 이하로 등록해야 합니다.`)
+  }
+  const knoxIds = Array.from(new Set(requestedKnoxIds.map(normalizeKnoxId)))
   const sdwts = uniqueTextValues(body?.sdwts)
 
   if (!sdwts.length || sdwts.length > MAX_SDWT_COUNT) {
@@ -61,7 +68,8 @@ export function buildMailingRegistrationPayload(body) {
   }
 
   return {
-    knoxId,
+    knoxId: knoxIds[0],
+    knoxIds,
     sdwts,
     priorities: [...MAILING_PRIORITIES],
   }
@@ -174,6 +182,7 @@ export async function handleMailingRegistrationRequest(req, res, url) {
       ...result,
       registration: {
         knoxId: payload.knoxId,
+        knoxIds: payload.knoxIds,
         sdwts: payload.sdwts,
         priorities: payload.priorities,
       },

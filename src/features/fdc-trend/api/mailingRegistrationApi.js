@@ -2,11 +2,11 @@ async function readPayload(response) {
   return response.json().catch(() => ({}))
 }
 
-export async function createMailingRegistration({ knoxId, sdwts }) {
+export async function createMailingRegistration({ knoxId, knoxIds, sdwts }) {
   const response = await fetch("/api/mailing-registration", {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ knoxId, sdwts }),
+    body: JSON.stringify({ knoxId, knoxIds, sdwts }),
   })
   const payload = await readPayload(response)
 

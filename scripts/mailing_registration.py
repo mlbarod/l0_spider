@@ -125,6 +125,20 @@ def parse_list(value):
     return [item.strip() for item in text.split(",") if item.strip()]
 
 
+def build_insert_values(payload, sdwt_chunks, priority_chunks):
+    knox_ids = payload.get("knoxIds") or [payload["knoxId"]]
+    return [
+        (
+            knox_id,
+            serialize_list(sdwt_chunk),
+            serialize_list(priority_chunk),
+        )
+        for knox_id in knox_ids
+        for sdwt_chunk in sdwt_chunks
+        for priority_chunk in priority_chunks
+    ]
+
+
 def insert_registration(payload, db_info):
     query = """
         INSERT INTO `email` (`email`, `sdwt`, `priority`)
@@ -132,7 +146,9 @@ def insert_registration(payload, db_info):
     """
     with connect(db_info) as connection:
         column_schema = read_email_column_schema(connection, db_info["DB_NAME"])
-        ensure_text_fits("email", payload["knoxId"], column_schema)
+        knox_ids = payload.get("knoxIds") or [payload["knoxId"]]
+        for knox_id in knox_ids:
+            ensure_text_fits("email", knox_id, column_schema)
         sdwt_chunks = split_list_for_column(
             payload["sdwts"],
             column_schema["sdwt"]["maxLength"],
@@ -143,15 +159,7 @@ def insert_registration(payload, db_info):
             column_schema["priority"]["maxLength"],
             "priority",
         )
-        values = [
-            (
-                payload["knoxId"],
-                serialize_list(sdwt_chunk),
-                serialize_list(priority_chunk),
-            )
-            for sdwt_chunk in sdwt_chunks
-            for priority_chunk in priority_chunks
-        ]
+        values = build_insert_values(payload, sdwt_chunks, priority_chunks)
         with connection.cursor() as cursor:
             affected_rows = cursor.executemany(query, values)
         connection.commit()

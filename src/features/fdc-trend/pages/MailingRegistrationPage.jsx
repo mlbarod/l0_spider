@@ -12,6 +12,7 @@ import {
   Send,
   Trash2,
   UserRound,
+  X,
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
@@ -201,7 +202,8 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
   const initializedKnoxId = useRef(false)
   const [selectedLine, setSelectedLine] = useState("")
   const [selectedSdwts, setSelectedSdwts] = useState([])
-  const [knoxId, setKnoxId] = useState("")
+  const [recipientKnoxInput, setRecipientKnoxInput] = useState("")
+  const [recipientKnoxIds, setRecipientKnoxIds] = useState([])
   const [lookupKnoxId, setLookupKnoxId] = useState("")
   const [lineQuery, setLineQuery] = useState("")
   const [sdwtQuery, setSdwtQuery] = useState("")
@@ -225,15 +227,9 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
     const currentKnoxId = normalizeKnoxId(currentUserQuery.data?.knoxId)
     if (!currentKnoxId || initializedKnoxId.current) return
     initializedKnoxId.current = true
-    setKnoxId(currentKnoxId)
+    setRecipientKnoxIds([currentKnoxId])
     setLookupKnoxId(currentKnoxId)
   }, [currentUserQuery.data?.knoxId])
-
-  useEffect(() => {
-    const normalized = normalizeKnoxId(knoxId)
-    const timeout = setTimeout(() => setLookupKnoxId(normalized), 350)
-    return () => clearTimeout(timeout)
-  }, [knoxId])
 
   const lineMapping = mappingQuery.data?.line_mapping ?? EMPTY_MAPPING
   const sdwtMapping = mappingQuery.data?.sdwt_mapping ?? EMPTY_MAPPING
@@ -266,12 +262,6 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
   const selectedSdwtLabel = activeSdwts.includes(ALL_SDWT)
     ? `ALL (${sdwtOptions.length.toLocaleString()}개)`
     : activeSdwts.join(", ")
-  const normalizedInputKnoxId = normalizeKnoxId(knoxId)
-  const validInputKnoxId = Boolean(
-    normalizedInputKnoxId
-      && normalizedInputKnoxId.length <= 128
-      && KNOX_ID_PATTERN.test(normalizedInputKnoxId),
-  )
   const validLookupKnoxId = lookupKnoxId.length <= 128 && KNOX_ID_PATTERN.test(lookupKnoxId)
     ? lookupKnoxId
     : ""
@@ -309,12 +299,15 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
   const registrationMutation = useMutation({
     mutationFn: createMailingRegistration,
     onSuccess: (result) => {
-      const savedKnoxId = result.registration?.knoxId ?? normalizedInputKnoxId
+      const savedKnoxIds = result.registration?.knoxIds ?? recipientKnoxIds
+      const savedKnoxId = savedKnoxIds.at(-1) ?? ""
       setSaveFailure(null)
       setLookupKnoxId(savedKnoxId)
-      queryClient.invalidateQueries({ queryKey: ["mailing-registrations", savedKnoxId] })
+      savedKnoxIds.forEach((knoxId) => {
+        queryClient.invalidateQueries({ queryKey: ["mailing-registrations", knoxId] })
+      })
       toast.success("Mailing 기능을 등록했습니다.", {
-        description: `${result.registration?.sdwts?.length ?? resolvedSdwts.length}개 SDWT · 5개 Grade`,
+        description: `${savedKnoxIds.length}명 · ${result.registration?.sdwts?.length ?? resolvedSdwts.length}개 SDWT · 5개 Grade`,
       })
     },
     onError: (error) => {
@@ -344,7 +337,7 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
   })
 
   const isReadyToSave = Boolean(
-    selectedLine && resolvedSdwts.length && validInputKnoxId && !mappingQuery.isLoading,
+    selectedLine && resolvedSdwts.length && recipientKnoxIds.length && !mappingQuery.isLoading,
   )
 
   const handleLineChange = (line) => {
@@ -365,9 +358,28 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
     ))
   }
 
+  const addRecipientKnoxId = () => {
+    const knoxId = normalizeKnoxId(recipientKnoxInput)
+    if (!knoxId || knoxId.length > 128 || !KNOX_ID_PATTERN.test(knoxId)) {
+      toast.error("knox_id 형식을 확인해 주세요.", {
+        description: "영문, 숫자, 점(.), 밑줄(_), 하이픈(-)만 입력할 수 있습니다.",
+      })
+      return
+    }
+    setRecipientKnoxIds((current) => current.includes(knoxId) ? current : [...current, knoxId])
+    setLookupKnoxId(knoxId)
+    setRecipientKnoxInput("")
+  }
+
+  const removeRecipientKnoxId = (knoxId) => {
+    const next = recipientKnoxIds.filter((value) => value !== knoxId)
+    setRecipientKnoxIds(next)
+    if (lookupKnoxId === knoxId) setLookupKnoxId(next.at(-1) ?? "")
+  }
+
   const handleSave = () => {
     if (!isReadyToSave || registrationMutation.isPending) return
-    registrationMutation.mutate({ knoxId: normalizedInputKnoxId, sdwts: resolvedSdwts })
+    registrationMutation.mutate({ knoxIds: recipientKnoxIds, sdwts: resolvedSdwts })
   }
 
   useImperativeHandle(saveRef, () => ({
@@ -375,13 +387,13 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
     save: () => {
       if (!isReadyToSave || registrationMutation.isPending) return null
       return registrationMutation.mutateAsync({
-        knoxId: normalizedInputKnoxId,
+        knoxIds: recipientKnoxIds,
         sdwts: resolvedSdwts,
       })
     },
   }), [
     isReadyToSave,
-    normalizedInputKnoxId,
+    recipientKnoxIds,
     registrationMutation,
     resolvedSdwts,
   ])
@@ -478,29 +490,65 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
                   <h2 id="mailing-knox-id-title" className="text-base font-semibold">수신인 knox_id</h2>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  기본값은 현재 접속자이며, 다른 수신인을 등록할 때 직접 변경할 수 있습니다.
+                  knox_id를 입력하고 Enter를 누르세요. 지정된 수신인별로 Mailing 조건이 저장됩니다.
                 </p>
                 <label htmlFor="mailing-knox-id" className="mb-2 mt-5 block text-xs font-medium">
                   knox_id 입력
                 </label>
                 <Input
                   id="mailing-knox-id"
-                  value={knoxId}
-                  onChange={(event) => setKnoxId(event.target.value)}
-                  placeholder={currentUserQuery.isLoading ? "접속자 정보를 확인하는 중…" : "knox_id를 입력하세요"}
+                  value={recipientKnoxInput}
+                  onChange={(event) => setRecipientKnoxInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" || event.nativeEvent.isComposing) return
+                    event.preventDefault()
+                    addRecipientKnoxId()
+                  }}
+                  placeholder={currentUserQuery.isLoading ? "접속자 정보를 확인하는 중…" : "knox_id 입력 후 Enter"}
                   className="h-12 max-w-xl text-base font-semibold"
-                  aria-invalid={Boolean(knoxId && !validInputKnoxId)}
                 />
-                <p className={cn(
-                  "mt-2 text-xs",
-                  knoxId && !validInputKnoxId ? "text-destructive" : "text-muted-foreground",
-                )}>
-                  {knoxId && !validInputKnoxId
-                    ? "영문, 숫자, 점(.), 밑줄(_), 하이픈(-)만 입력할 수 있습니다."
-                    : currentUserQuery.isError
-                      ? `현재 접속자 조회 오류: ${currentUserQuery.error.message}`
-                      : "email 테이블의 email 컬럼에 knox_id가 저장됩니다."}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {currentUserQuery.isError
+                    ? `현재 접속자 조회 오류: ${currentUserQuery.error.message}`
+                    : "복수 등록할 수 있으며, email 테이블에 수신인별로 1행씩 저장됩니다."}
                 </p>
+                {recipientKnoxIds.length ? (
+                  <div className="mt-4 rounded-xl border bg-muted/20 p-4">
+                    <p className="mb-2 text-xs font-semibold text-foreground">
+                      지정된 수신인 {recipientKnoxIds.length.toLocaleString()}명
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {recipientKnoxIds.map((knoxId) => (
+                        <Badge
+                          key={knoxId}
+                          variant={lookupKnoxId === knoxId ? "default" : "secondary"}
+                          className="gap-1.5 py-1 pl-2.5 pr-1.5"
+                        >
+                          <button
+                            type="button"
+                            className="focus-visible:outline-none focus-visible:underline"
+                            title={`${knoxId} 등록 조건 조회`}
+                            onClick={() => setLookupKnoxId(knoxId)}
+                          >
+                            {knoxId}
+                          </button>
+                          <button
+                            type="button"
+                            className="grid size-5 place-items-center rounded-full hover:bg-background/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`${knoxId} 삭제`}
+                            onClick={() => removeRecipientKnoxId(knoxId)}
+                          >
+                            <X className="size-3" aria-hidden="true" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-xl border border-dashed px-4 py-5 text-center text-sm text-muted-foreground">
+                    Mailing을 수신할 knox_id를 1명 이상 등록하세요.
+                  </div>
+                )}
               </section>
               <section className="border-t p-5 sm:p-6 lg:border-l lg:border-t-0" aria-labelledby="mailing-selection-title">
                 <h2 id="mailing-selection-title" className="text-base font-semibold">등록 예정 조건</h2>
@@ -514,7 +562,11 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
                     complete={Boolean(selectedLine)}
                   />
                   <SelectionItem label="SDWT" value={selectedSdwtLabel} complete={resolvedSdwts.length > 0} />
-                  <SelectionItem label="knox_id" value={normalizedInputKnoxId} complete={validInputKnoxId} />
+                  <SelectionItem
+                    label="knox_id"
+                    value={recipientKnoxIds.join(", ")}
+                    complete={recipientKnoxIds.length > 0}
+                  />
                   <SelectionItem label="Grade (priority)" value={MAILING_PRIORITIES.join(", ")} complete />
                 </div>
               </section>

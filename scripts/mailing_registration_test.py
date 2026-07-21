@@ -1,6 +1,6 @@
 import unittest
 
-from scripts.mailing_registration import serialize_list, split_list_for_column
+from scripts.mailing_registration import build_insert_values, serialize_list, split_list_for_column
 
 
 class MailingRegistrationStorageTest(unittest.TestCase):
@@ -22,6 +22,18 @@ class MailingRegistrationStorageTest(unittest.TestCase):
 
         self.assertEqual([item for chunk in chunks for item in chunk], values)
         self.assertTrue(all(len(serialize_list(chunk)) <= 9 for chunk in chunks))
+
+    def test_insert_values_are_created_for_each_recipient(self):
+        values = build_insert_values(
+            {"knoxIds": ["user01", "user02"]},
+            [["DREAMS P1D"]],
+            [["A", "B"]],
+        )
+
+        self.assertEqual(values, [
+            ("user01", '["DREAMS P1D"]', '["A","B"]'),
+            ("user02", '["DREAMS P1D"]', '["A","B"]'),
+        ])
 
 
 if __name__ == "__main__":
