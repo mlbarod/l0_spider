@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
@@ -193,7 +193,10 @@ function SelectionItem({ label, value, complete }) {
   )
 }
 
-export function MailingRegistrationPage() {
+export const MailingRegistrationPage = forwardRef(function MailingRegistrationPage(
+  { embedded = false },
+  saveRef,
+) {
   const queryClient = useQueryClient()
   const initializedKnoxId = useRef(false)
   const [selectedLine, setSelectedLine] = useState("")
@@ -367,6 +370,22 @@ export function MailingRegistrationPage() {
     registrationMutation.mutate({ knoxId: normalizedInputKnoxId, sdwts: resolvedSdwts })
   }
 
+  useImperativeHandle(saveRef, () => ({
+    isReady: isReadyToSave,
+    save: () => {
+      if (!isReadyToSave || registrationMutation.isPending) return null
+      return registrationMutation.mutateAsync({
+        knoxId: normalizedInputKnoxId,
+        sdwts: resolvedSdwts,
+      })
+    },
+  }), [
+    isReadyToSave,
+    normalizedInputKnoxId,
+    registrationMutation,
+    resolvedSdwts,
+  ])
+
   const showUrl = (row) => {
     const absoluteUrl = typeof window === "undefined"
       ? row.url
@@ -375,8 +394,12 @@ export function MailingRegistrationPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto bg-muted/30">
-      <header className="shrink-0 border-b bg-card px-5 py-4 sm:px-6 lg:px-8">
+    <div className={cn(
+      "min-w-0",
+      !embedded && "flex h-full min-h-0 flex-col overflow-y-auto bg-muted/30",
+    )}>
+      {!embedded ? (
+        <header className="shrink-0 border-b bg-card px-5 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto flex w-full max-w-[1680px] flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -396,9 +419,10 @@ export function MailingRegistrationPage() {
             </Link>
           </Button>
         </div>
-      </header>
+        </header>
+      ) : null}
 
-      <main className="w-full flex-1 px-4 py-5 sm:px-6 lg:px-8">
+      <main className={cn("w-full flex-1", embedded ? "py-1" : "px-4 py-5 sm:px-6 lg:px-8")}>
         <div className="mx-auto grid w-full max-w-[1680px] gap-5">
           <section aria-labelledby="mailing-filter-title">
             <div className="mb-3">
@@ -497,7 +521,8 @@ export function MailingRegistrationPage() {
             </CardContent>
           </Card>
 
-          <section className="flex flex-col items-stretch justify-between gap-4 rounded-2xl border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:p-6">
+          {!embedded ? (
+            <section className="flex flex-col items-stretch justify-between gap-4 rounded-2xl border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:p-6">
             <div>
               <h2 className="text-sm font-semibold">등록할 Mailing 조건을 확인하세요.</h2>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -518,7 +543,8 @@ export function MailingRegistrationPage() {
               )}
               {registrationMutation.isPending ? "등록 중…" : "Mailing 기능 등록"}
             </Button>
-          </section>
+            </section>
+          ) : null}
 
           <section className="grid gap-3" aria-labelledby="registered-mailing-title">
             <div className="flex flex-wrap items-end justify-between gap-3">
@@ -732,4 +758,4 @@ export function MailingRegistrationPage() {
       </Dialog>
     </div>
   )
-}
+})

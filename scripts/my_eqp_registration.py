@@ -67,9 +67,10 @@ def ensure_public_column(connection, db_name):
     connection.commit()
 
 
-def insert_registration(payload, db_info):
+def build_insert_values(payload):
     eqps = payload["eqps"]
-    values = [
+    knox_ids = payload.get("knoxIds") or [payload["knoxId"]]
+    return [
         (
             payload["line"],
             payload["sdwt"],
@@ -78,11 +79,16 @@ def insert_registration(payload, db_info):
             payload["execDate"],
             payload["periode"],
             payload["comment"],
-            payload["knoxId"],
+            knox_id,
             1 if payload.get("isPublic") else 0,
         )
+        for knox_id in knox_ids
         for eqp in eqps
     ]
+
+
+def insert_registration(payload, db_info):
+    values = build_insert_values(payload)
     query = """
         INSERT INTO `myeqp_regist`
             (`line`, `sdwt`, `prc_group`, `eqp`, `exec_date`, `periode`, `comment`, `knox_id`, `is_public`)

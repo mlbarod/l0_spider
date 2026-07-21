@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 import {
   ArrowLeft,
   Check,
@@ -10,6 +10,8 @@ import {
   Search,
   Settings2,
   Trash2,
+  UserRound,
+  X,
 } from "lucide-react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
@@ -18,7 +20,6 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import { fetchLineMapping } from "../api/mappingConfigApi"
+import { fetchCurrentUser } from "../api/currentUserApi"
 import { ResizableFilterArea } from "../components/ResizableFilterArea"
 import {
   createMyEqpRegistration,
@@ -55,6 +57,7 @@ const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
 const ALL_EQP = "ALL"
 const MAX_COMMENT_LENGTH = 90
+const KNOX_ID_PATTERN = /^[A-Za-z0-9._-]+$/
 const DEBUG_COLUMNS = Object.freeze([
   "line",
   "sdwt",
@@ -69,6 +72,11 @@ const DEBUG_COLUMNS = Object.freeze([
 
 function matchesQuery(value, query) {
   return String(value).toLocaleLowerCase("ko").includes(query.trim().toLocaleLowerCase("ko"))
+}
+
+function normalizeKnoxId(value) {
+  const text = String(value ?? "").trim()
+  return text.includes("@") ? text.slice(0, text.indexOf("@")) : text
 }
 
 function FilterPanel({
@@ -210,7 +218,7 @@ function RegisteredMyEqpSection({ activeLine, registrationsQuery, onDelete }) {
         <div>
           <h2 id="registered-my-eqp-title" className="text-base font-semibold">등록된 My EQP 조건</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            {formatLineDisplayName(activeLine)} Line에서 내가 등록했거나 전체 공개된 기준정보입니다.
+            {formatLineDisplayName(activeLine)} Line에서 내게 지정됐거나 과거 전체 공개된 기준정보입니다.
           </p>
         </div>
         <Badge variant="secondary">
@@ -237,7 +245,7 @@ function RegisteredMyEqpSection({ activeLine, registrationsQuery, onDelete }) {
                       {registration.active ? "모니터링 중" : "기간 만료"}
                     </Badge>
                     <Badge variant="outline">
-                      {registration.isPublic ? "전체 공개" : "나만 보기"}
+                      {registration.isPublic ? "과거 전체 공개" : "지정 사용자"}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
                       등록 {registration.execDate} · 만료 {registration.expiresAt || "-"}
@@ -282,18 +290,37 @@ function RegisteredMyEqpSection({ activeLine, registrationsQuery, onDelete }) {
   )
 }
 
-export function MyEqpRegistrationPage() {
+export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
+  { embedded = false },
+  saveRef,
+) {
   const queryClient = useQueryClient()
+  const initializedKnoxId = useRef(false)
   const [selectedLine, setSelectedLine] = useState("")
   const [selectedSdwt, setSelectedSdwt] = useState("")
   const [selectedPrcGroup, setSelectedPrcGroup] = useState("")
   const [selectedEqps, setSelectedEqps] = useState([])
   const [monitoringDays, setMonitoringDays] = useState("")
   const [comment, setComment] = useState("")
-  const [isPublic, setIsPublic] = useState(false)
+  const [recipientKnoxInput, setRecipientKnoxInput] = useState("")
+  const [recipientKnoxIds, setRecipientKnoxIds] = useState([])
   const [saveFailure, setSaveFailure] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [queries, setQueries] = useState({ line: "", sdwt: "", prcGroup: "", eqp: "" })
+
+  const currentUserQuery = useQuery({
+    queryKey: ["current-user"],
+    queryFn: fetchCurrentUser,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  })
+
+  useEffect(() => {
+    const currentKnoxId = normalizeKnoxId(currentUserQuery.data?.knoxId)
+    if (!currentKnoxId || initializedKnoxId.current) return
+    initializedKnoxId.current = true
+    setRecipientKnoxIds([currentKnoxId])
+  }, [currentUserQuery.data?.knoxId])
 
   const mappingQuery = useQuery({
     queryKey: ["l0-spider-line-mapping"],
@@ -311,7 +338,7 @@ export function MyEqpRegistrationPage() {
       setSaveFailure(null)
       queryClient.invalidateQueries({ queryKey: ["my-eqp-registrations"] })
       toast.success("My EQP 기준정보를 저장했습니다.", {
-        description: `${result.requestedRows?.toLocaleString() ?? 0}개 EQP 저장 완료`,
+        description: `${result.knoxIds?.length?.toLocaleString() ?? 1}명 · ${result.requestedRows?.toLocaleString() ?? 0}행 저장 완료`,
       })
     },
     onError: (error) => {
@@ -383,9 +410,11 @@ export function MyEqpRegistrationPage() {
       .sort((left, right) => left.label.localeCompare(right.label, "ko", { numeric: true }))
   }, [activePrcGroup, sdwtReferenceRows])
   const eqpValues = useMemo(() => new Set(eqpRows.map((row) => row.label)), [eqpRows])
-  const activeEqps = selectedEqps.includes(ALL_EQP) && eqpRows.length > 0
-    ? [ALL_EQP]
-    : selectedEqps.filter((eqp) => eqpValues.has(eqp))
+  const activeEqps = useMemo(() => (
+    selectedEqps.includes(ALL_EQP) && eqpRows.length > 0
+      ? [ALL_EQP]
+      : selectedEqps.filter((eqp) => eqpValues.has(eqp))
+  ), [eqpRows.length, eqpValues, selectedEqps])
 
   const lineOptions = lines
     .map((line) => ({ value: line, label: formatLineDisplayName(line) }))
@@ -405,7 +434,12 @@ export function MyEqpRegistrationPage() {
   const parsedMonitoringDays = Number(monitoringDays)
   const hasValidMonitoringDays = Number.isInteger(parsedMonitoringDays) && parsedMonitoringDays > 0
   const isReadyToSave = Boolean(
-    activeLine && activeSdwt && activePrcGroup && activeEqps.length > 0 && hasValidMonitoringDays,
+    activeLine
+      && activeSdwt
+      && activePrcGroup
+      && activeEqps.length > 0
+      && hasValidMonitoringDays
+      && recipientKnoxIds.length > 0,
   )
 
   const changeQuery = (key, value) => {
@@ -446,26 +480,70 @@ export function MyEqpRegistrationPage() {
     ))
   }
 
-  const handleSave = () => {
-    if (!isReadyToSave || registrationMutation.isPending) return
+  const addRecipientKnoxId = () => {
+    const knoxId = normalizeKnoxId(recipientKnoxInput)
+    if (!knoxId || knoxId.length > 128 || !KNOX_ID_PATTERN.test(knoxId)) {
+      toast.error("knox_id 형식을 확인해 주세요.", {
+        description: "영문, 숫자, 점(.), 밑줄(_), 하이픈(-)만 입력할 수 있습니다.",
+      })
+      return
+    }
+    setRecipientKnoxIds((current) => current.includes(knoxId) ? current : [...current, knoxId])
+    setRecipientKnoxInput("")
+  }
 
+  const removeRecipientKnoxId = (knoxId) => {
+    setRecipientKnoxIds((current) => current.filter((value) => value !== knoxId))
+  }
+
+  const buildSavePayload = useCallback(() => {
     const eqps = activeEqps.includes(ALL_EQP)
       ? eqpRows.map((row) => row.label)
       : activeEqps
-    registrationMutation.mutate({
+    return {
       line: activeLine,
       sdwt: activeSdwtLabel,
       prcGroup: activePrcGroup,
       eqps,
       periode: parsedMonitoringDays,
       comment,
-      isPublic,
-    })
+      knoxIds: recipientKnoxIds,
+    }
+  }, [
+    activeEqps,
+    activeLine,
+    activePrcGroup,
+    activeSdwtLabel,
+    comment,
+    eqpRows,
+    parsedMonitoringDays,
+    recipientKnoxIds,
+  ])
+
+  const handleSave = () => {
+    if (!isReadyToSave || registrationMutation.isPending) return
+    registrationMutation.mutate(buildSavePayload())
   }
 
+  useImperativeHandle(saveRef, () => ({
+    isReady: isReadyToSave,
+    save: () => {
+      if (!isReadyToSave || registrationMutation.isPending) return null
+      return registrationMutation.mutateAsync(buildSavePayload())
+    },
+  }), [
+    buildSavePayload,
+    isReadyToSave,
+    registrationMutation,
+  ])
+
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto bg-muted/30">
-      <header className="shrink-0 border-b bg-card px-5 py-4 sm:px-6 lg:px-8">
+    <div className={cn(
+      "min-w-0",
+      !embedded && "flex h-full min-h-0 flex-col overflow-y-auto bg-muted/30",
+    )}>
+      {!embedded ? (
+        <header className="shrink-0 border-b bg-card px-5 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto flex w-full max-w-[1680px] flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -487,9 +565,10 @@ export function MyEqpRegistrationPage() {
             </Link>
           </Button>
         </div>
-      </header>
+        </header>
+      ) : null}
 
-      <main className="w-full flex-1 px-4 py-5 sm:px-6 lg:px-8">
+      <main className={cn("w-full flex-1", embedded ? "py-1" : "px-4 py-5 sm:px-6 lg:px-8")}>
         <div className="mx-auto grid w-full max-w-[1680px] gap-5">
           <section aria-labelledby="filter-title">
             <div className="mb-3">
@@ -661,44 +740,99 @@ export function MyEqpRegistrationPage() {
             </CardContent>
           </Card>
 
+          <Card className="gap-4 py-5">
+            <CardHeader className="gap-1 px-5 sm:px-6">
+              <div className="flex items-center gap-2">
+                <UserRound className="size-4 text-primary" aria-hidden="true" />
+                <CardTitle className="text-base">열람 및 메일수신인 지정</CardTitle>
+              </div>
+              <CardDescription className="text-xs">
+                knox_id를 입력하고 Enter를 누르세요. 지정된 사용자별로 My EQP 기준정보가 저장됩니다.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 px-5 sm:px-6">
+              <div className="max-w-2xl">
+                <label htmlFor="my-eqp-recipient-knox-id" className="mb-2 block text-xs font-medium">
+                  knox_id 입력
+                </label>
+                <Input
+                  id="my-eqp-recipient-knox-id"
+                  value={recipientKnoxInput}
+                  onChange={(event) => setRecipientKnoxInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return
+                    event.preventDefault()
+                    addRecipientKnoxId()
+                  }}
+                  placeholder={currentUserQuery.isLoading ? "접속자 정보를 확인하는 중…" : "knox_id 입력 후 Enter"}
+                  className="h-12 text-base font-semibold"
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  복수 등록할 수 있으며, 각 사용자에게 자설비 이상감지의 MY EQP 열람 권한이 부여됩니다.
+                </p>
+              </div>
+
+              {recipientKnoxIds.length ? (
+                <div className="grid gap-3 rounded-xl border bg-muted/20 p-4">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <SelectionItem label="Line Name" value={formatLineDisplayName(activeLine)} complete={Boolean(activeLine)} />
+                    <SelectionItem label="SDWT" value={activeSdwtLabel} complete={Boolean(activeSdwt)} />
+                    <SelectionItem label="PRC Group" value={activePrcGroup} complete={Boolean(activePrcGroup)} />
+                    <SelectionItem label="EQP" value={selectedEqpLabel} complete={activeEqps.length > 0} />
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-semibold text-foreground">
+                      지정된 knox_id {recipientKnoxIds.length.toLocaleString()}명
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {recipientKnoxIds.map((knoxId) => (
+                        <Badge key={knoxId} variant="secondary" className="gap-1.5 py-1 pl-2.5 pr-1.5">
+                          {knoxId}
+                          <button
+                            type="button"
+                            className="grid size-5 place-items-center rounded-full hover:bg-background/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`${knoxId} 삭제`}
+                            onClick={() => removeRecipientKnoxId(knoxId)}
+                          >
+                            <X className="size-3" aria-hidden="true" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+                  열람 및 메일수신인으로 지정할 knox_id를 1명 이상 등록하세요.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <section className="flex flex-col items-stretch justify-between gap-4 rounded-2xl border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:p-6">
             <div>
-              <h2 className="text-sm font-semibold">등록할 기준정보를 확인하세요.</h2>
+              <h2 className="text-sm font-semibold">지정한 사용자에게 기준정보를 저장합니다.</h2>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                모든 조건과 모니터링 기간을 입력하면 저장 버튼이 활성화됩니다.
+                모든 조건과 모니터링 기간, knox_id를 입력하면 저장할 수 있습니다.
               </p>
             </div>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="min-w-64">
-                <div className="flex items-center gap-2.5">
-                  <Checkbox
-                    id="my-eqp-public"
-                    checked={isPublic}
-                    onCheckedChange={(checked) => setIsPublic(checked === true)}
-                    aria-describedby="my-eqp-public-help"
-                  />
-                  <label htmlFor="my-eqp-public" className="cursor-pointer text-sm font-semibold">
-                    전체 공개
-                  </label>
-                </div>
-                <p id="my-eqp-public-help" className="mt-1.5 text-xs leading-5 text-muted-foreground">
-                  My EQP 등록 설비를 본인만이 아닌 다른 유저에게도 공개
-                </p>
-              </div>
-              <Button
-                type="button"
-                size="lg"
-                className="h-12 min-w-52 rounded-xl text-base shadow-lg shadow-primary/15"
-                disabled={!isReadyToSave || registrationMutation.isPending}
-                onClick={handleSave}
-              >
-                {registrationMutation.isPending ? (
-                  <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Save className="size-5" aria-hidden="true" />
-                )}
-                {registrationMutation.isPending ? "저장 중…" : "My EQP 저장"}
-              </Button>
+              {!embedded ? (
+                <Button
+                  type="button"
+                  size="lg"
+                  className="h-12 min-w-52 rounded-xl text-base shadow-lg shadow-primary/15"
+                  disabled={!isReadyToSave || registrationMutation.isPending}
+                  onClick={handleSave}
+                >
+                  {registrationMutation.isPending ? (
+                    <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Save className="size-5" aria-hidden="true" />
+                  )}
+                  {registrationMutation.isPending ? "저장 중…" : "My EQP 저장"}
+                </Button>
+              ) : null}
             </div>
           </section>
 
@@ -804,4 +938,4 @@ export function MyEqpRegistrationPage() {
       </Dialog>
     </div>
   )
-}
+})

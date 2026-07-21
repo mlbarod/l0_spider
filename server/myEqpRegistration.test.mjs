@@ -30,11 +30,12 @@ test("My EQP 등록 요청을 DB 컬럼용 값으로 정규화한다", () => {
     periode: 15,
     comment: "점검 대상",
     knoxId: "user01",
+    knoxIds: ["user01"],
     isPublic: false,
   })
 })
 
-test("전체 공개 선택을 공개 My EQP 값으로 정규화한다", () => {
+test("전체 공개 요청이 포함되어도 신규 My EQP는 지정 사용자 전용으로 저장한다", () => {
   const payload = buildMyEqpRegistrationPayload({
     line: "P1D",
     sdwt: "DREAMS P1D",
@@ -44,7 +45,7 @@ test("전체 공개 선택을 공개 My EQP 값으로 정규화한다", () => {
     isPublic: true,
   }, "user01")
 
-  assert.equal(payload.isPublic, true)
+  assert.equal(payload.isPublic, false)
 })
 
 test("복수 선택한 EQP를 EQP별 개별 DB 행으로 만든다", () => {
@@ -57,6 +58,7 @@ test("복수 선택한 EQP를 EQP별 개별 DB 행으로 만든다", () => {
     periode: 15,
     comment: "점검 대상",
     knoxId: "user01",
+    knoxIds: ["user01"],
     isPublic: true,
   })
 
@@ -64,6 +66,27 @@ test("복수 선택한 EQP를 EQP별 개별 DB 행으로 만든다", () => {
   assert.deepEqual(rows.map((row) => row.eqp), ["EQP01_CH_A", "EQP02_CH_B"])
   assert.ok(rows.every((row) => row.line === "P1D" && row.periode === 15))
   assert.ok(rows.every((row) => row.is_public === 1))
+})
+
+test("복수 knox_id와 EQP의 조합을 각각 DB 행으로 만든다", () => {
+  const payload = buildMyEqpRegistrationPayload({
+    line: "P1D",
+    sdwt: "DREAMS P1D",
+    prcGroup: "OXIDE ETCH",
+    eqps: ["EQP01", "EQP02"],
+    periode: 7,
+    knoxIds: ["user01", " user02@samsung.com ", "user01"],
+  }, "owner")
+  const rows = buildMyEqpDebugRows(payload)
+
+  assert.deepEqual(payload.knoxIds, ["user01", "user02"])
+  assert.equal(rows.length, 4)
+  assert.deepEqual(rows.map((row) => [row.knox_id, row.eqp]), [
+    ["user01", "EQP01"],
+    ["user01", "EQP02"],
+    ["user02", "EQP01"],
+    ["user02", "EQP02"],
+  ])
 })
 
 test("동일 저장 조건의 EQP 행을 하나의 등록 조건으로 묶고 만료를 계산한다", () => {

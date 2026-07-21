@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { Activity, BookOpen, CalendarClock, ChartNoAxesCombined, Gauge, Mail, Network, Radar, ScanSearch, Settings2, Users } from "lucide-react"
+import { Activity, BookOpen, CalendarClock, ChartNoAxesCombined, Gauge, Mail, Network, Radar, ScanSearch, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
@@ -51,20 +51,11 @@ const spiderApps = [
     empty: true,
   },
   {
-    icon: Settings2,
-    title: "My EQP 등록",
-    subtitle: "모니터링할 라인과 설비, 조회 기간을 개인 기준정보로 등록합니다.",
-    category: "My EQP",
-    href: "/my-eqp",
-    active: true,
-    status: "운영중",
-  },
-  {
     icon: Mail,
-    title: "Mailing Report 수신인 등록",
-    subtitle: "Line과 SDWT별 이상감지 Mailing 수신 대상을 등록합니다.",
-    category: "Recipients",
-    href: "/recipients",
+    title: "Mailing Report 및\nMy EQP 등록",
+    subtitle: "Mailing 수신 조건과 My EQP 모니터링 설비를 함께 등록합니다.",
+    category: "Registration",
+    href: "/registration",
     active: true,
     status: "운영중",
   },
@@ -148,7 +139,7 @@ function SpiderAppCard({ app, animationIndex = 0 }) {
       <div className="flex min-h-0 flex-1 flex-col justify-between text-left">
         <div>
           <h3 className={cn(
-            "mb-2 text-base font-semibold leading-tight transition-colors",
+            "mb-2 whitespace-pre-line text-base font-semibold leading-tight transition-colors",
             isOperating ? "text-foreground group-hover:text-primary" : "text-muted-foreground",
           )}>
             {app.title}
