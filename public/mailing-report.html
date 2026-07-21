@@ -26,10 +26,19 @@
       - change_from_previous_day: formatted text such as "▲ 12건", "▼ 3건", or "변동 없음"
       - change_color: #d97706 for increase, #059669 for decrease, #667085 for no change
       - rows: line_name, sdwt, sensor_grade, dashboard_abnormal_count
+      - my_eqp_rows: line_name, sdwt, eqp, sensor_grade, dashboard_abnormal_count
+
+      The sender recipient set is the union of email.email and the knox_id values in
+      active myeqp_regist rows. A recipient can receive either section or both.
 
       dashboard_abnormal_count must come from lineDashboard.mailingSummary.abnormalCount.
       It uses the same dashboard rule: unique desc, recipe_id, priority, sensor,
       and eqp combinations, aggregated by date, Line, SDWT, and Sensor Grade.
+
+      my_eqp_rows must be filtered for the mail recipient by active myeqp_regist rows,
+      then joined to lineDashboard.myEqpMailingSummary by Line, SDWT, and EQP.
+      Its dashboard_abnormal_count comes from myEqpMailingSummary.abnormalCount, which
+      uses the same unique-combination rule with an additional EQP grouping dimension.
 
       The sender must render this file as a Jinja-compatible HTML template with HTML
       auto-escaping enabled. The urlencode filters in each LINK preserve the selected
@@ -116,7 +125,7 @@
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; border:1px solid #dfe3e8; border-radius:12px; border-collapse:separate; border-spacing:0; background-color:#ffffff; overflow:hidden; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
                   <tr>
                     <td style="padding:16px 18px 13px; border-bottom:1px solid #eaecf0;">
-                      <div style="color:#172033; font-size:15px; line-height:22px; font-weight:700;">Line · SDWT · Sensor Grade별 이상 현황</div>
+                      <div style="color:#172033; font-size:15px; line-height:22px; font-weight:700;">전체 이상현황 Report</div>
                       <div style="margin-top:3px; color:#667085; font-size:11px; line-height:17px;">LINK를 누르면 선택 조건이 적용된 자설비 이상감지 화면으로 이동합니다.</div>
                     </td>
                   </tr>
@@ -148,6 +157,55 @@
                           {% else %}
                           <tr>
                             <td colspan="5" align="center" style="padding:34px 16px; color:#667085; font-size:13px; line-height:20px;">조회 조건에 해당하는 이상건이 없습니다.</td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td colspan="7" class="content-padding" style="padding:18px 4px 0;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; border:1px solid #dfe3e8; border-radius:12px; border-collapse:separate; border-spacing:0; background-color:#ffffff; overflow:hidden; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
+                  <tr>
+                    <td style="padding:16px 18px 13px; border-bottom:1px solid #eaecf0;">
+                      <div style="color:#172033; font-size:15px; line-height:22px; font-weight:700;">My EQP 이상현황 Report</div>
+                      <div style="margin-top:3px; color:#667085; font-size:11px; line-height:17px;">수신인에게 지정된 My EQP 중 이상이 발생한 설비를 표시합니다.</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0; overflow-x:auto;">
+                      <table role="table" width="100%" cellspacing="0" cellpadding="0" border="0" class="detail-table" style="width:100%; min-width:860px; border-collapse:collapse;">
+                        <thead>
+                          <tr style="background-color:#f8fafc;">
+                            <th align="left" scope="col" style="padding:12px 14px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">Line Name</th>
+                            <th align="left" scope="col" style="padding:12px 14px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">SDWT</th>
+                            <th align="left" scope="col" style="padding:12px 14px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">EQP</th>
+                            <th align="center" scope="col" style="padding:12px 14px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">Sensor Grade</th>
+                            <th align="right" scope="col" style="padding:12px 14px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">이상건수</th>
+                            <th align="center" scope="col" style="width:112px; padding:12px 14px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">LINK</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for row in my_eqp_rows | default([]) %}
+                          <tr>
+                            <td style="padding:13px 14px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700;">{{ row.line_name }}</td>
+                            <td style="padding:13px 14px; border-bottom:1px solid #f0f2f5; color:#344054; font-size:13px; line-height:19px;">{{ row.sdwt }}</td>
+                            <td style="padding:13px 14px; border-bottom:1px solid #f0f2f5; color:#344054; font-size:13px; line-height:19px; font-weight:700;">{{ row.eqp }}</td>
+                            <td align="center" style="padding:13px 14px; border-bottom:1px solid #f0f2f5;">
+                              <span style="display:inline-block; min-width:34px; padding:3px 9px; border:1px solid #bfdbfe; border-radius:999px; background-color:#eff6ff; color:#1d4ed8; font-size:11px; line-height:16px; font-weight:700;">{{ row.sensor_grade }}</span>
+                            </td>
+                            <td align="right" style="padding:13px 14px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700; white-space:nowrap;">{{ row.dashboard_abnormal_count }}건</td>
+                            <td align="center" style="padding:10px 14px; border-bottom:1px solid #f0f2f5;">
+                              <a href="{{ spider_base_url }}/self-equipment?line={{ row.line_name | urlencode }}&amp;sdwt={{ row.sdwt | urlencode }}&amp;grade={{ row.sensor_grade | urlencode }}" target="_blank" rel="noopener noreferrer" style="display:inline-block; min-width:58px; padding:7px 12px; border:1px solid #2563eb; border-radius:7px; background-color:#ffffff; color:#2563eb; font-size:11px; line-height:15px; font-weight:700; text-align:center; text-decoration:none;">LINK&nbsp; ↗</a>
+                            </td>
+                          </tr>
+                          {% else %}
+                          <tr>
+                            <td colspan="6" align="center" style="padding:34px 16px; color:#667085; font-size:13px; line-height:20px;">등록된 My EQP에 해당하는 이상건이 없습니다.</td>
                           </tr>
                           {% endfor %}
                         </tbody>

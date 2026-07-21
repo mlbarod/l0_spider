@@ -126,14 +126,12 @@ def parse_list(value):
 
 
 def build_insert_values(payload, sdwt_chunks, priority_chunks):
-    knox_ids = payload.get("knoxIds") or [payload["knoxId"]]
     return [
         (
-            knox_id,
+            payload["knoxId"],
             serialize_list(sdwt_chunk),
             serialize_list(priority_chunk),
         )
-        for knox_id in knox_ids
         for sdwt_chunk in sdwt_chunks
         for priority_chunk in priority_chunks
     ]
@@ -146,9 +144,7 @@ def insert_registration(payload, db_info):
     """
     with connect(db_info) as connection:
         column_schema = read_email_column_schema(connection, db_info["DB_NAME"])
-        knox_ids = payload.get("knoxIds") or [payload["knoxId"]]
-        for knox_id in knox_ids:
-            ensure_text_fits("email", knox_id, column_schema)
+        ensure_text_fits("email", payload["knoxId"], column_schema)
         sdwt_chunks = split_list_for_column(
             payload["sdwts"],
             column_schema["sdwt"]["maxLength"],

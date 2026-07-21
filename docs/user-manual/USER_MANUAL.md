@@ -187,10 +187,11 @@ Mailing Report에는 다음 내용이 포함됩니다.
 
 - 대시보드와 같은 7개 이상현황 지표
 - SPIDER 메인화면 이동 버튼
-- `Line Name`, `SDWT`, `Sensor Grade`, `이상건수`, `LINK` 테이블
+- **전체 이상현황 Report**: `Line Name`, `SDWT`, `Sensor Grade`, `이상건수`, `LINK`
+- **My EQP 이상현황 Report**: `Line Name`, `SDWT`, `EQP`, `Sensor Grade`, `이상건수`, `LINK`
 - Line·SDWT·Grade 조건을 쿼리에 담아 자설비 이상감지 주소로 이동하는 LINK
 
-LINK로 자설비 화면에 접속하면 URL에 포함된 Line·SDWT·Grade가 자동 선택됩니다. A 또는 B Grade 링크는 화면의 `A/B` 필터로 적용됩니다.
+두 Report의 이상건수는 대시보드와 같은 고유 이상건 조합 기준입니다. My EQP Report는 수신인에게 지정된 활성 My EQP만 표시합니다. LINK로 자설비 화면에 접속하면 URL에 포함된 Line·SDWT·Grade가 자동 선택되며, A 또는 B Grade는 화면의 `A/B` 필터로 적용됩니다.
 
 ## 8. 데이터 변경 작업
 

@@ -5,6 +5,7 @@ import {
   MAILING_PRIORITIES,
   buildMailingDeletePayload,
   buildMailingDebugRow,
+  buildMailingRecipientPayloads,
   buildMailingRegistrationPayload,
   handleMailingRegistrationRequest,
   normalizeMailingRecords,
@@ -33,6 +34,19 @@ test("복수 수신인 knox_id를 정규화하고 중복 제거한다", () => {
 
   assert.equal(payload.knoxId, "user01")
   assert.deepEqual(payload.knoxIds, ["user01", "user02"])
+})
+
+test("복수 수신인은 DB helper에 전달하기 전에 단건 knox_id payload로 분리한다", () => {
+  const payloads = buildMailingRecipientPayloads(buildMailingRegistrationPayload({
+    knoxIds: ["user01", "user02"],
+    sdwts: ["DREAMS P1D"],
+  }))
+
+  assert.deepEqual(payloads, [
+    { knoxId: "user01", sdwts: ["DREAMS P1D"], priorities: [...MAILING_PRIORITIES] },
+    { knoxId: "user02", sdwts: ["DREAMS P1D"], priorities: [...MAILING_PRIORITIES] },
+  ])
+  assert.ok(payloads.every((payload) => !Object.hasOwn(payload, "knoxIds")))
 })
 
 test("VARCHAR 컬럼에 저장할 복수 값을 JSON 배열 문자열로 만든다", () => {

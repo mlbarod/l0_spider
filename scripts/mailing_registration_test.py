@@ -23,16 +23,15 @@ class MailingRegistrationStorageTest(unittest.TestCase):
         self.assertEqual([item for chunk in chunks for item in chunk], values)
         self.assertTrue(all(len(serialize_list(chunk)) <= 9 for chunk in chunks))
 
-    def test_insert_values_are_created_for_each_recipient(self):
+    def test_insert_values_use_one_scalar_recipient(self):
         values = build_insert_values(
-            {"knoxIds": ["user01", "user02"]},
+            {"knoxId": "user01"},
             [["DREAMS P1D"]],
             [["A", "B"]],
         )
 
         self.assertEqual(values, [
             ("user01", '["DREAMS P1D"]', '["A","B"]'),
-            ("user02", '["DREAMS P1D"]', '["A","B"]'),
         ])
 
 

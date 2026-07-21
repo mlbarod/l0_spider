@@ -101,6 +101,14 @@ export function buildMailingDebugRow(payload) {
   }
 }
 
+export function buildMailingRecipientPayloads(payload) {
+  const { knoxIds, ...sharedPayload } = payload
+  return knoxIds.map((knoxId) => ({
+    ...sharedPayload,
+    knoxId,
+  }))
+}
+
 function runMailingHelper(action, payload) {
   return new Promise((resolvePromise, reject) => {
     const child = spawn("python3", ["-B", helperPath, action], {
@@ -176,8 +184,18 @@ export async function handleMailingRegistrationRequest(req, res, url) {
     }
 
     const payload = buildMailingRegistrationPayload(body)
-    debugRow = buildMailingDebugRow(payload)
-    const result = await runMailingHelper("insert", payload)
+    const recipientPayloads = buildMailingRecipientPayloads(payload)
+    const results = []
+    for (const recipientPayload of recipientPayloads) {
+      debugRow = buildMailingDebugRow(recipientPayload)
+      results.push(await runMailingHelper("insert", recipientPayload))
+    }
+    const result = {
+      ok: true,
+      affectedRows: results.reduce((sum, item) => sum + Number(item.affectedRows ?? 0), 0),
+      requestedRows: results.reduce((sum, item) => sum + Number(item.requestedRows ?? 0), 0),
+      storage: results[0]?.storage,
+    }
     sendJson(res, 200, {
       ...result,
       registration: {

@@ -319,6 +319,8 @@ function aggregateDashboardLineRows(rows, sdwtLineLookup, sdwtDisplayLookup) {
   const combinationsByLineGrade = new Map()
   const combinationsByMailingRow = new Map()
   const mailingDimensionsByKey = new Map()
+  const combinationsByMyEqpMailingRow = new Map()
+  const myEqpMailingDimensionsByKey = new Map()
   const sdwtsByLine = new Map()
   const sensorGradesByLine = new Map()
   const actualLines = new Set()
@@ -357,6 +359,19 @@ function aggregateDashboardLineRows(rows, sdwtLineLookup, sdwtDisplayLookup) {
     mailingCombinations.add(combinationKey)
     combinationsByMailingRow.set(mailingKey, mailingCombinations)
     mailingDimensionsByKey.set(mailingKey, { lineId, sdwt, sensorGrade: priority })
+
+    const eqp = normalizeText(row.eqp).replace(/\.png$/i, "")
+    const myEqpMailingKey = [lineId, sdwt, eqp, priority].join("\u0000")
+    const myEqpMailingCombinations = combinationsByMyEqpMailingRow.get(myEqpMailingKey)
+      ?? new Set()
+    myEqpMailingCombinations.add(combinationKey)
+    combinationsByMyEqpMailingRow.set(myEqpMailingKey, myEqpMailingCombinations)
+    myEqpMailingDimensionsByKey.set(myEqpMailingKey, {
+      lineId,
+      sdwt,
+      eqp,
+      sensorGrade: priority,
+    })
   })
 
   const countsByLine = new Map(
@@ -372,12 +387,17 @@ function aggregateDashboardLineRows(rows, sdwtLineLookup, sdwtDisplayLookup) {
   const mailingCountsByKey = new Map(
     Array.from(combinationsByMailingRow, ([key, combinations]) => [key, combinations.size]),
   )
+  const myEqpMailingCountsByKey = new Map(
+    Array.from(combinationsByMyEqpMailingRow, ([key, combinations]) => [key, combinations.size]),
+  )
 
   return {
     countsByLine,
     gradeCountsByLine,
     mailingCountsByKey,
     mailingDimensionsByKey,
+    myEqpMailingCountsByKey,
+    myEqpMailingDimensionsByKey,
     sdwtsByLine,
     sensorGradesByLine,
     actualLines,
@@ -490,6 +510,25 @@ function buildLineDashboardPayloadFromAggregates(
       || compareLineIds(left.sdwt, right.sdwt)
       || compareMailingSensorGrades(left.sensorGrade, right.sensorGrade)
     ))
+  const myEqpMailingRowsByKey = new Map()
+  dates.forEach((date) => {
+    const aggregate = aggregatesByDate.get(date)
+    aggregate?.myEqpMailingCountsByKey?.forEach((abnormalCount, key) => {
+      const dimensions = aggregate.myEqpMailingDimensionsByKey.get(key)
+      if (!dimensions || !selectedLineSet.has(dimensions.lineId)) return
+      const current = myEqpMailingRowsByKey.get(key) ?? { ...dimensions, abnormalCount: 0 }
+      current.abnormalCount += abnormalCount
+      myEqpMailingRowsByKey.set(key, current)
+    })
+  })
+  const myEqpMailingSummary = Array.from(myEqpMailingRowsByKey.values())
+    .filter((row) => row.eqp && ["A", "B", "D", "M", "N"].includes(row.sensorGrade))
+    .sort((left, right) => (
+      compareLineIds(left.lineId, right.lineId)
+      || compareLineIds(left.sdwt, right.sdwt)
+      || compareLineIds(left.eqp, right.eqp)
+      || compareMailingSensorGrades(left.sensorGrade, right.sensorGrade)
+    ))
 
   return {
     filters: {
@@ -524,6 +563,7 @@ function buildLineDashboardPayloadFromAggregates(
     lineSummary,
     dailyTrend,
     mailingSummary,
+    myEqpMailingSummary,
     meta: {
       filesRead: datedAggregates.length,
       comparisonFileRead: hasPreviousData,
