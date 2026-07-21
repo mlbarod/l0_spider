@@ -1814,27 +1814,33 @@ export function FdcTrendPage() {
       </header>
 
       <section className="shrink-0 border-b bg-card px-6 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 shadow-sm">
-          <div>
-            <p className="text-sm font-semibold">3일치 동일성 차트 같이 보기</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              ch_step 모아보기에서 기존 차트 오른쪽에 최근 72시간 동일성 차트를 함께 표시합니다.
-            </p>
-          </div>
-          <Button
+        <div className="flex justify-start">
+          <button
             type="button"
-            variant={showThreeDayIdentity ? "default" : "outline"}
-            className="min-w-28 justify-between gap-3"
+            className="group inline-flex items-center gap-3 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             role="switch"
             aria-checked={showThreeDayIdentity}
             onClick={() => setShowThreeDayIdentity((current) => !current)}
           >
             <span className={cn(
-              "size-2.5 rounded-full",
-              showThreeDayIdentity ? "bg-emerald-300" : "bg-muted-foreground/50",
-            )} />
-            {showThreeDayIdentity ? "ON" : "OFF"}
-          </Button>
+              "relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-200 ease-in-out",
+              showThreeDayIdentity
+                ? "border-primary bg-primary"
+                : "border-input bg-muted-foreground/35",
+            )}>
+              <span className={cn(
+                "absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out",
+                showThreeDayIdentity && "translate-x-5",
+              )} />
+            </span>
+            <span>
+              <span className="block text-sm font-medium text-foreground">3일치 동일성 차트 같이 보기</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                ch_step 모아보기에서 기존 차트 오른쪽에 최근 72시간 동일성 차트를 표시합니다.
+              </span>
+            </span>
+            <span className="sr-only">{showThreeDayIdentity ? "켜짐" : "꺼짐"}</span>
+          </button>
         </div>
       </section>
 
