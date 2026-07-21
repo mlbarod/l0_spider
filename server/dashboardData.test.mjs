@@ -180,12 +180,6 @@ test("sdwt를 라인으로 매핑한 뒤 날짜·라인별 5개 컬럼 고유조
     { lineId: "P1", sdwt: "SDWT 2", sensorGrade: "A", abnormalCount: 1 },
     { lineId: "P2", sdwt: "SDWT 3", sensorGrade: "D", abnormalCount: 2 },
   ])
-  assert.deepEqual(payload.myEqpMailingSummary, [
-    { lineId: "P1", sdwt: "SDWT 1", eqp: "EQ1", sensorGrade: "A", abnormalCount: 2 },
-    { lineId: "P1", sdwt: "SDWT 1", eqp: "EQ2", sensorGrade: "B", abnormalCount: 1 },
-    { lineId: "P1", sdwt: "SDWT 2", eqp: "EQ1", sensorGrade: "A", abnormalCount: 1 },
-    { lineId: "P2", sdwt: "SDWT 3", eqp: "EQ3", sensorGrade: "D", abnormalCount: 2 },
-  ])
   assert.equal(payload.meta.unmappedRows, 2)
 })
 

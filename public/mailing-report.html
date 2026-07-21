@@ -25,20 +25,28 @@
         d_grade_count, n_grade_count, m_grade_count
       - change_from_previous_day: formatted text such as "▲ 12건", "▼ 3건", or "변동 없음"
       - change_color: #d97706 for increase, #059669 for decrease, #667085 for no change
-      - rows: line_name, sdwt, sensor_grade, dashboard_abnormal_count
-      - my_eqp_rows: line_name, sdwt, eqp, sensor_grade, dashboard_abnormal_count
+      - recipient_knox_id: the knox_id receiving this rendered mail
+      - rows: knox_id, line_name, sdwt, sensor_grade, dashboard_abnormal_count
+      - my_eqp_rows: knox_id, line_name, sdwt, prc_group, eqp, sensor_grade,
+        dashboard_abnormal_count
 
       The sender recipient set is the union of email.email and the knox_id values in
       active myeqp_regist rows. A recipient can receive either section or both.
+
+      rows and my_eqp_rows must be filtered independently for recipient_knox_id:
+      - rows: only conditions registered in email where email.email matches the recipient
+      - my_eqp_rows: only active myeqp_regist conditions where knox_id matches the recipient
+      Never include another knox_id's conditions. If one list is empty, keep that report
+      table empty and render only the rows available in the other report table.
 
       dashboard_abnormal_count must come from lineDashboard.mailingSummary.abnormalCount.
       It uses the same dashboard rule: unique desc, recipe_id, priority, sensor,
       and eqp combinations, aggregated by date, Line, SDWT, and Sensor Grade.
 
-      my_eqp_rows must be filtered for the mail recipient by active myeqp_regist rows,
-      then joined to lineDashboard.myEqpMailingSummary by Line, SDWT, and EQP.
-      Its dashboard_abnormal_count comes from myEqpMailingSummary.abnormalCount, which
-      uses the same unique-combination rule with an additional EQP grouping dimension.
+      my_eqp_rows must be filtered for the mail recipient by active myeqp_regist rows.
+      Its dashboard_abnormal_count must be calculated by the sender with the same
+      unique desc, recipe_id, priority, sensor, and eqp rule as the dashboard, grouped
+      by date, Line, SDWT, EQP, and Sensor Grade. Do not modify lineDashboard for this.
 
       The sender must render this file as a Jinja-compatible HTML template with HTML
       auto-escaping enabled. The urlencode filters in each LINK preserve the selected
@@ -142,7 +150,7 @@
                           </tr>
                         </thead>
                         <tbody>
-                          {% for row in rows %}
+                          {% for row in rows if row.knox_id == recipient_knox_id %}
                           <tr>
                             <td style="padding:13px 16px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700;">{{ row.line_name }}</td>
                             <td style="padding:13px 16px; border-bottom:1px solid #f0f2f5; color:#344054; font-size:13px; line-height:19px;">{{ row.sdwt }}</td>
@@ -156,7 +164,7 @@
                           </tr>
                           {% else %}
                           <tr>
-                            <td colspan="5" align="center" style="padding:34px 16px; color:#667085; font-size:13px; line-height:20px;">조회 조건에 해당하는 이상건이 없습니다.</td>
+                            <td colspan="5" align="center" style="padding:34px 16px; color:#667085; font-size:13px; line-height:20px;">등록된 전체설비 Report 수신 조건 또는 해당 이상건이 없습니다.</td>
                           </tr>
                           {% endfor %}
                         </tbody>
@@ -178,11 +186,12 @@
                   </tr>
                   <tr>
                     <td style="padding:0; overflow-x:auto;">
-                      <table role="table" width="100%" cellspacing="0" cellpadding="0" border="0" class="detail-table" style="width:100%; min-width:860px; border-collapse:collapse;">
+                      <table role="table" width="100%" cellspacing="0" cellpadding="0" border="0" class="detail-table" style="width:100%; min-width:980px; border-collapse:collapse;">
                         <thead>
                           <tr style="background-color:#f8fafc;">
                             <th align="left" scope="col" style="padding:12px 14px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">Line Name</th>
                             <th align="left" scope="col" style="padding:12px 14px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">SDWT</th>
+                            <th align="left" scope="col" style="padding:12px 14px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">PRC Group</th>
                             <th align="left" scope="col" style="padding:12px 14px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">EQP</th>
                             <th align="center" scope="col" style="padding:12px 14px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">Sensor Grade</th>
                             <th align="right" scope="col" style="padding:12px 14px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">이상건수</th>
@@ -190,10 +199,11 @@
                           </tr>
                         </thead>
                         <tbody>
-                          {% for row in my_eqp_rows | default([]) %}
+                          {% for row in my_eqp_rows | default([]) if row.knox_id == recipient_knox_id %}
                           <tr>
                             <td style="padding:13px 14px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700;">{{ row.line_name }}</td>
                             <td style="padding:13px 14px; border-bottom:1px solid #f0f2f5; color:#344054; font-size:13px; line-height:19px;">{{ row.sdwt }}</td>
+                            <td style="padding:13px 14px; border-bottom:1px solid #f0f2f5; color:#344054; font-size:13px; line-height:19px;">{{ row.prc_group }}</td>
                             <td style="padding:13px 14px; border-bottom:1px solid #f0f2f5; color:#344054; font-size:13px; line-height:19px; font-weight:700;">{{ row.eqp }}</td>
                             <td align="center" style="padding:13px 14px; border-bottom:1px solid #f0f2f5;">
                               <span style="display:inline-block; min-width:34px; padding:3px 9px; border:1px solid #bfdbfe; border-radius:999px; background-color:#eff6ff; color:#1d4ed8; font-size:11px; line-height:16px; font-weight:700;">{{ row.sensor_grade }}</span>
@@ -205,7 +215,7 @@
                           </tr>
                           {% else %}
                           <tr>
-                            <td colspan="6" align="center" style="padding:34px 16px; color:#667085; font-size:13px; line-height:20px;">등록된 My EQP에 해당하는 이상건이 없습니다.</td>
+                            <td colspan="7" align="center" style="padding:34px 16px; color:#667085; font-size:13px; line-height:20px;">등록된 My EQP 수신 조건 또는 해당 이상건이 없습니다.</td>
                           </tr>
                           {% endfor %}
                         </tbody>
