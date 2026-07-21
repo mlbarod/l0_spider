@@ -125,45 +125,78 @@ def parse_list(value):
     return [item.strip() for item in text.split(",") if item.strip()]
 
 
-def build_insert_values(payload, sdwt_chunks, priority_chunks):
-    return [
-        (
-            payload["knoxId"],
-            serialize_list(sdwt_chunk),
-            serialize_list(priority_chunk),
-        )
-        for sdwt_chunk in sdwt_chunks
-        for priority_chunk in priority_chunks
-    ]
+def merge_unique_values(*groups):
+    merged = []
+    seen = set()
+    for group in groups:
+        for value in group:
+            normalized = str(value).strip()
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            merged.append(normalized)
+    return merged
+
+
+def merge_registration_values(payload, existing_rows):
+    existing_sdwts = []
+    existing_priorities = []
+    for raw_sdwt, raw_priority in existing_rows:
+        existing_sdwts.extend(parse_list(raw_sdwt))
+        existing_priorities.extend(parse_list(raw_priority))
+    return {
+        "sdwts": merge_unique_values(existing_sdwts, payload["sdwts"]),
+        "priorities": merge_unique_values(payload["priorities"], existing_priorities),
+    }
 
 
 def insert_registration(payload, db_info):
-    query = """
+    select_query = """
+        SELECT `sdwt`, `priority`
+        FROM `email`
+        WHERE `email` = %s
+        FOR UPDATE
+    """
+    insert_query = """
         INSERT INTO `email` (`email`, `sdwt`, `priority`)
         VALUES (%s, %s, %s)
+    """
+    update_query = """
+        UPDATE `email`
+        SET `sdwt` = %s, `priority` = %s
+        WHERE `email` = %s
     """
     with connect(db_info) as connection:
         column_schema = read_email_column_schema(connection, db_info["DB_NAME"])
         ensure_text_fits("email", payload["knoxId"], column_schema)
-        sdwt_chunks = split_list_for_column(
-            payload["sdwts"],
-            column_schema["sdwt"]["maxLength"],
-            "sdwt",
-        )
-        priority_chunks = split_list_for_column(
-            payload["priorities"],
-            column_schema["priority"]["maxLength"],
-            "priority",
-        )
-        values = build_insert_values(payload, sdwt_chunks, priority_chunks)
         with connection.cursor() as cursor:
-            affected_rows = cursor.executemany(query, values)
+            cursor.execute(select_query, (payload["knoxId"],))
+            existing_rows = cursor.fetchall()
+            merged = merge_registration_values(payload, existing_rows)
+            serialized_sdwts = serialize_list(merged["sdwts"])
+            serialized_priorities = serialize_list(merged["priorities"])
+            ensure_text_fits("sdwt", serialized_sdwts, column_schema)
+            ensure_text_fits("priority", serialized_priorities, column_schema)
+            if existing_rows:
+                affected_rows = cursor.execute(
+                    update_query,
+                    (serialized_sdwts, serialized_priorities, payload["knoxId"]),
+                )
+                operation = "merged"
+            else:
+                affected_rows = cursor.execute(
+                    insert_query,
+                    (payload["knoxId"], serialized_sdwts, serialized_priorities),
+                )
+                operation = "inserted"
         connection.commit()
 
     return {
         "ok": True,
         "affectedRows": affected_rows,
-        "requestedRows": len(values),
+        "requestedRows": 1,
+        "operation": operation,
+        "mergedExistingRows": len(existing_rows),
         "storage": {
             "sdwtType": column_schema["sdwt"]["dataType"],
             "sdwtMaxLength": column_schema["sdwt"]["maxLength"],

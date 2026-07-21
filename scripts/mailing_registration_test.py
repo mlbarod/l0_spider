@@ -1,6 +1,6 @@
 import unittest
 
-from scripts.mailing_registration import build_insert_values, serialize_list, split_list_for_column
+from scripts.mailing_registration import merge_registration_values, serialize_list, split_list_for_column
 
 
 class MailingRegistrationStorageTest(unittest.TestCase):
@@ -23,16 +23,21 @@ class MailingRegistrationStorageTest(unittest.TestCase):
         self.assertEqual([item for chunk in chunks for item in chunk], values)
         self.assertTrue(all(len(serialize_list(chunk)) <= 9 for chunk in chunks))
 
-    def test_insert_values_use_one_scalar_recipient(self):
-        values = build_insert_values(
-            {"knoxId": "user01"},
-            [["DREAMS P1D"]],
-            [["A", "B"]],
+    def test_existing_and_new_registration_values_are_merged(self):
+        merged = merge_registration_values(
+            {
+                "sdwts": ["NAND P1D", "TERA P1D"],
+                "priorities": ["A", "B", "D", "M", "N"],
+            },
+            [
+                ('["DREAMS P1D","NAND P1D"]', '["A","B"]'),
+            ],
         )
 
-        self.assertEqual(values, [
-            ("user01", '["DREAMS P1D"]', '["A","B"]'),
-        ])
+        self.assertEqual(merged, {
+            "sdwts": ["DREAMS P1D", "NAND P1D", "TERA P1D"],
+            "priorities": ["A", "B", "D", "M", "N"],
+        })
 
 
 if __name__ == "__main__":

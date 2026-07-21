@@ -3,10 +3,16 @@ async function readPayload(response) {
 }
 
 export async function createMailingRegistration({ knoxId, knoxIds, sdwts }) {
+  const recipientKnoxIds = Array.isArray(knoxIds) && knoxIds.length
+    ? knoxIds
+    : knoxId
+      ? [knoxId]
+      : []
+  const primaryKnoxId = knoxId || recipientKnoxIds[0] || ""
   const response = await fetch("/api/mailing-registration", {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ knoxId, knoxIds, sdwts }),
+    body: JSON.stringify({ knoxId: primaryKnoxId, knoxIds: recipientKnoxIds, sdwts }),
   })
   const payload = await readPayload(response)
 
