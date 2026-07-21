@@ -75,3 +75,49 @@ test("동일성 차트의 선택 EQP 원본 데이터는 단일 차트와 동일
     scatter.points.map(({ actTime, value, eqpId }) => ({ actTime, value, eqpId })),
   )
 })
+
+test("동일성 차트 기간을 지정하면 전체 데이터의 최신 act_time 기준 최근 N일만 반환한다", () => {
+  const rows = [
+    { eqp_cb: "EQP-1", act_time: "2026-07-10 11:59:59", TEMP_STEP: 1 },
+    { eqp_cb: "EQP-1", act_time: "2026-07-10 12:00:00", TEMP_STEP: 2 },
+    { eqp_cb: "EQP-2", act_time: "2026-07-13 12:00:00", TEMP_STEP: 3 },
+  ]
+
+  const payload = buildErdIdentityPayload(rows, {
+    eqp: "EQP-1",
+    axisColumn: "TEMP_STEP",
+    filePath: "/tmp/data.parquet",
+    windowDays: 3,
+  })
+
+  assert.equal(payload.windowDays, 3)
+  assert.equal(payload.mostRecentActTimeMs, Date.UTC(2026, 6, 13, 12))
+  assert.equal(payload.windowStartMs, Date.UTC(2026, 6, 10, 12))
+  assert.equal(payload.sourcePointCount, 2)
+  assert.equal(payload.pointCount, 2)
+  assert.deepEqual(
+    payload.groups.flatMap((group) => group.points.map((point) => point.actTime)),
+    ["2026-07-10 12:00:00", "2026-07-13 12:00:00"],
+  )
+})
+
+test("기간 동일성 응답은 EQP별 포인트를 샘플링해 차트 전송량을 제한한다", () => {
+  const rows = Array.from({ length: 1000 }, (_, index) => ({
+    eqp_cb: "EQP-1",
+    act_time: `2026-07-13 12:${String(Math.floor(index / 60) % 60).padStart(2, "0")}:${String(index % 60).padStart(2, "0")}`,
+    TEMP_STEP: index,
+  }))
+
+  const payload = buildErdIdentityPayload(rows, {
+    eqp: "EQP-1",
+    axisColumn: "TEMP_STEP",
+    filePath: "/tmp/data.parquet",
+    windowDays: 3,
+  })
+
+  assert.equal(payload.sourcePointCount, 1000)
+  assert.equal(payload.pointCount, 800)
+  assert.equal(payload.groups[0].sourcePointCount, 1000)
+  assert.equal(payload.groups[0].points[0].value, 0)
+  assert.equal(payload.groups[0].points.at(-1).value, 999)
+})

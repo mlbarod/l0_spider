@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, ArrowUp, Check, ChevronRight, Loader2 } from "lucide-react"
 import { Link, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -418,11 +418,12 @@ export function IdentityChartDialog({
   const [referenceLines, setReferenceLines] = useState([])
   const identityQuery = useQuery({
     queryKey: [queryKeyPrefix, row.file_path, eqp, row.sensor, row.step],
-    queryFn: () => identityFetcher({
+    queryFn: ({ signal }) => identityFetcher({
       filePath: row.file_path,
       eqp,
       sensor: row.sensor,
       chStep: row.step,
+      signal,
     }),
     enabled: Boolean(open && row.file_path && eqp && row.sensor && row.step),
     staleTime: Infinity,
@@ -681,6 +682,144 @@ export function IdentityChartDialog({
     </Dialog>
   )
 }
+
+const ThreeDayIdentityChartCard = memo(function ThreeDayIdentityChartCard({ row, eqp }) {
+  const cardRef = useRef(null)
+  const [isNearViewport, setIsNearViewport] = useState(false)
+
+  useEffect(() => {
+    const card = cardRef.current
+    if (!card || typeof IntersectionObserver === "undefined") {
+      setIsNearViewport(true)
+      return undefined
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return
+      setIsNearViewport(true)
+      observer.disconnect()
+    }, { rootMargin: "500px 0px" })
+    observer.observe(card)
+    return () => observer.disconnect()
+  }, [])
+
+  const identityQuery = useQuery({
+    queryKey: ["erd-identity-data", row.file_path, eqp, row.sensor, row.step, 3],
+    queryFn: ({ signal }) => fetchErdIdentityData({
+      filePath: row.file_path,
+      eqp,
+      sensor: row.sensor,
+      chStep: row.step,
+      days: 3,
+      signal,
+    }),
+    enabled: Boolean(isNearViewport && row.file_path && eqp && row.sensor && row.step),
+    staleTime: Infinity,
+    gcTime: 10 * 60 * 1000,
+  })
+  const groups = identityQuery.data?.groups ?? EMPTY_LIST
+  const axisColumn = identityQuery.data?.axisColumn ?? `${row.sensor}_${row.step}`
+  const identityPoints = useMemo(() => buildIdentityChartPoints(groups), [groups])
+  const renderedPoints = useMemo(
+    () => selectRenderedIdentityPoints(groups, identityPoints, null).points,
+    [groups, identityPoints],
+  )
+  const yDomain = useMemo(
+    () => numericDomain(groups.flatMap((group) => group.points.map((point) => point.value)), 1),
+    [groups],
+  )
+  const xDomain = [0, Math.max(groups.length, 1)]
+  const xTicks = groups.map((_, index) => index + 0.5)
+  const xAxisHeight = Math.min(
+    120,
+    Math.max(62, groups.reduce((length, group) => Math.max(length, group.eqpCb.length), 0) * 6 + 16),
+  )
+
+  return (
+    <article ref={cardRef} className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-primary/25 bg-card shadow-sm">
+      <header className="border-b border-primary/20 bg-primary/5 px-3 py-2">
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold">최근 3일 동일성 차트</h3>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {row.recipe_id || "PPID 미지정"} · {row.sensor || "sensor 미지정"} · {row.step || "ch_step 미지정"}
+            </p>
+          </div>
+          {identityQuery.data ? (
+            <Badge variant="secondary" className="shrink-0">
+              {groups.length.toLocaleString()} EQP · {identityQuery.data.pointCount.toLocaleString()} points
+            </Badge>
+          ) : null}
+        </div>
+      </header>
+      <div className="grid min-h-[320px] place-items-center bg-background p-3">
+        {!isNearViewport || identityQuery.isLoading ? (
+          <div className="grid justify-items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+            최근 3일 동일성 데이터를 준비 중입니다.
+          </div>
+        ) : identityQuery.isError ? (
+          <div className="max-w-md px-4 text-center text-sm text-destructive">
+            {identityQuery.error.message}
+          </div>
+        ) : groups.length ? (
+          <div className="h-[320px] w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 18, right: 14, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="identityX"
+                  type="number"
+                  height={xAxisHeight}
+                  domain={xDomain}
+                  ticks={xTicks}
+                  tick={<IdentityXAxisTick groups={groups} />}
+                  interval={0}
+                />
+                <YAxis
+                  dataKey="value"
+                  type="number"
+                  name={axisColumn}
+                  width={SCATTER_Y_AXIS_WIDTH}
+                  domain={yDomain}
+                  tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                  tickFormatter={(value) => Number(value).toFixed(2)}
+                />
+                <RechartsTooltip
+                  content={<ScatterPointTooltip axisColumn={axisColumn} />}
+                  cursor={false}
+                  isAnimationActive={false}
+                  animationDuration={0}
+                  wrapperStyle={{ transition: "none", willChange: "auto" }}
+                />
+                {groups.slice(1).map((group, index) => (
+                  <ReferenceLine
+                    key={group.eqpCb}
+                    x={index + 1}
+                    stroke="var(--foreground)"
+                    strokeWidth={1.25}
+                  />
+                ))}
+                <Scatter
+                  data={renderedPoints}
+                  dataKey="value"
+                  shape={<IdentityScatterPoint />}
+                  fill="#9ca3af"
+                  stroke="none"
+                  isAnimationActive={false}
+                />
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="px-4 text-center text-sm text-muted-foreground">
+            최근 3일 범위에 표시할 동일성 데이터가 없습니다.
+          </div>
+        )}
+      </div>
+    </article>
+  )
+})
 
 export const SkipChartDialog = memo(function SkipChartDialog({
   eqp,
@@ -1281,6 +1420,7 @@ export function FdcTrendPage() {
   const [selectedEqpCh, setSelectedEqpCh] = useState("")
   const [selectedSensor, setSelectedSensor] = useState("")
   const [selectedChStep, setSelectedChStep] = useState("")
+  const [showThreeDayIdentity, setShowThreeDayIdentity] = useState(true)
   const [expandedChSteps, setExpandedChSteps] = useState({
     contextKey: "",
     eqps: EMPTY_EQP_SET,
@@ -1673,6 +1813,31 @@ export function FdcTrendPage() {
         </div>
       </header>
 
+      <section className="shrink-0 border-b bg-card px-6 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 shadow-sm">
+          <div>
+            <p className="text-sm font-semibold">3일치 동일성 차트 같이 보기</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              ch_step 모아보기에서 기존 차트 오른쪽에 최근 72시간 동일성 차트를 함께 표시합니다.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant={showThreeDayIdentity ? "default" : "outline"}
+            className="min-w-28 justify-between gap-3"
+            role="switch"
+            aria-checked={showThreeDayIdentity}
+            onClick={() => setShowThreeDayIdentity((current) => !current)}
+          >
+            <span className={cn(
+              "size-2.5 rounded-full",
+              showThreeDayIdentity ? "bg-emerald-300" : "bg-muted-foreground/50",
+            )} />
+            {showThreeDayIdentity ? "ON" : "OFF"}
+          </Button>
+        </div>
+      </section>
+
       <section className="shrink-0 border-b bg-card">
         <ResizableFilterArea defaultHeight={332} minHeight={160} maxHeight={720}>
           <div className="h-full overflow-x-auto px-6 py-2">
@@ -1917,23 +2082,29 @@ export function FdcTrendPage() {
                   </header>
                   <div
                     className={cn(
-                      "grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2 xl:grid-cols-3",
+                      "grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2",
+                      !group.gathered && "xl:grid-cols-3",
                       group.animate && (group.gathered ? "animate-ch-step-gather" : "animate-ch-step-expand"),
                     )}
                   >
                     {group.rows.map((row) => {
                       const isVisible = group.visibleRowIds.has(row.id)
                       return (
-                        <div key={row.id} className={cn(!isVisible && "hidden")} aria-hidden={!isVisible}>
-                          <ErdScatterCard
-                            row={row}
-                            lineId={activeLine}
-                            passRecord={isSkipList
-                              ? row.pass_history
-                              : passHistoryByKey.get(buildChartPassHistoryKey(activeLine, row))}
-                            allSkipLoadTargets={allSkipLoadTargetsByEqp.get(group.eqp) ?? null}
-                          />
-                        </div>
+                        <Fragment key={row.id}>
+                          <div className={cn("min-w-0", !isVisible && "hidden")} aria-hidden={!isVisible}>
+                            <ErdScatterCard
+                              row={row}
+                              lineId={activeLine}
+                              passRecord={isSkipList
+                                ? row.pass_history
+                                : passHistoryByKey.get(buildChartPassHistoryKey(activeLine, row))}
+                              allSkipLoadTargets={allSkipLoadTargetsByEqp.get(group.eqp) ?? null}
+                            />
+                          </div>
+                          {isVisible && group.gathered && showThreeDayIdentity ? (
+                            <ThreeDayIdentityChartCard row={row} eqp={group.eqp} />
+                          ) : null}
+                        </Fragment>
                       )
                     })}
                   </div>

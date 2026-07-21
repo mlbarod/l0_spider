@@ -558,6 +558,18 @@ function parseDateTimeMs(value) {
   )
 }
 
+function sampleEvenly(points, limit) {
+  if (points.length <= limit) return points
+  if (limit <= 1) return [points.at(-1)]
+  const sampled = [points[0]]
+  const interval = (points.length - 1) / (limit - 1)
+  for (let index = 1; index < limit - 1; index += 1) {
+    sampled.push(points[Math.round(index * interval)])
+  }
+  sampled.push(points.at(-1))
+  return sampled
+}
+
 export function buildErdScatterPayload(rows, {
   eqp,
   axisColumn,
@@ -624,19 +636,23 @@ export function buildErdScatterPayload(rows, {
   }
 }
 
-export function buildErdIdentityPayload(rows, { eqp, axisColumn, filePath }) {
+export function buildErdIdentityPayload(rows, {
+  eqp,
+  axisColumn,
+  filePath,
+  windowDays = 0,
+}) {
   const normalizedEqp = normalizeEqp(eqp)
-  const groups = new Map()
-
-  rows.forEach((row) => {
+  const normalizedWindowDays = Number.isInteger(windowDays) && windowDays > 0 ? windowDays : 0
+  const validPoints = rows.flatMap((row) => {
     const eqpCb = normalizeEqp(row.eqp_cb)
     const actTime = normalizeText(row.act_time)
     const actTimeMs = parseDateTimeMs(actTime)
     const value = normalizeNumber(row[axisColumn])
-    if (!eqpCb || !actTime || actTimeMs === null || value === null) return
+    if (!eqpCb || !actTime || actTimeMs === null || value === null) return []
 
-    const points = groups.get(eqpCb) ?? []
-    points.push({
+    return [{
+      eqpCb,
       actTime,
       actTimeMs,
       value,
@@ -644,11 +660,25 @@ export function buildErdIdentityPayload(rows, { eqp, axisColumn, filePath }) {
       dispName: normalizeText(row.disp_name),
       waferId: normalizeText(row.wafer_id),
       rootLotId: normalizeText(row.root_lot_id),
-    })
+    }]
+  })
+  const mostRecentActTimeMs = validPoints.reduce(
+    (latest, point) => Math.max(latest, point.actTimeMs),
+    Number.NEGATIVE_INFINITY,
+  )
+  const windowStartMs = normalizedWindowDays && Number.isFinite(mostRecentActTimeMs)
+    ? mostRecentActTimeMs - normalizedWindowDays * 24 * 60 * 60 * 1000
+    : null
+  const groups = new Map()
+
+  validPoints.forEach(({ eqpCb, ...point }) => {
+    if (windowStartMs !== null && point.actTimeMs < windowStartMs) return
+    const points = groups.get(eqpCb) ?? []
+    points.push(point)
     groups.set(eqpCb, points)
   })
 
-  const eqpGroups = Array.from(groups, ([eqpCb, points]) => ({
+  const sourceGroups = Array.from(groups, ([eqpCb, points]) => ({
     eqpCb,
     isSelected: eqpCb === normalizedEqp,
     pointCount: points.length,
@@ -657,12 +687,24 @@ export function buildErdIdentityPayload(rows, { eqp, axisColumn, filePath }) {
     Number(right.isSelected) - Number(left.isSelected)
     || left.eqpCb.localeCompare(right.eqpCb, "ko", { numeric: true })
   ))
+  const sourcePointCount = sourceGroups.reduce((total, group) => total + group.pointCount, 0)
+  const otherGroupLimit = Math.max(12, Math.floor(2400 / Math.max(sourceGroups.length, 1)))
+  const eqpGroups = normalizedWindowDays
+    ? sourceGroups.map((group) => {
+        const points = sampleEvenly(group.points, group.isSelected ? 800 : otherGroupLimit)
+        return { ...group, sourcePointCount: group.pointCount, pointCount: points.length, points }
+      })
+    : sourceGroups
 
   return {
     eqp: normalizedEqp,
     axisColumn,
     sourcePath: filePath,
+    windowDays: normalizedWindowDays,
+    windowStartMs,
+    mostRecentActTimeMs: Number.isFinite(mostRecentActTimeMs) ? mostRecentActTimeMs : null,
     groupCount: eqpGroups.length,
+    sourcePointCount,
     pointCount: eqpGroups.reduce((total, group) => total + group.pointCount, 0),
     groups: eqpGroups,
   }
@@ -687,6 +729,7 @@ export async function handleErdScatterDataRequest(req, res, url) {
 
     const requestedSensor = url.searchParams.get("sensor")?.trim() ?? ""
     const requestedChStep = url.searchParams.get("chStep")?.trim() ?? ""
+    const requestedDays = url.searchParams.get("days")?.trim() ?? ""
     const {
       filePath,
       latestDate,
@@ -700,11 +743,22 @@ export async function handleErdScatterDataRequest(req, res, url) {
     assertPathSegment("chStep", chStep)
     assertPathSegment("eqp", normalizeEqp(eqp))
     const axisColumn = `${sensor}_${chStep}`
-    const rows = await readErdScatterRows(filePath, axisColumn)
     if (mode === "identity") {
-      sendJson(res, 200, buildErdIdentityPayload(rows, { eqp, axisColumn, filePath }))
+      const windowDays = requestedDays ? Number(requestedDays) : 0
+      if (!Number.isInteger(windowDays) || windowDays < 0 || windowDays > 30) {
+        sendJson(res, 400, { ok: false, error: "동일성 차트 조회 기간은 0~30일 정수여야 합니다." })
+        return
+      }
+      const rows = await readErdScatterRows(filePath, axisColumn)
+      sendJson(res, 200, buildErdIdentityPayload(rows, {
+        eqp,
+        axisColumn,
+        filePath,
+        windowDays,
+      }))
       return
     }
+    const rows = await readErdScatterRows(filePath, axisColumn)
     const historyPath = join(dirname(filePath), `${normalizeEqp(eqp)}.parquet`)
     let historyRows = []
     let historyError = ""
