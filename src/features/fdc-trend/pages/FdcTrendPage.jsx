@@ -61,6 +61,11 @@ import { SENSOR_GRADES, SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 import { getLowestChStepRowsByPpid } from "../utils/chStepGrouping.mjs"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 import {
+  readSelfEquipmentUrlFilters,
+  resolveSelfEquipmentGrades,
+  resolveSelfEquipmentTeam,
+} from "../utils/selfEquipmentUrlFilters.mjs"
+import {
   buildIdentityChartPoints,
   samplePoints,
   selectRenderedIdentityPoints,
@@ -1255,16 +1260,23 @@ export function FdcTrendPage() {
   const stepScrollPositionRef = useRef(0)
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
-  const requestedLine = searchParams.get("line")?.trim() ?? ""
+  const requestedFilters = useMemo(
+    () => readSelfEquipmentUrlFilters(searchParams),
+    [searchParams],
+  )
   const currentUserQuery = useQuery({
     queryKey: ["current-user"],
     queryFn: fetchCurrentUser,
     staleTime: Infinity,
     retry: false,
   })
-  const [selectedLine, setSelectedLine] = useState(() => requestedLine)
-  const [selectedTeam, setSelectedTeam] = useState("")
-  const [selectedGrades, setSelectedGrades] = useState(() => ["A/B"])
+  const [selectedLine, setSelectedLine] = useState(() => requestedFilters.line)
+  const [selectedTeam, setSelectedTeam] = useState(() => requestedFilters.sdwts[0] ?? "")
+  const [selectedGrades, setSelectedGrades] = useState(() => (
+    resolveSelfEquipmentGrades(requestedFilters.grades, SENSOR_GRADES).length
+      ? resolveSelfEquipmentGrades(requestedFilters.grades, SENSOR_GRADES)
+      : ["A/B"]
+  ))
   const [selectedDesc, setSelectedDesc] = useState("")
   const [selectedEqpCh, setSelectedEqpCh] = useState("")
   const [selectedSensor, setSelectedSensor] = useState("")
@@ -1313,8 +1325,9 @@ export function FdcTrendPage() {
     ],
     [activeLine, hasActiveMyEqp, lineMapping, sdwtMapping],
   )
-  const activeTeam = teamOptions.some((team) => team.key === selectedTeam)
-    ? selectedTeam
+  const resolvedSelectedTeam = resolveSelfEquipmentTeam(teamOptions, [selectedTeam])
+  const activeTeam = resolvedSelectedTeam
+    ? resolvedSelectedTeam
     : (teamOptions[0]?.key ?? "")
   const activeTeamLabel = teamOptions.find((team) => team.key === activeTeam)?.label ?? ""
   const isSkipList = activeTeam === SKIP_LIST_TEAM

@@ -235,6 +235,13 @@ function compareSensorGrades(left, right) {
   return leftOrder - rightOrder || compareLineIds(left, right)
 }
 
+function compareMailingSensorGrades(left, right) {
+  const order = new Map([["A", 0], ["B", 1], ["D", 2], ["M", 3], ["N", 4]])
+  const leftOrder = order.get(left) ?? Number.MAX_SAFE_INTEGER
+  const rightOrder = order.get(right) ?? Number.MAX_SAFE_INTEGER
+  return leftOrder - rightOrder || compareLineIds(left, right)
+}
+
 function getKnownLines(mappingConfig) {
   return new Set(
     Object.values(mappingConfig?.line_mapping ?? {}).map(normalizeText).filter(Boolean),
@@ -310,6 +317,8 @@ export function buildDashboardSummary(statsRows, detailRows, source = {}) {
 function aggregateDashboardLineRows(rows, sdwtLineLookup, sdwtDisplayLookup) {
   const combinationsByLine = new Map()
   const combinationsByLineGrade = new Map()
+  const combinationsByMailingRow = new Map()
+  const mailingDimensionsByKey = new Map()
   const sdwtsByLine = new Map()
   const sensorGradesByLine = new Map()
   const actualLines = new Set()
@@ -342,6 +351,12 @@ function aggregateDashboardLineRows(rows, sdwtLineLookup, sdwtDisplayLookup) {
     const gradeCombinations = combinationsByLineGrade.get(gradeKey) ?? new Set()
     gradeCombinations.add(combinationKey)
     combinationsByLineGrade.set(gradeKey, gradeCombinations)
+
+    const mailingKey = [lineId, sdwt, priority].join("\u0000")
+    const mailingCombinations = combinationsByMailingRow.get(mailingKey) ?? new Set()
+    mailingCombinations.add(combinationKey)
+    combinationsByMailingRow.set(mailingKey, mailingCombinations)
+    mailingDimensionsByKey.set(mailingKey, { lineId, sdwt, sensorGrade: priority })
   })
 
   const countsByLine = new Map(
@@ -354,10 +369,15 @@ function aggregateDashboardLineRows(rows, sdwtLineLookup, sdwtDisplayLookup) {
     counts.set(priority, combinations.size)
     gradeCountsByLine.set(lineId, counts)
   })
+  const mailingCountsByKey = new Map(
+    Array.from(combinationsByMailingRow, ([key, combinations]) => [key, combinations.size]),
+  )
 
   return {
     countsByLine,
     gradeCountsByLine,
+    mailingCountsByKey,
+    mailingDimensionsByKey,
     sdwtsByLine,
     sensorGradesByLine,
     actualLines,
@@ -451,6 +471,25 @@ function buildLineDashboardPayloadFromAggregates(
       abnormalCount: getCount(date, row.lineId),
     }))
   ))
+  const selectedLineSet = new Set(selectedLines)
+  const mailingRowsByKey = new Map()
+  dates.forEach((date) => {
+    const aggregate = aggregatesByDate.get(date)
+    aggregate?.mailingCountsByKey.forEach((abnormalCount, key) => {
+      const dimensions = aggregate.mailingDimensionsByKey.get(key)
+      if (!dimensions || !selectedLineSet.has(dimensions.lineId)) return
+      const current = mailingRowsByKey.get(key) ?? { ...dimensions, abnormalCount: 0 }
+      current.abnormalCount += abnormalCount
+      mailingRowsByKey.set(key, current)
+    })
+  })
+  const mailingSummary = Array.from(mailingRowsByKey.values())
+    .filter((row) => ["A", "B", "D", "M", "N"].includes(row.sensorGrade))
+    .sort((left, right) => (
+      compareLineIds(left.lineId, right.lineId)
+      || compareLineIds(left.sdwt, right.sdwt)
+      || compareMailingSensorGrades(left.sensorGrade, right.sensorGrade)
+    ))
 
   return {
     filters: {
@@ -484,6 +523,7 @@ function buildLineDashboardPayloadFromAggregates(
     },
     lineSummary,
     dailyTrend,
+    mailingSummary,
     meta: {
       filesRead: datedAggregates.length,
       comparisonFileRead: hasPreviousData,

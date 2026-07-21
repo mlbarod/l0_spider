@@ -20,6 +20,7 @@ export async function fetchDashboardSummary({ startDate, endDate, lines = [], si
     || !lineDashboard.summary
     || !Array.isArray(lineDashboard.lineSummary)
     || !Array.isArray(lineDashboard.dailyTrend)
+    || !Array.isArray(lineDashboard.mailingSummary)
     || !Array.isArray(lineDashboard.options?.lines)
   ) {
     throw new Error("대시보드 응답 데이터 형식이 올바르지 않습니다.")

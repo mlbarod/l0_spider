@@ -25,7 +25,11 @@
         d_grade_count, n_grade_count, m_grade_count
       - change_from_previous_day: formatted text such as "▲ 12건", "▼ 3건", or "변동 없음"
       - change_color: #d97706 for increase, #059669 for decrease, #667085 for no change
-      - rows: line_name, sdwt, sensor_grade, abnormal_count
+      - rows: line_name, sdwt, sensor_grade, dashboard_abnormal_count
+
+      dashboard_abnormal_count must come from lineDashboard.mailingSummary.abnormalCount.
+      It uses the same dashboard rule: unique desc, recipe_id, priority, sensor,
+      and eqp combinations, aggregated by date, Line, SDWT, and Sensor Grade.
 
       The sender must render this file as a Jinja-compatible HTML template with HTML
       auto-escaping enabled. The urlencode filters in each LINK preserve the selected
@@ -136,7 +140,7 @@
                             <td align="center" style="padding:13px 16px; border-bottom:1px solid #f0f2f5;">
                               <span style="display:inline-block; min-width:34px; padding:3px 9px; border:1px solid #bfdbfe; border-radius:999px; background-color:#eff6ff; color:#1d4ed8; font-size:11px; line-height:16px; font-weight:700;">{{ row.sensor_grade }}</span>
                             </td>
-                            <td align="right" style="padding:13px 16px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700; white-space:nowrap;">{{ row.abnormal_count }}건</td>
+                            <td align="right" style="padding:13px 16px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700; white-space:nowrap;">{{ row.dashboard_abnormal_count }}건</td>
                             <td align="center" style="padding:10px 16px; border-bottom:1px solid #f0f2f5;">
                               <a href="{{ spider_base_url }}/self-equipment?line={{ row.line_name | urlencode }}&amp;sdwt={{ row.sdwt | urlencode }}&amp;grade={{ row.sensor_grade | urlencode }}" target="_blank" rel="noopener noreferrer" style="display:inline-block; min-width:58px; padding:7px 12px; border:1px solid #2563eb; border-radius:7px; background-color:#ffffff; color:#2563eb; font-size:11px; line-height:15px; font-weight:700; text-align:center; text-decoration:none;">LINK&nbsp; ↗</a>
                             </td>

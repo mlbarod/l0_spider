@@ -191,7 +191,7 @@ Mailing Report에는 다음 내용이 포함됩니다.
 - `Line Name`, `SDWT`, `Sensor Grade`, `이상건수`, `LINK` 테이블
 - Line·SDWT·Grade 조건을 쿼리에 담아 자설비 이상감지 주소로 이동하는 LINK
 
-현재 자설비 화면은 링크의 Line을 자동 선택합니다. SDWT와 Grade는 화면 진입 후 링크에 표시된 조건과 일치하는지 확인해 선택하십시오.
+LINK로 자설비 화면에 접속하면 URL에 포함된 Line·SDWT·Grade가 자동 선택됩니다. A 또는 B Grade 링크는 화면의 `A/B` 필터로 적용됩니다.
 
 ## 8. 데이터 변경 작업
 
