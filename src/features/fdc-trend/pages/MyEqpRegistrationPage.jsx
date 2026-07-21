@@ -18,6 +18,7 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -62,6 +63,7 @@ const DEBUG_COLUMNS = Object.freeze([
   "periode",
   "comment",
   "knox_id",
+  "is_public",
 ])
 
 function matchesQuery(value, query) {
@@ -200,6 +202,85 @@ function SelectionItem({ label, value, complete }) {
   )
 }
 
+function RegisteredMyEqpSection({ activeLine, registrationsQuery, onDelete }) {
+  return (
+    <section className="grid gap-3" aria-labelledby="registered-my-eqp-title">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 id="registered-my-eqp-title" className="text-base font-semibold">등록된 My EQP 조건</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {formatLineDisplayName(activeLine)} Line에서 내가 등록했거나 전체 공개된 기준정보입니다.
+          </p>
+        </div>
+        <Badge variant="secondary">
+          {(registrationsQuery.data?.length ?? 0).toLocaleString()}건
+        </Badge>
+      </div>
+
+      {registrationsQuery.isLoading ? (
+        <Card className="grid min-h-32 place-items-center py-6 text-sm text-muted-foreground">
+          <Loader2 className="size-5 animate-spin" aria-label="등록 조건 로딩 중" />
+        </Card>
+      ) : registrationsQuery.isError ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          등록 조건 조회 오류: {registrationsQuery.error.message}
+        </div>
+      ) : registrationsQuery.data?.length ? (
+        <div className="grid gap-3">
+          {registrationsQuery.data.map((registration) => (
+            <Card key={registration.id} className="gap-4 py-5">
+              <CardHeader className="gap-3 px-5 sm:px-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={registration.active ? "default" : "secondary"}>
+                      {registration.active ? "모니터링 중" : "기간 만료"}
+                    </Badge>
+                    <Badge variant="outline">
+                      {registration.isPublic ? "전체 공개" : "나만 보기"}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      등록 {registration.execDate} · 만료 {registration.expiresAt || "-"}
+                    </span>
+                  </div>
+                  {registration.ownedByCurrentUser ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => onDelete(registration)}
+                    >
+                      <Trash2 className="size-3.5" aria-hidden="true" />
+                      삭제
+                    </Button>
+                  ) : (
+                    <Badge variant="secondary">다른 사용자의 공개 등록</Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="grid gap-3 px-5 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+                <SelectionItem label="Line Name" value={formatLineDisplayName(registration.line)} complete />
+                <SelectionItem label="SDWT" value={registration.sdwt} complete />
+                <SelectionItem label="PRC Group" value={registration.prcGroup} complete />
+                <SelectionItem label="EQP" value={registration.eqps.join(", ")} complete />
+              </CardContent>
+              <div className="grid gap-2 border-t px-5 pt-4 text-xs sm:grid-cols-[auto_minmax(0,1fr)] sm:px-6">
+                <span className="font-medium text-foreground">모니터링 기간 {registration.periode}일</span>
+                <span className="break-words text-muted-foreground sm:text-right">
+                  Comment: {registration.comment || "-"}
+                </span>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card className="grid min-h-32 place-items-center px-5 py-6 text-center text-sm text-muted-foreground">
+          선택한 Line에서 조회 가능한 My EQP 조건이 없습니다.
+        </Card>
+      )}
+    </section>
+  )
+}
+
 export function MyEqpRegistrationPage() {
   const queryClient = useQueryClient()
   const [selectedLine, setSelectedLine] = useState("")
@@ -208,6 +289,7 @@ export function MyEqpRegistrationPage() {
   const [selectedEqps, setSelectedEqps] = useState([])
   const [monitoringDays, setMonitoringDays] = useState("")
   const [comment, setComment] = useState("")
+  const [isPublic, setIsPublic] = useState(false)
   const [saveFailure, setSaveFailure] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [queries, setQueries] = useState({ line: "", sdwt: "", prcGroup: "", eqp: "" })
@@ -375,6 +457,7 @@ export function MyEqpRegistrationPage() {
       eqps,
       periode: parsedMonitoringDays,
       comment,
+      isPublic,
     })
   }
 
@@ -492,74 +575,6 @@ export function MyEqpRegistrationPage() {
             ) : null}
           </section>
 
-          <section className="grid gap-3" aria-labelledby="registered-my-eqp-title">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 id="registered-my-eqp-title" className="text-base font-semibold">등록된 My EQP 조건</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {formatLineDisplayName(activeLine)} Line에 등록한 기준정보입니다.
-                </p>
-              </div>
-              <Badge variant="secondary">
-                {(registrationsQuery.data?.length ?? 0).toLocaleString()}건
-              </Badge>
-            </div>
-
-            {registrationsQuery.isLoading ? (
-              <Card className="grid min-h-32 place-items-center py-6 text-sm text-muted-foreground">
-                <Loader2 className="size-5 animate-spin" aria-label="등록 조건 로딩 중" />
-              </Card>
-            ) : registrationsQuery.isError ? (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                등록 조건 조회 오류: {registrationsQuery.error.message}
-              </div>
-            ) : registrationsQuery.data?.length ? (
-              <div className="grid gap-3">
-                {registrationsQuery.data.map((registration) => (
-                  <Card key={registration.id} className="gap-4 py-5">
-                    <CardHeader className="gap-3 px-5 sm:px-6">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant={registration.active ? "default" : "secondary"}>
-                            {registration.active ? "모니터링 중" : "기간 만료"}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            등록 {registration.execDate} · 만료 {registration.expiresAt || "-"}
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => setDeleteTarget(registration)}
-                        >
-                          <Trash2 className="size-3.5" aria-hidden="true" />
-                          삭제
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="grid gap-3 px-5 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
-                      <SelectionItem label="Line Name" value={formatLineDisplayName(registration.line)} complete />
-                      <SelectionItem label="SDWT" value={registration.sdwt} complete />
-                      <SelectionItem label="PRC Group" value={registration.prcGroup} complete />
-                      <SelectionItem label="EQP" value={registration.eqps.join(", ")} complete />
-                    </CardContent>
-                    <div className="grid gap-2 border-t px-5 pt-4 text-xs sm:grid-cols-[auto_minmax(0,1fr)] sm:px-6">
-                      <span className="font-medium text-foreground">모니터링 기간 {registration.periode}일</span>
-                      <span className="break-words text-muted-foreground sm:text-right">
-                        Comment: {registration.comment || "-"}
-                      </span>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card className="grid min-h-32 place-items-center px-5 py-6 text-center text-sm text-muted-foreground">
-                선택한 Line에 등록된 My EQP 조건이 없습니다.
-              </Card>
-            )}
-          </section>
-
           <Card className="gap-4 py-5">
             <CardHeader className="gap-1 px-5 sm:px-6">
               <CardTitle className="text-base">선택 조건</CardTitle>
@@ -651,21 +666,45 @@ export function MyEqpRegistrationPage() {
                 모든 조건과 모니터링 기간을 입력하면 저장 버튼이 활성화됩니다.
               </p>
             </div>
-            <Button
-              type="button"
-              size="lg"
-              className="h-12 min-w-52 rounded-xl text-base shadow-lg shadow-primary/15"
-              disabled={!isReadyToSave || registrationMutation.isPending}
-              onClick={handleSave}
-            >
-              {registrationMutation.isPending ? (
-                <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Save className="size-5" aria-hidden="true" />
-              )}
-              {registrationMutation.isPending ? "저장 중…" : "My EQP 저장"}
-            </Button>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="min-w-64">
+                <div className="flex items-center gap-2.5">
+                  <Checkbox
+                    id="my-eqp-public"
+                    checked={isPublic}
+                    onCheckedChange={(checked) => setIsPublic(checked === true)}
+                    aria-describedby="my-eqp-public-help"
+                  />
+                  <label htmlFor="my-eqp-public" className="cursor-pointer text-sm font-semibold">
+                    전체 공개
+                  </label>
+                </div>
+                <p id="my-eqp-public-help" className="mt-1.5 text-xs leading-5 text-muted-foreground">
+                  My EQP 등록 설비를 본인만이 아닌 다른 유저에게도 공개
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="lg"
+                className="h-12 min-w-52 rounded-xl text-base shadow-lg shadow-primary/15"
+                disabled={!isReadyToSave || registrationMutation.isPending}
+                onClick={handleSave}
+              >
+                {registrationMutation.isPending ? (
+                  <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Save className="size-5" aria-hidden="true" />
+                )}
+                {registrationMutation.isPending ? "저장 중…" : "My EQP 저장"}
+              </Button>
+            </div>
           </section>
+
+          <RegisteredMyEqpSection
+            activeLine={activeLine}
+            registrationsQuery={registrationsQuery}
+            onDelete={setDeleteTarget}
+          />
         </div>
       </main>
 

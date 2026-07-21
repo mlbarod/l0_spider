@@ -61,6 +61,7 @@ export function buildMyEqpRegistrationPayload(body, knoxId) {
   const periode = Number(body?.periode)
   const normalizedKnoxId = normalizeText(knoxId)
   const comment = String(body?.comment ?? "").trim()
+  const isPublic = body?.isPublic === true
 
   if (!line) throw new Error("Line Name이 필요합니다.")
   if (!sdwt) throw new Error("SDWT가 필요합니다.")
@@ -85,6 +86,7 @@ export function buildMyEqpRegistrationPayload(body, knoxId) {
     periode,
     comment,
     knoxId: normalizedKnoxId,
+    isPublic,
   }
 }
 
@@ -98,6 +100,7 @@ export function buildMyEqpDebugRows(payload) {
     periode: payload.periode,
     comment: payload.comment,
     knox_id: payload.knoxId,
+    is_public: payload.isPublic ? 1 : 0,
   }))
 }
 
@@ -114,6 +117,7 @@ export function groupMyEqpRegistrationRecords(records, nowMs = Date.now()) {
       periode: Number(record?.periode),
       comment: String(record?.comment ?? ""),
       knoxId: normalizeText(record?.knox_id),
+      isPublic: Number(record?.is_public) === 1,
     }
     if (!normalized.line || !normalized.sdwt || !normalized.prcGroup || !normalized.eqp) return
 
@@ -125,6 +129,7 @@ export function groupMyEqpRegistrationRecords(records, nowMs = Date.now()) {
       normalized.periode,
       normalized.comment,
       normalized.knoxId,
+      normalized.isPublic,
     ].join("\u0000")
     const group = groups.get(groupKey) ?? { ...normalized, eqps: [] }
     if (!group.eqps.includes(normalized.eqp)) group.eqps.push(normalized.eqp)
@@ -136,7 +141,7 @@ export function groupMyEqpRegistrationRecords(records, nowMs = Date.now()) {
     const execDateMs = Date.parse(group.execDate.replace(" ", "T"))
     const expiresAtMs = execDateMs + group.periode * 24 * 60 * 60 * 1000
     return {
-      id: [group.line, group.sdwt, group.prcGroup, group.execDate, group.comment].join("|"),
+      id: [group.line, group.sdwt, group.prcGroup, group.execDate, group.comment, group.knoxId, group.isPublic].join("|"),
       line: group.line,
       sdwt: group.sdwt,
       prcGroup: group.prcGroup,
@@ -144,6 +149,8 @@ export function groupMyEqpRegistrationRecords(records, nowMs = Date.now()) {
       execDate: group.execDate,
       periode: group.periode,
       comment: group.comment,
+      knoxId: group.knoxId,
+      isPublic: group.isPublic,
       expiresAt: Number.isFinite(expiresAtMs) ? formatDatabaseTimestamp(new Date(expiresAtMs)) : "",
       active: Number.isFinite(expiresAtMs) && expiresAtMs > nowMs,
     }
@@ -239,7 +246,10 @@ export async function handleMyEqpRegistrationRequest(req, res, url) {
       const records = await listMyEqpRegistrationRecords({ line, knoxId: userId, activeOnly })
       sendJson(res, 200, {
         ok: true,
-        registrations: groupMyEqpRegistrationRecords(records),
+        registrations: groupMyEqpRegistrationRecords(records).map(({ knoxId, ...registration }) => ({
+          ...registration,
+          ownedByCurrentUser: knoxId === userId,
+        })),
       })
       return
     }

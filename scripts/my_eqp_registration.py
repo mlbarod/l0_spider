@@ -14,6 +14,7 @@ MY_EQP_COLUMNS = (
     "periode",
     "comment",
     "knox_id",
+    "is_public",
 )
 
 
@@ -33,9 +34,40 @@ def load_db_info():
     }
 
 
-def insert_registration(payload, db_info):
+def connect(db_info):
     import pymysql
 
+    return pymysql.connect(
+        host=db_info["DB_HOST"],
+        user=db_info["DB_USER"],
+        password=db_info["DB_PASSWORD"],
+        db=db_info["DB_NAME"],
+        charset="utf8",
+        port=db_info["DB_PORT"],
+    )
+
+
+def ensure_public_column(connection, db_name):
+    query = """
+        SELECT COUNT(*)
+        FROM `information_schema`.`COLUMNS`
+        WHERE `TABLE_SCHEMA` = %s
+          AND `TABLE_NAME` = 'myeqp_regist'
+          AND `COLUMN_NAME` = 'is_public'
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(query, (db_name,))
+        exists = int(cursor.fetchone()[0]) > 0
+        if exists:
+            return
+        cursor.execute(
+            "ALTER TABLE `myeqp_regist` "
+            "ADD COLUMN `is_public` TINYINT(1) NOT NULL DEFAULT 0"
+        )
+    connection.commit()
+
+
+def insert_registration(payload, db_info):
     eqps = payload["eqps"]
     values = [
         (
@@ -47,23 +79,18 @@ def insert_registration(payload, db_info):
             payload["periode"],
             payload["comment"],
             payload["knoxId"],
+            1 if payload.get("isPublic") else 0,
         )
         for eqp in eqps
     ]
     query = """
         INSERT INTO `myeqp_regist`
-            (`line`, `sdwt`, `prc_group`, `eqp`, `exec_date`, `periode`, `comment`, `knox_id`)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (`line`, `sdwt`, `prc_group`, `eqp`, `exec_date`, `periode`, `comment`, `knox_id`, `is_public`)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
 
-    with pymysql.connect(
-        host=db_info["DB_HOST"],
-        user=db_info["DB_USER"],
-        password=db_info["DB_PASSWORD"],
-        db=db_info["DB_NAME"],
-        charset="utf8",
-        port=db_info["DB_PORT"],
-    ) as connection:
+    with connect(db_info) as connection:
+        ensure_public_column(connection, db_info["DB_NAME"])
         with connection.cursor() as cursor:
             affected_rows = cursor.executemany(query, values)
         connection.commit()
@@ -75,10 +102,8 @@ def insert_registration(payload, db_info):
     }
 
 
-def list_registrations(payload, db_info):
-    import pymysql
-
-    conditions = ["`line` = %s", "`knox_id` = %s"]
+def build_list_query(payload):
+    conditions = ["`line` = %s", "(`knox_id` = %s OR `is_public` = 1)"]
     values = [payload["line"], payload["knoxId"]]
     if payload.get("activeOnly"):
         conditions.append("TIMESTAMPADD(DAY, `periode`, `exec_date`) > NOW()")
@@ -88,17 +113,16 @@ def list_registrations(payload, db_info):
         f"WHERE {' AND '.join(conditions)} "
         "ORDER BY `exec_date` DESC, `sdwt`, `prc_group`, `eqp`"
     )
+    return query, tuple(values)
 
-    with pymysql.connect(
-        host=db_info["DB_HOST"],
-        user=db_info["DB_USER"],
-        password=db_info["DB_PASSWORD"],
-        db=db_info["DB_NAME"],
-        charset="utf8",
-        port=db_info["DB_PORT"],
-    ) as connection:
+
+def list_registrations(payload, db_info):
+    query, values = build_list_query(payload)
+
+    with connect(db_info) as connection:
+        ensure_public_column(connection, db_info["DB_NAME"])
         with connection.cursor() as cursor:
-            cursor.execute(query, tuple(values))
+            cursor.execute(query, values)
             rows = cursor.fetchall()
 
     return {
@@ -108,8 +132,6 @@ def list_registrations(payload, db_info):
 
 
 def delete_registration(payload, db_info):
-    import pymysql
-
     eqps = payload["eqps"]
     eqp_placeholders = ", ".join(["%s"] * len(eqps))
     query = f"""
@@ -121,6 +143,7 @@ def delete_registration(payload, db_info):
           AND `periode` = %s
           AND `comment` = %s
           AND `knox_id` = %s
+          AND `is_public` = %s
           AND `eqp` IN ({eqp_placeholders})
     """
     values = (
@@ -131,17 +154,12 @@ def delete_registration(payload, db_info):
         payload["periode"],
         payload["comment"],
         payload["knoxId"],
+        1 if payload.get("isPublic") else 0,
         *eqps,
     )
 
-    with pymysql.connect(
-        host=db_info["DB_HOST"],
-        user=db_info["DB_USER"],
-        password=db_info["DB_PASSWORD"],
-        db=db_info["DB_NAME"],
-        charset="utf8",
-        port=db_info["DB_PORT"],
-    ) as connection:
+    with connect(db_info) as connection:
+        ensure_public_column(connection, db_info["DB_NAME"])
         with connection.cursor() as cursor:
             affected_rows = cursor.execute(query, values)
         connection.commit()
