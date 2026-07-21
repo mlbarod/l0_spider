@@ -49,6 +49,7 @@ import {
 import { fetchMyEqpReference } from "../api/myEqpReferenceApi"
 import { SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
+import { filterMyEqpReferenceRowsBySdwt } from "../utils/myEqpReferenceMatching.mjs"
 
 const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
@@ -361,9 +362,10 @@ export function MyEqpRegistrationPage() {
     : (sdwtOptions[0]?.value ?? "")
   const activeSdwtLabel = sdwtOptions.find((option) => option.value === activeSdwt)?.label ?? ""
 
-  const sdwtReferenceRows = useMemo(() => (referenceQuery.data ?? []).filter((row) => (
-    row.sdwt_prod === activeSdwtLabel || row.sdwt_prod === activeSdwt
-  )), [activeSdwt, activeSdwtLabel, referenceQuery.data])
+  const sdwtReferenceRows = useMemo(() => filterMyEqpReferenceRowsBySdwt(
+    referenceQuery.data,
+    [activeSdwtLabel, activeSdwt],
+  ), [activeSdwt, activeSdwtLabel, referenceQuery.data])
   const prcGroups = useMemo(() => Array.from(new Set(
     sdwtReferenceRows.map((row) => row.prc_group).filter(Boolean),
   )).sort((left, right) => left.localeCompare(right, "ko", { numeric: true })), [sdwtReferenceRows])
