@@ -20,11 +20,14 @@
     <!--
       Mailing template variables
       - spider_base_url: protocol/host only, without a trailing slash
-      - generated_at, latest_date_time, start_date, end_date, previous_date_time
-      - monitoring_sensor_total, total_abnormal_count, ab_grade_count,
+      - generated_at, latest_date_time, start_date, end_date
+      - dashboard_monitoring_sensor_total, total_abnormal_count, ab_grade_count,
         d_grade_count, n_grade_count, m_grade_count
-      - change_from_previous_day: formatted text such as "▲ 12건", "▼ 3건", or "변동 없음"
-      - change_color: #d97706 for increase, #059669 for decrease, #667085 for no change
+      - dashboard_previous_date_time
+      - dashboard_change_from_previous_day: formatted text such as "▲ 12건",
+        "▼ 3건", "변동 없음", or "비교 데이터 없음"
+      - dashboard_change_color: #d97706 for increase, #059669 for decrease,
+        #667085 for no change or missing comparison data
       - recipient_knox_id: the knox_id receiving this rendered mail
       - rows: knox_id, line_name, sdwt, sensor_grade, dashboard_abnormal_count
       - my_eqp_rows: knox_id, line_name, sdwt, prc_group, eqp, sensor_grade,
@@ -42,6 +45,23 @@
       dashboard_abnormal_count must come from lineDashboard.mailingSummary.abnormalCount.
       It uses the same dashboard rule: unique desc, recipe_id, priority, sensor,
       and eqp combinations, aggregated by date, Line, SDWT, and Sensor Grade.
+
+      The two dashboard-prefixed KPI values must be copied from the SAME unfiltered
+      GET /api/dashboard-data response used for the SPIDER Dashboard. Never recalculate
+      either value in the mail sender:
+      - dashboard_monitoring_sensor_total =
+        lineDashboard.summary.monitoringSensorTotal
+      - dashboard_change_from_previous_day = formatted from the numeric
+        lineDashboard.summary.changeFromPreviousDay without changing its value
+      - dashboard_previous_date_time = lineDashboard.summary.previousDateTime
+      - dashboard_change_color is derived only from that numeric change value
+
+      In particular, monitoringSensorTotal is already the TL total sum for the stats
+      file paired with lineDashboard.summary.latestDateTime. changeFromPreviousDay is
+      already calculated from the latest detail file and the Dashboard-selected D-1
+      file at the same hh:mm (including the same Line mapping and unique-combination
+      rule). Do not independently choose a stats file, choose the previous day's latest
+      file, compare period totals, or recalculate from rows/mailingSummary.
 
       my_eqp_rows must be filtered for the mail recipient by active myeqp_regist rows.
       Its dashboard_abnormal_count must be calculated by the sender with the same
@@ -64,7 +84,7 @@
               <td class="kpi-cell" width="16.66%" valign="top" style="width:16.66%; padding:4px;">
                 <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
                   <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">모니터링 센서 총합</td></tr>
-                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ monitoring_sensor_total }} <span style="color:#667085; font-size:12px; font-weight:600;">개</span></td></tr>
+                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ dashboard_monitoring_sensor_total }} <span style="color:#667085; font-size:12px; font-weight:600;">개</span></td></tr>
                   <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">조회 최신 시각 · TL total 합계</td></tr>
                 </table>
               </td>
@@ -106,8 +126,8 @@
               <td class="kpi-cell" width="13.33%" valign="top" style="width:13.33%; padding:4px;">
                 <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
                   <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">전일 대비</td></tr>
-                  <tr><td style="padding:3px 14px; color:{{ change_color }}; font-size:20px; line-height:31px; font-weight:700; letter-spacing:-0.4px; white-space:nowrap;">{{ change_from_previous_day }}</td></tr>
-                  <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">{{ previous_date_time }} 대비</td></tr>
+                  <tr><td style="padding:3px 14px; color:{{ dashboard_change_color }}; font-size:20px; line-height:31px; font-weight:700; letter-spacing:-0.4px; white-space:nowrap;">{{ dashboard_change_from_previous_day }}</td></tr>
+                  <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">{% if dashboard_previous_date_time %}{{ dashboard_previous_date_time }} 대비{% else %}동일 시각 비교 데이터 없음{% endif %}</td></tr>
                 </table>
               </td>
             </tr>
