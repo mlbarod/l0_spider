@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, Check, ChevronRight, FileWarning, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -57,6 +57,25 @@ function FilterCard({
   onQueryChange,
   children,
 }) {
+  const contentRef = useRef(null)
+  const scrollPositionRef = useRef(0)
+  const isRestoringScrollRef = useRef(false)
+
+  useLayoutEffect(() => {
+    if (!contentRef.current) return undefined
+
+    const content = contentRef.current
+    const savedScrollTop = scrollPositionRef.current
+    isRestoringScrollRef.current = true
+    content.scrollTop = savedScrollTop
+    const animationFrame = requestAnimationFrame(() => {
+      content.scrollTop = savedScrollTop
+      isRestoringScrollRef.current = false
+    })
+
+    return () => cancelAnimationFrame(animationFrame)
+  })
+
   return (
     <Card className={cn(
       "grid min-h-0 min-w-0 grid-rows-[48px_40px_minmax(0,1fr)] gap-0 overflow-hidden rounded-xl border bg-card py-0 shadow-sm",
@@ -83,7 +102,15 @@ function FilterCard({
           disabled={disabled}
         />
       </div>
-      <CardContent className="min-h-0 overflow-y-auto overflow-x-hidden bg-background/60 p-2">
+      <CardContent
+        ref={contentRef}
+        className="min-h-0 overflow-y-auto overflow-x-hidden bg-background/60 p-2"
+        onScroll={(event) => {
+          if (!isRestoringScrollRef.current) {
+            scrollPositionRef.current = event.currentTarget.scrollTop
+          }
+        }}
+      >
         {disabled ? (
           <div className="flex h-full min-h-16 items-center justify-center px-3 text-center text-sm text-muted-foreground">
             {placeholder}
