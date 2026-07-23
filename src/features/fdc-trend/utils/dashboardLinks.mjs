@@ -9,10 +9,19 @@ export function buildSelfEquipmentDetailUrl({ lineId, sdwts = [], sensorGrades =
   return `/self-equipment${query ? `?${query}` : ""}`
 }
 
-export function buildMyEqpDetailUrl({ lineId, sensorGrades = [] }) {
-  return buildSelfEquipmentDetailUrl({
+export function buildMyEqpDetailUrl({
+  lineId,
+  sensorGrades = [],
+  stepToken = "",
+  eqpCh = "",
+}) {
+  const url = buildSelfEquipmentDetailUrl({
     lineId,
     sdwts: [MY_EQP_URL_SDWT],
     sensorGrades,
   })
+  const parsed = new URL(url, "http://localhost")
+  if (stepToken) parsed.searchParams.set("step", stepToken)
+  if (eqpCh) parsed.searchParams.set("eqpCh", eqpCh)
+  return `${parsed.pathname}?${parsed.searchParams.toString()}`
 }

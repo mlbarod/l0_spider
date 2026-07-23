@@ -31,6 +31,7 @@ import {
   handleMyEqpEquipmentDataRequest,
   handleSelfEquipmentDataRequest,
 } from "./server/selfEquipmentData.mjs"
+import { handleSelfEquipmentStepTokenRequest } from "./server/selfEquipmentStepToken.mjs"
 
 const rootDir = fileURLToPath(new URL(".", import.meta.url))
 const distDir = join(rootDir, "dist")
@@ -243,6 +244,13 @@ const server = createServer((req, res) => {
 
   if (url.pathname === "/api/my-eqp-equipment-data") {
     handleMyEqpEquipmentDataRequest(req, res, url).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/self-equipment-step-token") {
+    handleSelfEquipmentStepTokenRequest(req, res).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
     return

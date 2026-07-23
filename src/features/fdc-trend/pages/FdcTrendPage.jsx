@@ -78,6 +78,7 @@ const EMPTY_LIST = Object.freeze([])
 const ALL_EQP_CHANNELS = "ALL"
 const ALL_SENSORS = "ALL"
 const ALL_CH_STEPS = "ALL"
+const ALL_STEPS = "ALL"
 const SKIP_LIST_TEAM = "__SKIP_LIST__"
 const SKIP_LIST_LABEL = "SKIP LIST"
 const MY_EQP_TEAM = MY_EQP_TEAM_KEY
@@ -1418,8 +1419,13 @@ export function FdcTrendPage() {
       ? resolveSelfEquipmentGrades(requestedFilters.grades, SENSOR_GRADES)
       : ["A/B"]
   ))
-  const [selectedDesc, setSelectedDesc] = useState("")
-  const [selectedEqpCh, setSelectedEqpCh] = useState("")
+  const [selectedDesc, setSelectedDesc] = useState(() => (
+    requestedFilters.stepToken === ALL_STEPS ? ALL_STEPS : ""
+  ))
+  const [selectedStepToken, setSelectedStepToken] = useState(() => (
+    requestedFilters.stepToken === ALL_STEPS ? "" : requestedFilters.stepToken
+  ))
+  const [selectedEqpCh, setSelectedEqpCh] = useState(() => requestedFilters.eqpCh)
   const [selectedSensor, setSelectedSensor] = useState("")
   const [selectedChStep, setSelectedChStep] = useState("")
   const [showThreeDayIdentity, setShowThreeDayIdentity] = useState(true)
@@ -1482,6 +1488,7 @@ export function FdcTrendPage() {
     activeTeamLabel,
     priorities,
     selectedDesc,
+    selectedStepToken,
     selectedEqpCh,
     selectedSensor,
     selectedChStep,
@@ -1502,6 +1509,7 @@ export function FdcTrendPage() {
           line: activeLine,
           priorities,
           desc: selectedDesc,
+          stepToken: selectedStepToken,
           eqpCh: selectedEqpCh,
           sensor: selectedSensor,
           chStep: selectedChStep,
@@ -1638,11 +1646,18 @@ export function FdcTrendPage() {
     queries.grade,
   )
   const filteredSteps = filterItems(
-    steps.map((item) => ({
-      value: item.desc,
-      label: item.desc,
-      meta: `${item.rowCount.toLocaleString()}건 · ${item.equipmentCount.toLocaleString()} eqp`,
-    })),
+    [
+      ...(isMyEqp && steps.length ? [{
+        value: ALL_STEPS,
+        label: ALL_STEPS,
+        meta: `${steps.reduce((total, item) => total + item.rowCount, 0).toLocaleString()}건 · 전체 STEP`,
+      }] : []),
+      ...steps.map((item) => ({
+        value: item.desc,
+        label: item.desc,
+        meta: `${item.rowCount.toLocaleString()}건 · ${item.equipmentCount.toLocaleString()} eqp`,
+      })),
+    ],
     queries.step,
   )
   const filteredEqpChannels = filterItems(
@@ -1694,6 +1709,7 @@ export function FdcTrendPage() {
   const setQuery = (key, value) => setQueries((current) => ({ ...current, [key]: value }))
   const resetStepAndSensor = () => {
     setSelectedDesc("")
+    setSelectedStepToken("")
     setSelectedEqpCh("")
     setSelectedSensor("")
     setSelectedChStep("")
@@ -1737,6 +1753,7 @@ export function FdcTrendPage() {
         activeTeamLabel,
         priorities,
         selectedDesc,
+        selectedStepToken,
         selectedEqpCh,
         selectedSensor,
         nextChStep,
@@ -1748,6 +1765,7 @@ export function FdcTrendPage() {
               line: activeLine,
               priorities,
               desc: selectedDesc,
+              stepToken: selectedStepToken,
               eqpCh: selectedEqpCh,
               sensor: selectedSensor,
               chStep: nextChStep,
@@ -1930,7 +1948,8 @@ export function FdcTrendPage() {
                   meta={item.meta}
                   selected={activeDesc === item.value}
                   onClick={() => {
-                    setSelectedDesc((current) => current === item.value ? "" : item.value)
+                    setSelectedDesc(activeDesc === item.value ? "" : item.value)
+                    setSelectedStepToken("")
                     setSelectedEqpCh("")
                     setSelectedSensor("")
                     setSelectedChStep("")
@@ -1944,10 +1963,10 @@ export function FdcTrendPage() {
             <FilterCard
               title="eqp_ch"
               badge={eqpChannels.length ? `${eqpChannels.length}` : null}
-              disabled={!selectedDesc || dataQuery.isLoading}
-              placeholder={selectedDesc ? "선택 STEP에 해당하는 eqp_ch가 없습니다." : "STEP을 먼저 선택하세요"}
+              disabled={!activeDesc || dataQuery.isLoading}
+              placeholder={activeDesc ? "선택 STEP에 해당하는 eqp_ch가 없습니다." : "STEP을 먼저 선택하세요"}
               isActive={Boolean(activeEqpCh)}
-              isLoading={dataQuery.isFetching && Boolean(selectedDesc) && !selectedEqpCh}
+              isLoading={dataQuery.isFetching && Boolean(activeDesc) && !selectedEqpCh}
               query={queries.eqpCh}
               onQueryChange={(value) => setQuery("eqpCh", value)}
             >

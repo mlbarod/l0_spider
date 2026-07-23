@@ -11,14 +11,22 @@ import {
 
 test("자설비 URL에서 Line과 반복 SDWT·Grade 조건을 읽는다", () => {
   const params = new URLSearchParams(
-    "line=P1&sdwt=SDWT+1&sdwt=SDWT+2&grade=A&grade=D&grade=A",
+    "line=P1&sdwt=SDWT+1&sdwt=SDWT+2&grade=A&grade=D&grade=A&step=opaque-token&eqpCh=EQP-1",
   )
 
   assert.deepEqual(readSelfEquipmentUrlFilters(params), {
     line: "P1",
     sdwts: ["SDWT 1", "SDWT 2"],
     grades: ["A", "D"],
+    stepToken: "opaque-token",
+    eqpCh: "EQP-1",
   })
+})
+
+test("자설비 URL의 eqp_ch 호환 이름도 읽는다", () => {
+  const params = new URLSearchParams("eqp_ch=EQP-2")
+
+  assert.equal(readSelfEquipmentUrlFilters(params).eqpCh, "EQP-2")
 })
 
 test("SDWT URL 값은 내부 키와 화면 표시명 모두 대소문자 구분 없이 매칭한다", () => {

@@ -30,8 +30,8 @@
         #667085 for no change or missing comparison data
       - recipient_knox_id: the knox_id receiving this rendered mail
       - rows: knox_id, line_name, sdwt, sensor_grade, dashboard_abnormal_count
-      - my_eqp_rows: knox_id, line_name, sdwt, prc_group, eqp, sensor_grade,
-        dashboard_abnormal_count
+      - my_eqp_rows: knox_id, line_name, sdwt, prc_group, step_url_token, eqp,
+        sensor_grade, dashboard_abnormal_count
 
       The sender recipient set is the union of email.email and the knox_id values in
       active myeqp_regist rows. A recipient can receive either section or both.
@@ -67,9 +67,12 @@
       Its dashboard_abnormal_count must be calculated by the sender with the same
       unique desc, recipe_id, priority, sensor, and eqp rule as the dashboard, grouped
       by date, Line, SDWT, EQP, and Sensor Grade. Do not modify lineDashboard for this.
-      Every my_eqp_rows LINK must use sdwt=MY_EQP (not row.sdwt), which selects the
-      recipient's My EQP virtual SDWT in the self-equipment app while preserving the
-      same line, sdwt, and grade URL structure used by the regular report.
+      Every my_eqp_rows LINK must use sdwt=MY_EQP (not row.sdwt), step_url_token,
+      and row.eqp. This selects the recipient's My EQP virtual SDWT, Sensor Grade,
+      protected STEP, and eqp_ch in the self-equipment app. The sender must obtain
+      step_url_token by POSTing {"steps": [prc_group, ...]} to
+      /api/self-equipment-step-token. Never put row.prc_group itself in the URL.
+      A My EQP STEP ALL link may use the literal step_url_token value ALL.
 
       The sender must render this file as a Jinja-compatible HTML template with HTML
       auto-escaping enabled. The urlencode filters in each LINK preserve the selected
@@ -233,7 +236,7 @@
                             </td>
                             <td align="right" style="padding:13px 14px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700; white-space:nowrap;">{{ row.dashboard_abnormal_count }}건</td>
                             <td align="center" style="padding:10px 14px; border-bottom:1px solid #f0f2f5;">
-                              <a href="{{ spider_base_url }}/self-equipment?line={{ row.line_name | urlencode }}&amp;sdwt=MY_EQP&amp;grade={{ row.sensor_grade | urlencode }}" target="_blank" rel="noopener noreferrer" style="display:inline-block; min-width:58px; padding:7px 12px; border:1px solid #2563eb; border-radius:7px; background-color:#ffffff; color:#2563eb; font-size:11px; line-height:15px; font-weight:700; text-align:center; text-decoration:none;">LINK&nbsp; ↗</a>
+                              <a href="{{ spider_base_url }}/self-equipment?line={{ row.line_name | urlencode }}&amp;sdwt=MY_EQP&amp;grade={{ row.sensor_grade | urlencode }}&amp;step={{ row.step_url_token | urlencode }}&amp;eqpCh={{ row.eqp | urlencode }}" target="_blank" rel="noopener noreferrer" style="display:inline-block; min-width:58px; padding:7px 12px; border:1px solid #2563eb; border-radius:7px; background-color:#ffffff; color:#2563eb; font-size:11px; line-height:15px; font-weight:700; text-align:center; text-decoration:none;">LINK&nbsp; ↗</a>
                             </td>
                           </tr>
                           {% else %}

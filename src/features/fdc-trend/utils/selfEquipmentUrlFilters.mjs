@@ -24,6 +24,8 @@ export function readSelfEquipmentUrlFilters(searchParams) {
     line: normalizeText(searchParams.get("line")),
     sdwts: uniqueTextValues(searchParams.getAll("sdwt")),
     grades: uniqueTextValues(searchParams.getAll("grade")),
+    stepToken: normalizeText(searchParams.get("step")),
+    eqpCh: normalizeText(searchParams.get("eqpCh") ?? searchParams.get("eqp_ch")),
   }
 }
 

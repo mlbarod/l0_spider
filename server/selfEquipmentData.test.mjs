@@ -113,3 +113,51 @@ test("My EQP 전체 Sensor Grade 조건에서는 모든 등급의 STEP을 제공
 
   assert.deepEqual(payload.steps.map((step) => step.desc), ["STEP-A", "STEP-D", "STEP-M"])
 })
+
+test("My EQP STEP ALL은 선택 Grade 내 모든 EQP를 eqp_ch 선택지로 제공한다", () => {
+  const rows = [
+    createRow({ priority: "A", desc: "STEP-A", eqp: "EQP-1.png" }),
+    createRow({ priority: "D", desc: "STEP-D", eqp: "EQP-2.png" }),
+    createRow({ priority: "D", desc: "STEP-E", eqp: "EQP-3.png" }),
+  ]
+  const payload = buildSelfEquipmentPayload(rows, {
+    line: "P1L",
+    pathSdwt: "__MY_EQP__",
+    sdwt: "MY EQP",
+    includeAllLines: true,
+    includeAllSdwt: true,
+    allowAllSteps: true,
+    normalizeEqpCh: true,
+    priorities: ["A", "D"],
+    desc: "ALL",
+    eqpCh: "",
+    sensor: "",
+    chStep: "",
+  })
+
+  assert.equal(payload.filters.desc, "ALL")
+  assert.deepEqual(
+    payload.eqpChannels.map((item) => item.eqpCh).sort(),
+    ["EQP-1.png", "EQP-2.png", "EQP-3.png"],
+  )
+})
+
+test("My EQP URL의 eqp_ch는 확장자와 표기 차이가 있어도 실제 EQP로 선택한다", () => {
+  const rows = [createRow({ desc: "STEP-A", eqp: "EQP-01_CH A.png" })]
+  const payload = buildSelfEquipmentPayload(rows, {
+    line: "P1L",
+    pathSdwt: "__MY_EQP__",
+    sdwt: "MY EQP",
+    includeAllLines: true,
+    includeAllSdwt: true,
+    allowAllSteps: true,
+    normalizeEqpCh: true,
+    priorities: ["A"],
+    desc: "STEP-A",
+    eqpCh: "eqp01-cha",
+    sensor: "",
+    chStep: "",
+  })
+
+  assert.equal(payload.filters.eqpCh, "EQP-01_CH A.png")
+})

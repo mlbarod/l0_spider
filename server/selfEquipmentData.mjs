@@ -13,6 +13,10 @@ import {
   resolveRegistrationUserId,
 } from "./myEqpRegistration.mjs"
 import { listPassHistoryRecords } from "./passHistory.mjs"
+import {
+  ALL_STEPS,
+  resolveStepUrlToken,
+} from "./selfEquipmentStepToken.mjs"
 
 export const TEAM_ERD_COLUMNS = Object.freeze([
   "sdwt",
@@ -204,20 +208,32 @@ export function buildSelfEquipmentPayload(rows, filters) {
     rowCount: stepRows.length,
     equipmentCount: uniqueCount(stepRows, "eqp"),
   })), "desc")
-  const selectedDesc = steps.some((item) => item.desc === filters.desc)
+  const selectedDesc = filters.allowAllSteps && filters.desc === ALL_STEPS && steps.length > 0
+    ? ALL_STEPS
+    : steps.some((item) => item.desc === filters.desc)
     ? filters.desc
     : ""
-  const stepRows = selectedDesc
+  const stepRows = selectedDesc === ALL_STEPS
+    ? baseRows
+    : selectedDesc
     ? baseRows.filter((row) => row.desc === selectedDesc)
     : []
   const eqpChannels = sortByRowCount(aggregateBy(stepRows, "eqp", (eqpCh, eqpChRows) => ({
     eqpCh,
     rowCount: eqpChRows.length,
   })), "eqpCh")
+  const matchedEqpCh = filters.normalizeEqpCh
+    ? eqpChannels.find((item) => (
+      normalizeMyEqpMatchValue(normalizeSkipEqp(item.eqpCh))
+        === normalizeMyEqpMatchValue(normalizeSkipEqp(filters.eqpCh))
+    ))?.eqpCh ?? ""
+    : ""
   const selectedEqpCh = filters.eqpCh === ALL_EQP_CHANNELS && eqpChannels.length > 0
     ? ALL_EQP_CHANNELS
     : eqpChannels.some((item) => item.eqpCh === filters.eqpCh)
     ? filters.eqpCh
+    : matchedEqpCh
+    ? matchedEqpCh
     : ""
   const eqpChannelRows = selectedEqpCh === ALL_EQP_CHANNELS
     ? stepRows
@@ -302,6 +318,7 @@ function readFilters(url) {
     eqpCh: url.searchParams.get("eqpCh")?.trim() ?? "",
     sensor: url.searchParams.get("sensor")?.trim() ?? "",
     chStep: url.searchParams.get("chStep")?.trim() ?? "",
+    stepToken: url.searchParams.get("stepToken")?.trim() ?? "",
   }
 }
 
@@ -404,12 +421,28 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
       registeredRows.map((row) => String(row.priority ?? "").trim()).filter(Boolean),
     )).sort((left, right) => left.localeCompare(right, "ko", { numeric: true }))
     const visibleRows = excludeRecentlySkippedRows(registeredRows, passRecordGroups.flat())
+    const requestedStep = filters.stepToken
+      ? resolveStepUrlToken(
+        filters.stepToken,
+        visibleRows
+          .filter((row) => !filters.priorities.length || filters.priorities.includes(row.priority))
+          .map((row) => row.desc),
+      )
+      : filters.desc
+    if (filters.stepToken && !requestedStep) {
+      const error = new Error("STEP URL 토큰이 올바르지 않거나 현재 조회 조건에 해당하지 않습니다.")
+      error.code = "INVALID_STEP_URL_TOKEN"
+      throw error
+    }
     const payload = buildSelfEquipmentPayload(visibleRows, {
       ...filters,
       pathSdwt: "__MY_EQP__",
       sdwt: "MY EQP",
       includeAllLines: true,
       includeAllSdwt: true,
+      allowAllSteps: true,
+      normalizeEqpCh: true,
+      desc: requestedStep,
     })
     sendJson(res, 200, {
       ...payload,
@@ -424,7 +457,10 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
       sourcePaths: dataSources.map((source) => source.filePath),
     })
   } catch (error) {
-    sendJson(res, 500, {
+    const statusCode = error.code === "INVALID_STEP_URL_TOKEN"
+      ? 400
+      : error.code === "STEP_URL_SECRET_MISSING" ? 503 : 500
+    sendJson(res, statusCode, {
       ok: false,
       error: `My EQP 이상감지 데이터를 불러오지 못했습니다: ${error.message}`,
     })
