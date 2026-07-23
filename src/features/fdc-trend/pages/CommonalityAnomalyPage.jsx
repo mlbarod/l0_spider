@@ -322,11 +322,14 @@ export function CommonalityAnomalyPage() {
         }),
       })
       const filePaths = buildHistoryFilePaths(payload.rows ?? [])
-      if (!filePaths.length) return
+      if (!filePaths.length) {
+        throw new Error("클릭이력에 사용할 Drawing 결과가 없습니다.")
+      }
       await createClickedCategoryHistory({
         app: "commonality",
         lineId: activeLine,
         filePaths,
+        selectedSensor,
         clickedAt,
       })
     } catch (error) {

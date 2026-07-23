@@ -74,6 +74,7 @@ export function buildClickedCategoryHistoryRecord({
   lineId,
   filePaths,
   grades = [],
+  selectedSensor = "",
   clickedAt = "",
   knoxId,
 }) {
@@ -89,12 +90,15 @@ export function buildClickedCategoryHistoryRecord({
   const requestedGrades = normalizedApp === "self" && Array.isArray(grades) && grades.length
     ? grades
     : pathValues.map((values) => values.grade)
+  const sensor = normalizedApp === "commonality" && normalizeText(selectedSensor) === "ALL"
+    ? "ALL"
+    : formatCategory(pathValues.map((values) => values.sensor))
 
   return {
     lineId: `${normalizedLineId}${suffix}`,
     sdwt: formatCategory(pathValues.map((values) => values.sdwt)),
     grade: formatCategory(requestedGrades, normalizedApp === "self"),
-    sensor: formatCategory(pathValues.map((values) => values.sensor)),
+    sensor,
     updateDate: normalizeText(clickedAt),
     knoxId: normalizeText(knoxId),
   }
@@ -162,7 +166,11 @@ export async function handleClickedCategoryHistoryRequest(req, res) {
     }
     const [body, currentUser] = await Promise.all([readJsonBody(req), resolveCurrentUser(remoteIp)])
     const record = buildClickedCategoryHistoryRecord({ ...body, knoxId: currentUser.knoxId })
-    sendJson(res, 200, await runHelper(record))
+    const result = await runHelper(record)
+    if (Number(result.affectedRows) < 1) {
+      throw new Error("클릭이력이 DB에 반영되지 않았습니다.")
+    }
+    sendJson(res, 200, result)
   } catch (error) {
     sendJson(res, 500, { ok: false, error: error.message })
   }

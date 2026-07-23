@@ -67,6 +67,26 @@ test("동일성 클릭이력은 서로 다른 step_desc 경로도 기존 컬럼 
   assert.equal(Object.hasOwn(record, "stepDesc"), false)
 })
 
+test("동일성 Sensor ALL 클릭이력은 sensor 컬럼에 ALL을 저장한다", () => {
+  const record = buildClickedCategoryHistoryRecord({
+    app: "commonality",
+    lineId: "P2L",
+    filePaths: [
+      "/appdata/abnormal_trend/pic/erd_commonality/2026-07-17 12:00:00/SDWT-2/A/100/MAIN/PPID-1/PPID-1/PRESSURE_SENSOR_10@001/img.png",
+      "/appdata/abnormal_trend/pic/erd_commonality/2026-07-17 12:00:00/SDWT-2/B/100/MAIN/PPID-2/PPID-2/TEMP_20@001/img.png",
+    ],
+    selectedSensor: "ALL",
+    clickedAt: "2026-07-17T14:00:00+09:00",
+    knoxId: "user2",
+  })
+
+  assert.equal(record.lineId, "P2L(g)")
+  assert.equal(record.sdwt, "SDWT-2")
+  assert.equal(record.grade, "['A', 'B']")
+  assert.equal(record.sensor, "ALL")
+  assert.equal(Object.hasOwn(record, "stepDesc"), false)
+})
+
 test("공통부 Drawing 경로는 Line에 (c)를 붙이고 여러 grade를 보존한다", () => {
   const record = buildClickedCategoryHistoryRecord({
     app: "common",
