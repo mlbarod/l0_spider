@@ -13,6 +13,7 @@ function uniqueTextValues(values) {
 export const MY_EQP_TEAM_KEY = "__MY_EQP__"
 export const MY_EQP_TEAM_LABEL = "MY EQP"
 export const MY_EQP_URL_SDWT = "MY_EQP"
+export const MY_EQP_URL_STEP = "ALL"
 
 function isMyEqpValue(value) {
   const normalized = normalizeMatchValue(value).replaceAll(/\s+/g, "_")
@@ -20,11 +21,13 @@ function isMyEqpValue(value) {
 }
 
 export function readSelfEquipmentUrlFilters(searchParams) {
+  const sdwts = uniqueTextValues(searchParams.getAll("sdwt"))
+  const isMyEqp = sdwts.some(isMyEqpValue)
   return {
     line: normalizeText(searchParams.get("line")),
-    sdwts: uniqueTextValues(searchParams.getAll("sdwt")),
+    sdwts,
     grades: uniqueTextValues(searchParams.getAll("grade")),
-    stepToken: normalizeText(searchParams.get("step")),
+    stepToken: isMyEqp ? MY_EQP_URL_STEP : normalizeText(searchParams.get("step")),
     eqpCh: normalizeText(searchParams.get("eqpCh") ?? searchParams.get("eqp_ch")),
   }
 }

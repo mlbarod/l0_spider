@@ -1422,9 +1422,6 @@ export function FdcTrendPage() {
   const [selectedDesc, setSelectedDesc] = useState(() => (
     requestedFilters.stepToken === ALL_STEPS ? ALL_STEPS : ""
   ))
-  const [selectedStepToken, setSelectedStepToken] = useState(() => (
-    requestedFilters.stepToken === ALL_STEPS ? "" : requestedFilters.stepToken
-  ))
   const [selectedEqpCh, setSelectedEqpCh] = useState(() => requestedFilters.eqpCh)
   const [selectedSensor, setSelectedSensor] = useState("")
   const [selectedChStep, setSelectedChStep] = useState("")
@@ -1488,7 +1485,6 @@ export function FdcTrendPage() {
     activeTeamLabel,
     priorities,
     selectedDesc,
-    selectedStepToken,
     selectedEqpCh,
     selectedSensor,
     selectedChStep,
@@ -1509,7 +1505,6 @@ export function FdcTrendPage() {
           line: activeLine,
           priorities,
           desc: selectedDesc,
-          stepToken: selectedStepToken,
           eqpCh: selectedEqpCh,
           sensor: selectedSensor,
           chStep: selectedChStep,
@@ -1709,7 +1704,6 @@ export function FdcTrendPage() {
   const setQuery = (key, value) => setQueries((current) => ({ ...current, [key]: value }))
   const resetStepAndSensor = () => {
     setSelectedDesc("")
-    setSelectedStepToken("")
     setSelectedEqpCh("")
     setSelectedSensor("")
     setSelectedChStep("")
@@ -1753,7 +1747,6 @@ export function FdcTrendPage() {
         activeTeamLabel,
         priorities,
         selectedDesc,
-        selectedStepToken,
         selectedEqpCh,
         selectedSensor,
         nextChStep,
@@ -1765,7 +1758,6 @@ export function FdcTrendPage() {
               line: activeLine,
               priorities,
               desc: selectedDesc,
-              stepToken: selectedStepToken,
               eqpCh: selectedEqpCh,
               sensor: selectedSensor,
               chStep: nextChStep,
@@ -1949,7 +1941,6 @@ export function FdcTrendPage() {
                   selected={activeDesc === item.value}
                   onClick={() => {
                     setSelectedDesc(activeDesc === item.value ? "" : item.value)
-                    setSelectedStepToken("")
                     setSelectedEqpCh("")
                     setSelectedSensor("")
                     setSelectedChStep("")

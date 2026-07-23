@@ -1,4 +1,7 @@
-import { MY_EQP_URL_SDWT } from "./selfEquipmentUrlFilters.mjs"
+import {
+  MY_EQP_URL_SDWT,
+  MY_EQP_URL_STEP,
+} from "./selfEquipmentUrlFilters.mjs"
 
 export function buildSelfEquipmentDetailUrl({ lineId, sdwts = [], sensorGrades = [] }) {
   const searchParams = new URLSearchParams()
@@ -12,7 +15,6 @@ export function buildSelfEquipmentDetailUrl({ lineId, sdwts = [], sensorGrades =
 export function buildMyEqpDetailUrl({
   lineId,
   sensorGrades = [],
-  stepToken = "",
   eqpCh = "",
 }) {
   const url = buildSelfEquipmentDetailUrl({
@@ -21,7 +23,7 @@ export function buildMyEqpDetailUrl({
     sensorGrades,
   })
   const parsed = new URL(url, "http://localhost")
-  if (stepToken) parsed.searchParams.set("step", stepToken)
+  parsed.searchParams.set("step", MY_EQP_URL_STEP)
   if (eqpCh) parsed.searchParams.set("eqpCh", eqpCh)
   return `${parsed.pathname}?${parsed.searchParams.toString()}`
 }

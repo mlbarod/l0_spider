@@ -30,8 +30,11 @@
         #667085 for no change or missing comparison data
       - recipient_knox_id: the knox_id receiving this rendered mail
       - rows: knox_id, line_name, sdwt, sensor_grade, dashboard_abnormal_count
-      - my_eqp_rows: knox_id, line_name, sdwt, prc_group, step_url_token, eqp,
-        sensor_grade, dashboard_abnormal_count
+      - my_eqp_rows: knox_id, line_name, sdwt, prc_group, eqp, sensor_grade,
+        dashboard_abnormal_count
+
+      All count variables and dashboard_abnormal_count values must be passed as raw
+      numbers. This template formats them with a comma every three digits.
 
       The sender recipient set is the union of email.email and the knox_id values in
       active myeqp_regist rows. A recipient can receive either section or both.
@@ -67,12 +70,10 @@
       Its dashboard_abnormal_count must be calculated by the sender with the same
       unique desc, recipe_id, priority, sensor, and eqp rule as the dashboard, grouped
       by date, Line, SDWT, EQP, and Sensor Grade. Do not modify lineDashboard for this.
-      Every my_eqp_rows LINK must use sdwt=MY_EQP (not row.sdwt), step_url_token,
+      Every my_eqp_rows LINK must use sdwt=MY_EQP (not row.sdwt), step=ALL,
       and row.eqp. This selects the recipient's My EQP virtual SDWT, Sensor Grade,
-      protected STEP, and eqp_ch in the self-equipment app. The sender must obtain
-      step_url_token by POSTing {"steps": [prc_group, ...]} to
-      /api/self-equipment-step-token. Never put row.prc_group itself in the URL.
-      A My EQP STEP ALL link may use the literal step_url_token value ALL.
+      the fixed ALL STEP, and eqp_ch in the self-equipment app. Never put
+      row.prc_group itself in the URL.
 
       The sender must render this file as a Jinja-compatible HTML template with HTML
       auto-escaping enabled. The urlencode filters in each LINK preserve the selected
@@ -90,42 +91,42 @@
               <td class="kpi-cell" width="16.66%" valign="top" style="width:16.66%; padding:4px;">
                 <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
                   <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">모니터링 센서 총합</td></tr>
-                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ dashboard_monitoring_sensor_total }} <span style="color:#667085; font-size:12px; font-weight:600;">개</span></td></tr>
+                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ "{:,}".format(dashboard_monitoring_sensor_total | int) }} <span style="color:#667085; font-size:12px; font-weight:600;">개</span></td></tr>
                   <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">조회 최신 시각 · TL total 합계</td></tr>
                 </table>
               </td>
               <td class="kpi-cell" width="16.66%" valign="top" style="width:16.66%; padding:4px;">
                 <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
                   <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">전체 이상 건수</td></tr>
-                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ total_abnormal_count }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
+                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ "{:,}".format(total_abnormal_count | int) }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
                   <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">{{ start_date }} ~ {{ end_date }}</td></tr>
                 </table>
               </td>
               <td class="kpi-cell" width="13.33%" valign="top" style="width:13.33%; padding:4px;">
                 <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
                   <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">A/B Grade</td></tr>
-                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ ab_grade_count }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
+                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ "{:,}".format(ab_grade_count | int) }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
                   <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">A · B Grade 고유건수</td></tr>
                 </table>
               </td>
               <td class="kpi-cell" width="13.33%" valign="top" style="width:13.33%; padding:4px;">
                 <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
                   <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">D Grade</td></tr>
-                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ d_grade_count }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
+                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ "{:,}".format(d_grade_count | int) }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
                   <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">D Grade 고유건수</td></tr>
                 </table>
               </td>
               <td class="kpi-cell" width="13.33%" valign="top" style="width:13.33%; padding:4px;">
                 <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
                   <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">N Grade</td></tr>
-                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ n_grade_count }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
+                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ "{:,}".format(n_grade_count | int) }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
                   <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">N Grade 고유건수</td></tr>
                 </table>
               </td>
               <td class="kpi-cell" width="13.33%" valign="top" style="width:13.33%; padding:4px;">
                 <table role="presentation" width="100%" height="126" cellspacing="0" cellpadding="0" border="0" style="width:100%; height:126px; border:1px solid #dfe3e8; border-radius:12px; background-color:#ffffff; box-shadow:0 1px 3px rgba(16,24,40,0.06);">
                   <tr><td style="padding:15px 14px 0; color:#667085; font-size:12px; font-weight:600;">M Grade</td></tr>
-                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ m_grade_count }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
+                  <tr><td style="padding:3px 14px; color:#172033; font-size:25px; line-height:31px; font-weight:700; letter-spacing:-0.5px; white-space:nowrap;">{{ "{:,}".format(m_grade_count | int) }} <span style="color:#667085; font-size:12px; font-weight:600;">건</span></td></tr>
                   <tr><td valign="bottom" style="padding:0 14px 14px; color:#98a2b3; font-size:10px; line-height:15px;">M Grade 고유건수</td></tr>
                 </table>
               </td>
@@ -183,7 +184,7 @@
                             <td align="center" style="padding:13px 16px; border-bottom:1px solid #f0f2f5;">
                               <span style="display:inline-block; min-width:34px; padding:3px 9px; border:1px solid #bfdbfe; border-radius:999px; background-color:#eff6ff; color:#1d4ed8; font-size:11px; line-height:16px; font-weight:700;">{{ row.sensor_grade }}</span>
                             </td>
-                            <td align="right" style="padding:13px 16px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700; white-space:nowrap;">{{ row.dashboard_abnormal_count }}건</td>
+                            <td align="right" style="padding:13px 16px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700; white-space:nowrap;">{{ "{:,}".format(row.dashboard_abnormal_count | int) }}건</td>
                             <td align="center" style="padding:10px 16px; border-bottom:1px solid #f0f2f5;">
                               <a href="{{ spider_base_url }}/self-equipment?line={{ row.line_name | urlencode }}&amp;sdwt={{ row.sdwt | urlencode }}&amp;grade={{ row.sensor_grade | urlencode }}" target="_blank" rel="noopener noreferrer" style="display:inline-block; min-width:58px; padding:7px 12px; border:1px solid #2563eb; border-radius:7px; background-color:#ffffff; color:#2563eb; font-size:11px; line-height:15px; font-weight:700; text-align:center; text-decoration:none;">LINK&nbsp; ↗</a>
                             </td>
@@ -234,9 +235,9 @@
                             <td align="center" style="padding:13px 14px; border-bottom:1px solid #f0f2f5;">
                               <span style="display:inline-block; min-width:34px; padding:3px 9px; border:1px solid #bfdbfe; border-radius:999px; background-color:#eff6ff; color:#1d4ed8; font-size:11px; line-height:16px; font-weight:700;">{{ row.sensor_grade }}</span>
                             </td>
-                            <td align="right" style="padding:13px 14px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700; white-space:nowrap;">{{ row.dashboard_abnormal_count }}건</td>
+                            <td align="right" style="padding:13px 14px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700; white-space:nowrap;">{{ "{:,}".format(row.dashboard_abnormal_count | int) }}건</td>
                             <td align="center" style="padding:10px 14px; border-bottom:1px solid #f0f2f5;">
-                              <a href="{{ spider_base_url }}/self-equipment?line={{ row.line_name | urlencode }}&amp;sdwt=MY_EQP&amp;grade={{ row.sensor_grade | urlencode }}&amp;step={{ row.step_url_token | urlencode }}&amp;eqpCh={{ row.eqp | urlencode }}" target="_blank" rel="noopener noreferrer" style="display:inline-block; min-width:58px; padding:7px 12px; border:1px solid #2563eb; border-radius:7px; background-color:#ffffff; color:#2563eb; font-size:11px; line-height:15px; font-weight:700; text-align:center; text-decoration:none;">LINK&nbsp; ↗</a>
+                              <a href="{{ spider_base_url }}/self-equipment?line={{ row.line_name | urlencode }}&amp;sdwt=MY_EQP&amp;grade={{ row.sensor_grade | urlencode }}&amp;step=ALL&amp;eqpCh={{ row.eqp | urlencode }}" target="_blank" rel="noopener noreferrer" style="display:inline-block; min-width:58px; padding:7px 12px; border:1px solid #2563eb; border-radius:7px; background-color:#ffffff; color:#2563eb; font-size:11px; line-height:15px; font-weight:700; text-align:center; text-decoration:none;">LINK&nbsp; ↗</a>
                             </td>
                           </tr>
                           {% else %}

@@ -31,7 +31,6 @@ export async function fetchMyEqpEquipmentData({
   line,
   priorities,
   desc,
-  stepToken,
   eqpCh,
   sensor,
   chStep,
@@ -39,7 +38,6 @@ export async function fetchMyEqpEquipmentData({
   const searchParams = new URLSearchParams({ line })
   priorities.forEach((priority) => searchParams.append("priority", priority))
   if (desc) searchParams.set("desc", desc)
-  if (stepToken) searchParams.set("stepToken", stepToken)
   if (eqpCh) searchParams.set("eqpCh", eqpCh)
   if (sensor) searchParams.set("sensor", sensor)
   if (chStep) searchParams.set("chStep", chStep)

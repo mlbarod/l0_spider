@@ -270,11 +270,9 @@ IP로 현재 사용자를 확인한 후 한 행을 INSERT한다. 자설비는 `c
 - 최초버전: `src/features/fdc-trend/pages/versions/FdcTrendPage.initial.jsx.bak`
 - 개선버전(현재 사용): `src/features/fdc-trend/pages/FdcTrendPage.jsx`
 
-My EQP 메일 딥링크의 STEP 이름은 URL에 직접 노출하지 않는다.
-운영 환경에 충분히 긴 임의 문자열인 `SPIDER_STEP_URL_SECRET`을 설정하고,
-메일 발송기는 `POST /api/self-equipment-step-token`에 STEP 목록을 전달해 받은 HMAC
-토큰을 `step` 쿼리 파라미터로 사용한다. 이 비밀키를 변경하면 기존 메일의 STEP
-딥링크 토큰은 더 이상 유효하지 않다. STEP `ALL`은 토큰 없이 `step=ALL`을 사용한다.
+My EQP 딥링크는 STEP 이름을 URL에 노출하지 않고 항상 `step=ALL`을 사용한다.
+`sdwt=MY_EQP` URL에 `step`이 없거나 다른 값이 전달되어도 화면에서는 `ALL`로
+해석하며, `eqpCh`가 있으면 전체 STEP 범위에서 해당 EQP를 선택한다.
 
 원복 절차는 `src/features/fdc-trend/pages/versions/README.md`를 참조한다.
 

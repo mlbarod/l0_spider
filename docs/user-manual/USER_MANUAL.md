@@ -192,7 +192,7 @@ Mailing Report에는 다음 내용이 포함됩니다.
 - **My EQP 이상현황 Report**: `Line Name`, `SDWT`, `PRC Group`, `EQP`, `Sensor Grade`, `이상건수`, `LINK`
 - Line·SDWT·Grade 조건을 쿼리에 담아 자설비 이상감지 주소로 이동하는 LINK
 
-두 Report의 이상건수는 대시보드와 같은 고유 이상건 조합 기준입니다. 전체설비 Report와 My EQP Report는 메일을 받는 `knox_id`의 등록 조건만 각각 표시합니다. 한쪽에만 등록했다면 다른 Report는 빈 표로 표시됩니다. LINK로 자설비 화면에 접속하면 URL에 포함된 Line·SDWT·Grade가 자동 선택되며, A 또는 B Grade는 화면의 `A/B` 필터로 적용됩니다. My EQP Report의 LINK는 `sdwt=MY_EQP`로 구분되어 자설비의 **MY EQP** 필터를 자동 선택하고, 보호된 STEP 토큰과 `eqpCh`로 해당 STEP·EQP까지 선택합니다. STEP 이름은 URL에 직접 노출되지 않으며 `ALL`만 그대로 표시됩니다.
+두 Report의 이상건수는 대시보드와 같은 고유 이상건 조합 기준입니다. 전체설비 Report와 My EQP Report는 메일을 받는 `knox_id`의 등록 조건만 각각 표시합니다. 한쪽에만 등록했다면 다른 Report는 빈 표로 표시됩니다. LINK로 자설비 화면에 접속하면 URL에 포함된 Line·SDWT·Grade가 자동 선택되며, A 또는 B Grade는 화면의 `A/B` 필터로 적용됩니다. My EQP Report의 LINK는 `sdwt=MY_EQP`로 구분되어 자설비의 **MY EQP** 필터를 자동 선택하고, `step=ALL`과 `eqpCh`로 전체 STEP 범위의 해당 EQP까지 선택합니다.
 
 자설비에서 **MY EQP**를 선택하면 STEP 첫 항목에 **ALL**이 제공됩니다. ALL을 선택할 경우 앞에서 선택한 Line·Grade 조건에 속하는 모든 STEP의 EQP가 `eqp_ch` 선택지에 표시됩니다.
 

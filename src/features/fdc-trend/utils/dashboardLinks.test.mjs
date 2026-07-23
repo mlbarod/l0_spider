@@ -24,7 +24,6 @@ test("My EQP 상세 URL은 기존 Line·SDWT·Grade 구조에서 전용 SDWT 값
   const url = buildMyEqpDetailUrl({
     lineId: "P1",
     sensorGrades: ["A", "D"],
-    stepToken: "opaque-step-token",
     eqpCh: "EQP-1",
   })
   const parsed = new URL(url, "http://localhost")
@@ -33,7 +32,6 @@ test("My EQP 상세 URL은 기존 Line·SDWT·Grade 구조에서 전용 SDWT 값
   assert.equal(parsed.searchParams.get("line"), "P1")
   assert.deepEqual(parsed.searchParams.getAll("sdwt"), ["MY_EQP"])
   assert.deepEqual(parsed.searchParams.getAll("grade"), ["A", "D"])
-  assert.equal(parsed.searchParams.get("step"), "opaque-step-token")
+  assert.equal(parsed.searchParams.get("step"), "ALL")
   assert.equal(parsed.searchParams.get("eqpCh"), "EQP-1")
-  assert.equal(url.includes("OXIDE ETCH"), false)
 })
