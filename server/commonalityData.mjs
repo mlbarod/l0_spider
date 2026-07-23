@@ -6,6 +6,7 @@ import { getLatestCommonalityPath } from "./latestCommonalityPath.mjs"
 
 const INDEX_CACHE_TTL_MS = 5 * 60 * 1000
 const DIRECTORY_READ_CONCURRENCY = 64
+const ALL_SENSORS = "ALL"
 const ALL_CH_STEPS = "ALL"
 const commonalityIndexCache = new Map()
 const commonalityIndexPending = new Map()
@@ -171,8 +172,12 @@ function sortValues(values) {
 
 export function buildCommonalityFilterPayload(index, filters) {
   const sensors = sortValues(index.rows.map((row) => row.sensor))
-  const selectedSensor = sensors.includes(filters.sensor) ? filters.sensor : ""
-  const sensorRows = selectedSensor
+  const selectedSensor = filters.sensor === ALL_SENSORS && sensors.length
+    ? ALL_SENSORS
+    : sensors.includes(filters.sensor) ? filters.sensor : ""
+  const sensorRows = selectedSensor === ALL_SENSORS
+    ? index.rows
+    : selectedSensor
     ? index.rows.filter((row) => row.sensor === selectedSensor)
     : []
   const chSteps = sortValues(sensorRows.map((row) => row.chStep))

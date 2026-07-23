@@ -22,6 +22,7 @@ import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 
 const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
+const ALL_SENSORS = "ALL"
 const ALL_CH_STEPS = "ALL"
 
 function SelectRow({ label, meta, selected, onClick }) {
@@ -284,7 +285,15 @@ export function CommonalityAnomalyPage() {
     queries.line,
   )
   const filteredTeams = filterValues(teamOptions.map((team) => ({ label: team.label, value: team.key })), queries.team)
-  const filteredSensors = filterValues(sensors.map((sensor) => ({ label: sensor, value: sensor })), queries.sensor)
+  const filteredSensors = filterValues(
+    sensors.length
+      ? [
+          { label: "ALL", value: ALL_SENSORS },
+          ...sensors.map((sensor) => ({ label: sensor, value: sensor })),
+        ]
+      : [],
+    queries.sensor,
+  )
   const filteredChSteps = filterValues(
     chSteps.length
       ? [
