@@ -61,6 +61,8 @@ import { SENSOR_GRADES, SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 import { getLowestChStepRowsByPpid } from "../utils/chStepGrouping.mjs"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 import {
+  MY_EQP_TEAM_KEY,
+  MY_EQP_TEAM_LABEL,
   readSelfEquipmentUrlFilters,
   resolveSelfEquipmentGrades,
   resolveSelfEquipmentTeam,
@@ -78,8 +80,8 @@ const ALL_SENSORS = "ALL"
 const ALL_CH_STEPS = "ALL"
 const SKIP_LIST_TEAM = "__SKIP_LIST__"
 const SKIP_LIST_LABEL = "SKIP LIST"
-const MY_EQP_TEAM = "__MY_EQP__"
-const MY_EQP_LABEL = "MY EQP"
+const MY_EQP_TEAM = MY_EQP_TEAM_KEY
+const MY_EQP_LABEL = MY_EQP_TEAM_LABEL
 const SCATTER_CHART_MARGIN = Object.freeze({ top: 42, right: 18, bottom: 28, left: 16 })
 const SCATTER_Y_AXIS_WIDTH = 64
 const SCATTER_X_AXIS_HEIGHT = 30

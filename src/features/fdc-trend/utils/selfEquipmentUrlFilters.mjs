@@ -10,6 +10,15 @@ function uniqueTextValues(values) {
   return Array.from(new Set(values.map(normalizeText).filter(Boolean)))
 }
 
+export const MY_EQP_TEAM_KEY = "__MY_EQP__"
+export const MY_EQP_TEAM_LABEL = "MY EQP"
+export const MY_EQP_URL_SDWT = "MY_EQP"
+
+function isMyEqpValue(value) {
+  const normalized = normalizeMatchValue(value).replaceAll(/\s+/g, "_")
+  return normalized === MY_EQP_URL_SDWT || normalized === MY_EQP_TEAM_KEY
+}
+
 export function readSelfEquipmentUrlFilters(searchParams) {
   return {
     line: normalizeText(searchParams.get("line")),
@@ -21,6 +30,12 @@ export function readSelfEquipmentUrlFilters(searchParams) {
 export function resolveSelfEquipmentTeam(teamOptions, requestedSdwts) {
   const requestedValues = uniqueTextValues(requestedSdwts).map(normalizeMatchValue)
   if (!requestedValues.length) return ""
+
+  if (requestedValues.some(isMyEqpValue)) {
+    return teamOptions.some((team) => team?.key === MY_EQP_TEAM_KEY)
+      ? MY_EQP_TEAM_KEY
+      : ""
+  }
 
   return teamOptions.find((team) => (
     requestedValues.includes(normalizeMatchValue(team?.key))
