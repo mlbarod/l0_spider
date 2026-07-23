@@ -24,6 +24,7 @@ const EMPTY_MAPPING = Object.freeze({})
 const EMPTY_LIST = Object.freeze([])
 const ALL_SENSORS = "ALL"
 const ALL_CH_STEPS = "ALL"
+const IMAGES_PER_PAGE = 18
 
 function SelectRow({ label, meta, selected, onClick }) {
   return (
@@ -173,6 +174,37 @@ function filterValues(values, query) {
     : values
 }
 
+function buildHistoryFilePaths(rows) {
+  const categoryKeys = new Set()
+  return rows.flatMap((row) => {
+    const categoryKey = [row.sdwt, row.grade, row.sensor].join("\u0000")
+    if (!row.filePath || categoryKeys.has(categoryKey)) return []
+    categoryKeys.add(categoryKey)
+    return [row.filePath]
+  })
+}
+
+function buildPageItems(totalPages, activePage) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  }
+
+  const pages = Array.from(new Set([
+    1,
+    totalPages,
+    activePage - 1,
+    activePage,
+    activePage + 1,
+  ].filter((page) => page >= 1 && page <= totalPages))).sort((left, right) => left - right)
+
+  return pages.flatMap((page, index) => {
+    const previousPage = pages[index - 1]
+    return previousPage && page - previousPage > 1
+      ? [`ellipsis-${previousPage}`, page]
+      : [page]
+  })
+}
+
 export function CommonalityAnomalyPage() {
   const queryClient = useQueryClient()
   const [selectedLine, setSelectedLine] = useState("")
@@ -180,6 +212,7 @@ export function CommonalityAnomalyPage() {
   const [selectedStepDesc, setSelectedStepDesc] = useState("")
   const [selectedSensor, setSelectedSensor] = useState("")
   const [selectedChStep, setSelectedChStep] = useState("")
+  const [imagePage, setImagePage] = useState(1)
   const [queries, setQueries] = useState({ line: "", team: "", stepDesc: "", sensor: "", chStep: "" })
   const mappingQuery = useQuery({
     queryKey: ["l0-spider-line-mapping"],
@@ -231,28 +264,40 @@ export function CommonalityAnomalyPage() {
   const imageRows = selectedChStep && activeChStep === selectedChStep
     ? dataQuery.data?.rows ?? EMPTY_LIST
     : EMPTY_LIST
+  const totalImagePages = Math.ceil(imageRows.length / IMAGES_PER_PAGE)
+  const activeImagePage = Math.min(imagePage, Math.max(totalImagePages, 1))
+  const visibleImageRows = useMemo(() => {
+    const startIndex = (activeImagePage - 1) * IMAGES_PER_PAGE
+    return imageRows.slice(startIndex, startIndex + IMAGES_PER_PAGE)
+  }, [activeImagePage, imageRows])
   const imageGroups = useMemo(() => {
     const groups = new Map()
-    imageRows.forEach((row) => {
+    visibleImageRows.forEach((row) => {
       const rows = groups.get(row.stepDesc) ?? []
       rows.push(row)
       groups.set(row.stepDesc, rows)
     })
     return Array.from(groups, ([stepDesc, rows]) => ({ stepDesc, rows }))
       .sort((left, right) => left.stepDesc.localeCompare(right.stepDesc, "ko", { numeric: true }))
-  }, [imageRows])
+  }, [visibleImageRows])
+  const pageItems = useMemo(
+    () => buildPageItems(totalImagePages, activeImagePage),
+    [activeImagePage, totalImagePages],
+  )
 
   const setQuery = (key, value) => setQueries((current) => ({ ...current, [key]: value }))
   const resetStepFilters = () => {
     setSelectedStepDesc("")
     setSelectedSensor("")
     setSelectedChStep("")
+    setImagePage(1)
     setQueries((current) => ({ ...current, stepDesc: "", sensor: "", chStep: "" }))
   }
   const handleChStepChange = async (chStep) => {
     const nextChStep = selectedChStep === chStep ? "" : chStep
     const clickedAt = new Date().toISOString()
     setSelectedChStep(nextChStep)
+    setImagePage(1)
     if (!nextChStep) return
 
     try {
@@ -276,7 +321,7 @@ export function CommonalityAnomalyPage() {
           chStep: nextChStep,
         }),
       })
-      const filePaths = (payload.rows ?? []).map((row) => row.filePath)
+      const filePaths = buildHistoryFilePaths(payload.rows ?? [])
       if (!filePaths.length) return
       await createClickedCategoryHistory({
         app: "commonality",
@@ -408,6 +453,7 @@ export function CommonalityAnomalyPage() {
                     setSelectedStepDesc((current) => current === item.value ? "" : item.value)
                     setSelectedSensor("")
                     setSelectedChStep("")
+                    setImagePage(1)
                     setQueries((current) => ({ ...current, sensor: "", chStep: "" }))
                   }}
                 />
@@ -431,6 +477,7 @@ export function CommonalityAnomalyPage() {
                   onClick={() => {
                     setSelectedSensor((current) => current === item.value ? "" : item.value)
                     setSelectedChStep("")
+                    setImagePage(1)
                     setQuery("chStep", "")
                   }}
                 />
@@ -486,6 +533,41 @@ export function CommonalityAnomalyPage() {
               </div>
             ) : null}
           </div>
+
+          {activeChStep && totalImagePages > 1 ? (
+            <nav
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3"
+              aria-label="동일성 이미지 페이지"
+            >
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {((activeImagePage - 1) * IMAGES_PER_PAGE + 1).toLocaleString()}
+                –
+                {Math.min(activeImagePage * IMAGES_PER_PAGE, imageRows.length).toLocaleString()}
+                {" / "}
+                {imageRows.length.toLocaleString()} images
+              </span>
+              <div className="flex flex-wrap items-center justify-end gap-1">
+                {pageItems.map((item) => typeof item === "number" ? (
+                  <Button
+                    key={item}
+                    type="button"
+                    size="sm"
+                    variant={activeImagePage === item ? "default" : "outline"}
+                    className="h-8 min-w-8 px-2 text-xs"
+                    aria-label={`${item} 페이지`}
+                    aria-current={activeImagePage === item ? "page" : undefined}
+                    onClick={() => setImagePage(item)}
+                  >
+                    {item}
+                  </Button>
+                ) : (
+                  <span key={item} className="grid h-8 min-w-6 place-items-center text-xs text-muted-foreground" aria-hidden="true">
+                    …
+                  </span>
+                ))}
+              </div>
+            </nav>
+          ) : null}
 
           {!activeChStep ? (
             <div className="grid min-h-52 place-items-center rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">

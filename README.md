@@ -261,7 +261,9 @@ IP로 현재 사용자를 확인한 후 한 행을 INSERT한다. 자설비는 `c
 | 공통부 | 선택 Line Name + `(c)` | `data.parquet` Drawing 경로 | `data.parquet` Drawing 경로 | `data.parquet` Drawing 경로 | `sensor` 클릭 시각 |
 
 한 번의 Drawing 결과에 여러 grade 또는 sensor가 포함되면 중복을 제거한 리스트 문자열로
-저장한다. `knox_id`는 모든 App에서 접속 IP 기반 현재 사용자 값을 사용한다.
+저장한다. 동일성 App의 STEP(`step_desc`) 선택값은 저장하지 않으며, 업로드 요청은
+Drawing 결과를 `sdwt`, `grade`, `sensor` 기준 대표 경로로 압축해 기존 컬럼 구조를
+유지한다. `knox_id`는 모든 App에서 접속 IP 기반 현재 사용자 값을 사용한다.
 
 현재 확인된 정보에는 `VARCHAR` 길이, 기본키, 인덱스, NULL 허용 여부와 기본값이 포함되어 있지 않으므로 각 표에서는 별도로 가정하지 않는다.
 
@@ -397,7 +399,8 @@ ALL 조건으로 합친 뒤 `step_desc` 고유값으로 생성한다. 선택한 
 Line Name, SDWT와 STEP까지 선택한 범위에 속한 모든 Sensor와 ch_step 이미지를 조회한다.
 개별 Sensor를 선택한 경우에는 해당 Sensor의 ch_step과 `ALL`을 제공한다. 최종 필터
 결과는 `{step_desc}`별로 분류하여 데스크톱 기준 3열 이미지 카드로 표시한다.
-이미지 로드에 실패하면 해당 카드에 요청한 절대 파일 경로를 표시한다.
+이미지는 한 페이지당 최대 18장만 렌더링하고 이미지 영역 상단의 숫자 탭으로 페이지를
+전환한다. 이미지 로드에 실패하면 해당 카드에 요청한 절대 파일 경로를 표시한다.
 
 - 필터·이미지 목록 API: `GET /api/commonality-data`
 - 이미지 제공 API: `GET /api/commonality-image?path=...`
