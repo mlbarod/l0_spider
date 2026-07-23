@@ -180,10 +180,13 @@ export function buildCommonalityFilterPayload(index, filters) {
     : selectedSensor
     ? index.rows.filter((row) => row.sensor === selectedSensor)
     : []
-  const chSteps = sortValues(sensorRows.map((row) => row.chStep))
-  const selectedChStep = filters.chStep === ALL_CH_STEPS && chSteps.length
+  const sensorChSteps = sortValues(sensorRows.map((row) => row.chStep))
+  const chSteps = selectedSensor === ALL_SENSORS && sensorChSteps.length
+    ? [ALL_CH_STEPS]
+    : sensorChSteps
+  const selectedChStep = filters.chStep === ALL_CH_STEPS && sensorChSteps.length
     ? ALL_CH_STEPS
-    : chSteps.includes(filters.chStep)
+    : selectedSensor !== ALL_SENSORS && sensorChSteps.includes(filters.chStep)
     ? filters.chStep
     : ""
   const rows = selectedChStep === ALL_CH_STEPS

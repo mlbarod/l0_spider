@@ -296,7 +296,9 @@ export function CommonalityAnomalyPage() {
   )
   const filteredChSteps = filterValues(
     chSteps.length
-      ? [
+      ? selectedSensor === ALL_SENSORS
+        ? [{ label: "ALL", value: ALL_CH_STEPS }]
+        : [
           { label: "ALL", value: ALL_CH_STEPS },
           ...chSteps.map((chStep) => ({ label: chStep, value: chStep })),
         ]

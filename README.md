@@ -391,8 +391,9 @@ SDWT는 자설비 이상감지와 동일하게 `mapping_config.json`의 `line_ma
 ```
 
 두 번째 `{ppid}` 폴더명이 첫 번째 `{ppid}`와 같은 경로의 `img.png`만 표시 대상으로
-사용한다. Sensor의 `ALL`은 선택 SDWT의 모든 Sensor를 대상으로 ch_step 선택지를
-합치며, ch_step의 `ALL`은 해당 Sensor 범위의 모든 ch_step 이미지를 조회한다. 최종 필터
+사용한다. Sensor의 `ALL`을 선택하면 ch_step에는 `ALL`만 표시하며, 이를 선택하면
+Line Name과 SDWT까지 선택한 범위에 속한 모든 Sensor와 ch_step 이미지를 조회한다.
+개별 Sensor를 선택한 경우에는 해당 Sensor의 ch_step과 `ALL`을 제공한다. 최종 필터
 결과는 `{step_desc}`별로 분류하여 데스크톱 기준 3열 이미지 카드로 표시한다.
 이미지 로드에 실패하면 해당 카드에 요청한 절대 파일 경로를 표시한다.
 
