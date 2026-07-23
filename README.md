@@ -373,9 +373,11 @@ SDWT 필터 마지막의 `SKIP LIST`를 선택하면 선택 Line에서 `ver = NA
 
 `/matching-anomaly`은 실제 동일성 기준 이상감지 그래프 파일을 사용한다. Line Name과
 SDWT는 자설비 이상감지와 동일하게 `mapping_config.json`의 `line_mapping`,
-`sdwt_mapping`을 사용한다. 선택한 SDWT에 대해 아래 경로의 `grade`부터 두 번째
-`ppid`까지 모든 직하위 디렉터리를 순회하고, `{sensor}_{ch_step}` 폴더의 마지막
-밑줄을 기준으로 Sensor와 ch_step 필터 값을 생성한다.
+`sdwt_mapping`을 사용한다. 필터 순서는 Line Name → SDWT → STEP(`step_desc`) →
+Sensor → `ch_step`이다. STEP 목록은 선택 SDWT 아래의 모든 `grade`와 `step_seq`를
+ALL 조건으로 합친 뒤 `step_desc` 고유값으로 생성한다. 선택한 SDWT에 대해 아래 경로의
+`grade`부터 두 번째 `ppid`까지 모든 직하위 디렉터리를 순회하고,
+`{sensor}_{ch_step}` 폴더의 마지막 밑줄을 기준으로 Sensor와 ch_step 필터 값을 생성한다.
 
 서버 탐색은 각 폴더를 순차 처리하거나 전체 트리를 `rglob` 방식으로 무조건 탐색하지
 않는다. 경로 깊이가 고정된 점을 이용해 필요한 단계의 디렉터리만 최대 64개씩 제한
@@ -392,7 +394,7 @@ SDWT는 자설비 이상감지와 동일하게 `mapping_config.json`의 `line_ma
 
 두 번째 `{ppid}` 폴더명이 첫 번째 `{ppid}`와 같은 경로의 `img.png`만 표시 대상으로
 사용한다. Sensor의 `ALL`을 선택하면 ch_step에는 `ALL`만 표시하며, 이를 선택하면
-Line Name과 SDWT까지 선택한 범위에 속한 모든 Sensor와 ch_step 이미지를 조회한다.
+Line Name, SDWT와 STEP까지 선택한 범위에 속한 모든 Sensor와 ch_step 이미지를 조회한다.
 개별 Sensor를 선택한 경우에는 해당 Sensor의 ch_step과 `ALL`을 제공한다. 최종 필터
 결과는 `{step_desc}`별로 분류하여 데스크톱 기준 3열 이미지 카드로 표시한다.
 이미지 로드에 실패하면 해당 카드에 요청한 절대 파일 경로를 표시한다.

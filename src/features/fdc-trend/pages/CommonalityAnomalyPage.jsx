@@ -177,9 +177,10 @@ export function CommonalityAnomalyPage() {
   const queryClient = useQueryClient()
   const [selectedLine, setSelectedLine] = useState("")
   const [selectedTeam, setSelectedTeam] = useState("")
+  const [selectedStepDesc, setSelectedStepDesc] = useState("")
   const [selectedSensor, setSelectedSensor] = useState("")
   const [selectedChStep, setSelectedChStep] = useState("")
-  const [queries, setQueries] = useState({ line: "", team: "", sensor: "", chStep: "" })
+  const [queries, setQueries] = useState({ line: "", team: "", stepDesc: "", sensor: "", chStep: "" })
   const mappingQuery = useQuery({
     queryKey: ["l0-spider-line-mapping"],
     queryFn: fetchLineMapping,
@@ -207,6 +208,7 @@ export function CommonalityAnomalyPage() {
       activeLine,
       activeTeam,
       activeTeamLabel,
+      selectedStepDesc,
       selectedSensor,
       selectedChStep,
     ],
@@ -214,13 +216,16 @@ export function CommonalityAnomalyPage() {
       line: activeLine,
       pathSdwt: activeTeam,
       sdwt: activeTeamLabel,
+      stepDesc: selectedStepDesc,
       sensor: selectedSensor,
       chStep: selectedChStep,
     }),
     enabled: Boolean(activeLine && activeTeam && activeTeamLabel),
   })
+  const stepDescs = dataQuery.data?.stepDescs ?? EMPTY_LIST
   const sensors = dataQuery.data?.sensors ?? EMPTY_LIST
   const chSteps = dataQuery.data?.chSteps ?? EMPTY_LIST
+  const activeStepDesc = dataQuery.data?.filters?.stepDesc ?? ""
   const activeSensor = dataQuery.data?.filters?.sensor ?? ""
   const activeChStep = dataQuery.data?.filters?.chStep ?? ""
   const imageRows = selectedChStep && activeChStep === selectedChStep
@@ -238,10 +243,11 @@ export function CommonalityAnomalyPage() {
   }, [imageRows])
 
   const setQuery = (key, value) => setQueries((current) => ({ ...current, [key]: value }))
-  const resetSensorFilters = () => {
+  const resetStepFilters = () => {
+    setSelectedStepDesc("")
     setSelectedSensor("")
     setSelectedChStep("")
-    setQueries((current) => ({ ...current, sensor: "", chStep: "" }))
+    setQueries((current) => ({ ...current, stepDesc: "", sensor: "", chStep: "" }))
   }
   const handleChStepChange = async (chStep) => {
     const nextChStep = selectedChStep === chStep ? "" : chStep
@@ -255,6 +261,7 @@ export function CommonalityAnomalyPage() {
         activeLine,
         activeTeam,
         activeTeamLabel,
+        selectedStepDesc,
         selectedSensor,
         nextChStep,
       ]
@@ -264,6 +271,7 @@ export function CommonalityAnomalyPage() {
           line: activeLine,
           pathSdwt: activeTeam,
           sdwt: activeTeamLabel,
+          stepDesc: selectedStepDesc,
           sensor: selectedSensor,
           chStep: nextChStep,
         }),
@@ -285,6 +293,10 @@ export function CommonalityAnomalyPage() {
     queries.line,
   )
   const filteredTeams = filterValues(teamOptions.map((team) => ({ label: team.label, value: team.key })), queries.team)
+  const filteredStepDescs = filterValues(
+    stepDescs.map((stepDesc) => ({ label: stepDesc, value: stepDesc })),
+    queries.stepDesc,
+  )
   const filteredSensors = filterValues(
     sensors.length
       ? [
@@ -316,7 +328,7 @@ export function CommonalityAnomalyPage() {
               <Badge variant="outline">Matching</Badge>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              동일성 최신날짜의 그래프를 Line, SDWT, Sensor, ch_step 기준으로 조회합니다.
+              동일성 최신날짜의 그래프를 Line, SDWT, STEP, Sensor, ch_step 기준으로 조회합니다.
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" asChild>
@@ -331,7 +343,7 @@ export function CommonalityAnomalyPage() {
       <section className="shrink-0 border-b bg-card">
         <ResizableFilterArea defaultHeight={316} minHeight={160} maxHeight={720}>
           <div className="h-full overflow-x-auto px-6 py-2">
-            <div className="grid h-full min-w-[900px] grid-cols-4 gap-4">
+            <div className="grid h-full min-w-[1120px] grid-cols-5 gap-4">
             <FilterCard
               title="Line Name"
               badge={lines.length}
@@ -351,7 +363,7 @@ export function CommonalityAnomalyPage() {
                     setSelectedLine(item.value)
                     setSelectedTeam("")
                     setQueries((current) => ({ ...current, team: "" }))
-                    resetSensorFilters()
+                    resetStepFilters()
                   }}
                 />
               ))}
@@ -372,7 +384,31 @@ export function CommonalityAnomalyPage() {
                   selected={activeTeam === item.value}
                   onClick={() => {
                     setSelectedTeam(item.value)
-                    resetSensorFilters()
+                    resetStepFilters()
+                  }}
+                />
+              ))}
+            </FilterCard>
+            <FilterCard
+              title="STEP"
+              badge={stepDescs.length}
+              disabled={!activeTeam || dataQuery.isLoading}
+              placeholder={dataQuery.isLoading ? "동일성 경로를 탐색하는 중입니다." : "선택 SDWT에 해당하는 STEP이 없습니다."}
+              isActive={Boolean(activeStepDesc)}
+              isLoading={dataQuery.isFetching && !selectedStepDesc}
+              query={queries.stepDesc}
+              onQueryChange={(value) => setQuery("stepDesc", value)}
+            >
+              {filteredStepDescs.map((item) => (
+                <SelectRow
+                  key={item.value}
+                  label={item.label}
+                  selected={activeStepDesc === item.value}
+                  onClick={() => {
+                    setSelectedStepDesc((current) => current === item.value ? "" : item.value)
+                    setSelectedSensor("")
+                    setSelectedChStep("")
+                    setQueries((current) => ({ ...current, sensor: "", chStep: "" }))
                   }}
                 />
               ))}
@@ -380,8 +416,8 @@ export function CommonalityAnomalyPage() {
             <FilterCard
               title="Sensor"
               badge={sensors.length}
-              disabled={!activeTeam || dataQuery.isLoading}
-              placeholder={dataQuery.isLoading ? "동일성 경로를 탐색하는 중입니다." : "선택 SDWT에 해당하는 Sensor가 없습니다."}
+              disabled={!selectedStepDesc || dataQuery.isLoading}
+              placeholder={selectedStepDesc ? "선택 STEP에 해당하는 Sensor가 없습니다." : "STEP을 먼저 선택하세요"}
               isActive={Boolean(activeSensor)}
               isLoading={dataQuery.isFetching && !selectedSensor}
               query={queries.sensor}
@@ -453,7 +489,7 @@ export function CommonalityAnomalyPage() {
 
           {!activeChStep ? (
             <div className="grid min-h-52 place-items-center rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
-              Line Name, SDWT, Sensor와 ch_step을 선택하면 동일성 그래프가 표시됩니다.
+              Line Name, SDWT, STEP, Sensor와 ch_step을 선택하면 동일성 그래프가 표시됩니다.
             </div>
           ) : imageGroups.length ? (
             <div className="grid min-w-0 gap-5">

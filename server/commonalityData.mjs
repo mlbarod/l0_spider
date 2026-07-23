@@ -171,14 +171,19 @@ function sortValues(values) {
 }
 
 export function buildCommonalityFilterPayload(index, filters) {
-  const sensors = sortValues(index.rows.map((row) => row.sensor))
+  const stepDescs = sortValues(index.rows.map((row) => row.stepDesc))
+  const selectedStepDesc = stepDescs.includes(filters.stepDesc) ? filters.stepDesc : ""
+  const stepRows = selectedStepDesc
+    ? index.rows.filter((row) => row.stepDesc === selectedStepDesc)
+    : []
+  const sensors = sortValues(stepRows.map((row) => row.sensor))
   const selectedSensor = filters.sensor === ALL_SENSORS && sensors.length
     ? ALL_SENSORS
     : sensors.includes(filters.sensor) ? filters.sensor : ""
   const sensorRows = selectedSensor === ALL_SENSORS
-    ? index.rows
+    ? stepRows
     : selectedSensor
-    ? index.rows.filter((row) => row.sensor === selectedSensor)
+    ? stepRows.filter((row) => row.sensor === selectedSensor)
     : []
   const sensorChSteps = sortValues(sensorRows.map((row) => row.chStep))
   const chSteps = selectedSensor === ALL_SENSORS && sensorChSteps.length
@@ -202,9 +207,11 @@ export function buildCommonalityFilterPayload(index, filters) {
       pathSdwt: filters.pathSdwt,
       sdwt: filters.sdwt,
       folderSdwt: index.folderSdwt,
+      stepDesc: selectedStepDesc,
       sensor: selectedSensor,
       chStep: selectedChStep,
     },
+    stepDescs,
     sensors,
     chSteps,
     counts: {
@@ -226,6 +233,7 @@ export async function handleCommonalityDataRequest(req, res, url) {
       line: normalizeText(url.searchParams.get("line")),
       pathSdwt: normalizeText(url.searchParams.get("pathSdwt")),
       sdwt: normalizeText(url.searchParams.get("sdwt")),
+      stepDesc: normalizeText(url.searchParams.get("stepDesc")),
       sensor: normalizeText(url.searchParams.get("sensor")),
       chStep: normalizeText(url.searchParams.get("chStep")),
     }
