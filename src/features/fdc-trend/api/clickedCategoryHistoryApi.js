@@ -4,12 +4,21 @@ export async function createClickedCategoryHistory({
   filePaths,
   grades,
   selectedSensor,
+  defectSelectStep,
   clickedAt,
 }) {
   const response = await fetch("/api/clicked-category-history", {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ app, lineId, filePaths, grades, selectedSensor, clickedAt }),
+    body: JSON.stringify({
+      app,
+      lineId,
+      filePaths,
+      grades,
+      selectedSensor,
+      defectSelectStep,
+      clickedAt,
+    }),
   })
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {

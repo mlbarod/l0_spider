@@ -64,8 +64,31 @@ def main():
                         payload["knoxId"],
                     ),
                 )
+                defect_affected_rows = 0
+                defect_history = payload.get("defectHistory")
+                if defect_history:
+                    line_name = str(defect_history.get("lineName") or "").strip()
+                    select_step = str(defect_history.get("selectStep") or "").strip().split("_", 1)[0].strip()
+                    if not line_name or not select_step:
+                        raise ValueError("MY EQP clicked_history_defect 저장값이 올바르지 않습니다.")
+                    defect_affected_rows = cursor.execute(
+                        """
+                        INSERT INTO `clicked_history_defect`
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (
+                            line_name,
+                            select_step,
+                            normalize_update_date(payload.get("updateDate")),
+                            payload["knoxId"],
+                        ),
+                    )
             connection.commit()
-        write_json({"ok": True, "affectedRows": affected_rows})
+        write_json({
+            "ok": True,
+            "affectedRows": affected_rows,
+            "defectAffectedRows": defect_affected_rows,
+        })
     except Exception as error:
         print(f"clicked category history operation failed: {error}", file=sys.stderr)
         write_json({"ok": False, "error": "클릭이력 DB 작업에 실패했습니다."})

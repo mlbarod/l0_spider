@@ -21,6 +21,10 @@ function normalizeText(value) {
   return String(value ?? "").trim()
 }
 
+function normalizeDefectSelectStep(value) {
+  return normalizeText(value).split("_", 1)[0].trim()
+}
+
 function uniqueValues(values) {
   return Array.from(new Set(values.map(normalizeText).filter(Boolean)))
 }
@@ -75,6 +79,7 @@ export function buildClickedCategoryHistoryRecord({
   filePaths,
   grades = [],
   selectedSensor = "",
+  defectSelectStep = "",
   clickedAt = "",
   knoxId,
 }) {
@@ -93,6 +98,10 @@ export function buildClickedCategoryHistoryRecord({
   const sensor = normalizedApp === "commonality" && normalizeText(selectedSensor) === "ALL"
     ? "ALL"
     : formatCategory(pathValues.map((values) => values.sensor))
+  const normalizedDefectSelectStep = normalizeDefectSelectStep(defectSelectStep)
+  if (normalizedDefectSelectStep && normalizedApp !== "self") {
+    throw new Error("clicked_history_defect 저장은 자설비 조회에서만 지원합니다.")
+  }
 
   return {
     lineId: `${normalizedLineId}${suffix}`,
@@ -101,6 +110,12 @@ export function buildClickedCategoryHistoryRecord({
     sensor,
     updateDate: normalizeText(clickedAt),
     knoxId: normalizeText(knoxId),
+    ...(normalizedDefectSelectStep ? {
+      defectHistory: {
+        lineName: normalizedLineId,
+        selectStep: normalizedDefectSelectStep,
+      },
+    } : {}),
   }
 }
 
@@ -169,6 +184,9 @@ export async function handleClickedCategoryHistoryRequest(req, res) {
     const result = await runHelper(record)
     if (Number(result.affectedRows) < 1) {
       throw new Error("클릭이력이 DB에 반영되지 않았습니다.")
+    }
+    if (record.defectHistory && Number(result.defectAffectedRows) < 1) {
+      throw new Error("MY EQP 조회이력이 clicked_history_defect에 반영되지 않았습니다.")
     }
     sendJson(res, 200, result)
   } catch (error) {

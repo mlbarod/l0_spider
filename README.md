@@ -254,6 +254,13 @@ IP로 현재 사용자를 확인한 후 한 행을 INSERT한다. 자설비는 `c
 `ch_step`, 공통부는 마지막 필터인 `sensor`를 새로 선택할 때 호출한다. 필터를 다시
 클릭해 선택 해제하거나 SKIP LIST를 조회하는 동작은 저장하지 않는다.
 
+자설비에서 `MY EQP`를 조회하는 경우에는 마지막 `ch_step` 선택 시 기존
+`clicked_category_history`와 함께 `clicked_history_defect`에도
+`(line_name, select_step, update_date, knox_id)`를 INSERT한다. `select_step`은
+MY EQP에서 선택된 STEP 값을 사용하고 기존 Defect Spider 규칙과 같이 첫 `_` 앞의
+문자열로 정규화한다. 두 INSERT는 같은 DB 트랜잭션에서 처리하며 어느 한쪽이라도
+반영되지 않으면 저장 실패로 응답한다.
+
 | App | `line_id` | `sdwt` | `grade` | `sensor` | `update_date` |
 | --- | --- | --- | --- | --- | --- |
 | 자설비 | 선택 Line Name | ERD Drawing 경로 | 선택 grade를 확장한 리스트 문자열. `A/B`는 `['A', 'B']` | ERD Drawing 경로 | `ch_step` 클릭 시각 |

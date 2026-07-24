@@ -1780,6 +1780,7 @@ export function FdcTrendPage() {
         lineId: activeLine,
         filePaths,
         grades: priorities,
+        defectSelectStep: isMyEqp ? payload.filters?.desc ?? selectedDesc : undefined,
         clickedAt,
       })
     } catch (error) {
