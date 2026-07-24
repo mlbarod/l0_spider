@@ -8,6 +8,7 @@ import { parsePassHistoryPath } from "./passHistory.mjs"
 const COMMON_FILE_ROOT = "/appdata/abnormal_trend/pic/common"
 const helperPath = fileURLToPath(new URL("../scripts/clicked_category_history.py", import.meta.url))
 const SUPPORTED_APPS = new Set(["self", "commonality", "common"])
+const MY_EQP_GRADES = Object.freeze(["A", "B", "D", "N", "M"])
 
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
@@ -75,27 +76,36 @@ export function buildClickedCategoryHistoryRecord({
   filePaths,
   grades = [],
   selectedSensor = "",
+  virtualCategory = null,
   clickedAt = "",
   knoxId,
 }) {
   const normalizedApp = normalizeText(app)
   const normalizedLineId = normalizeText(lineId)
   const paths = uniqueValues(Array.isArray(filePaths) ? filePaths : [])
+  const isMyEqpCategory = normalizedApp === "self"
+    && normalizeText(virtualCategory?.sdwt) === "MY EQP"
   if (!SUPPORTED_APPS.has(normalizedApp)) throw new Error("클릭이력 App 구분값이 올바르지 않습니다.")
   if (!normalizedLineId) throw new Error("Line Name이 필요합니다.")
-  if (!paths.length) throw new Error("Chart Drawing 경로가 필요합니다.")
+  if (!paths.length && !isMyEqpCategory) throw new Error("Chart Drawing 경로가 필요합니다.")
 
   const pathValues = paths.map((filePath) => parseDrawingPath(normalizedApp, filePath))
   const suffix = normalizedApp === "commonality" ? "(g)" : normalizedApp === "common" ? "(c)" : ""
-  const requestedGrades = normalizedApp === "self" && Array.isArray(grades) && grades.length
+  const requestedGrades = isMyEqpCategory
+    ? MY_EQP_GRADES
+    : normalizedApp === "self" && Array.isArray(grades) && grades.length
     ? grades
     : pathValues.map((values) => values.grade)
-  const sensor = normalizedApp === "commonality" && normalizeText(selectedSensor) === "ALL"
+  const sensor = isMyEqpCategory
+    ? "ALL"
+    : normalizedApp === "commonality" && normalizeText(selectedSensor) === "ALL"
     ? "ALL"
     : formatCategory(pathValues.map((values) => values.sensor))
   return {
     lineId: `${normalizedLineId}${suffix}`,
-    sdwt: formatCategory(pathValues.map((values) => values.sdwt)),
+    sdwt: isMyEqpCategory
+      ? "MY EQP"
+      : formatCategory(pathValues.map((values) => values.sdwt)),
     grade: formatCategory(requestedGrades, normalizedApp === "self"),
     sensor,
     updateDate: normalizeText(clickedAt),

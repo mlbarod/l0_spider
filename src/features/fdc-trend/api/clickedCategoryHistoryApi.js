@@ -4,6 +4,7 @@ export async function createClickedCategoryHistory({
   filePaths,
   grades,
   selectedSensor,
+  virtualCategory,
   clickedAt,
 }) {
   const response = await fetch("/api/clicked-category-history", {
@@ -15,6 +16,7 @@ export async function createClickedCategoryHistory({
       filePaths,
       grades,
       selectedSensor,
+      virtualCategory,
       clickedAt,
     }),
   })

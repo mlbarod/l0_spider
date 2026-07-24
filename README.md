@@ -254,12 +254,11 @@ IP로 현재 사용자를 확인한 후 한 행을 INSERT한다. 자설비는 `c
 `ch_step`, 공통부는 마지막 필터인 `sensor`를 새로 선택할 때 호출한다. 필터를 다시
 클릭해 선택 해제하거나 SKIP LIST를 조회하는 동작은 저장하지 않는다.
 
-자설비에서 SDWT 필터의 `MY EQP`를 선택해 조회를 시작하면 파일 경로 기반
-`clicked_category_history`와 분리된 `POST /api/clicked-history-defect`를 호출한다.
-이 API는 `clicked_history_defect`에 `(line_name, select_step, update_date, knox_id)`를
-INSERT하며 `select_step`에는 `MY EQP`를 저장한다. 접속자의 `knox_id`는 서버가 IP로
-조회하고, `affectedRows`가 0이면 저장 실패로 응답한다. 현재 진단을 위해 자설비 화면
-상단에 업로드 직전 값과 DB 반영 결과를 작은 DEBUG 영역으로 표시한다.
+자설비에서 SDWT 필터의 `MY EQP`를 선택해 조회를 시작하면 같은
+`POST /api/clicked-category-history`를 호출한다. 이 시점에는 Drawing 경로가 아직
+없으므로 `line_id`는 선택 Line, `sdwt`는 `MY EQP`, `grade`는
+`['A', 'B', 'D', 'N', 'M']`, `sensor`는 `ALL`로 구성한다. `update_date`는 MY EQP 선택
+시각을 사용하고 `knox_id`는 서버가 접속 IP로 조회한다.
 
 | App | `line_id` | `sdwt` | `grade` | `sensor` | `update_date` |
 | --- | --- | --- | --- | --- | --- |
