@@ -87,11 +87,37 @@ const SCATTER_CHART_MARGIN = Object.freeze({ top: 42, right: 18, bottom: 28, lef
 const SCATTER_Y_AXIS_WIDTH = 64
 const SCATTER_X_AXIS_HEIGHT = 30
 const EMPTY_EQP_SET = new Set()
+const MY_EQP_HISTORY_DEDUP_MS = 3_000
+const myEqpHistoryUploads = new Map()
 
 function expandPriorities(grades) {
   return Array.from(new Set(
     grades.flatMap((grade) => (grade === "A/B" ? ["A", "B"] : [grade])),
   ))
+}
+
+function uploadMyEqpCategoryHistory(lineId) {
+  const contextKey = `${lineId}\u0000${MY_EQP_TEAM}`
+  if (myEqpHistoryUploads.has(contextKey)) return
+
+  const upload = createClickedCategoryHistory({
+    app: "self",
+    lineId,
+    virtualCategory: {
+      sdwt: MY_EQP_LABEL,
+    },
+    clickedAt: new Date().toISOString(),
+  }).catch((error) => {
+    toast.error(`MY EQP 클릭이력 저장 실패: ${error.message}`)
+  })
+  myEqpHistoryUploads.set(contextKey, upload)
+  void upload.finally(() => {
+    setTimeout(() => {
+      if (myEqpHistoryUploads.get(contextKey) === upload) {
+        myEqpHistoryUploads.delete(contextKey)
+      }
+    }, MY_EQP_HISTORY_DEDUP_MS)
+  })
 }
 
 function SelectRow({ label, meta, selected, multiple = false, onClick }) {
@@ -1712,16 +1738,7 @@ export function FdcTrendPage() {
     const contextKey = `${activeLine}\u0000${MY_EQP_TEAM}`
     if (myEqpHistoryContextRef.current === contextKey) return
     myEqpHistoryContextRef.current = contextKey
-    void createClickedCategoryHistory({
-      app: "self",
-      lineId: activeLine,
-      virtualCategory: {
-        sdwt: MY_EQP_LABEL,
-      },
-      clickedAt: new Date().toISOString(),
-    }).catch((error) => {
-      toast.error(`MY EQP 클릭이력 저장 실패: ${error.message}`)
-    })
+    uploadMyEqpCategoryHistory(activeLine)
   }, [activeLine, isMyEqp])
 
   const resetStepAndSensor = () => {
