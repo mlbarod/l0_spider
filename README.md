@@ -258,7 +258,9 @@ IP로 현재 사용자를 확인한 후 한 행을 INSERT한다. 자설비는 `c
 `POST /api/clicked-category-history`를 호출한다. 이 시점에는 Drawing 경로가 아직
 없으므로 `line_id`는 선택 Line, `sdwt`는 `MY EQP`, `grade`는
 `['A', 'B', 'D', 'N', 'M']`, `sensor`는 `ALL`로 구성한다. `update_date`는 MY EQP 선택
-시각을 사용하고 `knox_id`는 서버가 접속 IP로 조회한다.
+시각을 사용하고 `knox_id`는 서버가 접속 IP로 조회한다. MY EQP에서는 이 진입 이력만
+저장하며 이후 `ch_step` 선택 시 일반 자설비의 파일 경로 기반 이력을 중복 저장하지
+않는다.
 
 | App | `line_id` | `sdwt` | `grade` | `sensor` | `update_date` |
 | --- | --- | --- | --- | --- | --- |

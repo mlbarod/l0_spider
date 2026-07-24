@@ -1776,11 +1776,11 @@ export function FdcTrendPage() {
     const nextChStep = selectedChStep === chStep ? "" : chStep
     const clickedAt = new Date().toISOString()
     setSelectedChStep(nextChStep)
-    if (!nextChStep || isSkipList) return
+    if (!nextChStep || isSkipList || isMyEqp) return
 
     try {
       const queryKey = [
-        isMyEqp ? "my-eqp-equipment-data" : "self-equipment-data",
+        "self-equipment-data",
         activeLine,
         activeTeam,
         activeTeamLabel,
@@ -1792,25 +1792,16 @@ export function FdcTrendPage() {
       ]
       const payload = await queryClient.fetchQuery({
         queryKey,
-        queryFn: () => isMyEqp
-          ? fetchMyEqpEquipmentData({
-              line: activeLine,
-              priorities,
-              desc: selectedDesc,
-              eqpCh: selectedEqpCh,
-              sensor: selectedSensor,
-              chStep: nextChStep,
-            })
-          : fetchSelfEquipmentData({
-              line: activeLine,
-              pathSdwt: activeTeam,
-              sdwt: activeTeamLabel,
-              priorities,
-              desc: selectedDesc,
-              eqpCh: selectedEqpCh,
-              sensor: selectedSensor,
-              chStep: nextChStep,
-            }),
+        queryFn: () => fetchSelfEquipmentData({
+          line: activeLine,
+          pathSdwt: activeTeam,
+          sdwt: activeTeamLabel,
+          priorities,
+          desc: selectedDesc,
+          eqpCh: selectedEqpCh,
+          sensor: selectedSensor,
+          chStep: nextChStep,
+        }),
       })
       const filePaths = (payload.rows ?? []).map((row) => row.file_path)
       if (!filePaths.length) return
