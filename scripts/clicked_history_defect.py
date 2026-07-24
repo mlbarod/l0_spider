@@ -37,6 +37,13 @@ def normalize_update_date(value):
 def main():
     try:
         payload = json.loads(sys.stdin.read() or "{}")
+        line_name = str(payload.get("lineName") or "").strip()
+        select_step = str(payload.get("selectStep") or "").strip().split("_", 1)[0].strip()
+        update_date = normalize_update_date(payload.get("updateDate"))
+        knox_id = str(payload.get("knoxId") or "").strip()
+        if not line_name or not select_step or not knox_id:
+            raise ValueError("clicked_history_defect 저장값이 올바르지 않습니다.")
+
         db_info = load_db_info()
         import pymysql
 
@@ -51,24 +58,26 @@ def main():
             with connection.cursor() as cursor:
                 affected_rows = cursor.execute(
                     """
-                    INSERT INTO `clicked_category_history`
-                        (`line_id`, `sdwt`, `grade`, `sensor`, `update_date`, `knox_id`)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO `clicked_history_defect`
+                    VALUES (%s, %s, %s, %s)
                     """,
-                    (
-                        payload["lineId"],
-                        payload["sdwt"],
-                        payload["grade"],
-                        payload["sensor"],
-                        normalize_update_date(payload.get("updateDate")),
-                        payload["knoxId"],
-                    ),
+                    (line_name, select_step, update_date, knox_id),
                 )
             connection.commit()
-        write_json({"ok": True, "affectedRows": affected_rows})
+
+        write_json({
+            "ok": True,
+            "affectedRows": affected_rows,
+            "record": {
+                "lineName": line_name,
+                "selectStep": select_step,
+                "updateDate": update_date,
+                "knoxId": knox_id,
+            },
+        })
     except Exception as error:
-        print(f"clicked category history operation failed: {error}", file=sys.stderr)
-        write_json({"ok": False, "error": "클릭이력 DB 작업에 실패했습니다."})
+        print(f"clicked history defect operation failed: {error}", file=sys.stderr)
+        write_json({"ok": False, "error": f"clicked_history_defect DB 작업에 실패했습니다: {error}"})
 
 
 if __name__ == "__main__":

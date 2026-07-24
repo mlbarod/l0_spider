@@ -1,4 +1,4 @@
-import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, ArrowUp, Check, ChevronRight, Loader2 } from "lucide-react"
 import { Link, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -39,6 +39,7 @@ import {
 import { cn } from "@/lib/utils"
 
 import { createClickedCategoryHistory } from "../api/clickedCategoryHistoryApi"
+import { createClickedHistoryDefect } from "../api/clickedHistoryDefectApi"
 import { ResizableFilterArea } from "../components/ResizableFilterArea"
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { createHitHistory } from "../api/hitHistoryApi"
@@ -1400,6 +1401,7 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, a
 export function FdcTrendPage() {
   const pageRef = useRef(null)
   const stepScrollPositionRef = useRef(0)
+  const myEqpHistoryContextRef = useRef("")
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const requestedFilters = useMemo(
@@ -1425,6 +1427,7 @@ export function FdcTrendPage() {
   const [selectedEqpCh, setSelectedEqpCh] = useState(() => requestedFilters.eqpCh)
   const [selectedSensor, setSelectedSensor] = useState("")
   const [selectedChStep, setSelectedChStep] = useState("")
+  const [myEqpHistoryDebug, setMyEqpHistoryDebug] = useState(null)
   const [showThreeDayIdentity, setShowThreeDayIdentity] = useState(true)
   const [expandedChSteps, setExpandedChSteps] = useState({
     contextKey: "",
@@ -1702,6 +1705,55 @@ export function FdcTrendPage() {
   )
 
   const setQuery = (key, value) => setQueries((current) => ({ ...current, [key]: value }))
+  const uploadMyEqpHistory = useCallback(async () => {
+    const clickedAt = new Date().toISOString()
+    const pendingRecord = {
+      lineName: activeLine,
+      selectStep: MY_EQP_LABEL,
+      updateDate: clickedAt,
+      knoxId: currentUserQuery.data?.knoxId || "(서버에서 접속 IP로 조회)",
+    }
+    setMyEqpHistoryDebug({
+      status: "uploading",
+      record: pendingRecord,
+      affectedRows: null,
+      error: "",
+    })
+
+    try {
+      const result = await createClickedHistoryDefect({
+        lineName: activeLine,
+        selectStep: MY_EQP_LABEL,
+        clickedAt,
+      })
+      setMyEqpHistoryDebug({
+        status: "success",
+        record: result.record ?? pendingRecord,
+        affectedRows: Number(result.affectedRows ?? 0),
+        error: "",
+      })
+    } catch (error) {
+      setMyEqpHistoryDebug({
+        status: "error",
+        record: pendingRecord,
+        affectedRows: 0,
+        error: error.message,
+      })
+      toast.error(`MY EQP 조회이력 저장 실패: ${error.message}`)
+    }
+  }, [activeLine, currentUserQuery.data?.knoxId])
+
+  useEffect(() => {
+    if (!isMyEqp || !activeLine) {
+      myEqpHistoryContextRef.current = ""
+      return
+    }
+    const contextKey = `${activeLine}\u0000${MY_EQP_TEAM}`
+    if (myEqpHistoryContextRef.current === contextKey) return
+    myEqpHistoryContextRef.current = contextKey
+    void uploadMyEqpHistory()
+  }, [activeLine, isMyEqp, uploadMyEqpHistory])
+
   const resetStepAndSensor = () => {
     setSelectedDesc("")
     setSelectedEqpCh("")
@@ -1780,7 +1832,6 @@ export function FdcTrendPage() {
         lineId: activeLine,
         filePaths,
         grades: priorities,
-        defectSelectStep: isMyEqp ? payload.filters?.desc ?? selectedDesc : undefined,
         clickedAt,
       })
     } catch (error) {
@@ -1824,6 +1875,32 @@ export function FdcTrendPage() {
             </Button>
           </div>
         </div>
+        {myEqpHistoryDebug ? (
+          <div
+            className={cn(
+              "mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border px-2.5 py-1.5 text-[10px]",
+              myEqpHistoryDebug.status === "success"
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-800"
+                : myEqpHistoryDebug.status === "error"
+                ? "border-destructive/30 bg-destructive/10 text-destructive"
+                : "border-amber-500/30 bg-amber-500/10 text-amber-800",
+            )}
+            aria-live="polite"
+          >
+            <span className="font-semibold">
+              clicked_history_defect DEBUG ·
+              {myEqpHistoryDebug.status === "success"
+                ? ` 저장 성공 (${myEqpHistoryDebug.affectedRows}행)`
+                : myEqpHistoryDebug.status === "error"
+                ? " 저장 실패"
+                : " 업로드 중"}
+            </span>
+            <code className="break-all">
+              {JSON.stringify(myEqpHistoryDebug.record)}
+            </code>
+            {myEqpHistoryDebug.error ? <span className="break-all">{myEqpHistoryDebug.error}</span> : null}
+          </div>
+        ) : null}
       </header>
 
       <section className="shrink-0 border-b bg-card px-6 py-3">
