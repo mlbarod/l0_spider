@@ -417,5 +417,3 @@ Line Name, SDWT와 STEP까지 선택한 범위에 속한 모든 Sensor와 ch_ste
 - 이미지 제공 API: `GET /api/commonality-image?path=...`
 - 서버 탐색 모듈: `server/commonalityData.mjs`
 - 화면: `src/features/fdc-trend/pages/CommonalityAnomalyPage.jsx`
-
-환경test용
