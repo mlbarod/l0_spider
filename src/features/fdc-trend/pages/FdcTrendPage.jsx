@@ -54,6 +54,7 @@ import {
 import {
   fetchErdIdentityData,
   fetchErdScatterData,
+  fetchEqpAllSkipTargets,
   fetchMyEqpEquipmentData,
   fetchSelfEquipmentData,
 } from "../api/selfEquipmentApi"
@@ -1032,7 +1033,13 @@ export const EqpAllSkipDialog = memo(function EqpAllSkipDialog({
   )
 })
 
-const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, allSkipLoadTargets }) {
+const ErdScatterCard = memo(function ErdScatterCard({
+  row,
+  lineId,
+  passRecord,
+  allSkipLoadTargets,
+  dataQueryKeyPrefix,
+}) {
   const eqp = stripPngExtension(row.eqp)
   const queryClient = useQueryClient()
   const cardRef = useRef(null)
@@ -1046,7 +1053,7 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, a
   const refreshPassHistory = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ["pass-history", lineId] }),
     queryClient.invalidateQueries({ queryKey: ["skip-list-data", lineId] }),
-    queryClient.invalidateQueries({ queryKey: ["self-equipment-data", lineId] }),
+    queryClient.invalidateQueries({ queryKey: [dataQueryKeyPrefix, lineId] }),
   ])
   const deleteSkipMutation = useMutation({
     mutationFn: deletePassHistory,
@@ -1318,13 +1325,14 @@ const ErdScatterCard = memo(function ErdScatterCard({ row, lineId, passRecord, a
             eqp={eqp}
             filePath={row.file_path}
             lineId={lineId}
+            dataQueryKeyPrefix={dataQueryKeyPrefix}
             disabled={isSkipped}
           />
           {allSkipLoadTargets ? (
             <EqpAllSkipDialog
               eqp={eqp}
               lineId={lineId}
-              dataQueryKeyPrefix="self-equipment-data"
+              dataQueryKeyPrefix={dataQueryKeyPrefix}
               loadTargets={allSkipLoadTargets}
             />
           ) : null}
@@ -1634,7 +1642,8 @@ export function FdcTrendPage() {
   const allSkipLoadTargetsByEqp = useMemo(() => {
     if (isSkipList) return new Map()
     return new Map(chartGroups.map((group) => [group.eqp, async () => {
-      const payload = await fetchSelfEquipmentData({
+      return fetchEqpAllSkipTargets({
+        isMyEqp,
         line: activeLine,
         pathSdwt: activeTeam,
         sdwt: activeTeamLabel,
@@ -1642,11 +1651,19 @@ export function FdcTrendPage() {
         desc: activeDesc,
         eqpCh: group.rows[0]?.eqp ?? group.eqp,
         sensor: activeSensor,
-        chStep: ALL_CH_STEPS,
       })
-      return (payload.rows ?? []).map((targetRow) => ({ filePath: targetRow.file_path }))
     }]))
-  }, [activeDesc, activeLine, activeSensor, activeTeam, activeTeamLabel, chartGroups, isSkipList, priorities])
+  }, [
+    activeDesc,
+    activeLine,
+    activeSensor,
+    activeTeam,
+    activeTeamLabel,
+    chartGroups,
+    isMyEqp,
+    isSkipList,
+    priorities,
+  ])
 
   const filteredLines = filterItems(
     lines.map((line) => ({ value: line, label: formatLineDisplayName(line) })),
@@ -2147,6 +2164,7 @@ export function FdcTrendPage() {
                                 ? row.pass_history
                                 : passHistoryByKey.get(buildChartPassHistoryKey(activeLine, row))}
                               allSkipLoadTargets={allSkipLoadTargetsByEqp.get(group.eqp) ?? null}
+                              dataQueryKeyPrefix={isMyEqp ? "my-eqp-equipment-data" : "self-equipment-data"}
                             />
                           </div>
                           {isVisible && group.gathered && showThreeDayIdentity ? (

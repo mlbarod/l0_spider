@@ -1,3 +1,5 @@
+import { getApiErrorMessage } from "./errorMessage.js"
+
 export async function fetchDashboardSummary({ startDate, endDate, lines = [], signal } = {}) {
   const searchParams = new URLSearchParams()
   if (startDate) searchParams.set("startDate", startDate)
@@ -11,7 +13,7 @@ export async function fetchDashboardSummary({ startDate, endDate, lines = [], si
   const payload = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(payload.error || "대시보드 데이터를 불러오지 못했습니다.")
+    throw new Error(getApiErrorMessage(payload, "대시보드 데이터를 불러오지 못했습니다."))
   }
 
   const lineDashboard = payload.lineDashboard

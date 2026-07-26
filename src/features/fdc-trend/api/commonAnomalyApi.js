@@ -1,3 +1,5 @@
+import { getApiErrorMessage } from "./errorMessage.js"
+
 export async function fetchCommonAnomalyData({
   line,
   pathSdwt,
@@ -16,7 +18,7 @@ export async function fetchCommonAnomalyData({
   })
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
-    throw new Error(payload.error || "공통부 이상감지 경로 데이터를 불러오지 못했습니다.")
+    throw new Error(getApiErrorMessage(payload, "공통부 이상감지 경로 데이터를 불러오지 못했습니다."))
   }
   return payload
 }
@@ -32,7 +34,7 @@ export async function fetchCommonSkipListData({ lineId, prcGroup, eqp, sensor })
   })
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
-    throw new Error(payload.error || "공통부 SKIP LIST 데이터를 불러오지 못했습니다.")
+    throw new Error(getApiErrorMessage(payload, "공통부 SKIP LIST 데이터를 불러오지 못했습니다."))
   }
   return payload
 }
@@ -44,9 +46,7 @@ async function fetchCommonChartData({ filePath, eqp, sensor, chStep, mode = "sca
   })
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
-    const error = new Error(payload.error || "공통부 이상감지 데이터를 불러오지 못했습니다.")
-    error.sourcePath = payload.sourcePath
-    throw error
+    throw new Error(getApiErrorMessage(payload, "공통부 이상감지 데이터를 불러오지 못했습니다."))
   }
   return payload
 }

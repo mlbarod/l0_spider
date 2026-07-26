@@ -1,6 +1,8 @@
+import { getApiErrorMessage } from "./errorMessage.js"
+
 async function parseResponse(response) {
   const payload = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(payload.error || "PASS 이력을 처리하지 못했습니다.")
+  if (!response.ok) throw new Error(getApiErrorMessage(payload, "PASS 이력을 처리하지 못했습니다."))
   return payload
 }
 

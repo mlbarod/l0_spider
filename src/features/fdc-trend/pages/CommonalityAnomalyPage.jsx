@@ -149,9 +149,6 @@ function CommonalityImageCard({ row }) {
           <div className="grid max-w-full justify-items-center gap-3 px-4 text-center">
             <FileWarning className="size-8 text-destructive" aria-hidden="true" />
             <p className="text-sm font-medium text-destructive">이미지를 불러오지 못했습니다.</p>
-            <code className="max-w-full break-all rounded-md bg-muted px-3 py-2 text-left text-xs text-muted-foreground">
-              {row.filePath}
-            </code>
           </div>
         ) : (
           <img
