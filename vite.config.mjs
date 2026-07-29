@@ -1,4 +1,4 @@
-import { defineConfig } from "vite"
+import { defineConfig, loadEnv } from "vite"
 import react from "@vitejs/plugin-react"
 import path from "node:path"
 import process from "node:process"
@@ -23,6 +23,7 @@ import {
   handleErdScatterDataRequest,
   handleSelfEquipmentDataRequest,
 } from "./server/selfEquipmentData.mjs"
+import { sanitizeMockFrontendSource } from "./mock/utils/sanitize-source.mjs"
 
 const STAGING_HOST = "stg.plane.samsungds.net"
 const MEM_ETCH_COMMON_HOST = "mem-etch-common.samsungds.net"
@@ -115,8 +116,42 @@ function mappingConfigApi() {
   }
 }
 
-export default defineConfig({
-  plugins: [react(), mappingConfigApi()],
+function syntheticLocalDataPlugin() {
+  const syntheticDataPath = path.resolve(
+    process.cwd(),
+    "mock/fixtures/local/fdcTrendMockData.js",
+  )
+  const syntheticApiPath = path.resolve(
+    process.cwd(),
+    "mock/fixtures/local/fdcTrendApi.js",
+  )
+  return {
+    name: "l0-spider-synthetic-local-data",
+    enforce: "pre",
+    resolveId(source, importer) {
+      if (!importer?.includes("/src/features/fdc-trend/")) return null
+      if (/\/utils\/fdcTrendMockData(?:\.js)?$/.test(source)) return syntheticDataPath
+      if (/\/api\/fdcTrendApi(?:\.js)?$/.test(source)) return syntheticApiPath
+      return null
+    },
+    transform(code, id) {
+      const transformed = sanitizeMockFrontendSource(code, id)
+      return transformed === null ? null : { code: transformed, map: null }
+    },
+  }
+}
+
+export default defineConfig(({ mode }) => {
+  const modeEnv = loadEnv(mode, process.cwd(), "")
+  const useMockApi = mode === "mock" && modeEnv.VITE_USE_MOCK_API === "true"
+  const mockApiTarget = modeEnv.VITE_API_BASE_URL || "http://127.0.0.1:5175"
+  const mockFrontendPort = Number(modeEnv.VITE_MOCK_FRONTEND_PORT || 4175)
+
+  return {
+  plugins: [
+    react(),
+    ...(useMockApi ? [syntheticLocalDataPlugin()] : [mappingConfigApi()]),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(process.cwd(), "src"),
@@ -124,8 +159,16 @@ export default defineConfig({
     },
   },
   server: {
-    host: true,
-    port: 3000,
+    host: useMockApi ? "127.0.0.1" : true,
+    port: useMockApi ? mockFrontendPort : 3000,
+    ...(useMockApi
+      ? {
+          proxy: {
+            "/api": { target: mockApiTarget, changeOrigin: false },
+            "/__mock": { target: mockApiTarget, changeOrigin: false },
+          },
+        }
+      : {}),
     allowedHosts: [
       MEM_ETCH_COMMON_HOST,
       ...(isStagingHost ? [STAGING_HOST] : []),
@@ -144,4 +187,5 @@ export default defineConfig({
     allowedHosts: [MEM_ETCH_COMMON_HOST],
   },
 
+  }
 })

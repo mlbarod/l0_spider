@@ -6,7 +6,13 @@ import globals from "globals"
 
 export default defineConfig([
   {
-    ignores: ["dist/**", "node_modules/**", "src/components/ui/**"],
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      "playwright-report/**",
+      "test-results/**",
+      "src/components/ui/**",
+    ],
   },
   js.configs.recommended,
   react.configs.flat.recommended,
