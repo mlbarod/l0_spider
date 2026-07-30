@@ -60,6 +60,7 @@ import {
 } from "../api/selfEquipmentApi"
 import { SENSOR_GRADES, SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 import { getLowestChStepRowsByPpid } from "../utils/chStepGrouping.mjs"
+import { paginateChartGroups } from "../utils/chartPagination.mjs"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 import {
   MY_EQP_TEAM_KEY,
@@ -1460,6 +1461,7 @@ export function FdcTrendPage() {
   const [selectedEqpCh, setSelectedEqpCh] = useState(() => requestedFilters.eqpCh)
   const [selectedSensor, setSelectedSensor] = useState("")
   const [selectedChStep, setSelectedChStep] = useState("")
+  const [chartPage, setChartPage] = useState(1)
   const [showThreeDayIdentity, setShowThreeDayIdentity] = useState(true)
   const [expandedChSteps, setExpandedChSteps] = useState({
     contextKey: "",
@@ -1634,11 +1636,33 @@ export function FdcTrendPage() {
       ...group,
       gathered,
       visibleRows,
-      visibleRowIds: new Set(visibleRows.map((row) => row.id)),
+      chartsPerRow: gathered && showThreeDayIdentity ? 2 : 1,
       animate: expandedChSteps.contextKey === gatherContextKey
         && expandedChSteps.lastEqp === group.eqp,
     }
-  }), [chartGroups, expandedChSteps.contextKey, expandedChSteps.lastEqp, expandedEqps, gatherContextKey])
+  }), [
+    chartGroups,
+    expandedChSteps.contextKey,
+    expandedChSteps.lastEqp,
+    expandedEqps,
+    gatherContextKey,
+    showThreeDayIdentity,
+  ])
+  const chartPagination = useMemo(
+    () => paginateChartGroups(visibleChartGroups, chartPage),
+    [chartPage, visibleChartGroups],
+  )
+  const pageChartGroups = chartPagination.pageGroups
+  const activeChartPage = chartPagination.page
+  const chartPageCount = chartPagination.totalPages
+
+  useEffect(() => {
+    setChartPage(1)
+  }, [gatherContextKey])
+
+  useEffect(() => {
+    if (chartPage !== activeChartPage) setChartPage(activeChartPage)
+  }, [activeChartPage, chartPage])
   const allSkipLoadTargetsByEqp = useMemo(() => {
     if (isSkipList) return new Map()
     return new Map(chartGroups.map((group) => [group.eqp, async () => {
@@ -1716,11 +1740,11 @@ export function FdcTrendPage() {
   )
   const filteredSensors = filterItems(
     sensors.length ? [
-      ...(selectedEqpCh === ALL_EQP_CHANNELS ? [] : [{
+      {
         value: ALL_SENSORS,
         label: "ALL",
         meta: `${sensors.reduce((total, item) => total + item.rowCount, 0).toLocaleString()}건`,
-      }]),
+      },
       ...sensors.map((item) => ({
         value: item.sensor,
         label: item.sensor,
@@ -1736,11 +1760,11 @@ export function FdcTrendPage() {
         label: "ALL",
         meta: `${chSteps.reduce((total, item) => total + item.rowCount, 0).toLocaleString()}건`,
       },
-      ...chSteps.map((item) => ({
+      ...(selectedSensor === ALL_SENSORS ? [] : chSteps.map((item) => ({
         value: item.step,
         label: item.step.split("@")[0],
         meta: `${item.rowCount.toLocaleString()}건 · ${item.equipmentCount.toLocaleString()} eqp`,
-      })),
+      }))),
     ] : [],
     queries.chStep,
   )
@@ -1790,6 +1814,7 @@ export function FdcTrendPage() {
     resetStepAndSensor()
   }
   const handleChStepChange = async (chStep) => {
+    if (selectedSensor === ALL_SENSORS && chStep !== ALL_CH_STEPS) return
     const nextChStep = selectedChStep === chStep ? "" : chStep
     const clickedAt = new Date().toISOString()
     setSelectedChStep(nextChStep)
@@ -2117,13 +2142,37 @@ export function FdcTrendPage() {
               </div>
             ) : null}
           </div>
+          {chStepIsSelected && chartPageCount > 1 ? (
+            <nav
+              className="flex flex-wrap items-center justify-center gap-1 rounded-lg border bg-card px-3 py-2"
+              aria-label="차트 페이지"
+            >
+              {Array.from({ length: chartPageCount }, (_, index) => {
+                const page = index + 1
+                return (
+                  <Button
+                    key={page}
+                    type="button"
+                    variant={activeChartPage === page ? "default" : "outline"}
+                    size="sm"
+                    className="size-8 p-0"
+                    aria-label={`${page}페이지`}
+                    aria-current={activeChartPage === page ? "page" : undefined}
+                    onClick={() => setChartPage(page)}
+                  >
+                    {page}
+                  </Button>
+                )
+              })}
+            </nav>
+          ) : null}
           {!chStepIsSelected ? (
             <div className="grid min-h-52 place-items-center rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
               STEP, eqp_ch, sensor와 ch_step을 선택하면 scatter chart가 표시됩니다.
             </div>
           ) : chartGroups.length ? (
             <div className="grid min-w-0 gap-5">
-              {visibleChartGroups.map((group) => (
+              {pageChartGroups.map((group) => (
                 <section key={group.eqp} className="min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm">
                   <header className="flex items-center justify-between gap-3 border-b bg-muted/60 px-4 py-3">
                     <div className="flex min-w-0 items-center gap-2">
@@ -2142,7 +2191,11 @@ export function FdcTrendPage() {
                     </div>
                     <Badge variant="secondary">
                       {group.visibleRows.length.toLocaleString()}
-                      {group.gathered ? ` / ${group.rows.length.toLocaleString()}` : ""} charts
+                      {group.totalVisibleRows !== group.visibleRows.length
+                        ? ` / ${group.totalVisibleRows.toLocaleString()}`
+                        : group.gathered
+                        ? ` / ${group.rows.length.toLocaleString()}`
+                        : ""} charts
                     </Badge>
                   </header>
                   <div
@@ -2152,11 +2205,9 @@ export function FdcTrendPage() {
                       group.animate && (group.gathered ? "animate-ch-step-gather" : "animate-ch-step-expand"),
                     )}
                   >
-                    {group.rows.map((row) => {
-                      const isVisible = group.visibleRowIds.has(row.id)
-                      return (
+                    {group.visibleRows.map((row) => (
                         <Fragment key={row.id}>
-                          <div className={cn("min-w-0", !isVisible && "hidden")} aria-hidden={!isVisible}>
+                          <div className="min-w-0">
                             <ErdScatterCard
                               row={row}
                               lineId={activeLine}
@@ -2167,12 +2218,11 @@ export function FdcTrendPage() {
                               dataQueryKeyPrefix={isMyEqp ? "my-eqp-equipment-data" : "self-equipment-data"}
                             />
                           </div>
-                          {isVisible && group.gathered && showThreeDayIdentity ? (
+                          {group.gathered && showThreeDayIdentity ? (
                             <ThreeDayIdentityChartCard row={row} eqp={group.eqp} />
                           ) : null}
                         </Fragment>
-                      )
-                    })}
+                    ))}
                   </div>
                 </section>
               ))}
