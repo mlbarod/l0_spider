@@ -1,0 +1,232 @@
+{
+  "metadata": {
+    "generatedAt": "2026-07-30T04:41:32.515Z",
+    "scenarios": [
+      "single",
+      "normal",
+      "large"
+    ],
+    "samplesPerScenario": 5,
+    "warmupIterations": 1,
+    "timingSource": "Node performance.now(); per-operation time normalized from repeated operations",
+    "scope": "pure data generation, JSON encode/decode, grouping, and existing identity chart transforms; not browser rendering"
+  },
+  "scenarios": {
+    "single": {
+      "dataRows": 1,
+      "pointsPerGroup": 1,
+      "identitySourcePoints": 1,
+      "repeatCountPerSample": 1000,
+      "operations": {
+        "commonPayloadGeneration": {
+          "durationMs": {
+            "mean": 0.0414,
+            "median": 0.0394,
+            "min": 0.0323,
+            "max": 0.0533
+          },
+          "samples": [
+            0.0477,
+            0.0346,
+            0.0394,
+            0.0533,
+            0.0323
+          ],
+          "outputCount": 1
+        },
+        "jsonRoundTrip": {
+          "durationMs": {
+            "mean": 0.0299,
+            "median": 0.0305,
+            "min": 0.0204,
+            "max": 0.0444
+          },
+          "samples": [
+            0.033,
+            0.0444,
+            0.0212,
+            0.0204,
+            0.0305
+          ],
+          "outputCount": 1
+        },
+        "rowGroupingAndSort": {
+          "durationMs": {
+            "mean": 0.0093,
+            "median": 0.0129,
+            "min": 0.0023,
+            "max": 0.0147
+          },
+          "samples": [
+            0.0147,
+            0.0031,
+            0.0135,
+            0.0023,
+            0.0129
+          ],
+          "outputCount": 1
+        },
+        "identitySelection": {
+          "durationMs": {
+            "mean": 0.0084,
+            "median": 0.0065,
+            "min": 0.0021,
+            "max": 0.0162
+          },
+          "samples": [
+            0.0022,
+            0.0147,
+            0.0021,
+            0.0065,
+            0.0162
+          ],
+          "outputCount": 1
+        }
+      }
+    },
+    "normal": {
+      "dataRows": 8,
+      "pointsPerGroup": 12,
+      "identitySourcePoints": 24,
+      "repeatCountPerSample": 500,
+      "operations": {
+        "commonPayloadGeneration": {
+          "durationMs": {
+            "mean": 0.1094,
+            "median": 0.1025,
+            "min": 0.0999,
+            "max": 0.1303
+          },
+          "samples": [
+            0.1121,
+            0.1025,
+            0.1303,
+            0.0999,
+            0.1019
+          ],
+          "outputCount": 8
+        },
+        "jsonRoundTrip": {
+          "durationMs": {
+            "mean": 0.2752,
+            "median": 0.2793,
+            "min": 0.2221,
+            "max": 0.3111
+          },
+          "samples": [
+            0.3111,
+            0.2793,
+            0.2221,
+            0.2545,
+            0.3092
+          ],
+          "outputCount": 8
+        },
+        "rowGroupingAndSort": {
+          "durationMs": {
+            "mean": 0.042,
+            "median": 0.0392,
+            "min": 0.0298,
+            "max": 0.0623
+          },
+          "samples": [
+            0.0417,
+            0.0298,
+            0.0392,
+            0.0623,
+            0.0372
+          ],
+          "outputCount": 2
+        },
+        "identitySelection": {
+          "durationMs": {
+            "mean": 0.0135,
+            "median": 0.0059,
+            "min": 0.0033,
+            "max": 0.0285
+          },
+          "samples": [
+            0.0285,
+            0.0059,
+            0.0033,
+            0.0258,
+            0.0037
+          ],
+          "outputCount": 24
+        }
+      }
+    },
+    "large": {
+      "dataRows": 1200,
+      "pointsPerGroup": 2500,
+      "identitySourcePoints": 5000,
+      "repeatCountPerSample": 50,
+      "operations": {
+        "commonPayloadGeneration": {
+          "durationMs": {
+            "mean": 8.2964,
+            "median": 8.4679,
+            "min": 6.1321,
+            "max": 9.5756
+          },
+          "samples": [
+            9.5756,
+            8.2456,
+            6.1321,
+            9.061,
+            8.4679
+          ],
+          "outputCount": 1200
+        },
+        "jsonRoundTrip": {
+          "durationMs": {
+            "mean": 42.554,
+            "median": 42.0727,
+            "min": 39.9351,
+            "max": 45.4223
+          },
+          "samples": [
+            44.3511,
+            42.0727,
+            40.9887,
+            39.9351,
+            45.4223
+          ],
+          "outputCount": 1200
+        },
+        "rowGroupingAndSort": {
+          "durationMs": {
+            "mean": 0.6116,
+            "median": 0.6836,
+            "min": 0.3774,
+            "max": 0.7652
+          },
+          "samples": [
+            0.3774,
+            0.7652,
+            0.5074,
+            0.6836,
+            0.7246
+          ],
+          "outputCount": 2
+        },
+        "identitySelection": {
+          "durationMs": {
+            "mean": 0.6669,
+            "median": 0.5343,
+            "min": 0.4479,
+            "max": 1.2313
+          },
+          "samples": [
+            1.2313,
+            0.6348,
+            0.5343,
+            0.4862,
+            0.4479
+          ],
+          "outputCount": 2200
+        }
+      }
+    }
+  }
+}

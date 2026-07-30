@@ -1,0 +1,3914 @@
+{
+  "metadata": {
+    "generatedAt": "2026-07-30T04:37:27.372Z",
+    "scenarios": [
+      "single",
+      "normal",
+      "large"
+    ],
+    "iterations": 5,
+    "warmupIterations": 1,
+    "cacheCondition": "server cache not implemented; first complete flow excluded as warm-up",
+    "timingSource": "Node performance.now() around local HTTP fetch and body read",
+    "dataPolicy": "synthetic aggregate metrics only; response bodies omitted"
+  },
+  "scenarios": {
+    "single": {
+      "dashboard": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/dashboard-data"
+        ],
+        "warmup": {
+          "durationMs": 46.724,
+          "bytes": 1498
+        },
+        "durationMs": {
+          "mean": 12.747,
+          "median": 15.234,
+          "min": 3.798,
+          "max": 16.141,
+          "standardDeviation": 4.573
+        },
+        "bytes": {
+          "mean": 1498,
+          "median": 1498,
+          "min": 1498,
+          "max": 1498,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 1,
+          "chartPoints": 1
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 16.141,
+            "bytes": 1498,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 16.006,
+                "bytes": 1498,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 15.234,
+            "bytes": 1498,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 15.083,
+                "bytes": 1498,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 3.798,
+            "bytes": 1498,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 3.67,
+                "bytes": 1498,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 15.295,
+            "bytes": 1498,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 15.154,
+                "bytes": 1498,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 13.265,
+            "bytes": 1498,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 13.119,
+                "bytes": 1498,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "selfEquipmentFinal": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/self-equipment-data"
+        ],
+        "warmup": {
+          "durationMs": 29.939,
+          "bytes": 518
+        },
+        "durationMs": {
+          "mean": 10.356,
+          "median": 13.329,
+          "min": 2.812,
+          "max": 17.491,
+          "standardDeviation": 5.787
+        },
+        "bytes": {
+          "mean": 518,
+          "median": 518,
+          "min": 518,
+          "max": 518,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 0,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 17.491,
+            "bytes": 518,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 17.328,
+                "bytes": 518,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 4.202,
+            "bytes": 518,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 3.937,
+                "bytes": 518,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 13.329,
+            "bytes": 518,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 13.207,
+                "bytes": 518,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 13.948,
+            "bytes": 518,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 13.62,
+                "bytes": 518,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 2.812,
+            "bytes": 518,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.721,
+                "bytes": 518,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "selfEquipmentProgressive": {
+        "requestCountPerFlow": 5,
+        "pathSequence": [
+          "/api/self-equipment-data",
+          "/api/self-equipment-data",
+          "/api/self-equipment-data",
+          "/api/self-equipment-data",
+          "/api/self-equipment-data"
+        ],
+        "warmup": {
+          "durationMs": 45.024,
+          "bytes": 2205
+        },
+        "durationMs": {
+          "mean": 27.706,
+          "median": 29.47,
+          "min": 19.381,
+          "max": 37.729,
+          "standardDeviation": 6.865
+        },
+        "bytes": {
+          "mean": 2205,
+          "median": 2205,
+          "min": 2205,
+          "max": 2205,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 0,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 20.647,
+            "bytes": 2205,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.066,
+                "bytes": 341,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.808,
+                "bytes": 389,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.332,
+                "bytes": 446,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 11.818,
+                "bytes": 511,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.203,
+                "bytes": 518,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 29.47,
+            "bytes": 2205,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.844,
+                "bytes": 341,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 11.839,
+                "bytes": 389,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.89,
+                "bytes": 446,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.667,
+                "bytes": 511,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.752,
+                "bytes": 518,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 37.729,
+            "bytes": 2205,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.951,
+                "bytes": 341,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.012,
+                "bytes": 389,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 3.691,
+                "bytes": 446,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.914,
+                "bytes": 511,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 27.786,
+                "bytes": 518,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 31.301,
+            "bytes": 2205,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.633,
+                "bytes": 341,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.668,
+                "bytes": 389,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 12.376,
+                "bytes": 446,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.797,
+                "bytes": 511,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 13.433,
+                "bytes": 518,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 19.381,
+            "bytes": 2205,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.814,
+                "bytes": 341,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.959,
+                "bytes": 389,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.794,
+                "bytes": 446,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 10.834,
+                "bytes": 511,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.553,
+                "bytes": 518,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "commonAnomalyFinal": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/common-anomaly-data"
+        ],
+        "warmup": {
+          "durationMs": 12.397,
+          "bytes": 798
+        },
+        "durationMs": {
+          "mean": 4.995,
+          "median": 3.842,
+          "min": 2.482,
+          "max": 8.95,
+          "standardDeviation": 2.465
+        },
+        "bytes": {
+          "mean": 798,
+          "median": 798,
+          "min": 798,
+          "max": 798,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 1,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 2.971,
+            "bytes": 798,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 2.876,
+                "bytes": 798,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 2.482,
+            "bytes": 798,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 2.398,
+                "bytes": 798,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 3.842,
+            "bytes": 798,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 3.762,
+                "bytes": 798,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 8.95,
+            "bytes": 798,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 8.869,
+                "bytes": 798,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 6.729,
+            "bytes": 798,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 6.649,
+                "bytes": 798,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "commonAnomalyProgressive": {
+        "requestCountPerFlow": 4,
+        "pathSequence": [
+          "/api/common-anomaly-data",
+          "/api/common-anomaly-data",
+          "/api/common-anomaly-data",
+          "/api/common-anomaly-data"
+        ],
+        "warmup": {
+          "durationMs": 22.874,
+          "bytes": 1692
+        },
+        "durationMs": {
+          "mean": 24.579,
+          "median": 26.847,
+          "min": 17.976,
+          "max": 31.604,
+          "standardDeviation": 5.512
+        },
+        "bytes": {
+          "mean": 1692,
+          "median": 1692,
+          "min": 1692,
+          "max": 1692,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 1,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 17.976,
+            "bytes": 1692,
+            "requestCount": 4,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 2.125,
+                "bytes": 242,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.878,
+                "bytes": 298,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 5.243,
+                "bytes": 354,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.899,
+                "bytes": 798,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 31.604,
+            "bytes": 1692,
+            "requestCount": 4,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 9.137,
+                "bytes": 242,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 10.561,
+                "bytes": 298,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 2.637,
+                "bytes": 354,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 8.921,
+                "bytes": 798,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 26.847,
+            "bytes": 1692,
+            "requestCount": 4,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 8.905,
+                "bytes": 242,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.893,
+                "bytes": 298,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 4.995,
+                "bytes": 354,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 10.715,
+                "bytes": 798,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 18.225,
+            "bytes": 1692,
+            "requestCount": 4,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.762,
+                "bytes": 242,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 12.207,
+                "bytes": 298,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 2.008,
+                "bytes": 354,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.834,
+                "bytes": 798,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 28.245,
+            "bytes": 1692,
+            "requestCount": 4,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 12.886,
+                "bytes": 242,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.716,
+                "bytes": 298,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 11.49,
+                "bytes": 354,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.8,
+                "bytes": 798,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "scatter": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/erd-scatter-data"
+        ],
+        "warmup": {
+          "durationMs": 2.941,
+          "bytes": 749
+        },
+        "durationMs": {
+          "mean": 5.945,
+          "median": 2.888,
+          "min": 1.853,
+          "max": 11.877,
+          "standardDeviation": 4.57
+        },
+        "bytes": {
+          "mean": 749,
+          "median": 749,
+          "min": 749,
+          "max": 749,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": null,
+          "chartPoints": 1
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 11.159,
+            "bytes": 749,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 11.079,
+                "bytes": 749,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 1.95,
+            "bytes": 749,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 1.873,
+                "bytes": 749,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 1.853,
+            "bytes": 749,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 1.775,
+                "bytes": 749,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 11.877,
+            "bytes": 749,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 11.787,
+                "bytes": 749,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 2.888,
+            "bytes": 749,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 2.813,
+                "bytes": 749,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "identity": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/erd-scatter-data"
+        ],
+        "warmup": {
+          "durationMs": 2.617,
+          "bytes": 567
+        },
+        "durationMs": {
+          "mean": 5.646,
+          "median": 2.061,
+          "min": 1.885,
+          "max": 13.491,
+          "standardDeviation": 4.748
+        },
+        "bytes": {
+          "mean": 567,
+          "median": 567,
+          "min": 567,
+          "max": 567,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": null,
+          "chartPoints": 1
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 13.491,
+            "bytes": 567,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 13.419,
+                "bytes": 567,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 1.926,
+            "bytes": 567,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 1.859,
+                "bytes": 567,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 1.885,
+            "bytes": 567,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 1.816,
+                "bytes": 567,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 8.866,
+            "bytes": 567,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 8.77,
+                "bytes": 567,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 2.061,
+            "bytes": 567,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 1
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 1.993,
+                "bytes": 567,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "passHistory": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/pass-history"
+        ],
+        "warmup": {
+          "durationMs": 2.329,
+          "bytes": 345
+        },
+        "durationMs": {
+          "mean": 3.389,
+          "median": 1.725,
+          "min": 1.616,
+          "max": 9.55,
+          "standardDeviation": 3.094
+        },
+        "bytes": {
+          "mean": 345,
+          "median": 345,
+          "min": 345,
+          "max": 345,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 1,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 1.725,
+            "bytes": 345,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 1.664,
+                "bytes": 345,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 9.55,
+            "bytes": 345,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 9.462,
+                "bytes": 345,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 2.405,
+            "bytes": 345,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 2.344,
+                "bytes": 345,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 1.616,
+            "bytes": 345,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 1.556,
+                "bytes": 345,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 1.651,
+            "bytes": 345,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 1.59,
+                "bytes": 345,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "registrations": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/my-eqp-registration"
+        ],
+        "warmup": {
+          "durationMs": 11.271,
+          "bytes": 338
+        },
+        "durationMs": {
+          "mean": 3.525,
+          "median": 1.752,
+          "min": 1.698,
+          "max": 10.563,
+          "standardDeviation": 3.519
+        },
+        "bytes": {
+          "mean": 338,
+          "median": 338,
+          "min": 338,
+          "max": 338,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 1,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 1.888,
+            "bytes": 338,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 1.814,
+                "bytes": 338,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 1.698,
+            "bytes": 338,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 1.628,
+                "bytes": 338,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 1.724,
+            "bytes": 338,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 1.655,
+                "bytes": 338,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 10.563,
+            "bytes": 338,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 10.492,
+                "bytes": 338,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 1.752,
+            "bytes": 338,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 1.672,
+                "bytes": 338,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "normal": {
+      "dashboard": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/dashboard-data"
+        ],
+        "warmup": {
+          "durationMs": 2.573,
+          "bytes": 3084
+        },
+        "durationMs": {
+          "mean": 6.104,
+          "median": 2.363,
+          "min": 2.201,
+          "max": 12.611,
+          "standardDeviation": 4.694
+        },
+        "bytes": {
+          "mean": 3084,
+          "median": 3084,
+          "min": 3084,
+          "max": 3084,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 8,
+          "chartPoints": 21
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 2.201,
+            "bytes": 3084,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": 21
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 2.075,
+                "bytes": 3084,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 11.03,
+            "bytes": 3084,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": 21
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 10.887,
+                "bytes": 3084,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 2.315,
+            "bytes": 3084,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": 21
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 2.191,
+                "bytes": 3084,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 2.363,
+            "bytes": 3084,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": 21
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 2.237,
+                "bytes": 3084,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 12.611,
+            "bytes": 3084,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": 21
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 12.483,
+                "bytes": 3084,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "selfEquipmentFinal": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/self-equipment-data"
+        ],
+        "warmup": {
+          "durationMs": 1.994,
+          "bytes": 708
+        },
+        "durationMs": {
+          "mean": 4.901,
+          "median": 2.633,
+          "min": 1.858,
+          "max": 14.59,
+          "standardDeviation": 4.857
+        },
+        "bytes": {
+          "mean": 708,
+          "median": 708,
+          "min": 708,
+          "max": 708,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 0,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 1.858,
+            "bytes": 708,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.772,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 2.633,
+            "bytes": 708,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.549,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 2.932,
+            "bytes": 708,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.84,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 2.491,
+            "bytes": 708,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.41,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 14.59,
+            "bytes": 708,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 14.488,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "selfEquipmentProgressive": {
+        "requestCountPerFlow": 5,
+        "pathSequence": [
+          "/api/self-equipment-data",
+          "/api/self-equipment-data",
+          "/api/self-equipment-data",
+          "/api/self-equipment-data",
+          "/api/self-equipment-data"
+        ],
+        "warmup": {
+          "durationMs": 21.022,
+          "bytes": 2868
+        },
+        "durationMs": {
+          "mean": 37.985,
+          "median": 37.841,
+          "min": 31.628,
+          "max": 48.48,
+          "standardDeviation": 5.883
+        },
+        "bytes": {
+          "mean": 2868,
+          "median": 2868,
+          "min": 2868,
+          "max": 2868,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 0,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 48.48,
+            "bytes": 2868,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 12.614,
+                "bytes": 392,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.218,
+                "bytes": 482,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 29.352,
+                "bytes": 585,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.786,
+                "bytes": 701,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.998,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 38.68,
+            "bytes": 2868,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 16.291,
+                "bytes": 392,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 5.05,
+                "bytes": 482,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.881,
+                "bytes": 585,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 7.91,
+                "bytes": 701,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 7.138,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 31.628,
+            "bytes": 2868,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.057,
+                "bytes": 392,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 12.898,
+                "bytes": 482,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.818,
+                "bytes": 585,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.927,
+                "bytes": 701,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 12.223,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 33.298,
+            "bytes": 2868,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.702,
+                "bytes": 392,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 13.285,
+                "bytes": 482,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.086,
+                "bytes": 585,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 13.971,
+                "bytes": 701,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.843,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 37.841,
+            "bytes": 2868,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 7.322,
+                "bytes": 392,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 1.995,
+                "bytes": 482,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 14.901,
+                "bytes": 585,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.171,
+                "bytes": 701,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 11.018,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "commonAnomalyFinal": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/common-anomaly-data"
+        ],
+        "warmup": {
+          "durationMs": 4.432,
+          "bytes": 3917
+        },
+        "durationMs": {
+          "mean": 3.426,
+          "median": 1.989,
+          "min": 1.921,
+          "max": 9.194,
+          "standardDeviation": 2.885
+        },
+        "bytes": {
+          "mean": 3917,
+          "median": 3917,
+          "min": 3917,
+          "max": 3917,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 8,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 1.921,
+            "bytes": 3917,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.803,
+                "bytes": 3917,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 2.101,
+            "bytes": 3917,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.992,
+                "bytes": 3917,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 9.194,
+            "bytes": 3917,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 9.058,
+                "bytes": 3917,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 1.989,
+            "bytes": 3917,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.878,
+                "bytes": 3917,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 1.925,
+            "bytes": 3917,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.819,
+                "bytes": 3917,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "commonAnomalyProgressive": {
+        "requestCountPerFlow": 4,
+        "pathSequence": [
+          "/api/common-anomaly-data",
+          "/api/common-anomaly-data",
+          "/api/common-anomaly-data",
+          "/api/common-anomaly-data"
+        ],
+        "warmup": {
+          "durationMs": 16.243,
+          "bytes": 4940
+        },
+        "durationMs": {
+          "mean": 20.187,
+          "median": 17.757,
+          "min": 15.994,
+          "max": 32.81,
+          "standardDeviation": 6.372
+        },
+        "bytes": {
+          "mean": 4940,
+          "median": 4940,
+          "min": 4940,
+          "max": 4940,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 8,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 15.994,
+            "bytes": 4940,
+            "requestCount": 4,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.625,
+                "bytes": 242,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 10.744,
+                "bytes": 340,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.661,
+                "bytes": 441,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.647,
+                "bytes": 3917,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 16.144,
+            "bytes": 4940,
+            "requestCount": 4,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.988,
+                "bytes": 242,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.745,
+                "bytes": 340,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.563,
+                "bytes": 441,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.699,
+                "bytes": 3917,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 17.757,
+            "bytes": 4940,
+            "requestCount": 4,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 11.553,
+                "bytes": 242,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.678,
+                "bytes": 340,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.948,
+                "bytes": 441,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 2.186,
+                "bytes": 3917,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 18.229,
+            "bytes": 4940,
+            "requestCount": 4,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.442,
+                "bytes": 242,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.459,
+                "bytes": 340,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.61,
+                "bytes": 441,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 13.382,
+                "bytes": 3917,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 32.81,
+            "bytes": 4940,
+            "requestCount": 4,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 2.103,
+                "bytes": 242,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 13.453,
+                "bytes": 340,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 15.034,
+                "bytes": 441,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 1.835,
+                "bytes": 3917,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "scatter": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/erd-scatter-data"
+        ],
+        "warmup": {
+          "durationMs": 2.063,
+          "bytes": 3294
+        },
+        "durationMs": {
+          "mean": 5.772,
+          "median": 1.902,
+          "min": 1.785,
+          "max": 11.851,
+          "standardDeviation": 4.824
+        },
+        "bytes": {
+          "mean": 3294,
+          "median": 3294,
+          "min": 3294,
+          "max": 3294,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": null,
+          "chartPoints": 12
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 11.506,
+            "bytes": 3294,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 12
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 11.393,
+                "bytes": 3294,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 1.902,
+            "bytes": 3294,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 12
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 1.807,
+                "bytes": 3294,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 1.785,
+            "bytes": 3294,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 12
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 1.684,
+                "bytes": 3294,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 1.816,
+            "bytes": 3294,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 12
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 1.717,
+                "bytes": 3294,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 11.851,
+            "bytes": 3294,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 12
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 11.745,
+                "bytes": 3294,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "identity": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/erd-scatter-data"
+        ],
+        "warmup": {
+          "durationMs": 2.008,
+          "bytes": 5983
+        },
+        "durationMs": {
+          "mean": 5.664,
+          "median": 2.084,
+          "min": 1.843,
+          "max": 11.622,
+          "standardDeviation": 4.551
+        },
+        "bytes": {
+          "mean": 5983,
+          "median": 5983,
+          "min": 5983,
+          "max": 5983,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": null,
+          "chartPoints": 24
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 1.935,
+            "bytes": 5983,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 24
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 1.823,
+                "bytes": 5983,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 10.838,
+            "bytes": 5983,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 24
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 10.697,
+                "bytes": 5983,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 2.084,
+            "bytes": 5983,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 24
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 1.966,
+                "bytes": 5983,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 1.843,
+            "bytes": 5983,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 24
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 1.734,
+                "bytes": 5983,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 11.622,
+            "bytes": 5983,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 24
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 1.798,
+                "bytes": 5983,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "passHistory": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/pass-history"
+        ],
+        "warmup": {
+          "durationMs": 2.134,
+          "bytes": 2615
+        },
+        "durationMs": {
+          "mean": 5.194,
+          "median": 1.932,
+          "min": 1.733,
+          "max": 18.45,
+          "standardDeviation": 6.629
+        },
+        "bytes": {
+          "mean": 2615,
+          "median": 2615,
+          "min": 2615,
+          "max": 2615,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 8,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 1.932,
+            "bytes": 2615,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 1.847,
+                "bytes": 2615,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 1.818,
+            "bytes": 2615,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 1.731,
+                "bytes": 2615,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 18.45,
+            "bytes": 2615,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 18.362,
+                "bytes": 2615,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 1.733,
+            "bytes": 2615,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 1.653,
+                "bytes": 2615,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 2.034,
+            "bytes": 2615,
+            "requestCount": 1,
+            "shape": {
+              "rows": 8,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 1.952,
+                "bytes": 2615,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "registrations": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/my-eqp-registration"
+        ],
+        "warmup": {
+          "durationMs": 2.548,
+          "bytes": 648
+        },
+        "durationMs": {
+          "mean": 5.912,
+          "median": 1.767,
+          "min": 1.641,
+          "max": 13.717,
+          "standardDeviation": 5.234
+        },
+        "bytes": {
+          "mean": 648,
+          "median": 648,
+          "min": 648,
+          "max": 648,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 2,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 13.717,
+            "bytes": 648,
+            "requestCount": 1,
+            "shape": {
+              "rows": 2,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 13.638,
+                "bytes": 648,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 1.722,
+            "bytes": 648,
+            "requestCount": 1,
+            "shape": {
+              "rows": 2,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 1.654,
+                "bytes": 648,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 1.767,
+            "bytes": 648,
+            "requestCount": 1,
+            "shape": {
+              "rows": 2,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 1.679,
+                "bytes": 648,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 1.641,
+            "bytes": 648,
+            "requestCount": 1,
+            "shape": {
+              "rows": 2,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 1.569,
+                "bytes": 648,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 10.714,
+            "bytes": 648,
+            "requestCount": 1,
+            "shape": {
+              "rows": 2,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 10.643,
+                "bytes": 648,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "large": {
+      "dashboard": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/dashboard-data"
+        ],
+        "warmup": {
+          "durationMs": 12.106,
+          "bytes": 33254
+        },
+        "durationMs": {
+          "mean": 10.968,
+          "median": 10.992,
+          "min": 5.13,
+          "max": 16.266,
+          "standardDeviation": 3.691
+        },
+        "bytes": {
+          "mean": 33254,
+          "median": 33254,
+          "min": 33254,
+          "max": 33254,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 1200,
+          "chartPoints": 540
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 10.992,
+            "bytes": 33254,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": 540
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 10.579,
+                "bytes": 33254,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 9.517,
+            "bytes": 33254,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": 540
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 9.146,
+                "bytes": 33254,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 5.13,
+            "bytes": 33254,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": 540
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 4.666,
+                "bytes": 33254,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 12.933,
+            "bytes": 33254,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": 540
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 12.56,
+                "bytes": 33254,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 16.266,
+            "bytes": 33254,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": 540
+            },
+            "requests": [
+              {
+                "path": "/api/dashboard-data",
+                "durationMs": 15.763,
+                "bytes": 33254,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "selfEquipmentFinal": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/self-equipment-data"
+        ],
+        "warmup": {
+          "durationMs": 7.876,
+          "bytes": 708
+        },
+        "durationMs": {
+          "mean": 8.498,
+          "median": 8.044,
+          "min": 2.983,
+          "max": 15.859,
+          "standardDeviation": 4.942
+        },
+        "bytes": {
+          "mean": 708,
+          "median": 708,
+          "min": 708,
+          "max": 708,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 0,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 8.044,
+            "bytes": 708,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 7.963,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 15.859,
+            "bytes": 708,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 15.771,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 2.983,
+            "bytes": 708,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.901,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 12.063,
+            "bytes": 708,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 11.981,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 3.54,
+            "bytes": 708,
+            "requestCount": 1,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 3.367,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "selfEquipmentProgressive": {
+        "requestCountPerFlow": 5,
+        "pathSequence": [
+          "/api/self-equipment-data",
+          "/api/self-equipment-data",
+          "/api/self-equipment-data",
+          "/api/self-equipment-data",
+          "/api/self-equipment-data"
+        ],
+        "warmup": {
+          "durationMs": 31.893,
+          "bytes": 2868
+        },
+        "durationMs": {
+          "mean": 30.217,
+          "median": 34.449,
+          "min": 21.499,
+          "max": 37.136,
+          "standardDeviation": 7.065
+        },
+        "bytes": {
+          "mean": 2868,
+          "median": 2868,
+          "min": 2868,
+          "max": 2868,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 0,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 34.449,
+            "bytes": 2868,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 12.151,
+                "bytes": 392,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.619,
+                "bytes": 482,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.64,
+                "bytes": 585,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 13.847,
+                "bytes": 701,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.782,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 37.136,
+            "bytes": 2868,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 9.906,
+                "bytes": 392,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.565,
+                "bytes": 482,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 12.365,
+                "bytes": 585,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 3.256,
+                "bytes": 701,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.639,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 36.24,
+            "bytes": 2868,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 5.463,
+                "bytes": 392,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.939,
+                "bytes": 482,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 12.035,
+                "bytes": 585,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.757,
+                "bytes": 701,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 12.625,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 21.759,
+            "bytes": 2868,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.549,
+                "bytes": 392,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.657,
+                "bytes": 482,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 10.786,
+                "bytes": 585,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.644,
+                "bytes": 701,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.738,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 21.499,
+            "bytes": 2868,
+            "requestCount": 5,
+            "shape": {
+              "rows": 0,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.458,
+                "bytes": 392,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.437,
+                "bytes": 482,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 10.908,
+                "bytes": 585,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.731,
+                "bytes": 701,
+                "status": 200
+              },
+              {
+                "path": "/api/self-equipment-data",
+                "durationMs": 2.566,
+                "bytes": 708,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "commonAnomalyFinal": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/common-anomaly-data"
+        ],
+        "warmup": {
+          "durationMs": 99.357,
+          "bytes": 516225
+        },
+        "durationMs": {
+          "mean": 60.72,
+          "median": 41.042,
+          "min": 36.687,
+          "max": 141.996,
+          "standardDeviation": 40.725
+        },
+        "bytes": {
+          "mean": 516225,
+          "median": 516225,
+          "min": 516225,
+          "max": 516225,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 1200,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 36.687,
+            "bytes": 516225,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 33.228,
+                "bytes": 516225,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 141.996,
+            "bytes": 516225,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 93.238,
+                "bytes": 516225,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 44.804,
+            "bytes": 516225,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 40.954,
+                "bytes": 516225,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 39.069,
+            "bytes": 516225,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 35.092,
+                "bytes": 516225,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 41.042,
+            "bytes": 516225,
+            "requestCount": 1,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 36.94,
+                "bytes": 516225,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "commonAnomalyProgressive": {
+        "requestCountPerFlow": 4,
+        "pathSequence": [
+          "/api/common-anomaly-data",
+          "/api/common-anomaly-data",
+          "/api/common-anomaly-data",
+          "/api/common-anomaly-data"
+        ],
+        "warmup": {
+          "durationMs": 41.706,
+          "bytes": 517284
+        },
+        "durationMs": {
+          "mean": 68.129,
+          "median": 72.106,
+          "min": 39.041,
+          "max": 96.048,
+          "standardDeviation": 19.816
+        },
+        "bytes": {
+          "mean": 517284,
+          "median": 517284,
+          "min": 517284,
+          "max": 517284,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 1200,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 54.114,
+            "bytes": 517284,
+            "requestCount": 4,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 3.025,
+                "bytes": 248,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 8.908,
+                "bytes": 352,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 6.491,
+                "bytes": 459,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 22.226,
+                "bytes": 516225,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 39.041,
+            "bytes": 517284,
+            "requestCount": 4,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 2.76,
+                "bytes": 248,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 3.232,
+                "bytes": 352,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 2.518,
+                "bytes": 459,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 23.508,
+                "bytes": 516225,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 96.048,
+            "bytes": 517284,
+            "requestCount": 4,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 29.361,
+                "bytes": 248,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 3.398,
+                "bytes": 352,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 14.915,
+                "bytes": 459,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 41.392,
+                "bytes": 516225,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 72.106,
+            "bytes": 517284,
+            "requestCount": 4,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 13.437,
+                "bytes": 248,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 2.838,
+                "bytes": 352,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 16.67,
+                "bytes": 459,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 34.924,
+                "bytes": 516225,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 79.335,
+            "bytes": 517284,
+            "requestCount": 4,
+            "shape": {
+              "rows": 1200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 13.345,
+                "bytes": 248,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 2.624,
+                "bytes": 352,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 3.017,
+                "bytes": 459,
+                "status": 200
+              },
+              {
+                "path": "/api/common-anomaly-data",
+                "durationMs": 51.963,
+                "bytes": 516225,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "scatter": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/erd-scatter-data"
+        ],
+        "warmup": {
+          "durationMs": 75.782,
+          "bytes": 580227
+        },
+        "durationMs": {
+          "mean": 42.528,
+          "median": 42.016,
+          "min": 28.836,
+          "max": 57.722,
+          "standardDeviation": 9.724
+        },
+        "bytes": {
+          "mean": 580227,
+          "median": 580227,
+          "min": 580227,
+          "max": 580227,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": null,
+          "chartPoints": 2500
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 57.722,
+            "bytes": 580227,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 2500
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 42.603,
+                "bytes": 580227,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 42.016,
+            "bytes": 580227,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 2500
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 38.045,
+                "bytes": 580227,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 28.836,
+            "bytes": 580227,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 2500
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 19.85,
+                "bytes": 580227,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 47.214,
+            "bytes": 580227,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 2500
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 43.159,
+                "bytes": 580227,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 36.852,
+            "bytes": 580227,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 2500
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 32.602,
+                "bytes": 580227,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "identity": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/erd-scatter-data"
+        ],
+        "warmup": {
+          "durationMs": 59.807,
+          "bytes": 1159859
+        },
+        "durationMs": {
+          "mean": 62.426,
+          "median": 58.254,
+          "min": 55.941,
+          "max": 78.064,
+          "standardDeviation": 8.031
+        },
+        "bytes": {
+          "mean": 1159859,
+          "median": 1159859,
+          "min": 1159859,
+          "max": 1159859,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": null,
+          "chartPoints": 5000
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 61.684,
+            "bytes": 1159859,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 5000
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 32.561,
+                "bytes": 1159859,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 58.254,
+            "bytes": 1159859,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 5000
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 45.07,
+                "bytes": 1159859,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 55.941,
+            "bytes": 1159859,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 5000
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 46.621,
+                "bytes": 1159859,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 78.064,
+            "bytes": 1159859,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 5000
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 63.472,
+                "bytes": 1159859,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 58.188,
+            "bytes": 1159859,
+            "requestCount": 1,
+            "shape": {
+              "rows": null,
+              "chartPoints": 5000
+            },
+            "requests": [
+              {
+                "path": "/api/erd-scatter-data",
+                "durationMs": 50.184,
+                "bytes": 1159859,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "passHistory": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/pass-history"
+        ],
+        "warmup": {
+          "durationMs": 10.75,
+          "bytes": 97415
+        },
+        "durationMs": {
+          "mean": 18.226,
+          "median": 10.176,
+          "min": 5.433,
+          "max": 58.177,
+          "standardDeviation": 20.12
+        },
+        "bytes": {
+          "mean": 97415,
+          "median": 97415,
+          "min": 97415,
+          "max": 97415,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 300,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 58.177,
+            "bytes": 97415,
+            "requestCount": 1,
+            "shape": {
+              "rows": 300,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 46.958,
+                "bytes": 97415,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 5.433,
+            "bytes": 97415,
+            "requestCount": 1,
+            "shape": {
+              "rows": 300,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 4.698,
+                "bytes": 97415,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 10.176,
+            "bytes": 97415,
+            "requestCount": 1,
+            "shape": {
+              "rows": 300,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 4.558,
+                "bytes": 97415,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 11.586,
+            "bytes": 97415,
+            "requestCount": 1,
+            "shape": {
+              "rows": 300,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 10.84,
+                "bytes": 97415,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 5.758,
+            "bytes": 97415,
+            "requestCount": 1,
+            "shape": {
+              "rows": 300,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/pass-history",
+                "durationMs": 5.045,
+                "bytes": 97415,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      },
+      "registrations": {
+        "requestCountPerFlow": 1,
+        "pathSequence": [
+          "/api/my-eqp-registration"
+        ],
+        "warmup": {
+          "durationMs": 9.871,
+          "bytes": 61929
+        },
+        "durationMs": {
+          "mean": 6.063,
+          "median": 3.175,
+          "min": 2.928,
+          "max": 16.049,
+          "standardDeviation": 5.049
+        },
+        "bytes": {
+          "mean": 61929,
+          "median": 61929,
+          "min": 61929,
+          "max": 61929,
+          "standardDeviation": 0
+        },
+        "representativeShape": {
+          "rows": 200,
+          "chartPoints": null
+        },
+        "samples": [
+          {
+            "iteration": 1,
+            "durationMs": 5.015,
+            "bytes": 61929,
+            "requestCount": 1,
+            "shape": {
+              "rows": 200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 4.544,
+                "bytes": 61929,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 2,
+            "durationMs": 2.928,
+            "bytes": 61929,
+            "requestCount": 1,
+            "shape": {
+              "rows": 200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 2.481,
+                "bytes": 61929,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 3,
+            "durationMs": 16.049,
+            "bytes": 61929,
+            "requestCount": 1,
+            "shape": {
+              "rows": 200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 15.572,
+                "bytes": 61929,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 4,
+            "durationMs": 3.175,
+            "bytes": 61929,
+            "requestCount": 1,
+            "shape": {
+              "rows": 200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 2.659,
+                "bytes": 61929,
+                "status": 200
+              }
+            ]
+          },
+          {
+            "iteration": 5,
+            "durationMs": 3.149,
+            "bytes": 61929,
+            "requestCount": 1,
+            "shape": {
+              "rows": 200,
+              "chartPoints": null
+            },
+            "requests": [
+              {
+                "path": "/api/my-eqp-registration",
+                "durationMs": 2.64,
+                "bytes": 61929,
+                "status": 200
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

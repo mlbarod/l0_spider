@@ -1,0 +1,97 @@
+{
+  "metadata": {
+    "generatedAt": "2026-07-30T04:43:54.558Z",
+    "iterations": 3,
+    "warmupIterations": 1,
+    "timingSource": "Node performance.now() around local HTTP fetch and body read",
+    "dataPolicy": "synthetic aggregate metrics only; response bodies and origins omitted"
+  },
+  "slow": {
+    "dashboard": {
+      "path": "/api/dashboard-data",
+      "samplesMs": [
+        1004.71,
+        1004.25,
+        1004.5
+      ],
+      "durationMs": {
+        "mean": 1004.49,
+        "median": 1004.5,
+        "min": 1004.25,
+        "max": 1004.71
+      }
+    },
+    "selfEquipment": {
+      "path": "/api/self-equipment-data",
+      "samplesMs": [
+        3014.77,
+        3006.82,
+        3004.81
+      ],
+      "durationMs": {
+        "mean": 3008.8,
+        "median": 3006.82,
+        "min": 3004.81,
+        "max": 3014.77
+      }
+    },
+    "scatter": {
+      "path": "/api/erd-scatter-data",
+      "samplesMs": [
+        10011,
+        10007.52,
+        10008.08
+      ],
+      "durationMs": {
+        "mean": 10008.87,
+        "median": 10008.08,
+        "min": 10007.52,
+        "max": 10011
+      }
+    }
+  },
+  "raceCondition": {
+    "concurrentPairCount": 3,
+    "samples": [
+      {
+        "iteration": 1,
+        "slowerRequestMs": 3003.17,
+        "fasterRequestMs": 303.7,
+        "pairCompletionMs": 3003.36,
+        "gapMs": 2699.48
+      },
+      {
+        "iteration": 2,
+        "slowerRequestMs": 3007.59,
+        "fasterRequestMs": 303.24,
+        "pairCompletionMs": 3007.67,
+        "gapMs": 2704.35
+      },
+      {
+        "iteration": 3,
+        "slowerRequestMs": 3003.74,
+        "fasterRequestMs": 302.26,
+        "pairCompletionMs": 3003.79,
+        "gapMs": 2701.49
+      }
+    ],
+    "slowerRequestMs": {
+      "mean": 3004.83,
+      "median": 3003.74,
+      "min": 3003.17,
+      "max": 3007.59
+    },
+    "fasterRequestMs": {
+      "mean": 303.07,
+      "median": 303.24,
+      "min": 302.26,
+      "max": 303.7
+    },
+    "completionGapMs": {
+      "mean": 2701.77,
+      "median": 2701.49,
+      "min": 2699.48,
+      "max": 2704.35
+    }
+  }
+}

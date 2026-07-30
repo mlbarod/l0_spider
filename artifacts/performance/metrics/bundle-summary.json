@@ -1,0 +1,129 @@
+{
+  "metadata": {
+    "generatedAt": "2026-07-30T04:53:30.747Z",
+    "buildMode": "mock",
+    "dataPolicy": "relative artifact paths and aggregate sizes only"
+  },
+  "summary": {
+    "fileCount": 16,
+    "jsChunkCount": 1,
+    "cssChunkCount": 1,
+    "totalBytes": 2633340,
+    "totalGzipBytes": 1537212,
+    "initialAssetCount": 2,
+    "initialBytes": 1275484,
+    "initialGzipBytes": 366656
+  },
+  "initialAssets": [
+    {
+      "path": "assets/index-B-xvrBX3.js",
+      "extension": ".js",
+      "bytes": 1152373,
+      "gzipBytes": 346440
+    },
+    {
+      "path": "assets/index-CEDG1VXq.css",
+      "extension": ".css",
+      "bytes": 123111,
+      "gzipBytes": 20216
+    }
+  ],
+  "largestFiles": [
+    {
+      "path": "assets/index-B-xvrBX3.js",
+      "extension": ".js",
+      "bytes": 1152373,
+      "gzipBytes": 346440
+    },
+    {
+      "path": "assets/09-common-anomaly-filters-CPAeyqdb.png",
+      "extension": ".png",
+      "bytes": 278549,
+      "gzipBytes": 226316
+    },
+    {
+      "path": "assets/10-common-anomaly-image-DmDxehOu.png",
+      "extension": ".png",
+      "bytes": 185559,
+      "gzipBytes": 149576
+    },
+    {
+      "path": "assets/08-matching-anomaly-8UFI8URh.png",
+      "extension": ".png",
+      "bytes": 176760,
+      "gzipBytes": 153026
+    },
+    {
+      "path": "assets/02-main-menu-BsaLLvzw.png",
+      "extension": ".png",
+      "bytes": 136436,
+      "gzipBytes": 128481
+    },
+    {
+      "path": "assets/01-main-screen-8_MRMHat.png",
+      "extension": ".png",
+      "bytes": 133410,
+      "gzipBytes": 125554
+    },
+    {
+      "path": "assets/index-CEDG1VXq.css",
+      "extension": ".css",
+      "bytes": 123111,
+      "gzipBytes": 20216
+    },
+    {
+      "path": "assets/15-manual-status-CfxmM0TT.png",
+      "extension": ".png",
+      "bytes": 110622,
+      "gzipBytes": 100880
+    },
+    {
+      "path": "assets/04-self-equipment-chart-3HWRiekx.png",
+      "extension": ".png",
+      "bytes": 106528,
+      "gzipBytes": 97930
+    },
+    {
+      "path": "assets/03-self-equipment-filters-esuz5MKH.png",
+      "extension": ".png",
+      "bytes": 69358,
+      "gzipBytes": 61701
+    },
+    {
+      "path": "assets/07-self-equipment-identity-chart-DM1pA-dq.png",
+      "extension": ".png",
+      "bytes": 65751,
+      "gzipBytes": 58406
+    },
+    {
+      "path": "assets/05-self-equipment-actions-CMrptyTA.png",
+      "extension": ".png",
+      "bytes": 37153,
+      "gzipBytes": 36139
+    },
+    {
+      "path": "mailing-report.html",
+      "extension": ".html",
+      "bytes": 24315,
+      "gzipBytes": 4248
+    },
+    {
+      "path": "assets/06-self-equipment-skip-dialog-ACbS3Cyy.png",
+      "extension": ".png",
+      "bytes": 17266,
+      "gzipBytes": 17013
+    },
+    {
+      "path": "logo.png",
+      "extension": ".png",
+      "bytes": 15628,
+      "gzipBytes": 10943
+    },
+    {
+      "path": "index.html",
+      "extension": ".html",
+      "bytes": 521,
+      "gzipBytes": 343
+    }
+  ]
+}
