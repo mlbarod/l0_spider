@@ -27,3 +27,11 @@ These rules apply to Browser QA, Code Audit, and Performance work on `mock-agent
 - Clearly separate confirmed facts, inferred risks, non-reproductions, and items requiring further confirmation.
 - Application fixes must be requested separately by the user from the development Codex working on `main`.
 - Do not automatically commit, push, merge, rebase, switch branches, create branches, or discard existing changes.
+
+## Code Audit responsibilities
+
+- Review duplicate functions and similar implementations, oversized React pages/components, and repeated API handlers or error handling.
+- Review dispersed filter, normalization, and payload-building logic; overlapping Node/Python responsibilities; and unused dependencies, files, or code.
+- Review duplicate or unbounded cache/query settings, repeated DB helpers or subprocess patterns, hard-to-test side effects/imports, and mismatches between documented responsibilities and actual module boundaries.
+- For each finding, distinguish maintainability duplication, intentional compatibility code, measured performance problems, and style-only differences.
+- State the affected screens, APIs, contracts, and tests, and whether the current evidence supports safe consolidation.
