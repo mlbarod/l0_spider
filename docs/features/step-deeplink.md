@@ -3,16 +3,17 @@
 | 항목 | 내용 |
 |---|---|
 | 문서 목적 | `/self-equipment` STEP 딥링크의 현재 URL 계약과 HMAC 구현 경계를 정의한다. |
-| 문서 상태 | `Baseline` |
+| 문서 상태 | `Active Baseline` |
 | 기능 범위 | `As-Is` |
-| 기준 브랜치 | `main` |
-| 기준 commit | `f9eb6df` |
+| 검증 기준 branch | `main` |
+| 검증 기준 코드 commit | `99c4361164d4109a71f0153a5c963fa4f5d52cb4` |
+| 최신 하네스 감사 | [reports/audit/harness-final-review.md](../../reports/audit/harness-final-review.md) |
 | 관련 Flow ID | `DF-STEP-01` |
 | 추적 완성도 | `Partial` |
 | 주요 근거 | `AGENTS.md`, 시스템 문서, 인벤토리, Self Equipment·Dashboard 문서와 현재 코드 |
 | 핵심 판정 | `step=ALL`, `eqpCh`와 MY EQP URL은 `Confirmed`; 개별 STEP HMAC 후보는 `Mismatch` |
 | 조사 제한 | 실제 secret, 운영 token, `.env`, 운영 데이터와 메일 실행 결과를 조사하지 않았다. |
-| 후속 범위 | 전체 보안 정의와 설계 결정은 `docs/system/security.md`와 `ADR-003-step-hmac-token.md` 범위다. |
+| 연계 범위 | 전체 보안 정의와 설계 결정은 [security.md](../system/security.md)와 [ADR-003-step-hmac-token.md](../decisions/ADR-003-step-hmac-token.md)에 존재하며 HMAC 결정은 `Proposed`다. |
 | 제외 범위 | `mock-agent`의 mock key·token·브라우저 검증은 조사하지 않았다. |
 
 ## 1. 문서 목적과 범위
@@ -20,7 +21,7 @@
 이 문서는 딥링크 생성부터 browser query 해석, Self Equipment 초기 상태와 서버 조회 조건까지 현재 연결을 정의한다.
 현재 `main` 코드 기준 As-Is 문서이며, 실제 secret·token과 운영 식별값은 포함하지 않는다.
 HMAC은 복호화 가능한 암호문이 아니며 생성·검증 근거가 없는 계약을 관례로 채우지 않는다.
-메일 발송 전체 구조, 시스템 보안 정책과 설계 대안 선택은 후속 문서 범위다.
+메일 발송 전체 구조, 시스템 보안 정책과 설계 대안은 각각 [mailing.md](mailing.md), [security.md](../system/security.md), [ADR-003-step-hmac-token.md](../decisions/ADR-003-step-hmac-token.md)에서 관리한다.
 
 ## 2. 기능 목적
 
@@ -341,8 +342,8 @@ Backward compatibility용 key version이나 이전 token 검증 코드는 없다
 | `STEP-T11` | browser 직접 진입·새로고침 | filter 재현 | browser/E2E | `Needs Confirmation` | `mock-agent` 검증 |
 | `STEP-T12` | Unicode·공백·double encoding | canonical vector대로 판정 | unit | `Blocked` | canonicalization |
 
-현재 `selfEquipmentUrlFilters.test.mjs`와 `dashboardLinks.test.mjs`는 URL·ALL 회귀를 포함하지만 이번 단계에서 실행하지 않았다.
-HMAC test와 producer/consumer 공통 synthetic vector는 존재하지 않는다.
+현재 기존 utility test와 `tests/unit/step-hmac.test.mjs`, `tests/integration/step-deeplink.test.mjs`가 URL·ALL·`eqpCh`·payload 연결 회귀를 포함한다.
+파일명과 별개로 HMAC generator·validator를 실행하는 test와 producer/consumer 공통 synthetic HMAC vector는 존재하지 않으며 `STEP-T05`~`STEP-T10`, `STEP-T12`는 `Blocked`다.
 
 ## 22. 변경 영향 규칙
 
@@ -415,17 +416,18 @@ README와 사용자 메뉴얼의 “MY EQP는 `step=ALL`” 설명은 현재 코
 | 중복 query | `Confirmed`/`Risk` | 첫 값·복수 값 처리 차이 | 계약 test 유지 | 중간 |
 | 사용자 메뉴얼 | MY EQP ALL은 최신 | `Documented` | 개별 token 안내 없음 | 낮음 |
 
-## 27. 후속 산출물
+## 27. 연계 산출물
 
 | 산출물 | 담당 범위 | 상태 |
 |---|---|---|
 | `docs/features/self-equipment.md` | URL→state→API 소비 | 작성됨 |
 | `docs/features/step-deeplink.md` | 현재 STEP/HMAC As-Is 기준 | 작성됨 |
-| `docs/features/mailing.md` | renderer·sender·link 생산 책임 | 향후 작성 예정 |
-| `docs/system/security.md` | secret·URL·log·referrer trust boundary | 향후 작성 예정 |
-| `docs/decisions/ADR-003-step-hmac-token.md` | 기능 필요성·생성·검증·호환 결정 | 향후 작성 예정 |
-| `tests/unit/` | canonicalization·HMAC·mapping synthetic test | 설계 결정 후 |
-| `tests/integration/` | 운영·mock 비의존 경계만 Core 후보 | 범위 결정 필요 |
+| [mailing.md](mailing.md) | renderer·sender·link 생산 책임 | 작성됨; renderer·sender `Blocked` |
+| [security.md](../system/security.md) | secret·URL·log·referrer trust boundary | 작성됨 |
+| [ADR-003-step-hmac-token.md](../decisions/ADR-003-step-hmac-token.md) | 기능 필요성·생성·검증·호환 결정 | `Proposed`; HMAC 미구현 |
+| `tests/unit/step-hmac.test.mjs` | MY EQP ALL·query round trip | 작성됨; actual HMAC test는 `Blocked` |
+| `tests/integration/step-deeplink.test.mjs` | 운영·mock 비의존 딥링크→payload | 작성됨 |
+| `scripts/verify-all.sh` | 위 Core test의 안전 검증 진입점 | 작성됨 |
 | `harness/scenarios/self-equipment-smoke.yaml` | mock 의존 browser scenario이면 `mock-agent` 전용 | 현재 `main` 범위 아님 |
 
 ## 28. 근거 자료
@@ -449,7 +451,7 @@ README와 사용자 메뉴얼의 “MY EQP는 `step=ALL`” 설명은 현재 코
 | HMAC 생성·검증 코드 | 현재 source에서 발견하지 못함 | `Unknown` |
 | HMAC 환경변수 예제 | tracked `.env.example` 없음 | `Unknown` |
 
-이 문서는 `f9eb6df` 시점의 STEP 딥링크와 HMAC As-Is 계약을 설명한다.
+이 문서는 검증 기준 코드 commit `99c4361`의 STEP 딥링크와 HMAC As-Is 계약을 설명한다.
 실제 secret과 운영 token은 조사하거나 기록하지 않았다.
 URL, HMAC 입력, secret 또는 token 처리가 바뀌면 생산자, 소비자, 기존 링크와 관련 테스트를 함께 검토해야 한다.
-다음 단계에서 시스템 보안 경계를 별도 문서로 정의한다.
+시스템 보안 경계는 [security.md](../system/security.md)를 기준으로 하며, HMAC이 도입되면 이 문서와 ADR·test를 함께 갱신한다.

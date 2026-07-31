@@ -1,19 +1,20 @@
 # L0 Spider 시스템 아키텍처
 
 > 문서 목적: 현재 L0 Spider의 구성요소, 책임, 연결 관계와 신뢰 경계를 정의한다.
-> 문서 상태: Baseline
+> 문서 상태: `Active Baseline`
 > 아키텍처 범위: As-Is
-> 기준 브랜치: `main`
-> 기준 commit: `9c22873`
+> 검증 기준 branch: `main`
+> 검증 기준 코드 commit: `99c4361164d4109a71f0153a5c963fa4f5d52cb4`
+> 최신 하네스 감사: [reports/audit/harness-final-review.md](../../reports/audit/harness-final-review.md)
 > 주요 근거: `AGENTS.md`, `reports/audit/system-inventory.md`, `docs/system/overview.md`
-> 상세 환경·데이터 흐름·기능·운영 문서는 단계적으로 구축 중이다.
+> 상세 환경·데이터 흐름·기능·운영 문서와 Core 계약·검증 진입점은 현재 tree에 존재한다.
 
 ## 1. 문서 목적과 범위
 
 이 문서는 현재 checkout된 코드와 설정으로 확인되는 L0 Spider의 As-Is 아키텍처를 설명한다.
 구성요소별 책임, 호출 관계, 외부 저장소와 신뢰 경계를 정의하되 전체 API·환경변수·데이터 경로 목록은 다루지 않는다.
-현재 구현 사실, 저장소 소유자가 확정한 프로젝트 운영 정책, 향후 Core Harness 산출물을 구분한다.
-`mock-agent`는 운영 런타임 구성요소가 아니며 세부 환경·데이터·배포·보안·기능 계약은 16절의 후속 문서가 담당한다.
+현재 구현 사실, 저장소 소유자가 확정한 프로젝트 운영 정책과 Core Harness 산출물 상태를 구분한다.
+`mock-agent`는 운영 런타임 구성요소가 아니며 세부 환경·데이터·배포·보안·기능 계약은 16절의 기준 문서가 담당한다.
 
 ## 2. 아키텍처 요약
 
@@ -116,7 +117,7 @@ Node는 파일에 직접 접근하고 DB는 `python3 -B` helper를 실행하며,
 
 Node handler는 파일 존재와 허용 root를 검사하고 일부 cache를 `mtimeMs`와 size 변경으로 갱신한다.
 파일 없음·조건 누락·읽기 오류는 handler별 빈 payload 또는 4xx·5xx로 구분되며 통합 계약은 아직 없다.
-실제 `/appdata`를 조사하지 않았으며 화면별 전체 추적은 향후 `docs/system/data-flow.md`와 기능 문서에서 관리한다.
+실제 `/appdata`를 조사하지 않았으며 화면별 전체 추적은 [data-flow.md](data-flow.md)와 기능 문서에서 관리한다.
 
 ## 8. 주요 런타임 구성과 연결
 
@@ -163,7 +164,7 @@ Python helper는 요청 시 생성되는 자식 프로세스이며 미확인 STE
 계약 생산자는 `server/dashboardData.mjs`의 `handleDashboardDataRequest`와 payload builder다.
 소비자는 `dashboardApi.js`와 `LineAnomalyDashboard.jsx`이며 응답 배열과 대표 summary 필드를 사용한다.
 `GET /api/dashboard-data`의 응답 구조·nullable·오류 body가 계약 검증 대상이고 변경 시 Dashboard, Mailing template 계약과 후속 JSON Schema를 함께 검토한다.
-후속 산출물은 `docs/features/dashboard.md`, `harness/contracts/dashboard-api.schema.json`, `tests/contract/`이다.
+현재 산출물은 [dashboard.md](../features/dashboard.md), `harness/contracts/dashboard-api.schema.json`, Dashboard fixture와 `tests/contract/dashboard-api.contract.test.mjs`다. 오류 응답과 root producer 직접 계약은 `Partial`이다.
 
 ### 9.3 STEP 딥링크와 HMAC 경계
 
@@ -177,7 +178,7 @@ Python helper는 요청 시 생성되는 자식 프로세스이며 미확인 STE
 대시보드 서버는 `lineDashboard.mailingSummary`와 KPI를 만들고 등록 API는 DB의 수신 조건을 관리한다.
 `public/mailing-report.html`은 수신인별 rows, KPI와 Self Equipment 링크를 요구하는 Jinja 호환 template이다.
 실제 데이터 결합, 수신자 최종 결정, auto-escape 적용, rendering, scheduling, 전송, 성공·실패·재시도·발송 log는 `Unknown`이다.
-Core 후속 산출물은 `docs/features/mailing.md`, `harness/contracts/mailing-summary.schema.json`, `tests/unit/`, `tests/contract/`이며 mock 의존 integration은 `mock-agent` 범위다.
+현재 Core 산출물은 [mailing.md](../features/mailing.md), `harness/contracts/mailing-summary.schema.json`, Mailing fixture와 `tests/contract/mailing-summary.contract.test.mjs`다. renderer·sender와 render test는 `Blocked`이며 mock 의존 integration은 `mock-agent` 범위다.
 
 ## 10. 신뢰 경계와 보안상 책임
 
@@ -245,21 +246,24 @@ mock 구현은 `main`으로 병합하지 않으며 `mock-agent`가 `main`의 계
 | log·monitoring·health check | 저장소 설정 미확인 | 장애 감지와 정보 노출 정책 확인 | 운영·보안 문서 |
 | API 전체 계약 | schema·호환·payload 한계 미정 | 생산자·소비자 변경 안전성 확보 | 기능 문서와 contract 단계 |
 
-## 16. 후속 문서와 책임 분리
+## 16. 연계 문서와 책임 분리
 
 | 문서 | 담당 범위 | 상태 |
 |---|---|---|
 | `docs/system/overview.md` | 시스템 목적·기능·Core 범위 요약 | 작성됨 |
 | `docs/system/architecture.md` | As-Is 구성요소·책임·연결·신뢰 경계 | 현재 문서 |
-| `docs/system/environment-definition.md` | runtime, 환경변수 이름과 환경 차이 | 향후 작성 예정 |
-| `docs/system/data-flow.md` | 화면→API→서비스→데이터 전체 추적 | 향후 작성 예정 |
-| `docs/system/deployment.md` | build·배포 topology와 절차 | 향후 작성 예정 |
-| `docs/system/security.md` | 신뢰 경계, 비밀·입력·로그 정책 | 향후 작성 예정 |
-| `docs/features/dashboard.md` | Dashboard 화면·API·데이터 계약 | 향후 작성 예정 |
-| `docs/features/self-equipment.md` | Self Equipment·MY EQP 기능 흐름 | 향후 작성 예정 |
-| `docs/features/step-deeplink.md` | query와 HMAC 계약 | 향후 작성 예정 |
-| `docs/features/mailing.md` | 집계·template·수신자·발송 경계 | 향후 작성 예정 |
-| `docs/features/abnormal-data.md` | 동일성·공통부 데이터와 화면 | 향후 작성 예정 |
+| [environment-definition.md](environment-definition.md) | runtime, 환경변수 이름과 환경 차이 | 작성됨; 운영값 `Unknown` 유지 |
+| [data-flow.md](data-flow.md) | 화면→API→서비스→데이터 전체 추적 | 작성됨; 일부 Flow `Partial` |
+| [deployment.md](deployment.md) | build·배포 topology와 절차 | 작성됨; 실제 topology `Unknown` |
+| [security.md](security.md) | 신뢰 경계, 비밀·입력·로그 정책 | 작성됨; 운영 통제 일부 `Blocked` |
+| [dashboard.md](../features/dashboard.md) | Dashboard 화면·API·데이터 계약 | 작성됨; success Schema·fixture·contract test 존재 |
+| [self-equipment.md](../features/self-equipment.md) | Self Equipment·MY EQP 기능 흐름 | 작성됨 |
+| [step-deeplink.md](../features/step-deeplink.md) | query와 HMAC 계약 | 작성됨; 실제 HMAC `Blocked` |
+| [mailing.md](../features/mailing.md) | 집계·template·수신자·발송 경계 | 작성됨; renderer·sender `Blocked` |
+| [abnormal-data.md](../features/abnormal-data.md) | 동일성·공통부 데이터와 화면 | 작성됨 |
+| `harness/contracts/`, `harness/fixtures/` | Dashboard·Mailing summary 실행 계약과 최소 synthetic sample | 작성됨 |
+| `tests/{unit,integration,contract}/` | ALL·딥링크·Dashboard·Mailing summary 검증 | 작성됨; HMAC·mail render는 `Blocked` |
+| `scripts/verify-{env,contracts,all}.sh` | 안전한 Core 검증 진입점 | 작성됨 |
 
 ## 17. 근거 자료
 
@@ -275,5 +279,5 @@ mock 구현은 `main`으로 병합하지 않으며 `mock-agent`가 `main`의 계
 | `src/config/spiderDataPaths.mjs`, `scripts/*.py` | 파일 경로와 DB 접근 책임 | Confirmed |
 | `public/mailing-report.html`, `package.json`, `vite.config.mjs` | Mailing 계약과 실행·기술 근거 | Confirmed |
 
-이 문서는 commit `9c22873` 시점의 As-Is 아키텍처를 설명한다.
-세부 환경과 데이터 흐름은 후속 문서에서 보완하며 코드 또는 시스템 구조가 바뀌면 관련 아키텍처와 계약을 함께 검토한다.
+이 문서는 검증 기준 코드 commit `99c4361`의 As-Is 아키텍처와 현재 Core Harness 위치를 설명한다.
+코드 또는 시스템 구조가 바뀌면 관련 아키텍처, 기능 문서와 실행 계약을 함께 검토한다.

@@ -1,5 +1,11 @@
 # L0 Spider 시스템 인벤토리
 
+> 문서 상태: `Historical Snapshot`
+> 이 문서는 commit `6cf9568` 시점의 역사적 snapshot이며 기존 조사 근거와 판정을 보존한다.
+> 현재 하네스 상태는 [reports/audit/harness-final-review.md](harness-final-review.md)를 우선한다.
+> 현재 시스템 기준은 [docs/system/overview.md](../../docs/system/overview.md)와 `docs/system/` 및 `docs/features/`의 `Active Baseline` 문서를 참조한다.
+> 이 안내는 과거 조사 내용을 현재 tree 기준으로 다시 판정하거나 최신화하지 않는다.
+
 ## 1. 조사 개요
 
 - 조사 목적: 현재 `main` checkout의 코드, 문서, 설정, 화면, API, 데이터 경로 참조, HMAC, 메일과 Core 검증 자산을 후속 시스템 문서 작성용 근거 인덱스로 정리한다.

@@ -1,27 +1,28 @@
 # L0 Spider 대시보드 기능 및 API 계약 기준
 
 > 문서 목적: 대시보드 기능과 API 생산자·소비자 사이의 현재 계약 기준을 정의한다.
-> 문서 상태: `Baseline`
+> 문서 상태: `Active Baseline`
 > 기능 범위: `As-Is`
-> 기준 브랜치: `main`
-> 작업 시작 기준 commit: `8fbc560`
+> 검증 기준 branch: `main`
+> 검증 기준 코드 commit: `99c4361164d4109a71f0153a5c963fa4f5d52cb4`
+> 최신 하네스 감사: [reports/audit/harness-final-review.md](../../reports/audit/harness-final-review.md)
 > 관련 데이터 흐름: `DF-DASH-01`
 > 주요 근거: `AGENTS.md`, `reports/audit/system-inventory.md`, `docs/system/overview.md`, `docs/system/architecture.md`, `docs/system/environment-definition.md`, `docs/system/data-flow.md`
-> 후속 산출물: `harness/contracts/dashboard-api.schema.json`, 최소 synthetic 계약 샘플, `tests/contract/`는 아직 작성 전이다.
+> 계약 산출물: `harness/contracts/dashboard-api.schema.json`, success·empty synthetic fixture와 `tests/contract/dashboard-api.contract.test.mjs`가 존재한다.
 > 조사 제한: 실제 운영 데이터·`/appdata` 파일·API 실행 결과는 확인하지 않았다.
 > 브랜치 경계: `mock-agent`의 mock 응답·fixture·E2E는 이번 문서의 근거와 범위가 아니다.
 
 ## 1. 문서 목적과 범위
 
-이 문서는 사용자의 대시보드 진입부터 `GET /api/dashboard-data`의 생산·소비까지를 추적하고, 현재 응답을 후속 JSON Schema로 옮기기 위한 문서형 계약 기준을 제공한다.
+이 문서는 사용자의 대시보드 진입부터 `GET /api/dashboard-data`의 생산·소비와 현재 success JSON Schema까지의 계약 기준을 제공한다.
 현재 `main` 코드의 As-Is를 기준으로 요청 파라미터, 응답 구조, 타입·nullable, 집계, 빈 데이터, 오류와 호환성 규칙을 설명한다.
 화면의 상세 사용 순서는 `docs/user-manual/USER_MANUAL.md`, 시스템 전체 흐름은 `docs/system/data-flow.md`가 담당한다.
-완전한 JSON Schema, fixture, contract test, 실제 메일 발송 계약과 mock 응답은 이번 범위에 포함하지 않는다.
+success JSON Schema, fixture와 contract test는 현재 범위에 포함한다. 오류 응답 Schema, actual root producer 직접 validation, 실제 메일 발송 계약과 mock 응답은 포함하지 않거나 `Partial`·`Blocked`다.
 실제 운영 파일의 내용·존재·신선도와 런타임 성공 여부는 정적 코드 조사만으로 확정하지 않는다.
 
 상태는 `Confirmed`, `Documented`, `Inferred`, `Unknown`, `Mismatch`를 사용한다.
 계약 준비도는 `Schema Ready`, `Needs Confirmation`, `Blocked`로 별도 표시한다.
-`Schema Ready`는 현재 생산자 코드로 타입·필수성·nullable·빈값을 옮길 근거가 있다는 의미이며, JSON Schema 파일이 이미 존재한다는 의미가 아니다.
+`Schema Ready`는 현재 생산자 코드로 타입·필수성·nullable·빈값을 실행 계약에 반영할 근거가 있다는 의미다. 현재 success Schema가 존재하더라도 오류 응답과 producer 직접 대조까지 완료됐다는 의미는 아니다.
 
 ## 2. 사용자 목적과 기능 범위
 
@@ -369,7 +370,7 @@ My EQP 메일 count는 sender가 같은 고유건 규칙으로 별도 계산하�
 | 실제 mail sender 소비 | `Unknown` | `Blocked` | 저장소에서 결합·발송 구현 미확인 |
 | mock 응답 일치 | `Out of Scope` | `Blocked` | `mock-agent` 미조사 |
 
-다음 단계의 JSON Schema는 우선 성공 GET, 400·404·405·500 오류와 nullable 비교 field를 분리해 표현할 수 있다.
+현재 JSON Schema는 성공 GET과 nullable 비교 field를 표현한다. `400`·`404`·`405`·`500` 오류 Schema는 아직 없어 후속 계약 범위다.
 Schema 작성 시 실제 운영 값이 아닌 최소 synthetic sample만 사용한다.
 
 ## 21. Mismatch
@@ -397,14 +398,15 @@ Schema 작성 시 실제 운영 값이 아닌 최소 synthetic sample만 사용�
 
 ## 23. Core Harness와 `mock-agent` 경계
 
-이 문서와 후속 Dashboard JSON Schema·운영 자원 비의존 contract test는 `main`의 Core Harness 기준이다.
+이 문서와 현재 Dashboard JSON Schema·운영 자원 비의존 contract test는 `main`의 Core Harness 기준이다.
 `mock-agent`는 이 API 경로, field 위치, 타입·nullable·빈값과 오류 계약을 따라야 한다.
 mock 서버·대규모 fixture·mock 의존 integration·E2E와 Browser QA는 `mock-agent` 전용이며 이번 단계에서 조사하지 않았다; 현재 `main`에 mock 응답이 없는 것은 결함이 아니다.
 기본 동기화 방향은 `main → mock-agent`이고 mock 구현 자체는 `main` 병합 대상이 아니다.
 
-## 24. 후속 산출물과 갱신 조건
+## 24. 계약 산출물과 갱신 조건
 
-후속 단계는 `harness/contracts/dashboard-api.schema.json`, 선택적 최소 synthetic 샘플과 `tests/contract/`를 작성한다.
+현재 `harness/contracts/dashboard-api.schema.json`, `harness/fixtures/dashboard/dashboard-{success,empty}.json`과 `tests/contract/dashboard-api.contract.test.mjs`가 존재한다.
+contract test는 Schema compile과 fixture를 검증하지만 actual Dashboard root producer 결과를 직접 Schema에 대조하지 않아 해당 범위는 `Partial`이다.
 메일 결합·발송 경계와 상세 link 소비는 각각 `docs/features/mailing.md`, `docs/features/self-equipment.md`가 담당한다.
 
 producer·consumer·집계·오류가 바뀌면 같은 변경에서 본 문서의 상태와 준비도를 재검토한다.
@@ -416,5 +418,5 @@ producer·consumer·집계·오류가 바뀌면 같은 변경에서 본 문서�
 정책·추적 근거는 `AGENTS.md`, `docs/system/data-flow.md`, `reports/audit/system-inventory.md`와 세 시스템 기준 문서다.
 사용자·연계 근거는 `docs/user-manual/USER_MANUAL.md`, `public/mailing-report.html`, 정적 테스트 사례는 `server/dashboardData.test.mjs`다.
 
-이 문서는 commit `8fbc560` 시점의 정적 As-Is 계약 기준이다.
-애플리케이션·API·테스트·빌드는 실행하지 않았으며 실제 운영 데이터도 열지 않았다.
+이 문서는 검증 기준 코드 commit `99c4361`의 정적 As-Is 계약 기준이다.
+최신 하네스 감사에서 contract test와 안전 검증 script 실행은 확인됐지만 애플리케이션·실제 API와 운영 데이터는 사용하지 않았다.

@@ -3,14 +3,15 @@
 | 항목 | 내용 |
 |---|---|
 | 문서 목적 | Self Equipment의 사용자 진입부터 화면 출력까지 현재 구현 기준을 정의한다. |
-| 문서 상태 | `Baseline` |
+| 문서 상태 | `Active Baseline` |
 | 기능 범위 | `As-Is` |
-| 기준 브랜치 | `main` |
-| 기준 commit | `cf5f9bc` |
+| 검증 기준 branch | `main` |
+| 검증 기준 코드 commit | `99c4361164d4109a71f0153a5c963fa4f5d52cb4` |
+| 최신 하네스 감사 | [reports/audit/harness-final-review.md](../../reports/audit/harness-final-review.md) |
 | 관련 Flow ID | `DF-SELF-01`, `DF-SELF-02`, `DF-SELF-03`, `DF-STEP-01` |
 | 주요 근거 | `AGENTS.md`, 시스템 문서, 인벤토리, 사용자 메뉴얼, 현재 소스코드 |
 | 조사 제한 | 실제 운영 DB, `/appdata`, Parquet·이미지 내용은 조사하지 않았다. |
-| 후속 범위 | STEP/HMAC 보안 상세는 `docs/features/step-deeplink.md`에서 정의할 예정이다. |
+| 연계 범위 | STEP/HMAC 보안 상세는 [step-deeplink.md](step-deeplink.md), [security.md](../system/security.md), [ADR-003-step-hmac-token.md](../decisions/ADR-003-step-hmac-token.md)에 존재하며 실제 HMAC은 `Blocked`다. |
 | 제외 범위 | `mock-agent`의 mock API·데이터·브라우저 검증은 조사하지 않았다. |
 ## 1. 문서 목적과 범위
 
@@ -403,18 +404,21 @@ mock 구현을 이유로 `main`의 route·query·API 계약을 바꾸지 않는�
 | IP header 신뢰 | `Risk` | 현재 사용자·MY EQP 범위 | proxy trust 정책 확인 | 높음 |
 | 운영 file·DB 의존 | `Risk` | 누락 시 기능 실패 | runbook·health 검증 | 높음 |
 | 메뉴얼 image 최신성 | `Mismatch` | 화면 안내 혼선 | 현재 UI capture | 중간 |
-## 29. 후속 산출물
+## 29. 연계 산출물
 
 | 산출물 | 담당 범위 | 상태 |
 |---|---|---|
 | `docs/system/data-flow.md` | Self Equipment Flow·Data Source 상위 추적 | 작성됨 |
 | `docs/features/self-equipment.md` | 본 As-Is 기능 기준 | 작성됨 |
-| `docs/features/step-deeplink.md` | STEP query·HMAC·오류 계약 | 향후 작성 예정 |
+| [step-deeplink.md](step-deeplink.md) | STEP query·HMAC·오류 계약 | 작성됨; 실제 HMAC `Blocked` |
 | `docs/features/dashboard.md` | Dashboard 생산자·상세 link | 작성됨 |
-| `docs/features/mailing.md` | template context·renderer·발송 | 향후 작성 예정 |
-| `docs/features/abnormal-data.md` | 동일성·공통부 데이터 | 향후 작성 예정 |
-| `docs/system/security.md` | trust boundary·secret·로그 | 향후 작성 예정 |
-| `docs/decisions/ADR-003-step-hmac-token.md` | HMAC 설계 결정 | 향후 작성 예정 |
+| [mailing.md](mailing.md) | template context·renderer·발송 | 작성됨; renderer·sender `Blocked` |
+| [abnormal-data.md](abnormal-data.md) | 동일성·공통부 데이터 | 작성됨 |
+| [security.md](../system/security.md) | trust boundary·secret·로그 | 작성됨; 운영 통제 일부 `Blocked` |
+| [ADR-003-step-hmac-token.md](../decisions/ADR-003-step-hmac-token.md) | HMAC 설계 결정 | `Proposed`; 실제 HMAC 미구현 |
+| `tests/unit/step-hmac.test.mjs` | MY EQP `ALL`·`eqpCh` URL 회귀 | 작성됨; 실제 HMAC 검증 아님 |
+| `tests/integration/step-deeplink.test.mjs` | 딥링크→payload synthetic 연결 | 작성됨 |
+| `scripts/verify-all.sh` | 운영 자원 비의존 STEP·계약 검증 진입점 | 작성됨 |
 | `harness/scenarios/self-equipment-smoke.yaml` | mock 의존 UI smoke이면 `mock-agent` 전용 | 현재 `main` 범위 아님 |
 ## 30. 근거 자료
 
@@ -436,5 +440,5 @@ mock 구현을 이유로 `main`의 route·query·API 계약을 바꾸지 않는�
 | `src/config/spiderDataPaths.mjs` | path pattern | `Confirmed` |
 | `dashboardLinks.mjs`, `mailingRegistration.mjs`, `public/mailing-report.html` | Dashboard·메일 link | `Confirmed`/template `Confirmed` |
 
-이 문서는 `cf5f9bc` 시점의 Self Equipment As-Is 기능을 설명하며 실제 운영 데이터 내용은 조사하지 않았다.
-route, query parameter, API 또는 데이터 경로가 바뀌면 관련 링크와 사용자 메뉴얼을 함께 검토하고, 다음 단계에서 STEP 딥링크와 HMAC 상세 기준을 작성한다.
+이 문서는 검증 기준 코드 commit `99c4361`의 Self Equipment As-Is 기능을 설명하며 실제 운영 데이터 내용은 조사하지 않았다.
+route, query parameter, API 또는 데이터 경로가 바뀌면 관련 링크와 사용자 메뉴얼을 함께 검토하고 [step-deeplink.md](step-deeplink.md)의 STEP 딥링크·HMAC 상세 기준을 함께 갱신한다.

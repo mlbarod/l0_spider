@@ -1,10 +1,11 @@
 # L0 Spider 데이터 흐름 및 화면-데이터 추적성
 
 > 문서 목적: 사용자 화면에서 실제 데이터 원천과 출력까지 이어지는 As-Is 연결을 정의한다.
-> 문서 상태: `Baseline`
+> 문서 상태: `Active Baseline`
 > 데이터 흐름 범위: `As-Is`
-> 기준 브랜치: `main`
-> 기준 commit: `334d756`
+> 검증 기준 branch: `main`
+> 검증 기준 코드 commit: `99c4361164d4109a71f0153a5c963fa4f5d52cb4`
+> 최신 하네스 감사: [reports/audit/harness-final-review.md](../../reports/audit/harness-final-review.md)
 > 주요 근거: `AGENTS.md`, `reports/audit/system-inventory.md`, `docs/system/overview.md`, `docs/system/architecture.md`, `docs/system/environment-definition.md`
 > 조사 제한: 실제 운영 데이터, DB, `.env`, 비밀키와 메일 전송 시스템은 열거나 실행하지 않았다.
 > 브랜치 범위: `mock-agent`의 mock 서버·데이터·E2E 흐름은 `Out of Scope`이다.
@@ -14,8 +15,8 @@
 - 이 문서는 주요 사용자 기능을 `화면 → 라우트 → 프론트엔드 조회 → API → 서버 처리 → 데이터 원천 → 응답 → 화면·메일`로 연결한다.
 - 현재 `main` 코드에서 확인되는 흐름만 As-Is 기준선으로 기록한다.
 - 실제 `/appdata` 파일 내용과 실제 DB 행은 조사하지 않고 코드의 경로 pattern, table과 접근 방식만 확인했다.
-- API의 전체 field·nullable·호환 계약과 기능별 business rule은 후속 기능 문서와 JSON Schema가 담당한다.
-- 신뢰 경계의 상세 위협·비밀 관리 규칙은 향후 `docs/system/security.md`로 분리한다.
+- API의 field·nullable·호환 계약과 기능별 business rule은 현재 기능 문서와 JSON Schema가 담당한다. 오류 응답과 일부 운영 계약은 `Partial` 또는 `Blocked`다.
+- 신뢰 경계의 상세 위협·비밀 관리 규칙은 [security.md](security.md)가 담당한다.
 - `mock-agent`의 mock 흐름은 현재 시스템 데이터 원천이 아니며 이 문서에 포함하지 않는다.
 
 ## 2. 추적 방법과 판정 기준
@@ -192,7 +193,7 @@ flowchart LR
 
 - `lineDashboard.summary.mailingSummary`는 없고 실제 위치는 `lineDashboard.mailingSummary`다.
 - root·schema 오류는 `500`, 유효 최신 file 없음은 `404`, 잘못된 filter는 `400`으로 변환된다.
-- 상세 계약은 `docs/features/dashboard.md`, `harness/contracts/dashboard-api.schema.json`, `tests/contract/`에서 향후 작성 예정이다.
+- 상세 계약은 [dashboard.md](../features/dashboard.md), `harness/contracts/dashboard-api.schema.json`, Dashboard success·empty fixture와 `tests/contract/dashboard-api.contract.test.mjs`에 존재한다. 오류 응답 Schema와 root producer 직접 검증은 `Partial`이다.
 
 ## 10. Self Equipment 및 이상 데이터 흐름
 
@@ -367,7 +368,7 @@ PNG endpoint는 허용 common root를 검사해 stream하고 scatter endpoint는
 - sensor `ALL` 변경 시 UI 종속 filter, server payload와 `clicked_category_history.sensor` 저장값을 함께 검토한다.
 - HMAC 변경 시 생성·검증·정규화·기존 LINK·key rotation·보안 문서와 ADR을 함께 검토한다.
 - mail context 변경 시 producer, template, 수신자 분리와 실제 발송 없는 render 검증을 함께 검토한다.
-- 현재 존재하지 않는 계약·검증 파일은 `향후 작성 예정`이며 존재하는 것처럼 완료 기준에 사용하지 않는다.
+- 현재 존재하는 계약·fixture·test·검증 script와 `Blocked` 자산을 구분한다. HMAC 생성·검증과 mail renderer처럼 존재하지 않는 구현은 완료 기준에 사용하지 않는다.
 - mock 구현을 이유로 `main` 데이터 흐름에 mock 의존성을 추가하지 않는다.
 
 ## 19. Core Harness와 mock-agent 경계
@@ -402,7 +403,7 @@ PNG endpoint는 허용 common root를 검사해 stream하고 scatter endpoint는
 | 모든 API | handler별 오류 | 공통 error/schema·payload 한계 | 소비자 호환성 불명 | 기능 계약·JSON Schema |
 | UI 문서 | 메뉴얼과 현재 정적 코드 | 현재 commit 화면 이미지 재검증 | 시각적 차이 가능 | 별도 Browser QA |
 
-## 22. 후속 문서와 책임 분리
+## 22. 연계 문서·산출물과 책임 분리
 
 | 문서·산출물 | 담당 범위 | 상태 |
 |---|---|---|
@@ -410,14 +411,17 @@ PNG endpoint는 허용 common root를 검사해 stream하고 scatter endpoint는
 | `docs/system/architecture.md` | 구성요소·책임·신뢰 경계 | 작성됨 |
 | `docs/system/environment-definition.md` | runtime·설정·외부 의존 | 작성됨 |
 | `docs/system/data-flow.md` | 화면부터 데이터 원천까지의 Flow ID | 현재 문서 |
-| `docs/system/security.md` | 입력·비밀·권한·오류 노출 상세 | 향후 작성 예정 |
-| `docs/features/dashboard.md` | Dashboard field·빈값·오류 계약 | 향후 작성 예정 |
-| `docs/features/self-equipment.md` | filter·chart·SKIP·MY EQP 규칙 | 향후 작성 예정 |
-| `docs/features/step-deeplink.md` | query·HMAC·호환·오류 정책 | 향후 작성 예정 |
-| `docs/features/mailing.md` | 집계·수신자·render·발송 경계 | 향후 작성 예정 |
-| `docs/features/abnormal-data.md` | 동일성·공통부 path·image·chart | 향후 작성 예정 |
-| `harness/contracts/dashboard-api.schema.json` | Dashboard 실행 가능 계약 | 향후 작성 예정 |
-| `harness/contracts/mailing-summary.schema.json` | Mailing context 계약 | 향후 작성 예정 |
+| [security.md](security.md) | 입력·비밀·권한·오류 노출 상세 | 작성됨; 일부 운영 통제 `Blocked` |
+| [dashboard.md](../features/dashboard.md) | Dashboard field·빈값·오류 계약 | 작성됨 |
+| [self-equipment.md](../features/self-equipment.md) | filter·chart·SKIP·MY EQP 규칙 | 작성됨 |
+| [step-deeplink.md](../features/step-deeplink.md) | query·HMAC·호환·오류 정책 | 작성됨; 실제 HMAC `Blocked` |
+| [mailing.md](../features/mailing.md) | 집계·수신자·render·발송 경계 | 작성됨; renderer·sender `Blocked` |
+| [abnormal-data.md](../features/abnormal-data.md) | 동일성·공통부 path·image·chart | 작성됨 |
+| `harness/contracts/dashboard-api.schema.json` | Dashboard success 실행 가능 계약 | 작성됨; success·empty fixture와 contract test 존재 |
+| `harness/contracts/mailing-summary.schema.json` | `lineDashboard.mailingSummary` fragment 계약 | 작성됨; success·empty fixture와 contract test 존재 |
+| `tests/unit/step-hmac.test.mjs` | MY EQP `ALL`·`eqpCh` URL 회귀 | 작성됨; 실제 HMAC test는 `Blocked` |
+| `tests/integration/step-deeplink.test.mjs` | 운영 자원 비의존 딥링크→payload 연결 | 작성됨 |
+| `scripts/verify-env.sh`, `verify-contracts.sh`, `verify-all.sh` | Core 정적·계약·전체 안전 검증 | 작성됨 |
 
 ## 23. 근거 자료
 
@@ -435,6 +439,6 @@ PNG endpoint는 허용 common root를 검사해 stream하고 scatter endpoint는
 | registration·history Node/Python helper | DB 읽기·쓰기 경계 | `Confirmed` |
 | `public/mailing-report.html` | template context·빈 상태·LINK | template `Confirmed` |
 
-이 문서는 `334d756` 시점의 As-Is 흐름을 설명한다.
+이 문서는 검증 기준 코드 commit `99c4361`의 As-Is 흐름과 현재 Core 계약 위치를 설명한다.
 실제 운영 데이터 내용은 조사하지 않았으며 코드, API, path 또는 화면 변경 시 관련 Flow ID와 추적표를 함께 갱신해야 한다.
-상세 API 계약과 기능별 규칙은 후속 문서에서 보완한다.
+상세 API 계약과 기능별 규칙은 현재 연계 문서에서 관리하며 `Partial`·`Blocked` 항목은 후속 결정과 검증으로 보완한다.

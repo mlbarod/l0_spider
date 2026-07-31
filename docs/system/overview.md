@@ -1,18 +1,19 @@
 # L0 Spider 시스템 개요
 
 > 문서 목적: 현재 L0 Spider의 목적, 주요 기능, 시스템 경계와 Core Harness 범위를 빠르게 이해하기 위한 기준 개요
-> 문서 상태: Baseline
-> 기준 브랜치: `main`
-> 기준 commit: `9b075d4`
-> 기준일: 2026-07-31
+> 문서 상태: `Active Baseline`
+> 검증 기준 branch: `main`
+> 검증 기준 코드 commit: `99c4361164d4109a71f0153a5c963fa4f5d52cb4`
+> 최신 하네스 감사: [reports/audit/harness-final-review.md](../../reports/audit/harness-final-review.md)
+> 검증일: 2026-07-31
 > 주요 근거: `reports/audit/system-inventory.md`
-> 상세 시스템·기능·운영 문서는 단계적으로 구축 중이다.
+> 상세 시스템·기능·운영 문서와 Core 계약·검증 진입점은 현재 tree에 존재하며, `Blocked`·`Unknown`은 각 기준 문서에서 구분한다.
 
 ## 1. 문서 목적과 범위
 
 이 문서는 L0 Spider를 처음 접하는 사용자와 유지보수 담당자에게 현재 시스템의 상위 구조와 책임 경계를 설명한다.
 현재 코드로 확인된 사실, 기존 문서의 설명, 저장소 소유자가 정한 프로젝트 운영 정책을 구분한다.
-화면별 절차, 전체 API·환경변수·데이터 경로, 설치·배포·장애 대응은 향후 상세 문서와 실행 가능한 계약에서 관리한다.
+화면별 절차, API·환경변수·데이터 경로, 설치·배포·장애 대응은 관련 상세 문서와 실행 가능한 계약에서 관리한다.
 
 ## 2. 시스템 한눈에 보기
 
@@ -46,12 +47,12 @@ React SPA가 화면을 제공하고 Node 서버가 API, 파일 검증·집계와
 
 | 기능 | 사용자에게 제공하는 결과 | 주요 진입점 | 상세 문서 |
 |---|---|---|---|
-| Line 대시보드 | 최신 KPI, Line별 건수와 기간 추이 | `/`, `GET /api/dashboard-data` | `docs/features/dashboard.md` — 향후 작성 예정 |
-| Self Equipment·MY EQP | 조건별 Scatter·동일성 차트와 SKIP/HIT 기능 | `/self-equipment` | `docs/features/self-equipment.md` — 향후 작성 예정 |
-| 동일성 이상감지 | STEP·sensor 조건별 분석 이미지 | `/matching-anomaly` | `docs/features/abnormal-data.md` — 향후 작성 예정 |
-| 공통부 이상감지 | 공통부 이미지와 설비 비교 차트 | `/common-anomaly` | `docs/features/abnormal-data.md` — 향후 작성 예정 |
-| MY EQP·Mailing 등록 | 개인 설비와 수신 조건 관리 | `/registration` | `docs/features/mailing.md` — 향후 작성 예정 |
-| STEP 딥링크 | URL 조건을 자설비 필터에 적용 | `/self-equipment?...` | `docs/features/step-deeplink.md` — 향후 작성 예정 |
+| Line 대시보드 | 최신 KPI, Line별 건수와 기간 추이 | `/`, `GET /api/dashboard-data` | [dashboard.md](../features/dashboard.md) — `Active Baseline` |
+| Self Equipment·MY EQP | 조건별 Scatter·동일성 차트와 SKIP/HIT 기능 | `/self-equipment` | [self-equipment.md](../features/self-equipment.md) — `Active Baseline` |
+| 동일성 이상감지 | STEP·sensor 조건별 분석 이미지 | `/matching-anomaly` | [abnormal-data.md](../features/abnormal-data.md) — `Baseline` |
+| 공통부 이상감지 | 공통부 이미지와 설비 비교 차트 | `/common-anomaly` | [abnormal-data.md](../features/abnormal-data.md) — `Baseline` |
+| MY EQP·Mailing 등록 | 개인 설비와 수신 조건 관리 | `/registration` | [mailing.md](../features/mailing.md) — summary 계약 존재, 실제 발송 `Blocked` |
+| STEP 딥링크 | URL 조건을 자설비 필터에 적용 | `/self-equipment?...` | [step-deeplink.md](../features/step-deeplink.md) — ALL 흐름 확인, HMAC `Blocked` |
 | Mailing Report | 대시보드 요약, 수신인별 표와 상세 링크 | `public/mailing-report.html` | 실제 발송 흐름은 `Unknown` |
 | 사용자 메뉴얼 | 화면별 사용 절차와 이미지 | `/manual` | `docs/user-manual/USER_MANUAL.md` |
 
@@ -81,7 +82,7 @@ React SPA가 화면을 제공하고 Node 서버가 API, 파일 검증·집계와
 
 - Node handler는 입력을 검증하고 mapping JSON, Parquet·이미지 또는 DB 데이터가 필요한지 결정한다.
 - Mailing template은 대시보드 요약과 등록 조건을 요구하며 링크는 `/self-equipment`로 사용자를 되돌린다.
-- 실제 메일 renderer·sender의 조합 과정은 `Unknown`이며 상세 추적은 `docs/system/data-flow.md`에서 향후 관리한다.
+- 실제 메일 renderer·sender의 조합 과정은 `Unknown`이며 상세 추적은 [data-flow.md](data-flow.md)와 [mailing.md](../features/mailing.md)에서 관리한다.
 
 ## 9. 주요 데이터와 외부 자원
 
@@ -106,7 +107,7 @@ React SPA가 화면을 제공하고 Node 서버가 API, 파일 검증·집계와
 - Node.js·Python 지원 버전과 `.env.example`은 현재 확인되지 않았다. (`Unknown`)
 - systemd, Docker, CI, reverse proxy와 정식 log 수집 설정은 저장소에서 확인되지 않았다. (`Unknown`)
 
-설치·배포·운영 절차는 `docs/system/environment-definition.md`, `docs/system/deployment.md`, `docs/operations/runbook.md`, `docs/operations/systemd.md`에서 향후 작성한다.
+설치·배포·운영 절차는 [environment-definition.md](environment-definition.md), [deployment.md](deployment.md), [runbook.md](../operations/runbook.md), [systemd.md](../operations/systemd.md)에 존재한다. 실제 운영 topology와 unit 값은 여전히 `Unknown`이다.
 
 ## 11. Core Harness와 mock 브랜치 경계
 
@@ -130,40 +131,41 @@ mock 구현은 `main`으로 병합하지 않고, 검수에서 발견된 실제 �
 ### 12.1 데이터 경로와 화면 연결
 
 화면 변경이 어떤 API와 데이터 원천에 영향을 주는지 판단하려면 `화면 → 라우트 → 컴포넌트 → API → 서버 처리 → 데이터 원천` 추적이 필요하다.
-상세 기준은 `docs/system/data-flow.md`, `docs/features/dashboard.md`, `docs/features/self-equipment.md`, `docs/features/abnormal-data.md`에서 향후 작성한다.
+상세 기준은 [data-flow.md](data-flow.md), [dashboard.md](../features/dashboard.md), [self-equipment.md](../features/self-equipment.md), [abnormal-data.md](../features/abnormal-data.md)에 존재한다.
 
 ### 12.2 대시보드 API 계약
 
 `GET /api/dashboard-data`는 대시보드와 Mailing 요약이 공유하는 주요 데이터 경계다.
 대표적으로 `lineDashboard.summary.monitoringSensorTotal`, `changeFromPreviousDay`, `previousDateTime`과 `lineDashboard.mailingSummary`가 확인됐다.
-전체 schema는 `docs/features/dashboard.md`, `harness/contracts/dashboard-api.schema.json`, `tests/contract/`에서 향후 관리한다.
+성공 응답 기준은 [dashboard.md](../features/dashboard.md), `harness/contracts/dashboard-api.schema.json`, Dashboard success·empty fixture와 `tests/contract/dashboard-api.contract.test.mjs`에서 관리한다. 오류 응답 Schema와 실제 root producer 직접 검증은 `Partial`이다.
 
 ### 12.3 STEP 딥링크와 HMAC
 
 딥링크는 Line·SDWT·Grade·STEP·`eqpCh` 조건을 `/self-equipment`에 전달하는 역할을 한다.
 현재 `step=ALL`과 `eqpCh` 처리만 `Confirmed`이며 개별 STEP HMAC 생성·검증, 비밀키, 변조·만료 처리는 `Unknown`이다.
 HMAC은 복호화 가능한 암호문으로 간주하지 않는다.
-상세 기준은 `docs/features/step-deeplink.md`, `docs/features/self-equipment.md`, `docs/system/security.md`, `docs/decisions/ADR-003-step-hmac-token.md`에서 향후 작성한다.
+상세 기준은 [step-deeplink.md](../features/step-deeplink.md), [self-equipment.md](../features/self-equipment.md), [security.md](security.md), [ADR-003-step-hmac-token.md](../decisions/ADR-003-step-hmac-token.md)에 존재한다. `tests/unit/step-hmac.test.mjs`와 `tests/integration/step-deeplink.test.mjs`는 `step=ALL`·`eqpCh` 흐름만 검증하며 실제 HMAC은 `Blocked`다.
 
 ### 12.4 메일 생성 및 발송
 
 대시보드의 Mailing 집계, 수신 조건 등록, HTML template과 화면 재진입 링크는 확인됐다.
 목표 흐름은 `데이터 조회 → 집계 → template render → 링크 구성 → 수신자 결정 → 발송`이지만 renderer·sender·주기·재시도·발송 log는 `Unknown`이다.
-Core 산출물은 `docs/features/mailing.md`, `harness/contracts/mailing-summary.schema.json`, `tests/unit/`, `tests/contract/`이며 모두 향후 작성 예정이다.
+Core 산출물인 [mailing.md](../features/mailing.md), `harness/contracts/mailing-summary.schema.json`, success·empty fixture와 `tests/contract/mailing-summary.contract.test.mjs`는 존재한다. 실제 renderer·sender와 mail render test는 `Blocked`다.
 mock 발송 차단과 mock 의존 integration 검증은 `mock-agent` 범위다.
 
-## 13. 기준 자료와 후속 문서
+## 13. 현재 기준 자료와 연계 문서
 
 | 자료 | 역할 | 상태 |
 |---|---|---|
 | `AGENTS.md` | 사실 판정, 안전과 Core/mock 정책 | Confirmed |
-| `reports/audit/system-inventory.md` | 현재 `main`의 근거 인덱스 | Confirmed |
+| `reports/audit/harness-final-review.md` | 현재 Core Harness 완성도·Mismatch·Risk | Confirmed |
+| `reports/audit/system-inventory.md` | commit `6cf9568`의 역사적 근거 인덱스 | Historical Snapshot |
 | `web_structure.md` | 코드 기반 구조·흐름 설명 | Confirmed |
 | `docs/user-manual/USER_MANUAL.md` | 사용자 기능과 용어 기준 | Confirmed |
 | `server.mjs`, `src/features/fdc-trend/routes.jsx` | 서버·화면 대표 진입점 | Confirmed |
 | `src/config/spiderDataPaths.mjs`, `package.json` | 데이터 경로와 기술·실행 기준 | Confirmed |
 
-후속 작성 순서는 `docs/system/architecture.md` → `environment-definition.md` → `data-flow.md` → 기능별 문서 → 계약·Core 검증 산출물이다.
+현재 기준 탐색 순서는 [architecture.md](architecture.md) → [environment-definition.md](environment-definition.md) → [data-flow.md](data-flow.md) → 기능별 문서 → 계약·Core 검증 산출물이다. 안전 검증 진입점은 `scripts/verify-env.sh`, `scripts/verify-contracts.sh`, `scripts/verify-all.sh`다.
 
 ## 14. 확인되지 않은 사항과 불일치
 
@@ -176,4 +178,4 @@ mock 발송 차단과 mock 의존 integration 검증은 `mock-agent` 범위다.
 | `lineDashboard.summary.mailingSummary` 후보 | Mismatch | 실제 위치는 `lineDashboard.mailingSummary`임 | `dashboard.md`, Dashboard JSON Schema |
 | Vite와 통합 서버의 API route 범위 | Mismatch | 개발 mode에 따라 일부 기능 가용성이 다름 | `architecture.md`, `environment-definition.md` |
 
-이 개요는 `9b075d4` 시점의 현재 시스템과 확정된 프로젝트 운영 정책을 설명하며, 후속 문서는 `AGENTS.md`의 근거 우선순위와 판정 상태에 따라 갱신한다.
+이 개요는 검증 기준 코드 commit `99c4361`의 현재 시스템과 확정된 프로젝트 운영 정책을 설명하며, 연계 문서는 `AGENTS.md`의 근거 우선순위와 판정 상태에 따라 갱신한다.

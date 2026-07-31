@@ -5,7 +5,10 @@
 | 항목 | 기준 |
 |---|---|
 | 목적 | 기준 commit의 L0 Spider As-Is 보안 경계, 구현 통제, 외부 통제 후보와 보안 공백을 정의한다. |
-| 기준 | `main`, commit `19de2a6`, 정적 저장소 조사 |
+| 문서 상태 | `Active Baseline` |
+| 검증 기준 branch | `main` |
+| 검증 기준 코드 commit | `99c4361164d4109a71f0153a5c963fa4f5d52cb4` |
+| 최신 하네스 감사 | [reports/audit/harness-final-review.md](../../reports/audit/harness-final-review.md) |
 | 포함 | 브라우저, 프론트엔드, Node API, Python DB helper, DB, `/appdata`, STEP/HMAC, 메일 template, 설정·로그·배포 경계 |
 | 제외 | 실제 운영 인프라, secret, 운영 데이터, 침투 테스트, 취약점 조회, 실행 검증 |
 | 상태 표현 | 증거 상태와 통제 상태를 분리하고 개선 정책을 현재 구현처럼 표현하지 않는다. |
@@ -272,7 +275,7 @@ Parameterized value query는 SQL injection 위험을 줄이지만 인증·권한
 | empty data | empty table message template 존재 | section별 빈 상태 표시 | sender의 empty send 정책 미확인 | template `Implemented` | template loops |
 
 이 저장소에서 확인된 것은 등록 API, Dashboard 요약 producer와 template 자산이다.
-실제 renderer·sender·SMTP/API·수신자 최종 검증·발송 차단·audit log는 `Unknown`이며 상세는 향후 `docs/features/mailing.md`에서 정의한다.
+실제 renderer·sender·SMTP/API·수신자 최종 검증·발송 차단·audit log는 `Unknown`이며 상세 상태는 [mailing.md](../features/mailing.md)에서 `Blocked`로 관리한다.
 
 ## 17. 로그와 오류 정보 노출
 
@@ -444,21 +447,24 @@ Dashboard `lineDashboard.summary.mailingSummary` 후보와 실제 sibling `lineD
 | SEC-V15 | browser link·URL exposure | `mock-agent` browser QA | mock-agent만 | `Out of Scope` for main runtime | external branch |
 | SEC-V16 | dependency vulnerabilities | approved audit | 외부 DB 불필요 | `Not Run` | CI·release checklist |
 
-이번 단계에서는 위 test, fixture, scenario, ADR 또는 운영 설정을 만들거나 실행하지 않았다.
+현재 Core tree에는 Dashboard·Mailing summary Schema·fixture·contract test, MY EQP ALL·딥링크 test와 안전 검증 script가 존재한다.
+실제 HMAC·mail renderer test와 운영 설정 검증은 여전히 `Blocked`이며, 본 문서 갱신에서 test·운영 자원을 실행하지 않았다.
 
-## 27. 후속 문서
+## 27. 연계 문서·검증 상태
 
 | 산출물 | 담당 범위 | 상태 |
 |---|---|---|
 | `docs/system/security.md` | As-Is trust boundary·control·risk 기준 | 현재 문서 |
 | `docs/features/step-deeplink.md` | STEP URL, `ALL`, `eqpCh`, HMAC 상세 계약 | 작성됨 |
-| `docs/features/mailing.md` | recipient·render·sender·failure 상세 | 향후 작성 예정 |
-| `docs/decisions/ADR-003-step-hmac-token.md` | HMAC 목적·canonicalization·algorithm·rotation 결정 | 향후 작성 예정 |
-| `docs/operations/systemd.md` | user·group·directory·environment·restart | 향후 작성 예정 |
-| `docs/operations/runbook.md` | secret·log·incident·운영 점검 | 향후 작성 예정 |
-| STEP/HMAC unit test | 결정성·변조·누락·ALL | 향후 작성 예정 |
-| STEP/HMAC integration test | link producer→verifier→filter | 향후 작성 예정 |
-| mail rendering test | autoescape·recipient isolation·link | 향후 작성 예정 |
+| [mailing.md](../features/mailing.md) | recipient·render·sender·failure 상세 | 작성됨; renderer·sender `Blocked` |
+| [ADR-003-step-hmac-token.md](../decisions/ADR-003-step-hmac-token.md) | HMAC 목적·canonicalization·algorithm·rotation 결정 | `Proposed`; HMAC 미구현 |
+| [systemd.md](../operations/systemd.md) | user·group·directory·environment·restart | 작성됨; 실제 unit 값 `Unknown` |
+| [runbook.md](../operations/runbook.md) | secret·log·incident·운영 점검 | 작성됨; 운영 명령 실행 `Not Run` |
+| `tests/unit/step-hmac.test.mjs` | MY EQP ALL·query round trip | 작성됨; 결정성·변조·secret test는 `Blocked` |
+| `tests/integration/step-deeplink.test.mjs` | ALL link producer→parser→payload | 작성됨; HMAC verifier는 없음 |
+| `tests/contract/{dashboard-api,mailing-summary}.contract.test.mjs` | success Schema·fixture·Mailing producer | 작성됨; 오류·full mail context `Partial`/`Blocked` |
+| `scripts/verify-{env,contracts,all}.sh` | 운영 자원 비의존 검증 진입점 | 작성됨 |
+| mail rendering test | autoescape·recipient isolation·link | renderer 부재로 `Blocked` |
 
 ## 28. 근거 자료
 
@@ -478,7 +484,7 @@ Dashboard `lineDashboard.summary.mailingSummary` 후보와 실제 sibling `lineD
 | 12 | `public/mailing-report.html` | template·recipient·escaping·link policy |
 | 13 | `.gitignore`, `package.json`, `package-lock.json` | secret exclusion·build·dependency baseline |
 
-이 문서는 `main` commit `19de2a6` 시점의 As-Is 보안 경계를 설명한다.
+이 문서는 검증 기준 코드 commit `99c4361`의 As-Is 보안 경계를 설명한다.
 실제 운영 인프라, DB, `/appdata`, mail system, `.env`, secret과 token은 조사하지 않았다.
 `Unknown`과 `Risk`는 정적 근거의 한계이며 후속 검증 결과로 갱신해야 한다.
 보안 코드를 변경할 때 관련 기능 문서, 계약과 test를 함께 검토한다.
