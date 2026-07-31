@@ -242,7 +242,6 @@ export function buildSelfEquipmentPayload(rows, filters) {
     rowCount: sensorRows.length,
   })), "sensor")
   const selectedSensor = filters.sensor === ALL_SENSORS
-    && selectedEqpCh !== ALL_EQP_CHANNELS
     && sensors.length > 0
     ? ALL_SENSORS
     : sensors.some((item) => item.sensor === filters.sensor)
@@ -258,9 +257,10 @@ export function buildSelfEquipmentPayload(rows, filters) {
     rowCount: chStepRows.length,
     equipmentCount: uniqueCount(chStepRows, "eqp"),
   })), "step")
-  const selectedChStep = filters.chStep === ALL_CH_STEPS && chSteps.length > 0
+  const allChStepsSelected = filters.chStep === ALL_CH_STEPS && chSteps.length > 0
+  const selectedChStep = allChStepsSelected
     ? ALL_CH_STEPS
-    : chSteps.some((item) => item.step === filters.chStep)
+    : selectedSensor !== ALL_SENSORS && chSteps.some((item) => item.step === filters.chStep)
     ? filters.chStep
     : ""
   const chartRows = selectedChStep === ALL_CH_STEPS

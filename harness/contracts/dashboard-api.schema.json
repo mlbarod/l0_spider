@@ -1,0 +1,498 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "L0 Spider Dashboard API Success Response",
+  "description": "현재 main 코드의 GET /api/dashboard-data 성공 응답 JSON body를 검증한다. 기준 문서는 docs/features/dashboard.md이며 mock-agent의 mock 응답 계약이 아니다.",
+  "type": "object",
+  "required": [
+    "ok",
+    "latestDate",
+    "metrics",
+    "detailCounts",
+    "sourcePaths",
+    "columns",
+    "lineDashboard"
+  ],
+  "properties": {
+    "ok": {
+      "const": true,
+      "description": "HTTP 성공 응답에서 항상 true인 성공 표시다."
+    },
+    "latestDate": {
+      "type": "string",
+      "pattern": "^(?:|\\d{4}-\\d{2}-\\d{2} (?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d)$",
+      "description": "최신 선택 detail 파일의 YYYY-MM-DD hh:mm:ss 이름이다. 선택 파일이 없으면 빈 문자열이다."
+    },
+    "metrics": {
+      "$ref": "#/$defs/dashboardMetrics"
+    },
+    "detailCounts": {
+      "$ref": "#/$defs/detailCounts"
+    },
+    "sourcePaths": {
+      "$ref": "#/$defs/sourcePaths"
+    },
+    "columns": {
+      "$ref": "#/$defs/dashboardColumns"
+    },
+    "lineDashboard": {
+      "$ref": "#/$defs/lineDashboard"
+    }
+  },
+  "$comment": "성공 body root는 object spread로 조립되므로 현재 필드는 required로 고정하되 root의 추가 속성은 차단하지 않는다. non-2xx 오류 body와 HEAD 응답은 이 Schema 범위가 아니다.",
+  "$defs": {
+    "dateString": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "서버가 생성하는 YYYY-MM-DD 날짜 문자열이다."
+    },
+    "dateTimeString": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2} (?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d$",
+      "description": "서버의 Dashboard 파일명 규칙인 YYYY-MM-DD hh:mm:ss 문자열이다."
+    },
+    "nullableDateString": {
+      "type": ["string", "null"],
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "nullableDateTimeString": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2} (?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d$"
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/nonEmptyString"
+      }
+    },
+    "nonNegativeInteger": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "nullableNonNegativeInteger": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "nullableInteger": {
+      "type": ["integer", "null"]
+    },
+    "dashboardMetrics": {
+      "type": "object",
+      "required": [
+        "monitoringSensorTotal",
+        "detectedPpidCount",
+        "totalAnomalyCount",
+        "abGradeCount",
+        "dGradeCount",
+        "nGradeCount",
+        "mGradeCount"
+      ],
+      "properties": {
+        "monitoringSensorTotal": {
+          "type": "number",
+          "description": "최신 stats의 TL total을 숫자로 정규화해 합산한 값이다."
+        },
+        "detectedPpidCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "totalAnomalyCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "abGradeCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "dGradeCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "nGradeCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "mGradeCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        }
+      },
+      "$comment": "metrics는 monitoringSensorTotal과 detailSummary.metrics의 object spread로 조립되므로 추가 속성을 차단하지 않는다."
+    },
+    "detailCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rows",
+        "sdwt",
+        "steps",
+        "recipeIds",
+        "sensors"
+      ],
+      "properties": {
+        "rows": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "sdwt": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "steps": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "recipeIds": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "sensors": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        }
+      }
+    },
+    "sourcePaths": {
+      "type": "object",
+      "required": [
+        "stats",
+        "detail",
+        "historyRoot",
+        "mapping"
+      ],
+      "properties": {
+        "stats": {
+          "type": "string",
+          "description": "선택된 stats 파일 경로이며 선택 파일이 없으면 빈 문자열이다."
+        },
+        "detail": {
+          "type": "string",
+          "description": "선택된 detail 파일 경로이며 선택 파일이 없으면 빈 문자열이다."
+        },
+        "historyRoot": {
+          "type": "string",
+          "description": "Dashboard detail 파일을 검색한 root 경로다."
+        },
+        "mapping": {
+          "type": "string",
+          "description": "Line·SDWT mapping을 읽은 경로다."
+        }
+      },
+      "$comment": "최종 sourcePaths는 baseSummary.sourcePaths의 object spread에 고정 키를 추가하므로 추가 속성을 차단하지 않는다."
+    },
+    "dashboardColumns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stats",
+        "detail"
+      ],
+      "properties": {
+        "stats": {
+          "const": [
+            "exec_date",
+            "recipe_id",
+            "priority",
+            "ng",
+            "total"
+          ]
+        },
+        "detail": {
+          "const": [
+            "sdwt",
+            "desc",
+            "recipe_id",
+            "priority",
+            "sensor",
+            "eqp"
+          ]
+        }
+      }
+    },
+    "lineDashboard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "filters",
+        "options",
+        "summary",
+        "lineSummary",
+        "dailyTrend",
+        "mailingSummary",
+        "meta"
+      ],
+      "properties": {
+        "filters": {
+          "$ref": "#/$defs/dashboardFilters"
+        },
+        "options": {
+          "$ref": "#/$defs/dashboardOptions"
+        },
+        "summary": {
+          "$ref": "#/$defs/lineDashboardSummary"
+        },
+        "lineSummary": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/lineSummaryItem"
+          }
+        },
+        "dailyTrend": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dailyTrendItem"
+          }
+        },
+        "mailingSummary": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mailingSummaryItem"
+          }
+        },
+        "meta": {
+          "$ref": "#/$defs/dashboardMeta"
+        }
+      }
+    },
+    "dashboardFilters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "startDate",
+        "endDate",
+        "lines"
+      ],
+      "properties": {
+        "startDate": {
+          "$ref": "#/$defs/dateString"
+        },
+        "endDate": {
+          "$ref": "#/$defs/dateString"
+        },
+        "lines": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        }
+      }
+    },
+    "dashboardOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lines",
+        "minDate",
+        "maxDate",
+        "defaultStartDate",
+        "defaultEndDate"
+      ],
+      "properties": {
+        "lines": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        },
+        "minDate": {
+          "$ref": "#/$defs/dateString"
+        },
+        "maxDate": {
+          "$ref": "#/$defs/dateString"
+        },
+        "defaultStartDate": {
+          "$ref": "#/$defs/dateString"
+        },
+        "defaultEndDate": {
+          "$ref": "#/$defs/dateString"
+        }
+      }
+    },
+    "lineDashboardSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "totalAbnormalCount",
+        "abnormalLineCount",
+        "latestDate",
+        "latestDateTime",
+        "latestDateCount",
+        "topLine",
+        "topLineCount",
+        "previousDate",
+        "previousDateTime",
+        "changeFromPreviousDay",
+        "monitoringSensorTotal",
+        "abGradeCount",
+        "dGradeCount",
+        "nGradeCount",
+        "mGradeCount"
+      ],
+      "properties": {
+        "totalAbnormalCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "abnormalLineCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "latestDate": {
+          "$ref": "#/$defs/nullableDateString"
+        },
+        "latestDateTime": {
+          "$ref": "#/$defs/nullableDateTimeString"
+        },
+        "latestDateCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "topLine": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "topLineCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "previousDate": {
+          "$ref": "#/$defs/nullableDateString"
+        },
+        "previousDateTime": {
+          "$ref": "#/$defs/nullableDateTimeString"
+        },
+        "changeFromPreviousDay": {
+          "$ref": "#/$defs/nullableInteger"
+        },
+        "monitoringSensorTotal": {
+          "type": "number"
+        },
+        "abGradeCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "dGradeCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "nGradeCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "mGradeCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        }
+      }
+    },
+    "lineSummaryItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lineId",
+        "totalCount",
+        "abGradeCount",
+        "latestDateCount",
+        "previousDateCount",
+        "changeCount",
+        "lastAbnormalDate",
+        "ratio",
+        "sdwts",
+        "sensorGrades"
+      ],
+      "properties": {
+        "lineId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "totalCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "abGradeCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "latestDateCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "previousDateCount": {
+          "$ref": "#/$defs/nullableNonNegativeInteger"
+        },
+        "changeCount": {
+          "$ref": "#/$defs/nullableInteger"
+        },
+        "lastAbnormalDate": {
+          "$ref": "#/$defs/nullableDateString"
+        },
+        "ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "sdwts": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        },
+        "sensorGrades": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        }
+      }
+    },
+    "dailyTrendItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "date",
+        "lineId",
+        "abnormalCount"
+      ],
+      "properties": {
+        "date": {
+          "$ref": "#/$defs/dateString"
+        },
+        "lineId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "abnormalCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        }
+      }
+    },
+    "mailingSummaryItem": {
+      "type": "object",
+      "required": [
+        "lineId",
+        "sdwt",
+        "sensorGrade",
+        "abnormalCount"
+      ],
+      "properties": {
+        "lineId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "sdwt": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "sensorGrade": {
+          "enum": [
+            "A",
+            "B",
+            "D",
+            "M",
+            "N"
+          ]
+        },
+        "abnormalCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        }
+      },
+      "$comment": "mailing row는 dimensions object spread로 조립되므로 현재 필드는 required로 고정하되 추가 속성은 차단하지 않는다."
+    },
+    "dashboardMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "filesRead",
+        "comparisonFileRead",
+        "unmappedRows"
+      ],
+      "properties": {
+        "filesRead": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "comparisonFileRead": {
+          "type": "boolean"
+        },
+        "unmappedRows": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        }
+      }
+    }
+  }
+}
