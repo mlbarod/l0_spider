@@ -27,6 +27,23 @@ test("자설비 Drawing 경로와 선택 grade 목록을 클릭이력으로 변�
   })
 })
 
+test("자설비 sensor ALL 클릭이력은 실제 sensor 목록 대신 ALL을 저장한다", () => {
+  const record = buildClickedCategoryHistoryRecord({
+    app: "self",
+    lineId: "P1L",
+    filePaths: [
+      "/appdata/abnormal_trend/pic/erd/2026-07-17/SDWT-1/ETCH/V1/PPID-1/A/PRESSURE_SENSOR/10@001/EQP-1.png",
+      "/appdata/abnormal_trend/pic/erd/2026-07-17/SDWT-1/ETCH/V1/PPID-1/B/TEMP/20@001/EQP-2.png",
+    ],
+    grades: ["A", "B"],
+    selectedSensor: "ALL",
+    clickedAt: "2026-07-17T13:00:00+09:00",
+    knoxId: "user1",
+  })
+
+  assert.equal(record.sensor, "ALL")
+})
+
 test("MY EQP 선택은 파일 경로 없이 clicked_category_history 값으로 변환한다", () => {
   const clickedAt = "2026-07-24T09:30:00+09:00"
   const record = buildClickedCategoryHistoryRecord({

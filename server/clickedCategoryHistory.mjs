@@ -9,6 +9,7 @@ const COMMON_FILE_ROOT = "/appdata/abnormal_trend/pic/common"
 const helperPath = fileURLToPath(new URL("../scripts/clicked_category_history.py", import.meta.url))
 const SUPPORTED_APPS = new Set(["self", "commonality", "common"])
 const MY_EQP_GRADES = Object.freeze(["A", "B", "D", "N", "M"])
+const ALL_SENSORS = "ALL"
 
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
@@ -85,6 +86,7 @@ export function buildClickedCategoryHistoryRecord({
   const paths = uniqueValues(Array.isArray(filePaths) ? filePaths : [])
   const isMyEqpCategory = normalizedApp === "self"
     && normalizeText(virtualCategory?.sdwt) === "MY EQP"
+  const isAllSensorSelection = normalizeText(selectedSensor) === ALL_SENSORS
   if (!SUPPORTED_APPS.has(normalizedApp)) throw new Error("클릭이력 App 구분값이 올바르지 않습니다.")
   if (!normalizedLineId) throw new Error("Line Name이 필요합니다.")
   if (!paths.length && !isMyEqpCategory) throw new Error("Chart Drawing 경로가 필요합니다.")
@@ -97,9 +99,9 @@ export function buildClickedCategoryHistoryRecord({
     ? grades
     : pathValues.map((values) => values.grade)
   const sensor = isMyEqpCategory
-    ? "ALL"
-    : normalizedApp === "commonality" && normalizeText(selectedSensor) === "ALL"
-    ? "ALL"
+    ? ALL_SENSORS
+    : isAllSensorSelection
+    ? ALL_SENSORS
     : formatCategory(pathValues.map((values) => values.sensor))
   return {
     lineId: `${normalizedLineId}${suffix}`,

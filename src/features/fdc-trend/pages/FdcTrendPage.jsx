@@ -1852,6 +1852,7 @@ export function FdcTrendPage() {
         lineId: activeLine,
         filePaths,
         grades: priorities,
+        selectedSensor,
         clickedAt,
       })
     } catch (error) {
