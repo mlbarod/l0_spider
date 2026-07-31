@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "L0 Spider Dashboard Mailing Summary",
+  "description": "현재 main 코드의 GET /api/dashboard-data 성공 body 중 lineDashboard.mailingSummary 배열 fragment를 검증한다. 전체 template context, recipient와 전송 결과는 범위가 아니다.",
+  "type": "array",
+  "items": {
+    "$ref": "#/$defs/mailingSummaryItem"
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nonNegativeInteger": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "mailingSummaryItem": {
+      "type": "object",
+      "required": [
+        "lineId",
+        "sdwt",
+        "sensorGrade",
+        "abnormalCount"
+      ],
+      "properties": {
+        "lineId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "sdwt": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "sensorGrade": {
+          "enum": [
+            "A",
+            "B",
+            "D",
+            "M",
+            "N"
+          ]
+        },
+        "abnormalCount": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        }
+      },
+      "$comment": "server/dashboardData.mjs가 생성하는 네 field는 required다. 기존 Dashboard API Schema와 호환되도록 추가 property는 차단하지 않는다."
+    }
+  }
+}
