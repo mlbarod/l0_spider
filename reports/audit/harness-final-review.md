@@ -5,9 +5,9 @@
 | 항목 | 감사 기준 |
 |---|---|
 | 저장소 | L0 Spider `main` |
-| 기준 commit | `dbc6f33994cced1b41943f0ceae116a5495e84da` (`dbc6f33`) |
-| commit 제목 | `harness setup22` |
-| 감사 시점 | 2026-07-31 22:39 KST 이후 |
+| 기준 commit | `cc5504e08e701d8a597e6619556270310c238fa9` (`cc5504e`) |
+| commit 제목 | `harness setup modi` |
+| 감사 시점 | 2026-07-31 23:17 KST 이후 |
 | 시작 작업 트리 | clean |
 | 감사 방식 | 현재 checkout의 정적 교차 검토와 운영 자원 비의존 검증 실행 |
 | 생성·수정 허용 파일 | `reports/audit/harness-final-review.md` |
@@ -34,7 +34,8 @@
 
 Core Harness의 기준 문서, Dashboard·Mailing summary 계약, 최소 synthetic fixture, STEP/딥링크 회귀 테스트와 안전한 검증 진입점은 존재하며 현재 환경에서 실행된다.
 모든 지정 검증은 종료 코드 `0`으로 통과했고 운영 자원 접근도 발생하지 않았다.
-그러나 일부 기준 문서가 이후 생성된 산출물을 계속 “향후 작성” 또는 “부재”로 표시하고, 개별 STEP HMAC과 실제 메일 renderer·sender는 구현 근거가 없어 `BLOCKED`다.
+이전 감사의 P0였던 기준 문서 drift는 commit `cc5504e`에서 해소됐고, 현재 일곱 기준 문서는 실제 후속 산출물과 `Blocked`·`Partial` 상태를 구분한다.
+그러나 개별 STEP HMAC과 실제 메일 renderer·sender는 구현 근거가 없어 `BLOCKED`다.
 Dashboard 성공 Schema도 fixture는 검증하지만 실제 producer 결과를 직접 검증하지 않으므로 코드 변경에 대한 자동 drift 방지는 `PARTIAL`이다.
 
 ### 2.2 상위 판정표
@@ -42,8 +43,8 @@ Dashboard 성공 Schema도 fixture는 검증하지만 실제 producer 결과를 
 | 감사 항목 | 판정 | 핵심 근거 |
 |---|---|---|
 | `AGENTS.md` 목표 구조 | `PASS` | Core 필수 디렉터리와 대표 산출물 존재; mock 전용 구조는 의도적으로 없음 |
-| Markdown 상대경로 링크 | `PASS` | 23개 Markdown, 127개 link 정적 검사, broken 0 |
-| 문서 최신성·상호 일치 | `FAIL` | 여러 Baseline 문서가 현재 존재하는 문서·Schema·test를 “향후 작성”으로 표시 |
+| Markdown 상대경로 링크 | `PASS` | 24개 Markdown, 204개 link 정적 검사, broken 0 |
+| 문서 최신성·상호 일치 | `PASS` | 일곱 기준 문서가 `Active Baseline`, 검증 commit, 최신 감사와 현재 산출물 상태를 기록 |
 | 화면과 데이터 경로 추적 | `PARTIAL` | 주요 화면→API→파일·DB 연결은 존재; producer·Schema·timezone·freshness는 미확인 |
 | Dashboard API 계약 | `PARTIAL` | 성공 Schema·fixture·contract test 통과; 오류 Schema와 producer 직접 검증 없음 |
 | STEP 딥링크와 HMAC | `BLOCKED` | `step=ALL`·`eqpCh`는 검증됨; HMAC 생성·검증·secret·정책은 없음 |
@@ -53,7 +54,7 @@ Dashboard 성공 Schema도 fixture는 검증하지만 실제 producer 결과를 
 | 검증 script | `PASS` | 세 script 문법 및 실제 실행 통과 |
 | 운영 안전 경계 | `PASS` | 검증 경로에서 DB·`/appdata`·SMTP·secret 접근 없음 |
 | `main` / `mock-agent` 분리 | `PASS` | mock server·data·E2E 자산 없음; script도 명시적으로 제외 |
-| 비밀·개인정보 정적 점검 | `PARTIAL` | 확인된 실제 secret 없음; 내부 URL·path와 오류 detail 노출 위험은 남음 |
+| 비밀·개인정보 정적 점검 | `PARTIAL` | 확인된 실제 secret 없음; email 형식 test literal, 내부 URL·path와 오류 detail 노출 위험은 남음 |
 
 ## 3. 목표 구조 감사
 
@@ -81,8 +82,8 @@ Dashboard 성공 Schema도 fixture는 검증하지만 실제 producer 결과를 
 본 보고서를 만들기 전 감사 입력 문서에 수행한 Markdown link 정적 검사 결과는 다음과 같다.
 
 - 대상: `docs/**/*.md`, `reports/audit/*.md`
-- 파일: 23개
-- Markdown link·image 참조: 127개
+- 파일: 24개
+- Markdown link·image 참조: 204개
 - 존재하지 않는 상대경로 target: 0개
 - 판정: `PASS`
 
@@ -110,7 +111,7 @@ anchor heading의 renderer별 slug 호환, browser에서의 실제 이동과 픽
 
 ### 4.2 Dashboard API 계약 — `PARTIAL`
 
-`GET /api/dashboard-data`의 현재 생산자는 `server/dashboardData.mjs:712-825`이며, 성공 body는 `ok`, 상위 summary와 `lineDashboard`를 조립한다.
+`GET /api/dashboard-data`의 현재 생산자는 `server/dashboardData.mjs:712-827`이며, 성공 body는 `ok`, 상위 summary와 `lineDashboard`를 조립한다.
 `lineDashboard.summary`와 sibling `lineDashboard.mailingSummary`는 현재 code·Schema·fixture에서 같은 위치를 사용한다.
 
 확인된 계약 자산은 다음과 같다.
@@ -157,20 +158,20 @@ Schema compile, success·empty fixture와 negative 사례는 현재 contract tes
 
 ## 5. 문서·코드·계약·테스트 일치성
 
-### 5.1 문서 최신성 — `FAIL`
+### 5.1 문서 최신성 — `PASS`
 
-현재 존재하는 산출물을 아직 미래 상태로 표시하는 문서가 다수 있다.
+이전 감사의 `DOC-M01`~`DOC-M05`를 현재 tree에서 다시 확인한 결과 P0 기준 문서 drift는 해소됐다.
 
-| ID | 현재 파일 상태 | 오래된 표현 | 영향 |
+| 확인 항목 | 현재 결과 | 판정 | 근거 |
 |---|---|---|---|
-| `DOC-M01` | 기능·운영·계약 문서가 모두 존재 | `overview.md:49-54,109,133-152`는 “향후 작성”·“모두 향후”로 표시 | 신규 담당자가 완료 범위를 오판 |
-| `DOC-M02` | system·feature 문서 존재 | `architecture.md:254-262`가 후속 문서 전체를 “향후 작성 예정”으로 표시 | architecture navigation 신뢰 저하 |
-| `DOC-M03` | Dashboard·Mailing Schema와 test 존재 | `data-flow.md:195,413-420`, `dashboard.md:10,405-407`이 미작성으로 표시 | 계약 존재 여부 오판 |
-| `DOC-M04` | STEP·Mailing·Security·ADR 문서 존재 | `self-equipment.md:412-417`, `step-deeplink.md:424-426`, `security.md:455-460`이 미래 상태로 표시 | 기능·보안 후속 상태 충돌 |
-| `DOC-M05` | Core 계약·test·검증 script 존재 | `system-inventory.md:247-248,276,305,310,342`는 당시 부재로 기록 | 시점 표시를 놓치면 현재 상태로 오해 |
+| 기준 문서 상태 | 일곱 문서 모두 `Active Baseline`과 검증 기준 branch·commit을 기록 | `PASS` | `overview.md`, `architecture.md`, `data-flow.md`, `dashboard.md`, `self-equipment.md`, `step-deeplink.md`, `security.md` 상단 |
+| 최신 감사 연결 | 일곱 문서 모두 본 보고서 상대 링크를 제공 | `PASS` | `최신 하네스 감사` metadata |
+| 후속 산출물 상태 | 현재 문서·Schema·fixture·test·script를 작성됨으로 기록 | `PASS` | 각 문서의 연계 문서·산출물 표 |
+| 미완료 과장 방지 | 실제 HMAC, mail renderer·sender와 Dashboard 일부 계약을 `Blocked`·`Partial`로 유지 | `PASS` | STEP·Mailing·Dashboard 관련 절 |
+| 역사적 inventory 경계 | commit `6cf9568` snapshot이며 현재 감사·기준 문서를 우선한다고 명시 | `PASS` | `reports/audit/system-inventory.md:3-7` |
 
-각 문서가 과거 기준 commit을 명시하므로 당시 조사 기록 자체를 삭제할 근거는 없다.
-그러나 현재 시스템의 단일 기준으로 탐색할 때는 최신 상태 표 또는 superseded 표시가 없어 명확한 drift다.
+오래된 상태 표현 제한 검색에서 “향후 작성 예정”, “모두 향후”, “아직 작성 전”과 같은 P0 대상 문구는 발견되지 않았다.
+일곱 기준 문서의 검증 기준 코드 commit은 `99c4361`이고 현재 감사 기준은 그 문서 보정을 포함한 `cc5504e`다. 이는 미래 commit을 소급 기록하지 않기 위한 의도된 구분이며 `Mismatch`가 아니다.
 
 ### 5.2 코드·사용자 메뉴얼 — `PARTIAL`
 
@@ -303,12 +304,13 @@ Python DB helper의 `password=`는 외부 credential 구조에서 읽은 값을 
 
 | ID | 심각도 | 내용 | 근거 | 영향 |
 |---|---|---|---|---|
-| `FINAL-M01` | 높음 | 여러 기준 문서가 현재 존재하는 후속 문서·Schema·test를 미작성으로 표시 | 5.1절 경로·라인 | 하네스 완성도와 탐색 오류 |
 | `FINAL-M02` | 높음 | 개별 STEP HMAC 후보와 현재 미구현 상태의 차이 | STEP 문서·ADR·실제 utility | 개별 STEP 진위·오류 계약 없음 |
 | `FINAL-M03` | 중간 | 후보 `lineDashboard.summary.mailingSummary`와 실제 sibling 위치 차이 | `AGENTS.md`, Dashboard code·Schema | 잘못된 consumer path 가능 |
 | `FINAL-M04` | 중간 | Vite 단독 middleware와 full `server.mjs` API route 범위 차이 | architecture·environment 문서 | 실행 mode별 기능 차이 |
 | `FINAL-M05` | 중간 | 사용자 메뉴얼 일부 이미지가 현재 메뉴·filter·상태를 반영하지 않음 | `docs/user-manual/index.md:53-79` | 사용자 조작 혼선 |
 | `FINAL-M06` | 중간 | Parquet/API `recipe_id`와 path·UI의 PPID 용어 불일치 | glossary·ADR-002 | 데이터 해석·검색 혼선 |
+
+`FINAL-M01` 문서 snapshot drift는 commit `cc5504e`에서 해결돼 현재 Mismatch Register에서 제거했다.
 
 ### 9.2 Unknown·Blocked
 
@@ -327,7 +329,6 @@ Python DB helper의 `password=`는 외부 credential 구조에서 읽은 값을 
 
 | ID | 우선순위 | 위험 | 현재 완화 |
 |---|---|---|---|
-| `FINAL-R01` | 높음 | 문서 snapshot drift로 Codex·운영자가 존재 자산을 누락 판단 | 본 최종 감사가 현재 상태를 명시 |
 | `FINAL-R02` | 높음 | Dashboard producer 변경이 success Schema test에 직접 잡히지 않음 | fixture·frontend shape·별도 server test 존재 |
 | `FINAL-R03` | 높음 | mail sender가 외부에 있을 경우 오발송·retry·dedupe 경계 미확인 | Core test는 실제 발송 금지 |
 | `FINAL-R04` | 높음 | source path·DB detail·URL query가 응답·log에 노출될 수 있음 | frontend path masking 일부 존재 |
@@ -338,13 +339,15 @@ Python DB helper의 `password=`는 외부 credential 구조에서 읽은 값을 
 | `FINAL-R09` | 중간 | 메뉴얼 이미지의 시각적 최신성 미확인 | Markdown 본문·index를 우선 기준으로 지정 |
 | `FINAL-R10` | 중간 | 실제 release·rollback·backup 실행 증거 없음 | 운영 문서는 미확인 값을 `Unknown` 처리 |
 
+기존 `FINAL-R01` 문서 snapshot drift는 기준 문서 metadata와 historical inventory banner로 완화돼 종료했다.
+
 ## 10. 수정 우선순위와 권장 후속 작업
 
-### P0 — 기준 신뢰성 회복
+### 완료 — P0 기준 신뢰성 회복
 
-1. `overview.md`, `architecture.md`, `data-flow.md`, `dashboard.md`, `self-equipment.md`, `step-deeplink.md`, `security.md`의 후속 산출물 상태를 현재 tree와 맞춘다.
-2. `system-inventory.md`가 commit `6cf9568`의 역사적 snapshot임을 탐색 위치에서 명확히 하고 현재 상태는 본 보고서를 우선하도록 연결한다.
-3. 각 기준 문서에 `last verified commit` 또는 superseded 상태를 일관되게 둔다.
+1. 일곱 기준 문서의 후속 산출물 상태가 현재 tree와 일치한다.
+2. `system-inventory.md`는 commit `6cf9568`의 역사적 snapshot으로 분리됐고 현재 상태는 본 보고서와 `Active Baseline` 문서를 우선한다.
+3. 기준 문서에 상태, 검증 branch·commit과 최신 감사 링크가 일관되게 기록됐다.
 
 ### P1 — 실행 가능한 계약 강화
 
@@ -381,19 +384,18 @@ Python DB helper의 `password=`는 외부 credential 구조에서 읽은 값을 
 
 다음 용도로는 아직 완료됐다고 표현하면 안 된다.
 
-- 모든 문서가 현재 tree와 동기화됐다는 보장
 - 개별 STEP HMAC의 구현·보안 보장
 - 실제 메일 render·발송·retry·dedupe 보장
 - Dashboard 오류 응답과 actual handler의 완전한 실행 계약
 - 운영 DB·`/appdata`·배포·backup·restore의 실행 검증
 - 전체 기존 test suite와 browser 동작의 회귀 보장
 
-`FINAL-M01` 문서 drift를 해소하고 P1 계약 공백을 보완하기 전에는 무조건적인 `READY`로 승격하지 않는다.
+P0 문서 drift는 해소됐지만 P1 계약 공백을 보완하기 전에는 무조건적인 `READY`로 승격하지 않는다.
 HMAC과 실제 메일 발송은 제품·운영 owner 결정 없이 임의 구현하거나 `PASS`로 처리하지 않는다.
 
 ## 12. 감사 변경 및 미실행 확인
 
-- 생성한 파일: `reports/audit/harness-final-review.md`
+- 수정한 파일: `reports/audit/harness-final-review.md`
 - 다른 문서·코드·Schema·fixture·test·script 수정: 없음
 - 애플리케이션 server 실행: `Not Run`
 - 운영 DB 접근: `Not Run`
