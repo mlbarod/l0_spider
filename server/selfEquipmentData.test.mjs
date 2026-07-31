@@ -161,3 +161,46 @@ test("My EQP URL의 eqp_ch는 확장자와 표기 차이가 있어도 실제 EQP
 
   assert.equal(payload.filters.eqpCh, "EQP-01_CH A.png")
 })
+
+test("eqp_ch ALL에서 Sensor ALL과 ch_step ALL을 선택하면 모든 센서 차트를 반환한다", () => {
+  const rows = [
+    createRow({ sensor: "TEMP", step: "10@MAIN", eqp: "EQP-1.png" }),
+    createRow({ sensor: "PRESSURE", step: "20@MAIN", eqp: "EQP-2.png" }),
+  ]
+  const payload = buildSelfEquipmentPayload(rows, {
+    line: "P1L",
+    pathSdwt: "SDWT-1",
+    sdwt: "SDWT-1",
+    priorities: ["A"],
+    desc: "ETCH",
+    eqpCh: "ALL",
+    sensor: "ALL",
+    chStep: "ALL",
+  })
+
+  assert.equal(payload.filters.eqpCh, "ALL")
+  assert.equal(payload.filters.sensor, "ALL")
+  assert.equal(payload.filters.chStep, "ALL")
+  assert.deepEqual(payload.rows.map((row) => row.sensor).sort(), ["PRESSURE", "TEMP"])
+})
+
+test("Sensor ALL에서는 개별 ch_step 선택을 허용하지 않는다", () => {
+  const rows = [
+    createRow({ sensor: "TEMP", step: "10@MAIN" }),
+    createRow({ sensor: "PRESSURE", step: "20@MAIN" }),
+  ]
+  const payload = buildSelfEquipmentPayload(rows, {
+    line: "P1L",
+    pathSdwt: "SDWT-1",
+    sdwt: "SDWT-1",
+    priorities: ["A"],
+    desc: "ETCH",
+    eqpCh: "EQP-1.png",
+    sensor: "ALL",
+    chStep: "10@MAIN",
+  })
+
+  assert.equal(payload.filters.sensor, "ALL")
+  assert.equal(payload.filters.chStep, "")
+  assert.deepEqual(payload.rows, [])
+})

@@ -1,0 +1,114 @@
+{
+  "ok": true,
+  "latestDate": "2000-01-02 08:00:00",
+  "metrics": {
+    "monitoringSensorTotal": 2,
+    "detectedPpidCount": 1,
+    "totalAnomalyCount": 1,
+    "abGradeCount": 1,
+    "dGradeCount": 0,
+    "nGradeCount": 0,
+    "mGradeCount": 0
+  },
+  "detailCounts": {
+    "rows": 1,
+    "sdwt": 1,
+    "steps": 1,
+    "recipeIds": 1,
+    "sensors": 1
+  },
+  "sourcePaths": {
+    "stats": "/appdata/abnormal_trend/pic/stats/2000-01-02 08:00:00_spider_step_stats.parquets",
+    "detail": "/synthetic/dashboard/history/2000-01-02 08:00:00",
+    "historyRoot": "/synthetic/dashboard/history",
+    "mapping": "/synthetic/dashboard/mapping_config.json"
+  },
+  "columns": {
+    "stats": [
+      "exec_date",
+      "recipe_id",
+      "priority",
+      "ng",
+      "total"
+    ],
+    "detail": [
+      "sdwt",
+      "desc",
+      "recipe_id",
+      "priority",
+      "sensor",
+      "eqp"
+    ]
+  },
+  "lineDashboard": {
+    "filters": {
+      "startDate": "2000-01-02",
+      "endDate": "2000-01-02",
+      "lines": []
+    },
+    "options": {
+      "lines": [
+        "TEST_LINE"
+      ],
+      "minDate": "2000-01-01",
+      "maxDate": "2000-01-02",
+      "defaultStartDate": "2000-01-02",
+      "defaultEndDate": "2000-01-02"
+    },
+    "summary": {
+      "totalAbnormalCount": 1,
+      "abnormalLineCount": 1,
+      "latestDate": "2000-01-02",
+      "latestDateTime": "2000-01-02 08:00:00",
+      "latestDateCount": 1,
+      "topLine": "TEST_LINE",
+      "topLineCount": 1,
+      "previousDate": "2000-01-01",
+      "previousDateTime": "2000-01-01 08:00:00",
+      "changeFromPreviousDay": 1,
+      "monitoringSensorTotal": 2,
+      "abGradeCount": 1,
+      "dGradeCount": 0,
+      "nGradeCount": 0,
+      "mGradeCount": 0
+    },
+    "lineSummary": [
+      {
+        "lineId": "TEST_LINE",
+        "totalCount": 1,
+        "abGradeCount": 1,
+        "latestDateCount": 1,
+        "previousDateCount": 0,
+        "changeCount": 1,
+        "lastAbnormalDate": "2000-01-02",
+        "ratio": 100,
+        "sdwts": [
+          "TEST_SDWT"
+        ],
+        "sensorGrades": [
+          "A/B"
+        ]
+      }
+    ],
+    "dailyTrend": [
+      {
+        "date": "2000-01-02",
+        "lineId": "TEST_LINE",
+        "abnormalCount": 1
+      }
+    ],
+    "mailingSummary": [
+      {
+        "lineId": "TEST_LINE",
+        "sdwt": "TEST_SDWT",
+        "sensorGrade": "A",
+        "abnormalCount": 1
+      }
+    ],
+    "meta": {
+      "filesRead": 1,
+      "comparisonFileRead": true,
+      "unmappedRows": 0
+    }
+  }
+}
