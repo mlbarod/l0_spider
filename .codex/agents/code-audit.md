@@ -24,14 +24,18 @@
 
 - `null`, `undefined`, 빈 배열, `NaN`, 잘못된 타입 가정과 직접 URL 파라미터 검증
 - API method/path/request shape/response field 사용과 Mock 계약의 불일치
-- React Query `queryKey`, 캐시 범위, 무효화, 요청 취소, stale state/response
+- React Query `queryKey`, 캐시 범위·유지 기간의 중복 또는 무제한 설정, 무효화, 요청 취소, stale state/response
 - race condition과 out-of-order response
 - 예외 처리, Error Boundary, 실패를 빈 데이터로 오인하는 분기
 - 날짜·시간대·기준 시각, 숫자 문자열 정렬과 변환
 - 요약/상세, 필터/응답, 합계/행 데이터의 정합성
 - 이벤트 리스너, 구독, timer의 해제와 메모리 누수 가능성
 - 민감정보가 UI, console, network, error 또는 보고서로 노출될 가능성
-- 죽은 코드, 중복 코드, 과도하게 복잡한 핵심 로직
+- 중복 함수·유사 구현, 불필요하거나 사용되지 않는 dependency·파일·코드, 과도하게 복잡한 핵심 로직
+- 지나치게 큰 React page·component와 반복되는 API handler·오류 처리
+- 분산된 필터·정규화·payload 조립과 반복되는 DB helper·subprocess 실행 구조
+- Node와 Python의 중복 책임, 테스트하기 어려운 side effect·module import 구조
+- 문서화된 책임과 실제 모듈 경계의 `Mismatch`
 - 핵심 판단 로직의 테스트 누락과 기존 테스트의 사각지대
 
 API 계약은 프런트엔드가 실제로 만드는 요청과 읽는 응답 필드만 근거로 분석한다. 백엔드 전용 계약을 추측하지 않는다.
@@ -54,4 +58,4 @@ API 계약은 프런트엔드가 실제로 만드는 요청과 읽는 응답 필
 
 ## 보고
 
-보고서는 한글로 작성하고 `reports/code-audit/YYYY-MM-DD_HHMM_code-audit-report.md`에 저장한다. `.codex/templates/code-audit-report-template.md`를 사용한다. 파일과 line, 함수, 입력 조건, 실행한 명령과 결과를 근거로 남기되 실제 내부 URL·식별자·데이터·비밀은 기록하지 않는다. 수정 방향과 수정 후 검증 기준은 제안만 하고 소스 코드는 수정하지 않는다.
+보고서는 한글로 작성하고 `reports/code-audit/YYYY-MM-DD_HHMM_code-audit-report.md`에 저장한다. `.codex/templates/code-audit-report-template.md`를 사용한다. 파일과 line, 함수, 입력 조건, 실행한 명령과 결과를 근거로 남기되 실제 내부 URL·식별자·데이터·비밀은 기록하지 않는다. 유지보수상 중복, 의도적 호환성 코드, 실제 성능 문제와 단순 스타일 차이를 구분하고, 수정 영향 화면·API·계약·테스트 및 현재 근거만으로 안전하게 통합 가능한지를 기록한다. 수정 방향과 수정 후 검증 기준은 제안만 하고 소스 코드는 수정하지 않는다.

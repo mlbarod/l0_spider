@@ -1,6 +1,7 @@
 # SPIDER 웹 서비스 구조
 
 > 현재 저장소의 실제 코드 연결을 기준으로 정리한 구조 문서입니다.  
+> 기준일/브랜치: 2026-07-31 / `main`<br>
 > 기준 파일: `server.mjs`, `vite.config.mjs`, `src/`, `server/`, `scripts/`, `src/config/spiderDataPaths.mjs`
 
 ## 0. 한 장 요약
@@ -294,13 +295,22 @@ flowchart LR
 자설비 상세 흐름:
 
 1. `mapping_config.json`으로 Line과 SDWT 선택지를 만듭니다.
-2. `df_path.parquet`에서 STEP → EQP → Sensor → ch_step 필터와 차트 경로를 만듭니다.
-3. `pass_history`의 활성 SKIP과 같은 이상건은 72시간 동안 일반 결과에서 제외합니다.
-4. 선택한 이미지 경로의 파일명을 `data.parquet`으로 바꿔 Scatter 원본을 읽습니다.
-5. y축 컬럼은 `{sensor}_{ch_step}`, EQP 필터는 `eqp_cb`입니다.
-6. 같은 디렉터리의 `{eqp}.parquet`를 변경점 이력으로 읽습니다.
+2. `df_path.parquet`에서 STEP → `eqp_ch` → sensor → `ch_step` 필터와 차트 경로를 만듭니다.
+3. sensor 목록이 있으면 `ALL`을 항상 제공하며, sensor가 `ALL`이면 `ch_step`은 `ALL`만 선택할 수 있습니다. 서버도 같은 규칙으로 필터 조합을 정규화합니다.
+4. `pass_history`의 활성 SKIP과 같은 이상건은 72시간 동안 일반 결과에서 제외합니다.
+5. 선택한 이미지 경로의 파일명을 `data.parquet`으로 바꿔 Scatter 원본을 읽습니다.
+6. y축 컬럼은 `{sensor}_{ch_step}`, EQP 필터는 `eqp_cb`입니다.
+7. 같은 디렉터리의 `{eqp}.parquet`를 변경점 이력으로 읽습니다.
+8. EQP 그룹 순서를 유지하면서 실제 마운트되는 차트를 페이지당 최대 20개로 나눕니다.
 
 `/api/erd-file`은 허용된 ERD 이미지 파일을 stream하는 endpoint지만 현재 주 Scatter 차트는 이미지 대신 `/api/erd-scatter-data`의 Parquet payload를 렌더링합니다.
+
+차트 페이지네이션은 [`src/features/fdc-trend/utils/chartPagination.mjs`](src/features/fdc-trend/utils/chartPagination.mjs)의 `paginateChartGroups`가 담당합니다.
+
+- 기본 차트 한 개는 1개로 계산합니다.
+- **3일치 동일성 차트 같이 보기**가 켜진 모아보기 행은 기본 차트와 동일성 차트를 합쳐 2개로 계산합니다.
+- 페이지 밖 EQP 차트 컴포넌트와 데이터 query는 렌더링하지 않습니다.
+- 필터 또는 모아보기 범위가 바뀌면 첫 페이지로 돌아가고, 현재 페이지가 범위를 벗어나면 유효한 마지막 페이지로 보정합니다.
 
 ### 5.3 MY EQP 조회
 
@@ -351,7 +361,10 @@ flowchart LR
 - 선택 SDWT 아래의 고정 깊이 디렉터리를 제한 병렬 탐색합니다.
 - `grade/step_seq/step_desc/ppid/ppid/sensor_chStep/img.png` 구조를 index로 만듭니다.
 - 두 `ppid` 디렉터리 이름이 같은 경로만 유효합니다.
+- 필터 순서는 Line → SDWT → STEP → Sensor → `ch_step`입니다.
+- Sensor는 `ALL`을 포함하며, Sensor가 `ALL`이면 `ch_step`은 `ALL`만 제공합니다.
 - 최종 이미지는 `/api/commonality-image`가 검증 후 stream합니다.
+- 결과 이미지는 페이지당 18개만 렌더링하고 숫자·말줄임표 페이지 탐색을 제공합니다.
 - 마지막 필터 선택 시 `/api/clicked-category-history`로 Drawing 이력을 저장합니다.
 
 ### 5.5 공통부 이상감지
@@ -529,6 +542,7 @@ flowchart LR
 - 자설비는 Line에 suffix가 없습니다.
 - 동일성은 Line에 `(g)`, 공통부는 `(c)`를 붙입니다.
 - 여러 Grade/Sensor는 중복 제거 후 리스트 문자열로 저장합니다.
+- 자설비 또는 동일성의 sensor 필터에서 `ALL`을 선택하면 실제 sensor 목록을 확장하지 않고 `sensor='ALL'`로 저장합니다.
 - MY EQP 진입은 실제 Drawing 경로 없이 `sdwt='MY EQP'`, 전체 Grade, `sensor='ALL'`로 저장합니다.
 
 #### `myeqp_regist`
@@ -622,6 +636,14 @@ sequenceDiagram
 4. SKIP LIST 경로 복원 규칙
 5. Dashboard/Mailing 집계의 고유건 조합
 6. `README.md`, 본 문서, 사용자 매뉴얼
+
+### 필터의 `ALL` 규칙 또는 차트 페이지네이션을 바꿀 때
+
+1. 화면의 선택지 노출, 하위 필터 초기화와 클릭 방어
+2. 서버 payload builder의 선택값 정규화와 결과 행 범위
+3. `/api/clicked-category-history`에 전달하는 실제 사용자 선택값
+4. 행 수가 아니라 페이지에 실제 마운트되는 차트 수
+5. 필터 조합·페이지 경계 단위 테스트와 사용자 매뉴얼
 
 ### DB 테이블을 바꿀 때
 

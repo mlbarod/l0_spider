@@ -1,0 +1,32 @@
+[
+  {
+    "lineId": "TEST_LINE_A",
+    "sdwt": "TEST_SDWT_ALPHA",
+    "sensorGrade": "A",
+    "abnormalCount": 3
+  },
+  {
+    "lineId": "TEST_LINE_A",
+    "sdwt": "TEST_SDWT_ALPHA",
+    "sensorGrade": "B",
+    "abnormalCount": 1
+  },
+  {
+    "lineId": "TEST_LINE_A",
+    "sdwt": "TEST_SDWT_BETA",
+    "sensorGrade": "D",
+    "abnormalCount": 2
+  },
+  {
+    "lineId": "TEST_LINE_B",
+    "sdwt": "TEST_SDWT_GAMMA",
+    "sensorGrade": "M",
+    "abnormalCount": 1
+  },
+  {
+    "lineId": "TEST_LINE_B",
+    "sdwt": "TEST_SDWT_GAMMA",
+    "sensorGrade": "N",
+    "abnormalCount": 1
+  }
+]
