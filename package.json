@@ -10,7 +10,7 @@
     "mock": "node mock/scripts/run-mock.mjs",
     "mock:scenario": "node mock/scripts/scenario.mjs",
     "mock:reset": "node mock/scripts/reset.mjs",
-    "test:unit": "node --test server/*.test.mjs src/features/fdc-trend/api/*.test.mjs src/features/fdc-trend/utils/*.test.mjs",
+    "test:unit": "node --test tests/unit/*.test.mjs",
     "test:contract": "node --test tests/contract/*.test.mjs",
     "test:e2e": "playwright test",
     "test:mock": "npm run test:contract && npm run test:e2e",
@@ -18,9 +18,7 @@
     "preview": "node server.mjs",
     "start": "node server.mjs",
     "lint": "eslint .",
-    "test:unit": "node --test tests/unit/*.test.mjs",
-    "test:integration": "node --test tests/integration/*.test.mjs",
-    "test:contract": "node --test tests/contract/*.test.mjs"
+    "test:integration": "node --test tests/integration/*.test.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.1.5",
@@ -69,6 +67,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@vitejs/plugin-react": "^5.1.1",
     "ajv": "^8.20.0",
