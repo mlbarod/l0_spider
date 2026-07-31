@@ -1,0 +1,82 @@
+{
+  "ok": true,
+  "latestDate": "",
+  "metrics": {
+    "monitoringSensorTotal": 0,
+    "detectedPpidCount": 0,
+    "totalAnomalyCount": 0,
+    "abGradeCount": 0,
+    "dGradeCount": 0,
+    "nGradeCount": 0,
+    "mGradeCount": 0
+  },
+  "detailCounts": {
+    "rows": 0,
+    "sdwt": 0,
+    "steps": 0,
+    "recipeIds": 0,
+    "sensors": 0
+  },
+  "sourcePaths": {
+    "stats": "",
+    "detail": "",
+    "historyRoot": "/synthetic/dashboard/history",
+    "mapping": "/synthetic/dashboard/mapping_config.json"
+  },
+  "columns": {
+    "stats": [
+      "exec_date",
+      "recipe_id",
+      "priority",
+      "ng",
+      "total"
+    ],
+    "detail": [
+      "sdwt",
+      "desc",
+      "recipe_id",
+      "priority",
+      "sensor",
+      "eqp"
+    ]
+  },
+  "lineDashboard": {
+    "filters": {
+      "startDate": "2000-01-02",
+      "endDate": "2000-01-02",
+      "lines": []
+    },
+    "options": {
+      "lines": [],
+      "minDate": "2000-01-01",
+      "maxDate": "2000-01-01",
+      "defaultStartDate": "2000-01-01",
+      "defaultEndDate": "2000-01-01"
+    },
+    "summary": {
+      "totalAbnormalCount": 0,
+      "abnormalLineCount": 0,
+      "latestDate": null,
+      "latestDateTime": null,
+      "latestDateCount": 0,
+      "topLine": null,
+      "topLineCount": 0,
+      "previousDate": null,
+      "previousDateTime": null,
+      "changeFromPreviousDay": null,
+      "monitoringSensorTotal": 0,
+      "abGradeCount": 0,
+      "dGradeCount": 0,
+      "nGradeCount": 0,
+      "mGradeCount": 0
+    },
+    "lineSummary": [],
+    "dailyTrend": [],
+    "mailingSummary": [],
+    "meta": {
+      "filesRead": 0,
+      "comparisonFileRead": false,
+      "unmappedRows": 0
+    }
+  }
+}
