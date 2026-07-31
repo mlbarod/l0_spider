@@ -1,0 +1,1437 @@
+[
+  {
+    "name": "dashboard-filter-search-sort",
+    "scenario": "normal",
+    "status": "pass",
+    "details": {
+      "selectedLine": "LINE_A",
+      "searchEmptyState": true,
+      "sortClicks": 2,
+      "sortButtonText": "라인"
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requests": [
+        "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+        "/src/features/fdc-trend/api/commonalityApi.js",
+        "/src/features/fdc-trend/api/mappingConfigApi.js",
+        "/src/features/fdc-trend/api/commonAnomalyApi.js",
+        "/src/features/fdc-trend/api/currentUserApi.js",
+        "/src/features/fdc-trend/api/passHistoryApi.js",
+        "/src/features/fdc-trend/api/dashboardApi.js",
+        "/src/features/fdc-trend/api/hitHistoryApi.js",
+        "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+        "/src/features/fdc-trend/api/selfEquipmentApi.js",
+        "/src/features/fdc-trend/api/errorMessage.js",
+        "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+        "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+        "/api/dashboard-data",
+        "/api/dashboard-data",
+        "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15",
+        "/api/dashboard-data?line=LINE_A",
+        "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15&line=LINE_A"
+      ],
+      "responses": [
+        {
+          "path": "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonalityApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mappingConfigApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/currentUserApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonAnomalyApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/passHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/dashboardApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/hitHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/selfEquipmentApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/errorMessage.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?line=LINE_A",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15&line=LINE_A",
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "name": "dashboard-inconsistent-scope-1",
+    "scenario": "inconsistent",
+    "status": "pass",
+    "details": {
+      "requestedLine": "LINE_A",
+      "hasLineA": true,
+      "hasOutOfScopeLineC": true,
+      "warningCount": 0
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requests": [
+        "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+        "/src/features/fdc-trend/api/commonalityApi.js",
+        "/src/features/fdc-trend/api/mappingConfigApi.js",
+        "/src/features/fdc-trend/api/commonAnomalyApi.js",
+        "/src/features/fdc-trend/api/currentUserApi.js",
+        "/src/features/fdc-trend/api/passHistoryApi.js",
+        "/src/features/fdc-trend/api/dashboardApi.js",
+        "/src/features/fdc-trend/api/hitHistoryApi.js",
+        "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+        "/src/features/fdc-trend/api/selfEquipmentApi.js",
+        "/src/features/fdc-trend/api/errorMessage.js",
+        "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+        "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+        "/api/dashboard-data",
+        "/api/dashboard-data",
+        "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15",
+        "/api/dashboard-data?line=LINE_A",
+        "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15&line=LINE_A"
+      ],
+      "responses": [
+        {
+          "path": "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonalityApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mappingConfigApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonAnomalyApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/currentUserApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/passHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/dashboardApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/hitHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/selfEquipmentApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/errorMessage.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?line=LINE_A",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15&line=LINE_A",
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "name": "dashboard-inconsistent-scope-2",
+    "scenario": "inconsistent",
+    "status": "pass",
+    "details": {
+      "requestedLine": "LINE_A",
+      "hasLineA": true,
+      "hasOutOfScopeLineC": true,
+      "warningCount": 0
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requests": [
+        "/src/features/fdc-trend/api/dashboardApi.js",
+        "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+        "/src/features/fdc-trend/api/commonAnomalyApi.js",
+        "/src/features/fdc-trend/api/currentUserApi.js",
+        "/src/features/fdc-trend/api/mappingConfigApi.js",
+        "/src/features/fdc-trend/api/passHistoryApi.js",
+        "/src/features/fdc-trend/api/commonalityApi.js",
+        "/src/features/fdc-trend/api/hitHistoryApi.js",
+        "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+        "/src/features/fdc-trend/api/selfEquipmentApi.js",
+        "/src/features/fdc-trend/api/errorMessage.js",
+        "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+        "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+        "/api/dashboard-data",
+        "/api/dashboard-data",
+        "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15",
+        "/api/dashboard-data?line=LINE_A",
+        "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15&line=LINE_A"
+      ],
+      "responses": [
+        {
+          "path": "/src/features/fdc-trend/api/dashboardApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/currentUserApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonAnomalyApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/passHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mappingConfigApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonalityApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/hitHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/selfEquipmentApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/errorMessage.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?line=LINE_A",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15&line=LINE_A",
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "name": "dashboard-inconsistent-scope-3",
+    "scenario": "inconsistent",
+    "status": "pass",
+    "details": {
+      "requestedLine": "LINE_A",
+      "hasLineA": true,
+      "hasOutOfScopeLineC": true,
+      "warningCount": 0
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requests": [
+        "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+        "/src/features/fdc-trend/api/commonalityApi.js",
+        "/src/features/fdc-trend/api/mappingConfigApi.js",
+        "/src/features/fdc-trend/api/commonAnomalyApi.js",
+        "/src/features/fdc-trend/api/currentUserApi.js",
+        "/src/features/fdc-trend/api/passHistoryApi.js",
+        "/src/features/fdc-trend/api/dashboardApi.js",
+        "/src/features/fdc-trend/api/hitHistoryApi.js",
+        "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+        "/src/features/fdc-trend/api/selfEquipmentApi.js",
+        "/src/features/fdc-trend/api/errorMessage.js",
+        "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+        "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+        "/api/dashboard-data",
+        "/api/dashboard-data",
+        "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15",
+        "/api/dashboard-data?line=LINE_A",
+        "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15&line=LINE_A"
+      ],
+      "responses": [
+        {
+          "path": "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonalityApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mappingConfigApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonAnomalyApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/currentUserApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/passHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/dashboardApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/hitHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/selfEquipmentApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/errorMessage.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?line=LINE_A",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15&line=LINE_A",
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "name": "dashboard-partial-integrity-1",
+    "scenario": "partial",
+    "status": "pass",
+    "details": {
+      "kpiText": "전체 이상 건수\n\n8\n건\n\n2026.01.09 ~ 2026.01.15",
+      "emptyDetails": 1,
+      "warnings": 0
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requests": [
+        "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+        "/src/features/fdc-trend/api/commonalityApi.js",
+        "/src/features/fdc-trend/api/mappingConfigApi.js",
+        "/src/features/fdc-trend/api/commonAnomalyApi.js",
+        "/src/features/fdc-trend/api/currentUserApi.js",
+        "/src/features/fdc-trend/api/passHistoryApi.js",
+        "/src/features/fdc-trend/api/dashboardApi.js",
+        "/src/features/fdc-trend/api/hitHistoryApi.js",
+        "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+        "/src/features/fdc-trend/api/selfEquipmentApi.js",
+        "/src/features/fdc-trend/api/errorMessage.js",
+        "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+        "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+        "/api/dashboard-data",
+        "/api/dashboard-data",
+        "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15"
+      ],
+      "responses": [
+        {
+          "path": "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonalityApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mappingConfigApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/currentUserApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonAnomalyApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/passHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/dashboardApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/hitHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/selfEquipmentApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/errorMessage.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15",
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "name": "dashboard-partial-integrity-2",
+    "scenario": "partial",
+    "status": "pass",
+    "details": {
+      "kpiText": "전체 이상 건수\n\n8\n건\n\n2026.01.09 ~ 2026.01.15",
+      "emptyDetails": 1,
+      "warnings": 0
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requests": [
+        "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+        "/src/features/fdc-trend/api/commonalityApi.js",
+        "/src/features/fdc-trend/api/mappingConfigApi.js",
+        "/src/features/fdc-trend/api/commonAnomalyApi.js",
+        "/src/features/fdc-trend/api/currentUserApi.js",
+        "/src/features/fdc-trend/api/passHistoryApi.js",
+        "/src/features/fdc-trend/api/dashboardApi.js",
+        "/src/features/fdc-trend/api/hitHistoryApi.js",
+        "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+        "/src/features/fdc-trend/api/selfEquipmentApi.js",
+        "/src/features/fdc-trend/api/errorMessage.js",
+        "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+        "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+        "/api/dashboard-data",
+        "/api/dashboard-data",
+        "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15"
+      ],
+      "responses": [
+        {
+          "path": "/src/features/fdc-trend/api/commonalityApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mappingConfigApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/currentUserApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonAnomalyApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/passHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/dashboardApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/hitHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/selfEquipmentApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/errorMessage.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15",
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "name": "dashboard-partial-integrity-3",
+    "scenario": "partial",
+    "status": "pass",
+    "details": {
+      "kpiText": "전체 이상 건수\n\n8\n건\n\n2026.01.09 ~ 2026.01.15",
+      "emptyDetails": 1,
+      "warnings": 0
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requests": [
+        "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+        "/src/features/fdc-trend/api/commonalityApi.js",
+        "/src/features/fdc-trend/api/mappingConfigApi.js",
+        "/src/features/fdc-trend/api/commonAnomalyApi.js",
+        "/src/features/fdc-trend/api/currentUserApi.js",
+        "/src/features/fdc-trend/api/passHistoryApi.js",
+        "/src/features/fdc-trend/api/dashboardApi.js",
+        "/src/features/fdc-trend/api/hitHistoryApi.js",
+        "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+        "/src/features/fdc-trend/api/selfEquipmentApi.js",
+        "/src/features/fdc-trend/api/errorMessage.js",
+        "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+        "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+        "/api/dashboard-data",
+        "/api/dashboard-data",
+        "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15"
+      ],
+      "responses": [
+        {
+          "path": "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonalityApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mappingConfigApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonAnomalyApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/currentUserApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/passHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/dashboardApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/hitHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/selfEquipmentApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/errorMessage.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data?startDate=2026-01-06&endDate=2026-01-15",
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "name": "dashboard-error-401-guidance",
+    "scenario": "error-401",
+    "status": "pass",
+    "details": {
+      "rawTechnicalMessage": true,
+      "permissionGuidance": false,
+      "retryControl": 0
+    },
+    "diagnostics": {
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "pageErrors": [],
+      "requests": [
+        "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+        "/src/features/fdc-trend/api/commonAnomalyApi.js",
+        "/src/features/fdc-trend/api/currentUserApi.js",
+        "/src/features/fdc-trend/api/mappingConfigApi.js",
+        "/src/features/fdc-trend/api/passHistoryApi.js",
+        "/src/features/fdc-trend/api/commonalityApi.js",
+        "/src/features/fdc-trend/api/hitHistoryApi.js",
+        "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+        "/src/features/fdc-trend/api/selfEquipmentApi.js",
+        "/src/features/fdc-trend/api/dashboardApi.js",
+        "/src/features/fdc-trend/api/errorMessage.js",
+        "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+        "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+        "/api/dashboard-data",
+        "/api/dashboard-data"
+      ],
+      "responses": [
+        {
+          "path": "/src/features/fdc-trend/api/currentUserApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonAnomalyApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mappingConfigApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/passHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonalityApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/hitHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/selfEquipmentApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/dashboardApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/errorMessage.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data",
+          "status": 401
+        }
+      ]
+    }
+  },
+  {
+    "name": "dashboard-error-403-guidance",
+    "scenario": "error-403",
+    "status": "pass",
+    "details": {
+      "rawTechnicalMessage": true,
+      "permissionGuidance": false,
+      "retryControl": 0
+    },
+    "diagnostics": {
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "pageErrors": [],
+      "requests": [
+        "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+        "/src/features/fdc-trend/api/commonalityApi.js",
+        "/src/features/fdc-trend/api/mappingConfigApi.js",
+        "/src/features/fdc-trend/api/commonAnomalyApi.js",
+        "/src/features/fdc-trend/api/currentUserApi.js",
+        "/src/features/fdc-trend/api/passHistoryApi.js",
+        "/src/features/fdc-trend/api/dashboardApi.js",
+        "/src/features/fdc-trend/api/hitHistoryApi.js",
+        "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+        "/src/features/fdc-trend/api/selfEquipmentApi.js",
+        "/src/features/fdc-trend/api/errorMessage.js",
+        "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+        "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+        "/api/dashboard-data",
+        "/api/dashboard-data"
+      ],
+      "responses": [
+        {
+          "path": "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonalityApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mappingConfigApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonAnomalyApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/currentUserApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/passHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/dashboardApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/hitHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/selfEquipmentApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/errorMessage.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard-data",
+          "status": 403
+        },
+        {
+          "path": "/api/dashboard-data",
+          "status": 403
+        }
+      ]
+    }
+  },
+  {
+    "name": "commonality-large-pagination",
+    "scenario": "large",
+    "status": "fail",
+    "error": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText(/19–36\\/1200/) to be visible\u001b[22m\n",
+    "screenshot": "focus-commonality-large-pagination-failure.png",
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requests": [
+        "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+        "/src/features/fdc-trend/api/commonalityApi.js",
+        "/src/features/fdc-trend/api/mappingConfigApi.js",
+        "/src/features/fdc-trend/api/commonAnomalyApi.js",
+        "/src/features/fdc-trend/api/currentUserApi.js",
+        "/src/features/fdc-trend/api/passHistoryApi.js",
+        "/src/features/fdc-trend/api/dashboardApi.js",
+        "/src/features/fdc-trend/api/hitHistoryApi.js",
+        "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+        "/src/features/fdc-trend/api/selfEquipmentApi.js",
+        "/src/features/fdc-trend/api/errorMessage.js",
+        "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+        "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+        "/api/mapping-config",
+        "/api/commonality-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001",
+        "/api/commonality-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&stepDesc=U%2510000",
+        "/api/commonality-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&stepDesc=U%2510000&sensor=ALL",
+        "/api/commonality-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&stepDesc=U%2510000&sensor=ALL&chStep=ALL",
+        "/api/clicked-category-history",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0001",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0003",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0005",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0007",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0009",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0011",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0013",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0015",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0017",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0002",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0004",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0006",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0008",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0010",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0012",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0014",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0016",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0018",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0019",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0021",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0023",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0025",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0027",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0029",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0031",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0033",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0035",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0020",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0022",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0024",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0026",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0028",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0030",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0032",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0034",
+        "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0036"
+      ],
+      "responses": [
+        {
+          "path": "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonalityApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mappingConfigApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/currentUserApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonAnomalyApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/passHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/dashboardApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/hitHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/selfEquipmentApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/errorMessage.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/api/mapping-config",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&stepDesc=U%2510000",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&stepDesc=U%2510000&sensor=ALL",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&stepDesc=U%2510000&sensor=ALL&chStep=ALL",
+          "status": 200
+        },
+        {
+          "path": "/api/clicked-category-history",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0003",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0001",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0005",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0007",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0009",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0011",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0013",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0015",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0017",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0002",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0004",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0006",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0008",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0014",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0010",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0012",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0016",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0018",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0019",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0021",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0023",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0025",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0027",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0029",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0031",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0035",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0033",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0020",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0022",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0024",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0026",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0028",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0030",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0032",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0034",
+          "status": 200
+        },
+        {
+          "path": "/api/commonality-image?path=fixture%3A%2F%2Flarge%2Fcommonality-image%2F0036",
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "name": "registration-expand-empty-save",
+    "scenario": "normal",
+    "status": "pass",
+    "details": {
+      "mailingExpanded": true,
+      "myEqpExpanded": true,
+      "emptySaveGuidance": true
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requests": [
+        "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+        "/src/features/fdc-trend/api/commonAnomalyApi.js",
+        "/src/features/fdc-trend/api/currentUserApi.js",
+        "/src/features/fdc-trend/api/mappingConfigApi.js",
+        "/src/features/fdc-trend/api/passHistoryApi.js",
+        "/src/features/fdc-trend/api/commonalityApi.js",
+        "/src/features/fdc-trend/api/dashboardApi.js",
+        "/src/features/fdc-trend/api/hitHistoryApi.js",
+        "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+        "/src/features/fdc-trend/api/selfEquipmentApi.js",
+        "/src/features/fdc-trend/api/errorMessage.js",
+        "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+        "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+        "/api/current-user",
+        "/api/mapping-config",
+        "/api/mailing-registration?knoxId=USER_TEST_001",
+        "/api/my-eqp-reference",
+        "/api/my-eqp-registration?line=LINE_A"
+      ],
+      "responses": [
+        {
+          "path": "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonAnomalyApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/currentUserApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/passHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mappingConfigApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonalityApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/dashboardApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/hitHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/selfEquipmentApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/errorMessage.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+          "status": 200
+        },
+        {
+          "path": "/api/current-user",
+          "status": 200
+        },
+        {
+          "path": "/api/mapping-config",
+          "status": 200
+        },
+        {
+          "path": "/api/mailing-registration?knoxId=USER_TEST_001",
+          "status": 200
+        },
+        {
+          "path": "/api/my-eqp-reference",
+          "status": 200
+        },
+        {
+          "path": "/api/my-eqp-registration?line=LINE_A",
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "name": "self-equipment-normal-data",
+    "scenario": "normal",
+    "status": "pass",
+    "details": {
+      "responseStatus": 200,
+      "responseArrayCounts": {
+        "availablePriorities": 5,
+        "steps": 2,
+        "eqpChannels": 2,
+        "sensors": 2,
+        "chSteps": 2,
+        "rows": 0
+      },
+      "duplicateSearchNames": 7,
+      "chartArticles": 0
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requests": [
+        "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+        "/src/features/fdc-trend/api/commonAnomalyApi.js",
+        "/src/features/fdc-trend/api/currentUserApi.js",
+        "/src/features/fdc-trend/api/mappingConfigApi.js",
+        "/src/features/fdc-trend/api/passHistoryApi.js",
+        "/src/features/fdc-trend/api/commonalityApi.js",
+        "/src/features/fdc-trend/api/dashboardApi.js",
+        "/src/features/fdc-trend/api/hitHistoryApi.js",
+        "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+        "/src/features/fdc-trend/api/selfEquipmentApi.js",
+        "/src/features/fdc-trend/api/errorMessage.js",
+        "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+        "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+        "/api/current-user",
+        "/api/mapping-config",
+        "/api/my-eqp-registration?line=LINE_A&activeOnly=true",
+        "/api/self-equipment-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&priority=A&priority=B",
+        "/api/self-equipment-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&priority=A&priority=B&desc=U%2510000",
+        "/api/pass-history?lineId=LINE_A&activeOnly=true&sdwt=PRODUCT_001&desc=U%2510000",
+        "/api/self-equipment-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&priority=A&priority=B&desc=U%2510000&eqpCh=ALL",
+        "/api/self-equipment-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&priority=A&priority=B&desc=U%2510000&eqpCh=ALL&sensor=ALL",
+        "/api/self-equipment-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&priority=A&priority=B&desc=U%2510000&eqpCh=ALL&sensor=ALL&chStep=ALL"
+      ],
+      "responses": [
+        {
+          "path": "/src/features/fdc-trend/api/clickedCategoryHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonAnomalyApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/currentUserApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mappingConfigApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/passHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/commonalityApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/dashboardApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/hitHistoryApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/selfEquipmentApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/myEqpReferenceApi.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/errorMessage.js",
+          "status": 200
+        },
+        {
+          "path": "/src/features/fdc-trend/api/mailingRegistrationApi.js",
+          "status": 200
+        },
+        {
+          "path": "/api/current-user",
+          "status": 200
+        },
+        {
+          "path": "/api/mapping-config",
+          "status": 200
+        },
+        {
+          "path": "/api/my-eqp-registration?line=LINE_A&activeOnly=true",
+          "status": 200
+        },
+        {
+          "path": "/api/self-equipment-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&priority=A&priority=B",
+          "status": 200
+        },
+        {
+          "path": "/api/self-equipment-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&priority=A&priority=B&desc=U%2510000",
+          "status": 200
+        },
+        {
+          "path": "/api/pass-history?lineId=LINE_A&activeOnly=true&sdwt=PRODUCT_001&desc=U%2510000",
+          "status": 200
+        },
+        {
+          "path": "/api/self-equipment-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&priority=A&priority=B&desc=U%2510000&eqpCh=ALL",
+          "status": 200
+        },
+        {
+          "path": "/api/self-equipment-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&priority=A&priority=B&desc=U%2510000&eqpCh=ALL&sensor=ALL",
+          "status": 200
+        },
+        {
+          "path": "/api/self-equipment-data?line=LINE_A&pathSdwt=PRODUCT_001&sdwt=PRODUCT_001&priority=A&priority=B&desc=U%2510000&eqpCh=ALL&sensor=ALL&chStep=ALL",
+          "status": 200
+        }
+      ]
+    }
+  }
+]

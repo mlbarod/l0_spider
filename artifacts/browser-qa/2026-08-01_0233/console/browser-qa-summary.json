@@ -1,0 +1,41 @@
+{
+  "total": 35,
+  "passed": 27,
+  "failed": 8,
+  "normalConsoleErrors": 6,
+  "normalPageErrors": 0,
+  "failures": [
+    {
+      "name": "dashboard-filter-search-sort",
+      "error": "locator.click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('form').filter({ hasText: '라인 선택' }).getByRole('button', { name: /조회/ })\u001b[22m\n"
+    },
+    {
+      "name": "self-equipment-full-filter",
+      "error": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /ch_step 전체보기/ }).first() to be visible\u001b[22m\n"
+    },
+    {
+      "name": "commonality-large-pagination",
+      "error": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: '2페이지' }) to be visible\u001b[22m\n"
+    },
+    {
+      "name": "registration-expand-empty-save",
+      "error": "locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /이상감지 Mailing Report 수신인 등록/ }) to be visible\u001b[22m\n"
+    },
+    {
+      "name": "scenario-race-condition",
+      "error": "locator.click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('form').filter({ hasText: '라인 선택' }).getByRole('button', { name: /조회/ })\u001b[22m\n"
+    },
+    {
+      "name": "inconsistent-scope-1",
+      "error": "locator.click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('form').filter({ hasText: '라인 선택' }).getByRole('button', { name: /조회/ })\u001b[22m\n"
+    },
+    {
+      "name": "inconsistent-scope-2",
+      "error": "locator.click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('form').filter({ hasText: '라인 선택' }).getByRole('button', { name: /조회/ })\u001b[22m\n"
+    },
+    {
+      "name": "inconsistent-scope-3",
+      "error": "locator.click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('form').filter({ hasText: '라인 선택' }).getByRole('button', { name: /조회/ })\u001b[22m\n"
+    }
+  ]
+}

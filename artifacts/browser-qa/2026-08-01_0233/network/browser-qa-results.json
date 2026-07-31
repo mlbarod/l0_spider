@@ -1,0 +1,947 @@
+[
+  {
+    "name": "routes-refresh-history",
+    "scenario": "normal",
+    "status": "pass",
+    "durationMs": 14587,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "routesChecked": 8,
+      "refresh": true,
+      "backForward": true
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "responsive-1920x1080",
+    "scenario": "normal",
+    "status": "pass",
+    "durationMs": 2949,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "innerWidth": 1920,
+      "bodyScrollWidth": 1920,
+      "documentScrollWidth": 1920
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "responsive-1440x900",
+    "scenario": "normal",
+    "status": "pass",
+    "durationMs": 2930,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "details": {
+      "innerWidth": 1440,
+      "bodyScrollWidth": 1440,
+      "documentScrollWidth": 1440
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "responsive-1366x768",
+    "scenario": "normal",
+    "status": "pass",
+    "durationMs": 2892,
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "details": {
+      "innerWidth": 1366,
+      "bodyScrollWidth": 1366,
+      "documentScrollWidth": 1366
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "dashboard-filter-search-sort",
+    "scenario": "normal",
+    "status": "fail",
+    "durationMs": 18844,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "error": "locator.click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('form').filter({ hasText: '라인 선택' }).getByRole('button', { name: /조회/ })\u001b[22m\n",
+    "screenshot": "dashboard-filter-search-sort-failure.png",
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "self-equipment-full-filter",
+    "scenario": "normal",
+    "status": "fail",
+    "durationMs": 22740,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "error": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /ch_step 전체보기/ }).first() to be visible\u001b[22m\n",
+    "screenshot": "self-equipment-full-filter-failure.png",
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "commonality-large-pagination",
+    "scenario": "large",
+    "status": "fail",
+    "durationMs": 22615,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "error": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: '2페이지' }) to be visible\u001b[22m\n",
+    "screenshot": "commonality-large-pagination-failure.png",
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "common-anomaly-full-filter",
+    "scenario": "normal",
+    "status": "pass",
+    "durationMs": 3138,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "cards": 8
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "registration-expand-empty-save",
+    "scenario": "normal",
+    "status": "fail",
+    "durationMs": 17042,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "error": "locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /이상감지 Mailing Report 수신인 등록/ }) to be visible\u001b[22m\n",
+    "screenshot": "registration-expand-empty-save-failure.png",
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "scenario-normal",
+    "scenario": "normal",
+    "status": "pass",
+    "durationMs": 2771,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "rendered": true
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "scenario-empty",
+    "scenario": "empty",
+    "status": "pass",
+    "durationMs": 1706,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "rendered": true
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "scenario-single",
+    "scenario": "single",
+    "status": "pass",
+    "durationMs": 2478,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "rendered": true
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "scenario-edge-values",
+    "scenario": "edge-values",
+    "status": "pass",
+    "durationMs": 2601,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "rendered": true
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "scenario-large",
+    "scenario": "large",
+    "status": "pass",
+    "durationMs": 3029,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "rendered": true
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "scenario-slow",
+    "scenario": "slow",
+    "status": "pass",
+    "durationMs": 3114,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "loadingVisible": true,
+      "completed": true
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "scenario-error-400",
+    "scenario": "error-400",
+    "status": "pass",
+    "durationMs": 1502,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "status": 400,
+      "technicalMessageVisible": true,
+      "permissionGuidanceVisible": false
+    },
+    "diagnostics": {
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+      ],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "status": 400
+        }
+      ]
+    }
+  },
+  {
+    "name": "scenario-error-401",
+    "scenario": "error-401",
+    "status": "pass",
+    "durationMs": 1391,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "status": 401,
+      "technicalMessageVisible": true,
+      "permissionGuidanceVisible": false
+    },
+    "diagnostics": {
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "status": 401
+        }
+      ]
+    }
+  },
+  {
+    "name": "scenario-error-403",
+    "scenario": "error-403",
+    "status": "pass",
+    "durationMs": 1518,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "status": 403,
+      "technicalMessageVisible": true,
+      "permissionGuidanceVisible": false
+    },
+    "diagnostics": {
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "status": 403
+        }
+      ]
+    }
+  },
+  {
+    "name": "scenario-error-404",
+    "scenario": "error-404",
+    "status": "pass",
+    "durationMs": 1665,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "status": 404,
+      "technicalMessageVisible": true,
+      "permissionGuidanceVisible": false
+    },
+    "diagnostics": {
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "status": 404
+        }
+      ]
+    }
+  },
+  {
+    "name": "scenario-error-500",
+    "scenario": "error-500",
+    "status": "pass",
+    "durationMs": 1725,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "status": 500,
+      "technicalMessageVisible": true,
+      "permissionGuidanceVisible": false
+    },
+    "diagnostics": {
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "status": 500
+        },
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "status": 500
+        }
+      ]
+    }
+  },
+  {
+    "name": "scenario-error-502",
+    "scenario": "error-502",
+    "status": "pass",
+    "durationMs": 1509,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "status": 502,
+      "technicalMessageVisible": true,
+      "permissionGuidanceVisible": false
+    },
+    "diagnostics": {
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+      ],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "status": 502
+        }
+      ]
+    }
+  },
+  {
+    "name": "scenario-timeout",
+    "scenario": "timeout",
+    "status": "pass",
+    "durationMs": 2588,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "loadingVisible": true,
+      "navigationAwayWorked": true
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "scenario-race-condition",
+    "scenario": "race-condition",
+    "status": "fail",
+    "durationMs": 19421,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "error": "locator.click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('form').filter({ hasText: '라인 선택' }).getByRole('button', { name: /조회/ })\u001b[22m\n",
+    "screenshot": "scenario-race-condition-failure.png",
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "partial-integrity-1",
+    "scenario": "partial",
+    "status": "pass",
+    "durationMs": 2099,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "kpi": "전체 이상 건수\n\n8\n건\n\n2026.01.09 ~ 2026.01.15",
+      "emptyDetail": true,
+      "warningVisible": false
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "inconsistent-scope-1",
+    "scenario": "inconsistent",
+    "status": "fail",
+    "durationMs": 18946,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "error": "locator.click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('form').filter({ hasText: '라인 선택' }).getByRole('button', { name: /조회/ })\u001b[22m\n",
+    "screenshot": "inconsistent-scope-1-failure.png",
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "unknown-route-1",
+    "scenario": "normal",
+    "status": "pass",
+    "durationMs": 1478,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "defaultRouterError": true,
+      "notFound": true,
+      "homeRecoveryLink": 0,
+      "developerGuidance": true
+    },
+    "diagnostics": {
+      "consoleErrors": [
+        "Error handled by React Router default ErrorBoundary: ErrorResponseImpl",
+        "Error handled by React Router default ErrorBoundary: ErrorResponseImpl"
+      ],
+      "pageErrors": [],
+      "failedRequests": [],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "same-route-query-change-1",
+    "scenario": "normal",
+    "status": "pass",
+    "durationMs": 2210,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "before": [
+        "LINE_A"
+      ],
+      "after": [
+        "LINE_A"
+      ],
+      "urlLine": "LINE_B"
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "partial-integrity-2",
+    "scenario": "partial",
+    "status": "pass",
+    "durationMs": 1855,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "kpi": "전체 이상 건수\n\n8\n건\n\n2026.01.09 ~ 2026.01.15",
+      "emptyDetail": true,
+      "warningVisible": false
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "inconsistent-scope-2",
+    "scenario": "inconsistent",
+    "status": "fail",
+    "durationMs": 18922,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "error": "locator.click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('form').filter({ hasText: '라인 선택' }).getByRole('button', { name: /조회/ })\u001b[22m\n",
+    "screenshot": "inconsistent-scope-2-failure.png",
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "unknown-route-2",
+    "scenario": "normal",
+    "status": "pass",
+    "durationMs": 1327,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "defaultRouterError": true,
+      "notFound": true,
+      "homeRecoveryLink": 0,
+      "developerGuidance": true
+    },
+    "diagnostics": {
+      "consoleErrors": [
+        "Error handled by React Router default ErrorBoundary: ErrorResponseImpl",
+        "Error handled by React Router default ErrorBoundary: ErrorResponseImpl"
+      ],
+      "pageErrors": [],
+      "failedRequests": [],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "same-route-query-change-2",
+    "scenario": "normal",
+    "status": "pass",
+    "durationMs": 2435,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "before": [
+        "LINE_A"
+      ],
+      "after": [
+        "LINE_A"
+      ],
+      "urlLine": "LINE_B"
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "partial-integrity-3",
+    "scenario": "partial",
+    "status": "pass",
+    "durationMs": 1818,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "kpi": "전체 이상 건수\n\n8\n건\n\n2026.01.09 ~ 2026.01.15",
+      "emptyDetail": true,
+      "warningVisible": false
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "inconsistent-scope-3",
+    "scenario": "inconsistent",
+    "status": "fail",
+    "durationMs": 18686,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "error": "locator.click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('form').filter({ hasText: '라인 선택' }).getByRole('button', { name: /조회/ })\u001b[22m\n",
+    "screenshot": "inconsistent-scope-3-failure.png",
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard-data",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "unknown-route-3",
+    "scenario": "normal",
+    "status": "pass",
+    "durationMs": 1441,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "defaultRouterError": true,
+      "notFound": true,
+      "homeRecoveryLink": 0,
+      "developerGuidance": true
+    },
+    "diagnostics": {
+      "consoleErrors": [
+        "Error handled by React Router default ErrorBoundary: ErrorResponseImpl",
+        "Error handled by React Router default ErrorBoundary: ErrorResponseImpl"
+      ],
+      "pageErrors": [],
+      "failedRequests": [],
+      "httpErrors": []
+    }
+  },
+  {
+    "name": "same-route-query-change-3",
+    "scenario": "normal",
+    "status": "pass",
+    "durationMs": 1962,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "details": {
+      "before": [
+        "LINE_A"
+      ],
+      "after": [
+        "LINE_A"
+      ],
+      "urlLine": "LINE_B"
+    },
+    "diagnostics": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "httpErrors": []
+    }
+  }
+]

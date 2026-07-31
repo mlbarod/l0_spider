@@ -1,0 +1,30 @@
+[
+  {
+    "case": "partial-integrity",
+    "attempt": 4,
+    "kpiShowsEight": true,
+    "emptyDetails": 1,
+    "warningCount": 0
+  },
+  {
+    "case": "inconsistent-scope",
+    "attempt": 4,
+    "hasRequestedLineA": true,
+    "hasOutOfScopeLineC": true,
+    "warningCount": 0
+  },
+  {
+    "case": "partial-integrity",
+    "attempt": 5,
+    "kpiShowsEight": true,
+    "emptyDetails": 1,
+    "warningCount": 0
+  },
+  {
+    "case": "inconsistent-scope",
+    "attempt": 5,
+    "hasRequestedLineA": true,
+    "hasOutOfScopeLineC": true,
+    "warningCount": 0
+  }
+]

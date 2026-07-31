@@ -1,0 +1,56 @@
+{
+  "raceCondition": {
+    "disabledDuringFetch": true,
+    "loadingVisible": true,
+    "filteredRequests": [
+      [
+        "LINE_A"
+      ],
+      [
+        "LINE_A"
+      ]
+    ]
+  },
+  "pagination": {
+    "firstPageCards": 18,
+    "secondPageCards": 18,
+    "paginationText": "19–36 / 1,200 images\n1\n2\n3\n…\n67"
+  },
+  "responsive1366": [
+    {
+      "path": "/",
+      "innerWidth": 1366,
+      "bodyScrollWidth": 1366,
+      "documentScrollWidth": 1366,
+      "bodyScrollHeight": 768
+    },
+    {
+      "path": "/self-equipment",
+      "innerWidth": 1366,
+      "bodyScrollWidth": 1366,
+      "documentScrollWidth": 1366,
+      "bodyScrollHeight": 768
+    },
+    {
+      "path": "/matching-anomaly",
+      "innerWidth": 1366,
+      "bodyScrollWidth": 1366,
+      "documentScrollWidth": 1366,
+      "bodyScrollHeight": 768
+    },
+    {
+      "path": "/common-anomaly",
+      "innerWidth": 1366,
+      "bodyScrollWidth": 1366,
+      "documentScrollWidth": 1366,
+      "bodyScrollHeight": 768
+    },
+    {
+      "path": "/registration",
+      "innerWidth": 1366,
+      "bodyScrollWidth": 1366,
+      "documentScrollWidth": 1366,
+      "bodyScrollHeight": 768
+    }
+  ]
+}
