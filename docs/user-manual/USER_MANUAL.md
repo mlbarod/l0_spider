@@ -90,7 +90,7 @@ Line 또는 추이 기간을 변경하면 새 조회가 끝날 때까지 이전 
 
 sensor에서 `ALL`을 선택하면 현재 STEP·eqp_ch 범위의 모든 sensor가 조회 대상이 되며, `ch_step`에는 `ALL`만 표시됩니다. 개별 sensor를 선택하면 해당 sensor의 개별 `ch_step`과 `ALL`을 선택할 수 있습니다.
 
-마지막 `ch_step`을 선택하면 EQP별 Scatter chart가 표시됩니다. 처음에는 **ch_step 모아보기 상태**로 그려지며 PPID별 대표 ch_step만 보입니다.
+마지막 `ch_step`을 선택하면 EQP별 Scatter chart가 표시됩니다. 처음에는 **ch_step 모아보기 상태**로 그려지며 sensor·PPID별 대표 ch_step이 보입니다. sensor `ALL`에서도 각 sensor의 대표 차트가 유지됩니다.
 
 - 토글 `ON`: 모아보기 대표 차트 왼쪽, 최신 데이터 시각 기준 최근 72시간 동일성 차트 오른쪽의 2열 구성
 - 토글 `OFF`: 동일성 차트 없이 기존 차트만 2열 구성

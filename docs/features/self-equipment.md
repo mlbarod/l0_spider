@@ -105,6 +105,7 @@ Self Equipment는 Line·SDWT·Grade와 종속 조건을 좁혀 ERD 이상감지 
 | sensor 변경 | sensor, ch_step 초기화 | 없음 | data query 변경 | ch_step option 변경 | `Confirmed` |
 | `ch_step` 변경 | chStep 선택·해제 | 없음 | data fetch 후 chart query | chart 표시·클릭 이력 | `Confirmed` |
 | sensor `ALL` | sensor=`ALL`, ch_step 초기화 | 없음 | server도 종속 규칙 적용 | ch_step에는 `ALL`만 표시 | `Confirmed` |
+| ch_step 모아보기 | 선택 범위의 chart row | 없음 | sensor·PPID별 최저 ch_step 유지 | sensor `ALL`에서도 sensor별 대표 chart 유지 | `Confirmed` |
 | 모아보기 전환 | EQP별 expanded set | 없음 | 보이는 chart query만 구성 | 대표/전체 ch_step 전환 | `Confirmed` |
 | page 변경 | chart page | 없음 | 새 page의 lazy chart query | 이전 page chart unmount | `Confirmed` |
 
