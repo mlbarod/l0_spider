@@ -344,7 +344,7 @@
 | 8 | `CORE-07` 공통부 20개 pagination | PERF-001 | 성능·UI | 클릭이력 의미 보존 |
 | 9 | `CORE-08` Dashboard cache 측정·개선 | PERF-002 | 측정 선행 | memory·latency budget |
 
-`CORE-01`과 `MX-01`은 독립적으로 진행할 수 있다. `CORE-03A`는 전체 resource ID 전환을 기다리지 않고 먼저 적용한다. `CORE-05`, `CORE-03B`, `CORE-06`은 선행 계약을 생략하고 구현하지 않는다.
+1차 Core 조치 범위는 `CORE-01`과 `CORE-02`다. `CORE-01`과 `MX-01`은 독립적으로 진행할 수 있다. `CORE-03A`는 전체 resource ID 전환을 기다리지 않고 먼저 적용한다. `CORE-05`, `CORE-03B`, `CORE-06`은 선행 계약을 생략하고 구현하지 않는다.
 
 각 작업 패키지는 별도 review 단위로 유지한다. P0 guard, 보안 권한, resource migration과 성능 변경을 한 번에 배포하지 않는다.
 
@@ -453,8 +453,8 @@ Mock E2E·Playwright와 browser 성능 측정은 `main` Core 필수 검증에 �
 
 ## 11. 최종 권고
 
-첫 release 단위는 `CORE-01` Dashboard P0 guard와 `CORE-02`의 stale 표시 제거로 제한하는 것이 안전하다. 동시에 `mock-agent`에서 BQA-003을 고쳐 자설비 회귀 검증을 복구한다.
+첫 release 단위는 `CORE-01` Dashboard P0 guard와 `CORE-02`의 stale 표시 제거로 제한하는 것이 안전하다. `CORE-02`의 숫자 fail-closed는 D-04 결측 정책을 확정한 뒤 같은 작업 패키지의 후속 변경으로 진행한다. 동시에 `mock-agent`에서 BQA-003을 고쳐 자설비 회귀 검증을 복구한다.
 
-그다음 error/debug 노출을 먼저 축소하고, 권한·resource ID·Line alias처럼 계약 결정이 필요한 변경은 승인된 정책과 additive migration을 준비한 뒤 진행한다. 공통부 pagination은 독립된 성능 개선으로 적용할 수 있으나 클릭이력 의미와 page 밖 미마운트를 반드시 고정한다. Dashboard cache는 synthetic 측정과 memory budget 없이 수정하지 않는다.
+그다음 CA-002의 error/debug 노출을 먼저 축소하고, 권한·resource ID·Line alias처럼 계약 결정이 필요한 변경은 승인된 정책과 additive migration을 준비한 뒤 진행한다. 공통부 pagination은 독립된 성능 개선으로 적용할 수 있으나 클릭이력 의미와 page 밖 미마운트를 반드시 고정한다. Dashboard cache는 synthetic 측정과 memory budget 없이 수정하지 않는다.
 
 이 계획은 P0 2건과 P1 11건을 모두 추적하며, 운영 자원을 직접 조사하거나 변경하지 않고 Core와 `mock-agent` 경계를 유지한다.

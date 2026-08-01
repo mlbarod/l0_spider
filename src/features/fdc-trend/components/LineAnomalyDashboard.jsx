@@ -47,7 +47,10 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
-import { fetchDashboardSummary } from "../api/dashboardApi"
+import {
+  createDashboardQueryOptions,
+  createDashboardTrendQueryOptions,
+} from "../api/dashboardQueryOptions.mjs"
 import { buildSelfEquipmentDetailUrl } from "../utils/dashboardLinks.mjs"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 
@@ -328,16 +331,7 @@ export function LineAnomalyDashboard() {
   const [draftLines, setDraftLines] = useState([])
   const [hiddenLines, setHiddenLines] = useState(() => new Set())
   const [trendPeriodDays, setTrendPeriodDays] = useState(10)
-  const dashboardQuery = useQuery({
-    queryKey: [
-      "spider-line-dashboard",
-      (appliedFilters.lines ?? []).join("\u0000"),
-    ],
-    queryFn: ({ signal }) => fetchDashboardSummary({ ...appliedFilters, signal }),
-    staleTime: 60 * 1000,
-    retry: false,
-    placeholderData: (previousData) => previousData,
-  })
+  const dashboardQuery = useQuery(createDashboardQueryOptions(appliedFilters))
   const dashboard = dashboardQuery.data?.lineDashboard
   const trendPresetFilters = useMemo(() => {
     if (!dashboard) return null
@@ -348,20 +342,9 @@ export function LineAnomalyDashboard() {
       lines: dashboard.filters.lines ?? [],
     }
   }, [dashboard, trendPeriodDays])
-  const trendQuery = useQuery({
-    queryKey: [
-      "spider-line-dashboard-trend",
-      trendPeriodDays,
-      trendPresetFilters?.startDate ?? "",
-      trendPresetFilters?.endDate ?? "",
-      (trendPresetFilters?.lines ?? []).join("\u0000"),
-    ],
-    queryFn: ({ signal }) => fetchDashboardSummary({ ...trendPresetFilters, signal }),
-    enabled: Boolean(trendPresetFilters),
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-    placeholderData: (previousData) => previousData,
-  })
+  const trendQuery = useQuery(
+    createDashboardTrendQueryOptions(trendPeriodDays, trendPresetFilters),
+  )
   const trendDashboard = trendQuery.data?.lineDashboard
 
   const displayedLines = useMemo(
@@ -397,7 +380,6 @@ export function LineAnomalyDashboard() {
   }
 
   function resetFilters() {
-    if (!dashboard) return
     setDraftLines([])
     setHiddenLines(new Set())
     setTrendPeriodDays(10)
@@ -425,8 +407,18 @@ export function LineAnomalyDashboard() {
     return (
       <section className="mt-6 grid gap-4 border-t-2 border-border/80 pt-9">
         <h2 className="text-xl font-semibold tracking-tight">라인별 이상 현황 Dashboard</h2>
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-5 text-sm text-destructive">
-          {dashboardQuery.error.message}
+        <div className="grid justify-items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-5 text-sm text-destructive">
+          <span>{dashboardQuery.error.message}</span>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={() => dashboardQuery.refetch()}>
+              <RotateCcw className="size-4" /> 다시 조회
+            </Button>
+            {(appliedFilters.lines ?? []).length ? (
+              <Button type="button" variant="outline" onClick={resetFilters}>
+                전체 Line으로 초기화
+              </Button>
+            ) : null}
+          </div>
         </div>
       </section>
     )
@@ -474,8 +466,11 @@ export function LineAnomalyDashboard() {
       </form>
 
       {dashboardQuery.isError ? (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {dashboardQuery.error.message}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <span>{dashboardQuery.error.message}</span>
+          <Button type="button" size="sm" variant="outline" onClick={() => dashboardQuery.refetch()}>
+            <RotateCcw className="size-4" /> 다시 조회
+          </Button>
         </div>
       ) : null}
 
@@ -571,7 +566,14 @@ export function LineAnomalyDashboard() {
                 <span className="flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> 과거 추이를 불러오는 중입니다.</span>
               </div>
             ) : trendQuery.isError ? (
-              <EmptyChart message={trendQuery.error.message} />
+              <div className="grid h-[310px] place-items-center text-sm text-muted-foreground">
+                <div className="grid justify-items-center gap-3">
+                  <span>{trendQuery.error.message}</span>
+                  <Button type="button" size="sm" variant="outline" onClick={() => trendQuery.refetch()}>
+                    <RotateCcw className="size-4" /> 다시 조회
+                  </Button>
+                </div>
+              </div>
             ) : displayedLines.length && trendRows.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trendRows} margin={{ top: 8, right: 18, bottom: 4, left: 0 }}>

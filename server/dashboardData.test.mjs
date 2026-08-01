@@ -234,8 +234,11 @@ test("단일 라인과 복수 라인 필터가 전체 KPI·추이·표에 동일
   const single = buildLinePayload({ lines: ["P2"] })
   assert.equal(single.summary.totalAbnormalCount, 2)
   assert.equal(single.summary.abnormalLineCount, 1)
+  assert.equal(single.summary.topLine, "P2")
+  assert.deepEqual(single.filters.lines, ["P2"])
   assert.deepEqual(single.lineSummary.map((row) => row.lineId), ["P2"])
   assert.ok(single.dailyTrend.every((row) => row.lineId === "P2"))
+  assert.ok(single.mailingSummary.every((row) => row.lineId === "P2"))
 
   const multiple = buildLinePayload({ lines: ["P2", "P1"] })
   assert.equal(multiple.summary.totalAbnormalCount, 5)

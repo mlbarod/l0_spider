@@ -74,7 +74,7 @@ Dashboard route는 `startDate`, `endDate`, `line`을 브라우저 URL에서 읽�
 |---|---|---|---|---|---|
 | route·page 조립 | `routes.jsx`, `L0SpiderHomePage` | 브라우저 경로 | 메인과 Dashboard UI | `Confirmed` | `routes.jsx:11-67`; `L0SpiderHomePage.jsx:211-279` |
 | API query 생성 | `fetchDashboardSummary` | `startDate`, `endDate`, `lines`, `signal` | same-origin fetch | `Confirmed` | `dashboardApi.js:3-12` |
-| 최소 응답 shape 검사 | `fetchDashboardSummary` | JSON payload | payload 또는 오류 | `Confirmed` | `dashboardApi.js:13-31` |
+| 응답 shape·교차 무결성 검사 | `fetchDashboardSummary`, `assertDashboardIntegrity` | JSON payload·요청 filter | payload 또는 정합성 오류 | `Confirmed` | `dashboardApi.js`; `dashboardIntegrity.mjs` |
 | 기본 Dashboard 조회 | `dashboardQuery` | 적용된 Line state | `lineDashboard` | `Confirmed` | `LineAnomalyDashboard.jsx:326-341` |
 | 기간 추이 조회 | `trendQuery` | 서버 `maxDate`, 기간, 적용 Line | 별도 `lineDashboard` | `Confirmed` | `LineAnomalyDashboard.jsx:342-365` |
 | 표시용 변환 | `useMemo`, formatter | 배열·숫자·날짜 | chart·table model | `Confirmed` | `LineAnomalyDashboard.jsx:367-388` |
@@ -82,8 +82,8 @@ Dashboard route는 `startDate`, `endDate`, `line`을 브라우저 URL에서 읽�
 
 기본 query key는 `["spider-line-dashboard", lines.join("\u0000")]`이고 메인 최신 시각 카드의 전체 조회는 `["spider-line-dashboard", ""]`를 공유한다.
 추이 query key는 `"spider-line-dashboard-trend"`, 기간, 시작일, 종료일과 Line 조합으로 구성된다.
-API client는 `lineDashboard.summary`, `lineSummary`, `dailyTrend`, `mailingSummary`, `options.lines`의 존재·배열 여부만 검사한다.
-개별 필드의 숫자·문자열·nullable을 브라우저에서 검증하는 runtime schema는 확인되지 않았다.
+API client와 서버 producer는 `assertDashboardIntegrity`로 필수 object·배열, 요청 filter echo, Line 범위와 summary/detail/trend 교차 불변조건을 검사한다.
+JSON Schema 전체를 브라우저 runtime에 적재하지 않으므로 이 guard가 검사하지 않는 개별 표시 field의 전체 Schema 검증은 하지 않는다.
 
 ## 6. 대시보드 요청 흐름
 
@@ -250,6 +250,18 @@ response
 `mailingSummary.sensorGrade`는 `A`, `B`, `D`, `M`, `N`만 남기며 A·B를 `A/B`로 합치지 않는다.
 `lineSummary.sensorGrades`는 상세 화면 filter에 맞게 A·B를 `A/B`로 정규화한다.
 
+### 11.4 실행 가능한 교차 불변조건
+
+서버는 `lineDashboard` 조립 직후, 브라우저는 success payload 소비 직전에 같은 pure guard를 실행한다.
+
+- `filters.lines`는 정규화·중복 제거한 요청 Line 집합과 일치한다. `options.lines`는 전체 선택지이므로 요청 범위 판정 대상이 아니다.
+- `lineSummary`, `dailyTrend`, `mailingSummary`와 nullable `summary.topLine`의 Line은 `lineSummary` 범위 안에 있고, 명시적 Line 요청이 있으면 그 요청 집합의 부분집합이어야 한다.
+- `summary.totalAbnormalCount`, `latestDateCount`, `abnormalLineCount`, `abGradeCount`, `topLine`, `topLineCount`는 `lineSummary` 계산 결과와 일치한다.
+- Line별 `dailyTrend.abnormalCount` 합은 각 `lineSummary.totalCount`와 일치하고 날짜·Line 중복 row는 허용하지 않는다.
+- `mailingSummary.abnormalCount`는 Line·SDWT·Grade별 메일 집계이므로 전체 Dashboard 합계와 같아야 하는 불변조건으로 취급하지 않는다.
+
+위반 시 부분 payload를 표시하지 않는다. 서버는 `500`과 안정적 code `DASHBOARD_RESPONSE_INTEGRITY_ERROR`로 fail-closed하고 브라우저는 정합성 오류와 **다시 조회** 동작을 제공한다. JSON Schema로 표현하기 어려운 합계 규칙은 `tests/contract/dashboard-api.contract.test.mjs`가 실행 가능한 기준이다.
+
 ## 12. 데이터 원천과 집계 규칙
 
 | 단계 | 원천·처리 | 계약상 결과 | 상태 | 근거 |
@@ -288,18 +300,19 @@ mapping되지 않은 detail row는 집계에서 제외되며 화면은 `meta.unm
 | 상황 | 현재 동작 | 상태 | 근거 |
 |---|---|---|---|
 | 최초 요청 중 | Dashboard 전체 loading 안내 | `Confirmed` | `LineAnomalyDashboard.jsx:414-422` |
-| 재조회 중 | 이전 payload를 유지하고 overlay 표시 | `Confirmed` | `LineAnomalyDashboard.jsx:331-340,624-630` |
-| 최초 요청 실패 | Dashboard 제목과 오류 panel | `Confirmed` | `LineAnomalyDashboard.jsx:424-433` |
-| 이전 payload 보유 후 실패 | 기존 화면과 inline 오류를 함께 표시 | `Confirmed` | `LineAnomalyDashboard.jsx:476-480` |
+| 같은 query key 수동 재조회 | 현재 payload를 유지하고 overlay 표시 | `Confirmed` | `dashboardQuery.refetch`, `trendQuery.refetch` |
+| Line filter 변경 | 이전 payload를 제거하고 새 조건 loading 표시 | `Confirmed` | `dashboardQueryOptions.mjs`; Dashboard query 상태 분기 |
+| 추이 기간 변경 | 이전 추이 payload를 제거하고 chart loading 표시 | `Confirmed` | `dashboardQueryOptions.mjs`; trend query 상태 분기 |
+| 최초·새 조건 요청 실패 | Dashboard 제목, 오류 panel과 다시 조회 동작 | `Confirmed` | `LineAnomalyDashboard.jsx` 오류 분기 |
+| 같은 조건 재조회 실패 | 기존 화면과 inline 오류·다시 조회 동작을 함께 표시 | `Confirmed` | `LineAnomalyDashboard.jsx` inline 오류 분기 |
 | Line row 없음 | chart 빈 상태, table 빈 안내 | `Confirmed` | `LineAnomalyDashboard.jsx:158-164,304-309,533` |
 | 추이 요청 중·실패 | 별도 loading 또는 빈 chart에 오류 표시 | `Confirmed` | `LineAnomalyDashboard.jsx:568-617` |
 | D-1 file 없음 | 비교 field `null`, “동일 시각 비교 데이터 없음” | `Confirmed` | `dashboardData.mjs:515-517`; Dashboard KPI |
 | 요청 기간 일부 날짜 file 없음 | 해당 날짜·Line을 0건으로 생성 | `Confirmed` | `dashboardData.test.mjs:186-200` |
 | unmapped row 존재 | 집계 제외, `meta.unmappedRows` 증가 | `Confirmed` | `dashboardData.mjs:327-385,527-531` |
 
-`placeholderData` 때문에 새 filter 조회 중 또는 실패 후 화면에 이전 조건의 데이터가 남을 수 있다.
-화면은 재조회 중임을 표시하지만 이전 payload와 새 filter의 대응 관계를 별도 label로 고정하지 않는다.
-이는 현재 동작이며 변경 시 사용성·오류 정책을 별도로 검토해야 하는 `Risk`다.
+기본·추이 query는 `placeholderData`를 사용하지 않는다. 따라서 Line 또는 기간 query key가 바뀌면 이전 조건의 payload를 새 조건 아래 표시하지 않는다.
+같은 key의 명시적 `refetch()`는 React Query의 현재 payload를 유지하며 화면에 재조회 중임을 표시한다.
 
 ## 15. 캐시, 재조회와 최신 판단
 
@@ -336,10 +349,11 @@ My EQP 메일 count는 sender가 같은 고유건 규칙으로 별도 계산하�
 | 날짜·Line filter 오류 | `400` | `{ok:false,error:string}` | 없음 | `Confirmed` |
 | 유효한 Dashboard filename 없음 | `404` | `{ok:false,error:string}` | 없음 | `Confirmed` |
 | 허용하지 않은 method | `405` | `{ok:false,error:"Method not allowed"}`, `Allow: GET, HEAD` | 해당 없음 | `Confirmed` |
+| success 응답 교차 불변조건 위반 | `500` | `{ok:false,code:"DASHBOARD_RESPONSE_INTEGRITY_ERROR",error:string}` | 없음 | `Confirmed` |
 | 파일·mapping·schema 등 기타 예외 | `500` | `{ok:false,error:string}` | 없음 | `Confirmed` |
 
 브라우저 API client는 non-2xx의 `error`를 sanitize한 뒤 사용자 message로 사용하고, JSON이 아니면 일반 fallback message를 사용한다.
-오류 body에는 기계 판독용 안정적 `code`, field별 validation detail 또는 request ID가 없다.
+정합성 오류에만 기계 판독용 안정적 `code`가 있다. 그 밖의 오류에는 안정적 code, field별 validation detail 또는 request ID가 없다.
 서버 error message가 내부 경로 정보를 포함할 가능성이 있어 response·log 노출은 `Risk`다.
 오류 `error` 문자열의 정확한 문구를 하위 호환 계약으로 고정할 근거는 부족하므로 `Needs Confirmation`이다.
 
@@ -363,8 +377,10 @@ My EQP 메일 count는 sender가 같은 고유건 규칙으로 별도 계산하�
 | 성공 상위 구조 | `Confirmed` | `Schema Ready` | 생산자가 모든 field를 조립 |
 | `lineDashboard.summary` | `Confirmed` | `Schema Ready` | 타입·nullable·0 처리 확인 |
 | `lineSummary`, `dailyTrend`, `mailingSummary`, `meta` | `Confirmed` | `Schema Ready` | item 구조·빈 배열·정렬 근거 확인 |
+| 합계·Line 범위 교차 불변조건 | `Confirmed` | `Contract Ready` | 서버·브라우저 pure guard와 negative contract test 존재 |
 | 오류 기본 구조 | `Confirmed` | `Schema Ready` | status와 `{ok:false,error}` 확인 |
-| 오류 code·세부 문구 | `Unknown` / 문구 현재 구현 | `Needs Confirmation` | 안정적 code와 문구 호환 정책 없음 |
+| 정합성 오류 code | `Confirmed` | `Contract Ready` | `DASHBOARD_RESPONSE_INTEGRITY_ERROR`로 고정 |
+| 그 밖의 오류 code·세부 문구 | `Unknown` / 문구 현재 구현 | `Needs Confirmation` | 안정적 code와 문구 호환 정책 없음 |
 | 날짜·문자열 정규식 제약 | 생산 형식 `Confirmed` | `Needs Confirmation` | API version과 future format 정책 없음 |
 | `additionalProperties`·버전 정책 | `Unknown` | `Needs Confirmation` | producer·consumer 합의 없음 |
 | 실제 mail sender 소비 | `Unknown` | `Blocked` | 저장소에서 결합·발송 구현 미확인 |
@@ -393,8 +409,8 @@ Schema 작성 시 실제 운영 값이 아닌 최소 synthetic sample만 사용�
 ### Risk
 
 성공 payload의 `sourcePaths`와 500 원문 message는 내부 운영 경로·file 상세를 노출할 수 있다.
-상세 field runtime 검증 부재로 malformed 200 응답이 UI 깊은 위치에서 실패할 수 있다.
-`placeholderData`는 새 조회 실패 시 이전 조건 데이터를 유지하고, mapping 제외 row는 화면이 아니라 `meta`에만 남는다.
+교차 무결성 guard가 검사하지 않는 상세 표시 field의 malformed 200 응답은 여전히 UI 깊은 위치에서 실패할 수 있다.
+mapping 제외 row는 화면이 아니라 `meta`에만 남는다.
 
 ## 23. Core Harness와 `mock-agent` 경계
 
@@ -406,7 +422,7 @@ mock 서버·대규모 fixture·mock 의존 integration·E2E와 Browser QA는 `m
 ## 24. 계약 산출물과 갱신 조건
 
 현재 `harness/contracts/dashboard-api.schema.json`, `harness/fixtures/dashboard/dashboard-{success,empty}.json`과 `tests/contract/dashboard-api.contract.test.mjs`가 존재한다.
-contract test는 Schema compile과 fixture를 검증하지만 actual Dashboard root producer 결과를 직접 Schema에 대조하지 않아 해당 범위는 `Partial`이다.
+contract test는 Schema compile·fixture와 partial·합계 불일치·범위 밖 Line·filter echo mismatch를 검증한다. 실제 운영 route와 운영 데이터는 사용하지 않았으므로 그 범위는 `Not Run`이다.
 메일 결합·발송 경계와 상세 link 소비는 각각 `docs/features/mailing.md`, `docs/features/self-equipment.md`가 담당한다.
 
 producer·consumer·집계·오류가 바뀌면 같은 변경에서 본 문서의 상태와 준비도를 재검토한다.

@@ -211,6 +211,7 @@
     },
     "lineDashboard": {
       "type": "object",
+      "$comment": "summary/lineSummary/dailyTrend 합계와 요청 Line 범위의 교차 불변조건은 JSON Schema 밖의 assertDashboardIntegrity와 contract test가 검증한다.",
       "additionalProperties": false,
       "required": [
         "filters",

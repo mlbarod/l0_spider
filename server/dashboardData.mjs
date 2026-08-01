@@ -10,6 +10,10 @@ import {
   SPIDER_DATA_PATH_TEMPLATES,
   buildDashboardStatsPath,
 } from "../src/config/spiderDataPaths.mjs"
+import {
+  DASHBOARD_INTEGRITY_ERROR_CODE,
+  assertDashboardIntegrity,
+} from "../src/features/fdc-trend/api/dashboardIntegrity.mjs"
 import { getLruEntry, setLruEntry } from "./boundedCache.mjs"
 import { mappingConfigPath, readLineMapping } from "./mappingConfig.mjs"
 
@@ -491,7 +495,7 @@ function buildLineDashboardPayloadFromAggregates(
       || compareMailingSensorGrades(left.sensorGrade, right.sensorGrade)
     ))
 
-  return {
+  const payload = {
     filters: {
       startDate: filters.startDate,
       endDate: filters.endDate,
@@ -530,6 +534,12 @@ function buildLineDashboardPayloadFromAggregates(
       unmappedRows: datedAggregates.reduce((sum, item) => sum + item.unmappedRows, 0),
     },
   }
+  assertDashboardIntegrity(payload, {
+    startDate: filters.startDate,
+    endDate: filters.endDate,
+    lines: requestedLines,
+  })
+  return payload
 }
 
 export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
@@ -819,9 +829,13 @@ export async function handleDashboardDataRequest(req, res, requestUrl) {
       res.end()
       return
     }
+    const isIntegrityError = error.code === DASHBOARD_INTEGRITY_ERROR_CODE
     sendJson(res, statusCode, {
       ok: false,
-      error: `대시보드 데이터를 불러오지 못했습니다: ${error.message}`,
+      ...(isIntegrityError ? { code: DASHBOARD_INTEGRITY_ERROR_CODE } : {}),
+      error: isIntegrityError
+        ? "대시보드 데이터 정합성 오류가 발생했습니다. 다시 조회해 주세요."
+        : `대시보드 데이터를 불러오지 못했습니다: ${error.message}`,
     })
   }
 }

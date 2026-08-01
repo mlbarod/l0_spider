@@ -7,6 +7,11 @@ import { fileURLToPath } from "node:url"
 import Ajv2020 from "ajv/dist/2020.js"
 import addFormats from "ajv-formats"
 
+import {
+  DASHBOARD_INTEGRITY_ERROR_CODE,
+  assertDashboardIntegrity,
+} from "../../src/features/fdc-trend/api/dashboardIntegrity.mjs"
+
 const testDirectory = dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = resolve(testDirectory, "../..")
 const schemaPath = resolve(repositoryRoot, "harness/contracts/dashboard-api.schema.json")
@@ -155,4 +160,75 @@ test("dashboard schema rejects an unexpected property in a closed object", () =>
     ),
     "unexpected lineDashboard.summary property",
   )
+})
+
+test("dashboard cross-field contract accepts the success and empty fixtures", () => {
+  assert.doesNotThrow(() => assertDashboardIntegrity(successFixture.lineDashboard))
+  const emptyFixture = readJson(emptyFixturePath, "dashboard empty fixture")
+  assert.doesNotThrow(() => assertDashboardIntegrity(emptyFixture.lineDashboard))
+})
+
+test("dashboard cross-field contract rejects partial summary/detail data", () => {
+  const partialFixture = cloneFixture()
+  partialFixture.lineDashboard.lineSummary = []
+  partialFixture.lineDashboard.dailyTrend = []
+  partialFixture.lineDashboard.mailingSummary = []
+
+  assert.throws(
+    () => assertDashboardIntegrity(partialFixture.lineDashboard),
+    (error) => error.code === DASHBOARD_INTEGRITY_ERROR_CODE,
+  )
+})
+
+test("dashboard cross-field contract rejects response Lines outside the request scope", () => {
+  const inconsistentFixture = cloneFixture()
+  inconsistentFixture.lineDashboard.filters.lines = ["TEST_LINE"]
+  inconsistentFixture.lineDashboard.dailyTrend[0].lineId = "OTHER_LINE"
+
+  assert.throws(
+    () => assertDashboardIntegrity(
+      inconsistentFixture.lineDashboard,
+      { lines: ["TEST_LINE"] },
+    ),
+    (error) => error.code === DASHBOARD_INTEGRITY_ERROR_CODE,
+  )
+})
+
+test("dashboard cross-field contract rejects a filter echo mismatch", () => {
+  assert.throws(
+    () => assertDashboardIntegrity(
+      successFixture.lineDashboard,
+      { startDate: "2000-01-01", endDate: "2000-01-02", lines: [] },
+    ),
+    (error) => error.code === DASHBOARD_INTEGRITY_ERROR_CODE,
+  )
+})
+
+test("dashboard cross-field contract rejects an invalid top-Line order", () => {
+  const fixture = cloneFixture()
+  const lowerCountRow = {
+    ...fixture.lineDashboard.lineSummary[0],
+    lineId: "LOWER_LINE",
+    totalCount: 0,
+    latestDateCount: 0,
+    abGradeCount: 0,
+    ratio: 0,
+  }
+  fixture.lineDashboard.lineSummary.unshift(lowerCountRow)
+  fixture.lineDashboard.dailyTrend.unshift({
+    date: "2000-01-02",
+    lineId: "LOWER_LINE",
+    abnormalCount: 0,
+  })
+
+  assert.throws(
+    () => assertDashboardIntegrity(fixture.lineDashboard),
+    (error) => error.code === DASHBOARD_INTEGRITY_ERROR_CODE,
+  )
+})
+
+test("mailing count is not treated as the global Dashboard total", () => {
+  const fixture = cloneFixture()
+  fixture.lineDashboard.mailingSummary[0].abnormalCount = 999
+  assert.doesNotThrow(() => assertDashboardIntegrity(fixture.lineDashboard))
 })

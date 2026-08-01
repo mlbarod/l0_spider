@@ -1,4 +1,5 @@
 import { getApiErrorMessage } from "./errorMessage.js"
+import { assertDashboardIntegrity } from "./dashboardIntegrity.mjs"
 
 export async function fetchDashboardSummary({ startDate, endDate, lines = [], signal } = {}) {
   const searchParams = new URLSearchParams()
@@ -16,17 +17,7 @@ export async function fetchDashboardSummary({ startDate, endDate, lines = [], si
     throw new Error(getApiErrorMessage(payload, "대시보드 데이터를 불러오지 못했습니다."))
   }
 
-  const lineDashboard = payload.lineDashboard
-  if (
-    !lineDashboard
-    || !lineDashboard.summary
-    || !Array.isArray(lineDashboard.lineSummary)
-    || !Array.isArray(lineDashboard.dailyTrend)
-    || !Array.isArray(lineDashboard.mailingSummary)
-    || !Array.isArray(lineDashboard.options?.lines)
-  ) {
-    throw new Error("대시보드 응답 데이터 형식이 올바르지 않습니다.")
-  }
+  assertDashboardIntegrity(payload.lineDashboard, { startDate, endDate, lines })
 
   return payload
 }
