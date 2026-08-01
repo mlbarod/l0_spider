@@ -116,7 +116,7 @@ sensor에서 `ALL`을 선택하면 현재 STEP·eqp_ch 범위의 모든 sensor�
 | 버튼 | 동작 |
 | --- | --- |
 | SKIP | 현재 차트 한 건을 72시간 동안 일반 결과에서 제외 |
-| EQP ALL SKIP | 같은 EQP의 실제 모든 ch_step을 각각 SKIP 등록 |
+| EQP ALL SKIP | 같은 EQP에서 현재 차트 sensor의 실제 모든 ch_step만 각각 SKIP 등록. 다른 sensor는 제외 |
 | 동일성 차트 | 동일 조건의 EQP 데이터를 한 차트에서 비교 |
 | 변경점이력 | 차트 변경점 목록 확인 |
 | 이력저장 | 현재 결과를 이력 DB에 저장 |

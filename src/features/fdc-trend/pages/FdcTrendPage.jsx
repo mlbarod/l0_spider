@@ -951,6 +951,7 @@ export const SkipChartDialog = memo(function SkipChartDialog({
 
 export const EqpAllSkipDialog = memo(function EqpAllSkipDialog({
   eqp,
+  sensor,
   lineId,
   loadTargets,
   dataQueryKeyPrefix,
@@ -968,7 +969,7 @@ export const EqpAllSkipDialog = memo(function EqpAllSkipDialog({
   ])
   const createAllSkipMutation = useMutation({
     mutationFn: async () => {
-      const targets = await loadTargets()
+      const targets = await loadTargets(sensor)
       const uniqueTargets = Array.from(new Map(targets.map((target) => [
         [target.filePath, target.eqp, target.prcGroup].join("\u0000"),
         { lineId, ...target },
@@ -1009,9 +1010,11 @@ export const EqpAllSkipDialog = memo(function EqpAllSkipDialog({
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{eqp || "EQP 미지정"} ALL SKIP</DialogTitle>
+          <DialogTitle>
+            {eqp || "EQP 미지정"} / {sensor || "sensor 미지정"} ALL SKIP
+          </DialogTitle>
           <DialogDescription>
-            이 EQP의 실제 모든 ch_step을 각각 PASS 이력에 등록합니다.
+            이 EQP의 해당 sensor에 속한 모든 ch_step을 각각 PASS 이력에 등록합니다.
           </DialogDescription>
         </DialogHeader>
         <Input
@@ -1333,6 +1336,7 @@ const ErdScatterCard = memo(function ErdScatterCard({
           {allSkipLoadTargets ? (
             <EqpAllSkipDialog
               eqp={eqp}
+              sensor={row.sensor}
               lineId={lineId}
               dataQueryKeyPrefix={dataQueryKeyPrefix}
               loadTargets={allSkipLoadTargets}
@@ -1669,7 +1673,7 @@ export function FdcTrendPage() {
   }, [activeChartPage, chartPage])
   const allSkipLoadTargetsByEqp = useMemo(() => {
     if (isSkipList) return new Map()
-    return new Map(chartGroups.map((group) => [group.eqp, async () => {
+    return new Map(chartGroups.map((group) => [group.eqp, async (sensor) => {
       return fetchEqpAllSkipTargets({
         isMyEqp,
         line: activeLine,
@@ -1678,13 +1682,12 @@ export function FdcTrendPage() {
         priorities,
         desc: activeDesc,
         eqpCh: group.rows[0]?.eqp ?? group.eqp,
-        sensor: activeSensor,
+        sensor,
       })
     }]))
   }, [
     activeDesc,
     activeLine,
-    activeSensor,
     activeTeam,
     activeTeamLabel,
     chartGroups,

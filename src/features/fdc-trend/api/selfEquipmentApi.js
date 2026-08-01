@@ -65,12 +65,16 @@ export async function fetchEqpAllSkipTargets({
   eqpCh,
   sensor,
 }) {
+  const targetSensor = String(sensor ?? "").trim()
+  if (!targetSensor || targetSensor === "ALL") {
+    throw new Error("EQP ALL SKIP은 개별 sensor를 지정해야 합니다.")
+  }
   const filters = {
     line,
     priorities,
     desc,
     eqpCh,
-    sensor,
+    sensor: targetSensor,
     chStep: "ALL",
   }
   const payload = isMyEqp
