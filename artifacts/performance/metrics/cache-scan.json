@@ -1,0 +1,58 @@
+{
+  "metadata": {
+    "generatedAt": "2026-08-01T02:32:34.550Z",
+    "capacity": 32,
+    "model": "server/boundedCache.mjs LRU with dashboard chronological scan repeated twice",
+    "scope": "deterministic cache behavior only; file I/O duration and production file count are not measured"
+  },
+  "periods": {
+    "10": {
+      "cold": {
+        "hits": 0,
+        "misses": 10,
+        "cacheEntries": 10
+      },
+      "repeated": {
+        "hits": 10,
+        "misses": 0,
+        "cacheEntries": 10
+      }
+    },
+    "30": {
+      "cold": {
+        "hits": 0,
+        "misses": 30,
+        "cacheEntries": 30
+      },
+      "repeated": {
+        "hits": 30,
+        "misses": 0,
+        "cacheEntries": 30
+      }
+    },
+    "90": {
+      "cold": {
+        "hits": 0,
+        "misses": 90,
+        "cacheEntries": 32
+      },
+      "repeated": {
+        "hits": 0,
+        "misses": 90,
+        "cacheEntries": 32
+      }
+    },
+    "180": {
+      "cold": {
+        "hits": 0,
+        "misses": 180,
+        "cacheEntries": 32
+      },
+      "repeated": {
+        "hits": 0,
+        "misses": 180,
+        "cacheEntries": 32
+      }
+    }
+  }
+}

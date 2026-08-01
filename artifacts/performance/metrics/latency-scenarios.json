@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generatedAt": "2026-07-30T04:43:54.558Z",
+    "generatedAt": "2026-08-01T02:24:11.540Z",
     "iterations": 3,
     "warmupIterations": 1,
     "timingSource": "Node performance.now() around local HTTP fetch and body read",
@@ -10,43 +10,43 @@
     "dashboard": {
       "path": "/api/dashboard-data",
       "samplesMs": [
-        1004.71,
-        1004.25,
-        1004.5
+        1004.78,
+        1004.2,
+        1003.85
       ],
       "durationMs": {
-        "mean": 1004.49,
-        "median": 1004.5,
-        "min": 1004.25,
-        "max": 1004.71
+        "mean": 1004.28,
+        "median": 1004.2,
+        "min": 1003.85,
+        "max": 1004.78
       }
     },
     "selfEquipment": {
       "path": "/api/self-equipment-data",
       "samplesMs": [
-        3014.77,
-        3006.82,
-        3004.81
+        3006.66,
+        3007.99,
+        3029.06
       ],
       "durationMs": {
-        "mean": 3008.8,
-        "median": 3006.82,
-        "min": 3004.81,
-        "max": 3014.77
+        "mean": 3014.57,
+        "median": 3007.99,
+        "min": 3006.66,
+        "max": 3029.06
       }
     },
     "scatter": {
       "path": "/api/erd-scatter-data",
       "samplesMs": [
-        10011,
-        10007.52,
-        10008.08
+        10008.57,
+        10034.27,
+        10003.86
       ],
       "durationMs": {
-        "mean": 10008.87,
-        "median": 10008.08,
-        "min": 10007.52,
-        "max": 10011
+        "mean": 10015.57,
+        "median": 10008.57,
+        "min": 10003.86,
+        "max": 10034.27
       }
     }
   },
@@ -55,43 +55,43 @@
     "samples": [
       {
         "iteration": 1,
-        "slowerRequestMs": 3003.17,
-        "fasterRequestMs": 303.7,
-        "pairCompletionMs": 3003.36,
-        "gapMs": 2699.48
+        "slowerRequestMs": 3017.15,
+        "fasterRequestMs": 303.15,
+        "pairCompletionMs": 3017.27,
+        "gapMs": 2714
       },
       {
         "iteration": 2,
-        "slowerRequestMs": 3007.59,
-        "fasterRequestMs": 303.24,
-        "pairCompletionMs": 3007.67,
-        "gapMs": 2704.35
+        "slowerRequestMs": 3002.96,
+        "fasterRequestMs": 302.79,
+        "pairCompletionMs": 3002.99,
+        "gapMs": 2700.17
       },
       {
         "iteration": 3,
-        "slowerRequestMs": 3003.74,
-        "fasterRequestMs": 302.26,
-        "pairCompletionMs": 3003.79,
-        "gapMs": 2701.49
+        "slowerRequestMs": 3002.86,
+        "fasterRequestMs": 302.78,
+        "pairCompletionMs": 3002.9,
+        "gapMs": 2700.07
       }
     ],
     "slowerRequestMs": {
-      "mean": 3004.83,
-      "median": 3003.74,
-      "min": 3003.17,
-      "max": 3007.59
+      "mean": 3007.66,
+      "median": 3002.96,
+      "min": 3002.86,
+      "max": 3017.15
     },
     "fasterRequestMs": {
-      "mean": 303.07,
-      "median": 303.24,
-      "min": 302.26,
-      "max": 303.7
+      "mean": 302.91,
+      "median": 302.79,
+      "min": 302.78,
+      "max": 303.15
     },
     "completionGapMs": {
-      "mean": 2701.77,
-      "median": 2701.49,
-      "min": 2699.48,
-      "max": 2704.35
+      "mean": 2704.75,
+      "median": 2700.17,
+      "min": 2700.07,
+      "max": 2714
     }
   }
 }

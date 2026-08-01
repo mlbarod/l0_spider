@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generatedAt": "2026-07-30T04:53:30.747Z",
+    "generatedAt": "2026-08-01T02:24:52.338Z",
     "buildMode": "mock",
     "dataPolicy": "relative artifact paths and aggregate sizes only"
   },
@@ -8,18 +8,18 @@
     "fileCount": 16,
     "jsChunkCount": 1,
     "cssChunkCount": 1,
-    "totalBytes": 2633340,
-    "totalGzipBytes": 1537212,
+    "totalBytes": 2636441,
+    "totalGzipBytes": 1538315,
     "initialAssetCount": 2,
-    "initialBytes": 1275484,
-    "initialGzipBytes": 366656
+    "initialBytes": 1278585,
+    "initialGzipBytes": 367758
   },
   "initialAssets": [
     {
-      "path": "assets/index-B-xvrBX3.js",
+      "path": "assets/index-1yhlYQEM.js",
       "extension": ".js",
-      "bytes": 1152373,
-      "gzipBytes": 346440
+      "bytes": 1155474,
+      "gzipBytes": 347542
     },
     {
       "path": "assets/index-CEDG1VXq.css",
@@ -30,10 +30,10 @@
   ],
   "largestFiles": [
     {
-      "path": "assets/index-B-xvrBX3.js",
+      "path": "assets/index-1yhlYQEM.js",
       "extension": ".js",
-      "bytes": 1152373,
-      "gzipBytes": 346440
+      "bytes": 1155474,
+      "gzipBytes": 347542
     },
     {
       "path": "assets/09-common-anomaly-filters-CPAeyqdb.png",
@@ -123,7 +123,7 @@
       "path": "index.html",
       "extension": ".html",
       "bytes": 521,
-      "gzipBytes": 343
+      "gzipBytes": 344
     }
   ]
 }

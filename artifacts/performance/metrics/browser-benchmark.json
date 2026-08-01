@@ -1,0 +1,590 @@
+{
+  "metadata": {
+    "generatedAt": "2026-08-01T02:27:56.338Z",
+    "browser": "Chromium 149.0.7827.55",
+    "viewport": "1440x900",
+    "scenarios": [
+      "single",
+      "normal",
+      "large"
+    ],
+    "measuredIterations": 5,
+    "warmupIterations": 1,
+    "cacheCondition": "new browser context per iteration; service workers blocked",
+    "timingScope": "sensor click through all common-anomaly cards committed plus two animation frames",
+    "memoryScope": "CDP process-local renderer metrics before and after final filter selection; explicit GC not forced",
+    "dataPolicy": "synthetic aggregate metrics only; origins and response bodies omitted"
+  },
+  "scenarios": {
+    "single": {
+      "samples": [
+        {
+          "completionMs": 435.1,
+          "articleCount": 1,
+          "imageCount": 1,
+          "apiRequestCount": 9,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 1,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 2769,
+          "taskDurationDeltaMs": 355.492,
+          "scriptDurationDeltaMs": 144.476,
+          "layoutDurationDeltaMs": 28.911,
+          "jsHeapUsedBytes": 13393812,
+          "jsHeapDeltaBytes": -534068,
+          "domNodes": 244,
+          "domNodeDelta": -19,
+          "eventListeners": 196,
+          "eventListenerDelta": -30
+        },
+        {
+          "completionMs": 361.3,
+          "articleCount": 1,
+          "imageCount": 1,
+          "apiRequestCount": 9,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 1,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 2769,
+          "taskDurationDeltaMs": 298.237,
+          "scriptDurationDeltaMs": 105.386,
+          "layoutDurationDeltaMs": 7.787,
+          "jsHeapUsedBytes": 13659204,
+          "jsHeapDeltaBytes": -1222364,
+          "domNodes": 284,
+          "domNodeDelta": 21,
+          "eventListeners": 200,
+          "eventListenerDelta": -30
+        },
+        {
+          "completionMs": 476.2,
+          "articleCount": 1,
+          "imageCount": 1,
+          "apiRequestCount": 9,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 1,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 2769,
+          "taskDurationDeltaMs": 480.88,
+          "scriptDurationDeltaMs": 264.568,
+          "layoutDurationDeltaMs": 19.888,
+          "jsHeapUsedBytes": 13447696,
+          "jsHeapDeltaBytes": -2522548,
+          "domNodes": 257,
+          "domNodeDelta": 28,
+          "eventListeners": 197,
+          "eventListenerDelta": -19
+        },
+        {
+          "completionMs": 372.3,
+          "articleCount": 1,
+          "imageCount": 1,
+          "apiRequestCount": 9,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 1,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 2769,
+          "taskDurationDeltaMs": 382.783,
+          "scriptDurationDeltaMs": 184.136,
+          "layoutDurationDeltaMs": 27.674,
+          "jsHeapUsedBytes": 13392976,
+          "jsHeapDeltaBytes": -2561892,
+          "domNodes": 244,
+          "domNodeDelta": -19,
+          "eventListeners": 196,
+          "eventListenerDelta": -30
+        },
+        {
+          "completionMs": 505.8,
+          "articleCount": 1,
+          "imageCount": 1,
+          "apiRequestCount": 9,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 1,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 2769,
+          "taskDurationDeltaMs": 491.039,
+          "scriptDurationDeltaMs": 230.087,
+          "layoutDurationDeltaMs": 36.601,
+          "jsHeapUsedBytes": 13457756,
+          "jsHeapDeltaBytes": -507684,
+          "domNodes": 257,
+          "domNodeDelta": -6,
+          "eventListeners": 197,
+          "eventListenerDelta": -33
+        }
+      ],
+      "completionMs": {
+        "mean": 430.14,
+        "median": 435.1,
+        "min": 361.3,
+        "max": 505.8
+      },
+      "taskDurationDeltaMs": {
+        "mean": 401.686,
+        "median": 382.783,
+        "min": 298.237,
+        "max": 491.039
+      },
+      "scriptDurationDeltaMs": {
+        "mean": 185.731,
+        "median": 184.136,
+        "min": 105.386,
+        "max": 264.568
+      },
+      "layoutDurationDeltaMs": {
+        "mean": 24.172,
+        "median": 27.674,
+        "min": 7.787,
+        "max": 36.601
+      },
+      "jsHeapUsedBytes": {
+        "mean": 13470288.8,
+        "median": 13447696,
+        "min": 13392976,
+        "max": 13659204
+      },
+      "jsHeapDeltaBytes": {
+        "mean": -1469711.2,
+        "median": -1222364,
+        "min": -2561892,
+        "max": -507684
+      },
+      "domNodes": {
+        "mean": 257.2,
+        "median": 257,
+        "min": 244,
+        "max": 284
+      },
+      "domNodeDelta": {
+        "mean": 1,
+        "median": -6,
+        "min": -19,
+        "max": 28
+      },
+      "eventListeners": {
+        "mean": 197.2,
+        "median": 197,
+        "min": 196,
+        "max": 200
+      },
+      "representativeArticleCount": 1,
+      "representativeImageCount": 1,
+      "representativeApiRequestCount": 9,
+      "representativeRequestCounts": {
+        "/api/clicked-category-history": 1,
+        "/api/common-anomaly-data": 4,
+        "/api/common-anomaly-image": 1,
+        "/api/current-user": 1,
+        "/api/mapping-config": 1,
+        "/api/pass-history": 1
+      },
+      "representativeResponseContentLengthBytes": 2769
+    },
+    "normal": {
+      "samples": [
+        {
+          "completionMs": 1062.7,
+          "articleCount": 8,
+          "imageCount": 8,
+          "apiRequestCount": 16,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 8,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 11717,
+          "taskDurationDeltaMs": 1024.673,
+          "scriptDurationDeltaMs": 575.379,
+          "layoutDurationDeltaMs": 58.862,
+          "jsHeapUsedBytes": 14669416,
+          "jsHeapDeltaBytes": -1403744,
+          "domNodes": 575,
+          "domNodeDelta": 291,
+          "eventListeners": 228,
+          "eventListenerDelta": -1
+        },
+        {
+          "completionMs": 697.7,
+          "articleCount": 8,
+          "imageCount": 8,
+          "apiRequestCount": 16,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 8,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 11717,
+          "taskDurationDeltaMs": 584.703,
+          "scriptDurationDeltaMs": 246.661,
+          "layoutDurationDeltaMs": 25.259,
+          "jsHeapUsedBytes": 14542588,
+          "jsHeapDeltaBytes": 640816,
+          "domNodes": 553,
+          "domNodeDelta": 317,
+          "eventListeners": 226,
+          "eventListenerDelta": 2
+        },
+        {
+          "completionMs": 762.5,
+          "articleCount": 8,
+          "imageCount": 8,
+          "apiRequestCount": 16,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 8,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 11717,
+          "taskDurationDeltaMs": 645.22,
+          "scriptDurationDeltaMs": 271.797,
+          "layoutDurationDeltaMs": 52.081,
+          "jsHeapUsedBytes": 14651672,
+          "jsHeapDeltaBytes": 689444,
+          "domNodes": 584,
+          "domNodeDelta": 300,
+          "eventListeners": 229,
+          "eventListenerDelta": 0
+        },
+        {
+          "completionMs": 758.7,
+          "articleCount": 8,
+          "imageCount": 8,
+          "apiRequestCount": 16,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 8,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 11717,
+          "taskDurationDeltaMs": 658.216,
+          "scriptDurationDeltaMs": 265.019,
+          "layoutDurationDeltaMs": 43.335,
+          "jsHeapUsedBytes": 14638424,
+          "jsHeapDeltaBytes": -450888,
+          "domNodes": 562,
+          "domNodeDelta": 278,
+          "eventListeners": 227,
+          "eventListenerDelta": -8
+        },
+        {
+          "completionMs": 787.6,
+          "articleCount": 8,
+          "imageCount": 8,
+          "apiRequestCount": 16,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 8,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 11717,
+          "taskDurationDeltaMs": 640.109,
+          "scriptDurationDeltaMs": 319.922,
+          "layoutDurationDeltaMs": 52.365,
+          "jsHeapUsedBytes": 14701804,
+          "jsHeapDeltaBytes": -236536,
+          "domNodes": 584,
+          "domNodeDelta": 300,
+          "eventListeners": 229,
+          "eventListenerDelta": -4
+        }
+      ],
+      "completionMs": {
+        "mean": 813.84,
+        "median": 762.5,
+        "min": 697.7,
+        "max": 1062.7
+      },
+      "taskDurationDeltaMs": {
+        "mean": 710.584,
+        "median": 645.22,
+        "min": 584.703,
+        "max": 1024.673
+      },
+      "scriptDurationDeltaMs": {
+        "mean": 335.756,
+        "median": 271.797,
+        "min": 246.661,
+        "max": 575.379
+      },
+      "layoutDurationDeltaMs": {
+        "mean": 46.38,
+        "median": 52.081,
+        "min": 25.259,
+        "max": 58.862
+      },
+      "jsHeapUsedBytes": {
+        "mean": 14640780.8,
+        "median": 14651672,
+        "min": 14542588,
+        "max": 14701804
+      },
+      "jsHeapDeltaBytes": {
+        "mean": -152181.6,
+        "median": -236536,
+        "min": -1403744,
+        "max": 689444
+      },
+      "domNodes": {
+        "mean": 571.6,
+        "median": 575,
+        "min": 553,
+        "max": 584
+      },
+      "domNodeDelta": {
+        "mean": 297.2,
+        "median": 300,
+        "min": 278,
+        "max": 317
+      },
+      "eventListeners": {
+        "mean": 227.8,
+        "median": 228,
+        "min": 226,
+        "max": 229
+      },
+      "representativeArticleCount": 8,
+      "representativeImageCount": 8,
+      "representativeApiRequestCount": 16,
+      "representativeRequestCounts": {
+        "/api/clicked-category-history": 1,
+        "/api/common-anomaly-data": 4,
+        "/api/common-anomaly-image": 8,
+        "/api/current-user": 1,
+        "/api/mapping-config": 1,
+        "/api/pass-history": 1
+      },
+      "representativeResponseContentLengthBytes": 11717
+    },
+    "large": {
+      "samples": [
+        {
+          "completionMs": 14929.9,
+          "articleCount": 1200,
+          "imageCount": 1200,
+          "apiRequestCount": 24,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 16,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 622764,
+          "taskDurationDeltaMs": 11593.951,
+          "scriptDurationDeltaMs": 8602.007,
+          "layoutDurationDeltaMs": 1288.447,
+          "jsHeapUsedBytes": 84364444,
+          "jsHeapDeltaBytes": 70365324,
+          "domNodes": 34040,
+          "domNodeDelta": 33804,
+          "eventListeners": 4995,
+          "eventListenerDelta": 4771
+        },
+        {
+          "completionMs": 15820.1,
+          "articleCount": 1200,
+          "imageCount": 1200,
+          "apiRequestCount": 24,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 16,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 622764,
+          "taskDurationDeltaMs": 12624.035,
+          "scriptDurationDeltaMs": 9022.758,
+          "layoutDurationDeltaMs": 1367.449,
+          "jsHeapUsedBytes": 84367380,
+          "jsHeapDeltaBytes": 69216520,
+          "domNodes": 34040,
+          "domNodeDelta": 33756,
+          "eventListeners": 4995,
+          "eventListenerDelta": 4760
+        },
+        {
+          "completionMs": 15771.1,
+          "articleCount": 1200,
+          "imageCount": 1200,
+          "apiRequestCount": 24,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 16,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 622764,
+          "taskDurationDeltaMs": 12368.319,
+          "scriptDurationDeltaMs": 9492.411,
+          "layoutDurationDeltaMs": 1111.615,
+          "jsHeapUsedBytes": 92879788,
+          "jsHeapDeltaBytes": 76660264,
+          "domNodes": 34040,
+          "domNodeDelta": 33804,
+          "eventListeners": 5001,
+          "eventListenerDelta": 4784
+        },
+        {
+          "completionMs": 14533,
+          "articleCount": 1200,
+          "imageCount": 1200,
+          "apiRequestCount": 24,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 16,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 622764,
+          "taskDurationDeltaMs": 10943.005,
+          "scriptDurationDeltaMs": 8469.342,
+          "layoutDurationDeltaMs": 777.212,
+          "jsHeapUsedBytes": 94600264,
+          "jsHeapDeltaBytes": 79446296,
+          "domNodes": 34049,
+          "domNodeDelta": 33765,
+          "eventListeners": 5002,
+          "eventListenerDelta": 4762
+        },
+        {
+          "completionMs": 14982.4,
+          "articleCount": 1200,
+          "imageCount": 1200,
+          "apiRequestCount": 24,
+          "requestCounts": {
+            "/api/clicked-category-history": 1,
+            "/api/common-anomaly-data": 4,
+            "/api/common-anomaly-image": 16,
+            "/api/current-user": 1,
+            "/api/mapping-config": 1,
+            "/api/pass-history": 1
+          },
+          "responseContentLengthBytes": 622764,
+          "taskDurationDeltaMs": 11809.296,
+          "scriptDurationDeltaMs": 8889.047,
+          "layoutDurationDeltaMs": 782.173,
+          "jsHeapUsedBytes": 90953704,
+          "jsHeapDeltaBytes": 75821452,
+          "domNodes": 34040,
+          "domNodeDelta": 33756,
+          "eventListeners": 5001,
+          "eventListenerDelta": 4765
+        }
+      ],
+      "completionMs": {
+        "mean": 15207.3,
+        "median": 14982.4,
+        "min": 14533,
+        "max": 15820.1
+      },
+      "taskDurationDeltaMs": {
+        "mean": 11867.721,
+        "median": 11809.296,
+        "min": 10943.005,
+        "max": 12624.035
+      },
+      "scriptDurationDeltaMs": {
+        "mean": 8895.113,
+        "median": 8889.047,
+        "min": 8469.342,
+        "max": 9492.411
+      },
+      "layoutDurationDeltaMs": {
+        "mean": 1065.379,
+        "median": 1111.615,
+        "min": 777.212,
+        "max": 1367.449
+      },
+      "jsHeapUsedBytes": {
+        "mean": 89433116,
+        "median": 90953704,
+        "min": 84364444,
+        "max": 94600264
+      },
+      "jsHeapDeltaBytes": {
+        "mean": 74301971.2,
+        "median": 75821452,
+        "min": 69216520,
+        "max": 79446296
+      },
+      "domNodes": {
+        "mean": 34041.8,
+        "median": 34040,
+        "min": 34040,
+        "max": 34049
+      },
+      "domNodeDelta": {
+        "mean": 33777,
+        "median": 33765,
+        "min": 33756,
+        "max": 33804
+      },
+      "eventListeners": {
+        "mean": 4998.8,
+        "median": 5001,
+        "min": 4995,
+        "max": 5002
+      },
+      "representativeArticleCount": 1200,
+      "representativeImageCount": 1200,
+      "representativeApiRequestCount": 24,
+      "representativeRequestCounts": {
+        "/api/clicked-category-history": 1,
+        "/api/common-anomaly-data": 4,
+        "/api/common-anomaly-image": 16,
+        "/api/current-user": 1,
+        "/api/mapping-config": 1,
+        "/api/pass-history": 1
+      },
+      "representativeResponseContentLengthBytes": 622764
+    }
+  }
+}
