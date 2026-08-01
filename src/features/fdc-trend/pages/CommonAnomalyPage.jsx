@@ -19,8 +19,8 @@ import {
 } from "../api/commonAnomalyApi"
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
+import { isLineMappingQueryReady } from "../api/mappingContract.mjs"
 import { deletePassHistory, fetchPassHistory } from "../api/passHistoryApi"
-import { SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 import { IdentityChartDialog, SkipChartDialog } from "./FdcTrendPage"
 
@@ -295,8 +295,9 @@ export function CommonAnomalyPage() {
     queryKey: ["l0-spider-line-mapping"],
     queryFn: fetchLineMapping,
   })
-  const lineMapping = mappingQuery.data?.line_mapping ?? SPIDER_LINE_REV
-  const sdwtMapping = mappingQuery.data?.sdwt_mapping ?? EMPTY_MAPPING
+  const mappingReady = isLineMappingQueryReady(mappingQuery)
+  const lineMapping = mappingReady ? mappingQuery.data.line_mapping : EMPTY_MAPPING
+  const sdwtMapping = mappingReady ? mappingQuery.data.sdwt_mapping : EMPTY_MAPPING
   const lines = useMemo(() => Array.from(new Set(Object.values(lineMapping))), [lineMapping])
   const activeLine = lines.includes(selectedLine) ? selectedLine : (lines[0] ?? "")
   const teamOptions = useMemo(
@@ -339,7 +340,7 @@ export function CommonAnomalyPage() {
           eqp: selectedEqp,
           sensor: selectedSensor,
         }),
-    enabled: Boolean(activeLine && activeTeam && activeTeamLabel),
+    enabled: Boolean(mappingReady && activeLine && activeTeam && activeTeamLabel),
   })
   const prcGroups = dataQuery.data?.prcGroups ?? EMPTY_LIST
   const eqps = dataQuery.data?.eqps ?? EMPTY_LIST
@@ -354,7 +355,7 @@ export function CommonAnomalyPage() {
       sdwt: activeTeamLabel,
       desc: "",
     }),
-    enabled: Boolean(!isSkipList && activeLine && activeTeamLabel),
+    enabled: Boolean(mappingReady && !isSkipList && activeLine && activeTeamLabel),
     staleTime: 30 * 1000,
     retry: false,
   })
@@ -572,7 +573,20 @@ export function CommonAnomalyPage() {
             </div>
           </div>
         </ResizableFilterArea>
-        {mappingQuery.isError ? <p className="border-t px-6 py-2 text-xs text-destructive">{mappingQuery.error.message}</p> : null}
+        {mappingQuery.isError ? (
+          <div className="flex items-center justify-between gap-3 border-t px-6 py-2 text-xs text-destructive">
+            <span>기준정보 매핑 오류: {mappingQuery.error.message}</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={mappingQuery.isFetching}
+              onClick={() => mappingQuery.refetch()}
+            >
+              다시 조회
+            </Button>
+          </div>
+        ) : null}
       </section>
 
       <main className="grid min-w-0 gap-4 p-4">

@@ -264,7 +264,7 @@ Self Equipment는 별도 최신 directory를 탐색하지 않고 index row의 `f
 
 | 상황 | 서버·API 결과 | 프론트엔드 동작 | 사용자 표시 | 상태 |
 |---|---|---|---|---|
-| mapping 로딩·오류 | query pending/error | fallback mapping 사용 가능, error 표시 | 기준정보 오류 문구 | `Confirmed` |
+| mapping 로딩·오류 | query pending/error 또는 빈·잘못된 payload | production fallback 없이 모든 종속 조회 비활성 | 기준정보 오류·다시 조회 | `Confirmed` / CORE-04 |
 | MY EQP 등록 오류 | non-2xx throw | option 계산과 별도 error | 등록 조건 오류 문구 | `Confirmed` |
 | 필수 API query 누락 | `400` JSON | client throw | dataQuery error alert | `Confirmed` |
 | 일반/MY EQP 조회 예외 | `500` JSON | client throw | 조회 실패 alert | `Confirmed` |

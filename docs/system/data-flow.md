@@ -155,7 +155,7 @@ flowchart LR
 
 | 파라미터 | 최초 출처 | 프론트엔드 처리·API 전달 | 서버·경로 반영 | 기본값·누락 | 상태 | 근거 |
 |---|---|---|---|---|---|---|
-| `line` | 사용자 선택 또는 URL | Dashboard 반복 `line`; 상세은 단일 `line` | mapping 검증, team/path 및 DB 조건 | 화면은 첫 mapping Line fallback; endpoint별 필수 | `Confirmed` | Dashboard/Self API |
+| `line` | 사용자 선택 또는 URL | Dashboard 반복 `line`; 상세은 단일 `line` | mapping 검증, team/path 및 DB 조건 | 유효 mapping의 첫 Line; mapping 실패 시 종속 조회 중단 | `Confirmed` / CORE-04 | Dashboard/Self API |
 | `sdwt` | mapping display 또는 URL 반복값 | display SDWT로 전달; `MY_EQP`는 virtual 값 | row filter·DB 등록 또는 MY EQP 분기 | 일반 상세 endpoint에서 필수 | `Confirmed` | URL utility; handlers |
 | `pathSdwt` | mapping JSON key | 화면의 team key | `path/{line}/{pathSdwt}`, `path_common` 조립 | 일반 상세에서 필수 | `Confirmed` | `readTeamErdRows`, `readCommonPathRows` |
 | `grade` / `priority` | 사용자·URL | `A/B`를 `A`,`B`로 확장하여 반복 `priority` | Parquet `priority`, mailing group | URL Grade가 없으면 화면 기본 `A/B` | `Confirmed` | `expandPriorities`; URL utility |
@@ -298,7 +298,7 @@ PNG endpoint는 허용 common root를 검사해 stream하고 scatter endpoint는
 | Dashboard 날짜 file 없음 | dashboard handler | `404` | API 오류 message | `Confirmed` | dashboard handler |
 | Dashboard 비교 file 없음 | summary builder | `previousDateTime`, change `null` | 비교 데이터 없음 표시 | `Confirmed` | Dashboard component |
 | 잘못된 Dashboard filter | validation | `400` | 조회 오류 | `Confirmed` | dashboard handler |
-| mapping 없음·형식 오류 | mapping handler/API | `500` 또는 client shape 오류 | mapping 오류; 일부 page fallback 존재 | `Confirmed`, fallback `Risk` | mapping module·pages |
+| mapping 없음·형식 오류 | mapping handler/API·runtime contract | 보호 오류 또는 client contract 오류 | production fallback 없이 종속 조회·등록 read/write 중단, 다시 조회 | `Confirmed` / CORE-04 | mapping module·pages·registration handlers |
 | Self 필수 query 누락 | Self handler | `400` | API 오류 panel | `Confirmed` | self module |
 | Self row 없음 | payload/page | 빈 option·rows | 선택지 없음 또는 빈 chart 안내 | `Confirmed` | page |
 | ERD path·file 오류 | scatter/file handler | `400`, `403`, `404` 또는 `500` | chart/image 오류 | `Confirmed` | self module |

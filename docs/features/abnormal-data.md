@@ -98,6 +98,7 @@ CommonalityAnomalyPage
 ```
 
 화면은 mapping으로 Line별 SDWT 후보를 만든 뒤 `stepDesc`, `sensor`, `chStep`을 API에 보낸다.
+CORE-04 이후 mapping API가 성공하고 최소 runtime 계약을 통과하기 전에는 동일성·공통부·Self의 종속 조회를 시작하지 않는다. 빈 `line_mapping`, 잘못된 dictionary type과 API 실패는 일반 empty가 아니라 기준정보 오류로 표시하며 사용자가 다시 조회할 수 있다.
 서버 경로에는 Line segment가 없으며 Line은 화면에서 SDWT 후보를 제한하고 응답 filter에 유지된다.
 서버는 `stepDesc → sensor → chStep` 종속 option을 만들고 최종 row의 `filePath`를 image endpoint에 전달한다.
 화면은 한 페이지에 최대 18개 row를 렌더링하며 `stepDesc`로 그룹화한다.

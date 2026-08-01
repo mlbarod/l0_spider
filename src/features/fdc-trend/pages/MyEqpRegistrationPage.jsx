@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import { fetchLineMapping } from "../api/mappingConfigApi"
+import { isLineMappingQueryReady } from "../api/mappingContract.mjs"
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { ResizableFilterArea } from "../components/ResizableFilterArea"
 import {
@@ -41,7 +42,6 @@ import {
   fetchMyEqpRegistrations,
 } from "../api/myEqpRegistrationApi"
 import { fetchMyEqpReference } from "../api/myEqpReferenceApi"
-import { SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 import { filterMyEqpReferenceRowsBySdwt } from "../utils/myEqpReferenceMatching.mjs"
 
@@ -305,11 +305,13 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
     queryKey: ["l0-spider-line-mapping"],
     queryFn: fetchLineMapping,
   })
+  const mappingReady = isLineMappingQueryReady(mappingQuery)
   const referenceQuery = useQuery({
     queryKey: ["my-eqp-reference"],
     queryFn: fetchMyEqpReference,
     staleTime: 5 * 60 * 1000,
     retry: false,
+    enabled: mappingReady,
   })
   const registrationMutation = useMutation({
     mutationFn: createMyEqpRegistration,
@@ -322,8 +324,8 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
     onError: (error) => toast.error(error.message),
   })
 
-  const lineMapping = mappingQuery.data?.line_mapping ?? SPIDER_LINE_REV
-  const sdwtMapping = mappingQuery.data?.sdwt_mapping ?? EMPTY_MAPPING
+  const lineMapping = mappingReady ? mappingQuery.data.line_mapping : EMPTY_MAPPING
+  const sdwtMapping = mappingReady ? mappingQuery.data.sdwt_mapping : EMPTY_MAPPING
   const lines = useMemo(
     () => Array.from(new Set(Object.values(lineMapping))).sort((left, right) => (
       left.localeCompare(right, "ko", { numeric: true })
@@ -334,7 +336,7 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
   const registrationsQuery = useQuery({
     queryKey: ["my-eqp-registrations", activeLine, false],
     queryFn: () => fetchMyEqpRegistrations({ line: activeLine }),
-    enabled: Boolean(activeLine),
+    enabled: Boolean(mappingReady && activeLine),
     staleTime: 15 * 1000,
     refetchInterval: 30 * 1000,
     retry: false,
@@ -403,7 +405,8 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
   const parsedMonitoringDays = Number(monitoringDays)
   const hasValidMonitoringDays = Number.isInteger(parsedMonitoringDays) && parsedMonitoringDays > 0
   const isReadyToSave = Boolean(
-    activeLine
+    mappingReady
+      && activeLine
       && activeSdwt
       && activePrcGroup
       && activeEqps.length > 0
@@ -612,9 +615,18 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
             {mappingQuery.isError || referenceQuery.isError ? (
               <div className="mt-3 grid gap-2">
                 {mappingQuery.isError ? (
-                  <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-                    기준정보 매핑 오류: {mappingQuery.error.message}
-                  </p>
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
+                    <span>기준정보 매핑 오류: {mappingQuery.error.message}</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={mappingQuery.isFetching}
+                      onClick={() => mappingQuery.refetch()}
+                    >
+                      다시 조회
+                    </Button>
+                  </div>
                 ) : null}
                 {referenceQuery.isError ? (
                   <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
@@ -839,7 +851,7 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
             <Button
               type="button"
               variant="destructive"
-              disabled={!deleteTarget || deleteMutation.isPending}
+              disabled={!mappingReady || !deleteTarget || deleteMutation.isPending}
               onClick={() => deleteMutation.mutate(deleteTarget)}
             >
               {deleteMutation.isPending ? (

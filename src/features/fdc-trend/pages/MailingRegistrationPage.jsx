@@ -46,6 +46,7 @@ import {
   fetchMailingRegistrations,
 } from "../api/mailingRegistrationApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
+import { isLineMappingQueryReady } from "../api/mappingContract.mjs"
 import { ResizableFilterArea } from "../components/ResizableFilterArea"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 import { expandMailingRegistrationRows } from "../utils/mailingRegistration.mjs"
@@ -221,6 +222,7 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
     queryFn: fetchLineMapping,
     staleTime: 5 * 60 * 1000,
   })
+  const mappingReady = isLineMappingQueryReady(mappingQuery)
 
   useEffect(() => {
     const currentKnoxId = normalizeKnoxId(currentUserQuery.data?.knoxId)
@@ -230,8 +232,8 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
     setLookupKnoxId(currentKnoxId)
   }, [currentUserQuery.data?.knoxId])
 
-  const lineMapping = mappingQuery.data?.line_mapping ?? EMPTY_MAPPING
-  const sdwtMapping = mappingQuery.data?.sdwt_mapping ?? EMPTY_MAPPING
+  const lineMapping = mappingReady ? mappingQuery.data.line_mapping : EMPTY_MAPPING
+  const sdwtMapping = mappingReady ? mappingQuery.data.sdwt_mapping : EMPTY_MAPPING
   const lines = useMemo(() => Array.from(new Set(Object.values(lineMapping)))
     .filter(Boolean)
     .sort((left, right) => left.localeCompare(right, "ko", { numeric: true })), [lineMapping])
@@ -268,7 +270,7 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
   const registrationsQuery = useQuery({
     queryKey: ["mailing-registrations", validLookupKnoxId],
     queryFn: () => fetchMailingRegistrations({ knoxId: validLookupKnoxId }),
-    enabled: Boolean(validLookupKnoxId),
+    enabled: Boolean(mappingReady && validLookupKnoxId),
     staleTime: 15 * 1000,
     retry: false,
   })
@@ -325,7 +327,7 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
   })
 
   const isReadyToSave = Boolean(
-    selectedLine && resolvedSdwts.length && recipientKnoxIds.length && !mappingQuery.isLoading,
+    mappingReady && selectedLine && resolvedSdwts.length && recipientKnoxIds.length,
   )
 
   const handleLineChange = (line) => {
@@ -464,9 +466,18 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
             </ResizableFilterArea>
 
             {mappingQuery.isError ? (
-              <p className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-                기준정보 매핑 오류: {mappingQuery.error.message}
-              </p>
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
+                <span>기준정보 매핑 오류: {mappingQuery.error.message}</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={mappingQuery.isFetching}
+                  onClick={() => mappingQuery.refetch()}
+                >
+                  다시 조회
+                </Button>
+              </div>
             ) : null}
           </section>
 
@@ -744,7 +755,7 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
             <Button
               type="button"
               variant="destructive"
-              disabled={!deleteTarget || deleteMutation.isPending}
+              disabled={!mappingReady || !deleteTarget || deleteMutation.isPending}
               onClick={() => deleteMutation.mutate({
                 knoxId: deleteTarget.knoxId,
                 line: deleteTarget.line,

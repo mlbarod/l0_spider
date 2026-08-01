@@ -140,7 +140,7 @@ Proxy가 존재해도 신뢰 header 정책과 Node 직접 접근 차단이 확�
 | Self Equipment | `line`, `pathSdwt`, `sdwt`, filters | 필수값·path segment·option matching | 400·500 | 성공 `sourcePath` | 일부 `Implemented` | `selfEquipmentData.mjs:62-65,321-353` |
 | ERD scatter | `path`, `eqp`, `sensor`, `chStep`, `days` | root·segment·0~30 integer | 400·보호 오류 500 | 성공 `sourcePath` | 일부 `Implemented` / `Risk` | `selfEquipmentData.mjs`; `safeApiError.mjs` |
 | image | absolute `path` | root·extension·file 존재 | 403·보호 오류 404/500 | 성공 요청 계약에 path 사용 | 일부 `Implemented` | file handlers |
-| registration | JSON, user IDs, 목록 | 1 MiB, count·length·pattern | 보호 오류 500 | debug row·DB detail 제거 | 일부 `Implemented` | registration handlers |
+| registration | JSON, user IDs, 목록 | 1 MiB, count·length·pattern, mapping 가용성·Line/SDWT 범위 | mapping 400/503 또는 보호 오류 500 | debug row·DB detail 제거 | 일부 `Implemented` / CORE-04 | registration handlers |
 | history | JSON, file path, batch | 64 KiB~2 MiB, root parse, batch 500 | 보호 오류 500 | 성공 payload 호환 유지 | 일부 `Implemented` | history handlers |
 | method | endpoint별 GET/HEAD/POST/DELETE | handler allowlist | 405 | 낮음 | `Implemented` | server handlers |
 | content type | POST JSON | body를 JSON parse하나 request `Content-Type` 강제 확인 없음 | parse error | content confusion | `Not Implemented` | `readJsonBody` functions |
@@ -162,7 +162,7 @@ Proxy가 존재해도 신뢰 header 정책과 Node 직접 접근 차단이 확�
 | ERD image | absolute path query | `handleErdFileRequest` | ERD root·image extension·regular file | stream read | 직접 file 존재 oracle | `Implemented` / `Risk` | `selfEquipmentData.mjs:803-833` |
 | commonality image | absolute path query | commonality handler | 최신 root·`img.png`·regular file | stream read | 404·500 path 노출 | `Implemented` / `Risk` | `commonalityData.mjs:256-289` |
 | static dist | browser pathname | `resolveStaticPath` | normalize·dist prefix | stream read | symlink·security header | 일부 `Implemented` | `server.mjs:89-128` |
-| mapping | env 또는 fixed path | `readLineMapping` | JSON parse·schema 일부 | file read | 설정 변조·경로 노출 | 일부 `Implemented` | `server/mappingConfig.mjs` |
+| mapping | env 또는 fixed path | `readLineMapping` | JSON parse·공통 runtime 계약·빈 Line 거부 | file read | 성공 `source_path`는 CORE-03B 잔여 | `Implemented` / CORE-04 | mapping contract·`server/mappingConfig.mjs` |
 | DB history path | body `filePath` | pass path parser | ERD/common root·segment count | DB write | 원본 경로가 DB·log에 남을 가능성 | 일부 `Implemented` | `passHistory.mjs:316-364,435-458` |
 
 확인된 core runtime은 `/appdata` 파일을 읽거나 stream하며 해당 경로에 파일을 쓰는 코드는 확인하지 못했다.

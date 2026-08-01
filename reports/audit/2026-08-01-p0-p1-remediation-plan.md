@@ -228,15 +228,15 @@ CORE-03A 완료 기준은 보호 대상 실패 body에 path·DB detail·등록 �
 ### 4.9 CA-006 — Mapping 실패 시 내장 mapping으로 계속 진행
 
 - 원 심각도: P1
-- 현재 판정: 동작 `Confirmed`, fallback의 공식 가용성 정책 `Unknown`
-- 현재 근거: Self, Common, Commonality와 My EQP 등록 화면이 mapping 실패·미완료 시 `SPIDER_LINE_REV`를 사용하고 후속 read/write query를 활성화할 수 있다.
+- 현재 판정: CORE-04 `Remediated`
+- 현재 근거: production 화면의 `SPIDER_LINE_REV` fallback을 제거하고 공통 runtime mapping 계약과 `mappingReady` gate를 적용했다. Mapping 실패·빈 `line_mapping`·잘못된 type에서는 후속 화면 조회를 활성화하지 않으며, My EQP·Mailing read/write는 서버에서도 mapping 가용성과 요청 범위를 확인한 뒤 DB helper를 호출한다.
 
-권장 조치:
+적용 조치:
 
 1. mapping API success와 최소 Schema 검증을 operational query의 선행 조건으로 둔다.
 2. mapping 실패 시 read·write 모두 중단하고 명시적 기준정보 오류와 재시도를 제공한다.
-3. 호환 snapshot이 반드시 필요하면 version, 생성 시각, 허용 기간과 적용 범위를 응답 계약에 넣고 화면에 stale 경고를 표시한다.
-4. fallback snapshot은 조회 전용으로 한정하고 My EQP/Mailing 등록·삭제에는 사용하지 않는다.
+3. 이번 release에는 snapshot fallback을 두지 않는다. 향후 필요하면 version, 생성 시각, 허용 기간과 적용 범위를 별도 승인한다.
+4. 향후 fallback snapshot을 도입하더라도 조회 전용으로 한정하고 My EQP/Mailing 등록·삭제에는 사용하지 않는다.
 5. 네 화면의 중복 gating 규칙을 작은 공통 hook 또는 pure validator로 맞추되 화면 전체 리팩터링은 하지 않는다.
 
 완료 기준:
@@ -291,10 +291,16 @@ CORE-03A 완료 기준은 보호 대상 실패 body에 path·DB detail·등록 �
 ### 4.12 PERF-001 — 공통부 결과 1,200개 전체 mount
 
 - 원 심각도: P1
-- 현재 판정: `Confirmed`
-- 현재 근거: `CommonAnomalyPage.jsx`는 `chartGroups.map → group.rows.map`으로 모든 card를 즉시 mount한다. 합성 large 5회 중앙값은 약 15초, DOM 34,040개, heap 91 MB였다.
+- 현재 판정: 전체 card mount 구조 `Confirmed`, 현재 운영 영향 `Unknown`, CORE-07 구현 제외
+- 현재 근거: `CommonAnomalyPage.jsx`는 `chartGroups.map → group.rows.map`으로 모든 card를 mount하고 PNG에는 `loading="lazy"`를 사용한다. 과거 합성 large 결과는 성능 위험 근거지만 현재 실제 사용량·체감 문제는 재측정하지 않았다.
 
-단계별 조치:
+종결 절차:
+
+1. 실제와 유사한 synthetic row 수와 viewport에서 현재 구조를 재측정한다.
+2. 허용 가능한 범위이면 위험 수용 또는 조치 불필요로 기록하고 CORE-07을 종결한다.
+3. 사용자 체감·DOM·memory 문제가 다시 확인될 때만 아래 pagination 후보를 별도 승인한다.
+
+조건부 조치 후보:
 
 1. 우선 final row를 EQP 순서대로 펼쳐 client에서 페이지당 최대 20개 card만 mount한다.
 2. 차트 영역 상단에 숫자 pagination과 현재/전체 row 범위를 표시한다. 페이지 밖 card·dialog·image query는 mount하지 않는다.
@@ -303,7 +309,7 @@ CORE-03A 완료 기준은 보호 대상 실패 body에 path·DB detail·등록 �
 5. 기존 sensor 선택 클릭이력은 전체 선택 category 의미를 잃지 않도록 별도 계약을 유지한다. 서버 pagination을 도입할 때 page 1 path만 기록하는 회귀를 허용하지 않는다.
 6. client pagination 후 payload·network가 여전히 병목일 때만 additive `page`, `pageSize`, `totalRows` 서버 계약을 검토한다.
 
-검증 기준:
+pagination을 별도 승인할 경우의 검증 기준:
 
 - mounted `CommonAnomalyImageCard`가 페이지당 20개를 넘지 않는다.
 - 1,200건의 총 의미와 page 이동·SKIP·이미지 오류가 유지된다.
@@ -339,11 +345,11 @@ CORE-03A 완료 기준은 보호 대상 실패 body에 path·DB detail·등록 �
 | 1 | `CORE-01` Dashboard 응답 무결성 guard | BQA-001, BQA-002 | 즉시 구현 | 불변조건 문서화 |
 | 2 | `CORE-02` Dashboard stale 표시 제거 | CA-005; CA-004는 D-04로 0 보정 유지 | 적용 완료 | 없음 |
 | 3 | `CORE-03A` 오류 응답 긴급 축소 | CA-002 error/debug 부분 | 적용 완료 | 없음 |
-| 4 | `CORE-04` Mapping fail-closed | CA-006 | 다음 구현 단위 | D-05 승인 완료 |
-| 5 | `CORE-05` Identity·Mailing authorization | CA-001, CA-007 | 보안 계약 변경 | 위임·관리자·legacy 정책 승인 |
+| 4 | `CORE-04` Mapping fail-closed | CA-006 | 적용 완료 | D-05 승인 반영 |
+| 5 | `CORE-05` Identity·Mailing authorization | CA-001, CA-007 | 이번 검수 조치 제외 | 사용자 제외 결정 |
 | 6 | `CORE-03B` opaque resource 전환 | CA-002 success path 부분 | 호환 migration | resource ID 설계 |
-| 7 | `CORE-06` strict source integrity | CA-003, CA-008 | 데이터 계약 변경 | timezone·Line alias 결정 |
-| 8 | `CORE-07` 공통부 20개 pagination | PERF-001 | 성능·UI | 클릭이력 의미 보존 |
+| 7 | `CORE-06` strict source integrity | CA-003, CA-008 | 이번 검수 조치 제외 | 사용자 제외 결정 |
+| 8 | `CORE-07` 공통부 20개 pagination | PERF-001 | 구현 제외·재측정 후 종결 판단 | 위험 수용 또는 조치 불필요 결정 |
 | 9 | `CORE-08` Dashboard cache 측정·개선 | PERF-002 | 측정 선행 | memory·latency budget |
 
 1차 Core 조치 범위는 `CORE-01`과 `CORE-02`다. `CORE-01`과 `MX-01`은 독립적으로 진행할 수 있다. `CORE-03A`는 전체 resource ID 전환을 기다리지 않고 먼저 적용한다. `CORE-05`, `CORE-03B`, `CORE-06`은 선행 계약을 생략하고 구현하지 않는다.
@@ -361,9 +367,9 @@ CORE-03A 완료 기준은 보호 대상 실패 body에 path·DB detail·등록 �
 | 날짜 | 정상, 월·일·윤일·시각 경계, suffix, Date, epoch 단위 |
 | identity/권한 | 본인, 타인, 위임, 관리자, 사용자 없음, DB 오류, timeout, body 변조 |
 | 오류 노출 | CORE-03A error body의 path·DB detail·사용자 행 부재; CORE-03B success body의 legacy path 부재 |
-| Mapping | 500, empty, 잘못된 type, stale snapshot, write 차단 |
+| Mapping | 500, empty, 잘못된 type, 후속 query 비활성, My EQP·Mailing read/write 차단 |
 | My EQP Line | 정상 Line, 공식 alias, 혼합 Line, 전부 mismatch |
-| pagination | 0·1·20·21·1,200 row, EQP 경계 분할, filter/page reset, off-page 미마운트 |
+| pagination | CORE-07 재측정 시 현재 무제한 mount의 synthetic 대량 성능만 측정; 이번 구현 gate에서 제외 |
 | cache | 10·30·90·180일 cold/warm, invalidation, byte eviction, 동시 요청 dedupe |
 
 ### 6.2 현재 `main`에서 사용하는 검증 진입점
@@ -382,7 +388,7 @@ CORE-03A 완료 기준은 보호 대상 실패 body에 path·DB detail·등록 �
 - `normal`, `partial`, `inconsistent`, `slow`, `error-*`, `large` 시나리오
 - P0 각 5회 반복
 - 자설비 `Sensor=ALL/ch_step=ALL`, 숫자 pagination, page 밖 network 요청
-- 공통부 1,200건 pagination과 성능 5회 비교
+- 공통부 대량 결과는 CORE-07 종결 판단이 필요할 때만 현재 구조를 재측정
 - 운영 DB·운영 파일·실제 메일 미사용
 
 Mock E2E·Playwright와 browser 성능 측정은 `main` Core 필수 검증에 포함하지 않고 `mock-agent`에서 수행한다.
@@ -397,7 +403,7 @@ Mock E2E·Playwright와 browser 성능 측정은 `main` Core 필수 검증에 �
 | strict 날짜 | Self/Common 데이터 문서, diagnostics/error contract, unit test |
 | Mapping fail-closed | 각 기능 문서, troubleshooting, 사용자 매뉴얼 |
 | My EQP Line | Self·abnormal data 문서, integration test, 사용자 매뉴얼 영향 확인 |
-| 공통부 pagination | abnormal data 문서, 사용자 매뉴얼, UI/component test |
+| 공통부 pagination | CORE-07 재측정 결과와 위험 수용·조치 불필요 결정 기록; 이번 구현 없음 |
 | Dashboard cache | dashboard·data-flow 문서, performance evidence, runbook 관찰 항목 |
 
 ## 8. 선행 결정이 필요한 항목
@@ -423,7 +429,6 @@ Mock E2E·Playwright와 browser 성능 측정은 `main` Core 필수 검증에 �
 - invalid 날짜가 정상 point로 보정됨. 단, `TL.total`의 0 보정은 D-04 승인 예외다.
 - Mapping 실패 중 write가 실행됨
 - My EQP success payload에 허용되지 않은 Line 행이 포함됨
-- 공통부 한 페이지에 20개를 초과하는 card가 mount됨
 - cache 변경 후 stale 응답 또는 승인된 memory 상한 초과가 발생함
 - Schema·fixture·contract·문서와 코드가 같은 변경에서 갱신되지 않음
 
@@ -450,13 +455,13 @@ Mock E2E·Playwright와 browser 성능 측정은 `main` Core 필수 검증에 �
 
 - 프런트 검증은 손상 응답 표시를 막지만 서버 권한·원천 무결성을 대신하지 않는다.
 - opaque resource 전환 중 legacy path를 병행하면 노출 위험이 완전히 해소되지 않는다.
-- client pagination은 DOM 병목을 줄이지만 1,200-row payload와 서버 집계를 줄이지 않는다.
+- CORE-07은 현재 PNG lazy loading과 실제 사용량을 재측정한 뒤 위험 수용 또는 조치 불필요로 종결할 수 있으며, 이번 검수 조치에서는 UI pagination을 적용하지 않는다.
 - cache hit 개선은 메모리·staleness trade-off를 새로 만들 수 있다.
 
 ## 11. 최종 권고
 
 `CORE-01`과 `CORE-02` 적용 후 다음 release 단위는 `CORE-03A`로 제한한다. 등록·파일·Dashboard·history API의 server/dependency 실패는 고정된 사용자 메시지, 안정적 `code`, `requestId`만 반환하고 DB detail·debug row·원문 exception·실패 경로를 반환하거나 helper stderr로 기록하지 않는다. 정상 성공 응답의 `sourcePath(s)`는 호환 전환이 필요한 `CORE-03B` 범위로 유지한다.
 
-D-04에 따라 `TL.total`의 기존 0 보정은 유지한다. D-05는 권장안대로 승인됐으므로 `CORE-03A` 검증 후 `CORE-04`에서 mapping read/write를 fail-closed하고, versioned snapshot이 필요하더라도 조회 전용으로만 허용하며 모든 write에는 fallback을 사용하지 않는다. 권한·resource ID·Line alias처럼 별도 계약이 필요한 변경은 승인된 정책과 additive migration을 준비한 뒤 진행한다.
+D-04에 따라 `TL.total`의 기존 0 보정은 유지한다. D-05 승인안은 CORE-04에 반영해 mapping read/write를 fail-closed했으며 이번 release에는 snapshot을 두지 않는다. CORE-07은 재측정 후 위험 수용 또는 조치 불필요로 종결 판단하고 구현 대상에서 제외한다. 사용자 결정에 따라 CORE-05와 CORE-06도 이번 검수 조치에서 제외한다. CORE-03B와 CORE-08은 각각 선행 계약·측정 없이는 구현하지 않는다.
 
 이 계획은 P0 2건과 P1 11건을 모두 추적하며, 운영 자원을 직접 조사하거나 변경하지 않고 Core와 `mock-agent` 경계를 유지한다.

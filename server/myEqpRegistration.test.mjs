@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { Readable } from "node:stream"
 import test from "node:test"
 
 import {
@@ -7,6 +8,24 @@ import {
   handleMyEqpRegistrationRequest,
   resolveRegistrationUserId,
 } from "./myEqpRegistration.mjs"
+
+const syntheticMapping = {
+  line_mapping: { TEAM_A: "LINE_A" },
+  sdwt_mapping: { TEAM_A: "SDWT_A" },
+}
+
+function createResponse() {
+  return {
+    statusCode: null,
+    body: "",
+    writeHead(statusCode) {
+      this.statusCode = statusCode
+    },
+    end(body = "") {
+      this.body = body
+    },
+  }
+}
 
 test("My EQP 등록 요청을 DB 컬럼용 값으로 정규화한다", () => {
   const payload = buildMyEqpRegistrationPayload({
@@ -116,19 +135,48 @@ test("Comment가 90자를 초과하면 거부한다", () => {
 })
 
 test("My EQP 등록 API는 GET, POST, DELETE 외 요청을 거부한다", async () => {
-  const response = {
-    statusCode: null,
-    body: "",
-    writeHead(statusCode) {
-      this.statusCode = statusCode
-    },
-    end(body = "") {
-      this.body = body
-    },
-  }
+  const response = createResponse()
 
   await handleMyEqpRegistrationRequest({ method: "PUT" }, response)
 
   assert.equal(response.statusCode, 405)
   assert.equal(JSON.parse(response.body).error, "Method not allowed")
+})
+
+test("mapping을 사용할 수 없으면 사용자·My EQP DB 조회 전에 fail-closed한다", async () => {
+  const response = createResponse()
+
+  await handleMyEqpRegistrationRequest(
+    { method: "GET", headers: {}, socket: { remoteAddress: "127.0.0.1" } },
+    response,
+    new URL("http://localhost/?line=LINE_A"),
+    { mappingReader: async () => { throw new Error("synthetic mapping unavailable") } },
+  )
+
+  const payload = JSON.parse(response.body)
+  assert.equal(response.statusCode, 503)
+  assert.equal(payload.code, "MAPPING_CONFIG_UNAVAILABLE")
+})
+
+test("mapping 범위 밖 Line과 SDWT의 My EQP write를 DB 요청 전에 거부한다", async () => {
+  const request = Readable.from([JSON.stringify({
+    line: "LINE_A",
+    sdwt: "UNKNOWN_TEAM",
+    prcGroup: "GROUP_A",
+    eqps: ["EQP_A"],
+    periode: 7,
+  })])
+  request.method = "POST"
+  request.headers = {}
+  request.socket = { remoteAddress: "127.0.0.1" }
+  const response = createResponse()
+
+  await handleMyEqpRegistrationRequest(request, response, undefined, {
+    mappingReader: async () => syntheticMapping,
+    registrationUserResolver: async () => "user01",
+  })
+
+  const payload = JSON.parse(response.body)
+  assert.equal(response.statusCode, 400)
+  assert.equal(payload.code, "MAPPING_SCOPE_MISMATCH")
 })

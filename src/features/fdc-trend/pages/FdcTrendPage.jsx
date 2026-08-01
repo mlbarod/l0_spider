@@ -43,6 +43,7 @@ import { ResizableFilterArea } from "../components/ResizableFilterArea"
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { createHitHistory } from "../api/hitHistoryApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
+import { isLineMappingQueryReady } from "../api/mappingContract.mjs"
 import { fetchMyEqpRegistrations } from "../api/myEqpRegistrationApi"
 import {
   createPassHistory,
@@ -58,7 +59,7 @@ import {
   fetchMyEqpEquipmentData,
   fetchSelfEquipmentData,
 } from "../api/selfEquipmentApi"
-import { SENSOR_GRADES, SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
+import { SENSOR_GRADES } from "../utils/fdcTrendMockData"
 import { getLowestChStepRowsByPpid } from "../utils/chStepGrouping.mjs"
 import { paginateChartGroups } from "../utils/chartPagination.mjs"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
@@ -1481,8 +1482,9 @@ export function FdcTrendPage() {
     queryKey: ["l0-spider-line-mapping"],
     queryFn: fetchLineMapping,
   })
-  const lineMapping = mappingQuery.data?.line_mapping ?? SPIDER_LINE_REV
-  const sdwtMapping = mappingQuery.data?.sdwt_mapping ?? EMPTY_MAPPING
+  const mappingReady = isLineMappingQueryReady(mappingQuery)
+  const lineMapping = mappingReady ? mappingQuery.data.line_mapping : EMPTY_MAPPING
+  const sdwtMapping = mappingReady ? mappingQuery.data.sdwt_mapping : EMPTY_MAPPING
   const lines = useMemo(
     () => Array.from(new Set(Object.values(lineMapping))),
     [lineMapping],
@@ -1491,7 +1493,7 @@ export function FdcTrendPage() {
   const myEqpRegistrationsQuery = useQuery({
     queryKey: ["my-eqp-registrations", activeLine, true],
     queryFn: () => fetchMyEqpRegistrations({ line: activeLine, activeOnly: true }),
-    enabled: Boolean(activeLine),
+    enabled: Boolean(mappingReady && activeLine),
     staleTime: 15 * 1000,
     refetchInterval: 30 * 1000,
     retry: false,
@@ -1557,7 +1559,8 @@ export function FdcTrendPage() {
           chStep: selectedChStep,
         }),
     enabled: Boolean(
-      activeLine
+      mappingReady
+      && activeLine
       && activeTeam
       && activeTeamLabel
     ),
@@ -1595,7 +1598,8 @@ export function FdcTrendPage() {
       desc: activeDesc,
     }),
     enabled: Boolean(
-      !isSkipList
+      mappingReady
+      && !isSkipList
       && !isMyEqp
       && activeLine
       && activeTeamLabel
@@ -2098,7 +2102,18 @@ export function FdcTrendPage() {
           </div>
         </ResizableFilterArea>
         {mappingQuery.isError ? (
-          <p className="border-t px-6 py-2 text-xs text-destructive">{mappingQuery.error.message}</p>
+          <div className="flex items-center justify-between gap-3 border-t px-6 py-2 text-xs text-destructive">
+            <span>기준정보 매핑 오류: {mappingQuery.error.message}</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={mappingQuery.isFetching}
+              onClick={() => mappingQuery.refetch()}
+            >
+              다시 조회
+            </Button>
+          </div>
         ) : null}
         {myEqpRegistrationsQuery.isError ? (
           <p className="border-t px-6 py-2 text-xs text-destructive">

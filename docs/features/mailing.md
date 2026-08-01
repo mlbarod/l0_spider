@@ -95,6 +95,8 @@ Dashboard는 `YYYY-MM-DD hh:mm:ss` 형식의 detail filename을 데이터 기준
 
 실제 운영 파일과 DB row는 조사하지 않았으며 데이터 생산 주기·완료 신호·신선도 SLA는 `Unknown`이다.
 
+CORE-04에서 등록 조회·저장·삭제는 mapping을 사용할 수 있을 때만 실행한다. My EQP는 `line_mapping[pathSdwt]`와 요청 Line을 대조하고, Mailing은 `sdwt_mapping` display 값 또는 path key fallback이 현재 mapping 범위에 있는지 서버에서 다시 확인한다. Mapping 실패 시 DB helper를 호출하지 않으며 snapshot fallback은 write에 사용하지 않는다.
+
 ## 7. Dashboard 메일 요약 집계 계약
 
 `lineDashboard.mailingSummary`는 `lineDashboard.summary`의 하위가 아니라 sibling 배열이다.

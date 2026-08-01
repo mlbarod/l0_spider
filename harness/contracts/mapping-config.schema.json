@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://l0-spider.local/contracts/mapping-config.schema.json",
+  "title": "L0 Spider mapping config response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["line_mapping", "sdwt_mapping"],
+  "properties": {
+    "line_mapping": {
+      "$ref": "#/$defs/nonEmptyMappingDictionary"
+    },
+    "sdwt_mapping": {
+      "$ref": "#/$defs/mappingDictionary"
+    },
+    "source_path": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "mappingDictionary": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "\\S"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "\\S"
+      }
+    },
+    "nonEmptyMappingDictionary": {
+      "allOf": [
+        { "$ref": "#/$defs/mappingDictionary" },
+        { "type": "object", "minProperties": 1 }
+      ]
+    }
+  }
+}

@@ -1,6 +1,13 @@
 import { spawn } from "node:child_process"
 import { fileURLToPath, URL } from "node:url"
 
+import {
+  MAPPING_CONFIG_UNAVAILABLE_CODE,
+  MAPPING_SCOPE_MISMATCH_CODE,
+  assertKnownMappingSdwts,
+  readLineMapping,
+  requireLineMapping,
+} from "./mappingConfig.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
 
 const helperPath = fileURLToPath(new URL("../scripts/mailing_registration.py", import.meta.url))
@@ -145,13 +152,19 @@ function runMailingHelper(action, payload) {
   })
 }
 
-export async function handleMailingRegistrationRequest(req, res, url) {
+export async function handleMailingRegistrationRequest(
+  req,
+  res,
+  url,
+  { mappingReader = readLineMapping } = {},
+) {
   if (!new Set(["GET", "POST", "DELETE"]).has(req.method)) {
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
     return
   }
 
   try {
+    const mapping = await requireLineMapping(mappingReader)
     if (req.method === "GET") {
       const knoxId = normalizeKnoxId(url.searchParams.get("knoxId"))
       const result = await runMailingHelper("list", { knoxId })
@@ -165,12 +178,14 @@ export async function handleMailingRegistrationRequest(req, res, url) {
     const body = await readJsonBody(req)
     if (req.method === "DELETE") {
       const payload = buildMailingDeletePayload(body)
+      assertKnownMappingSdwts(mapping, { line: payload.line, sdwts: payload.sdwts })
       const result = await runMailingHelper("delete_line", payload)
       sendJson(res, 200, result)
       return
     }
 
     const payload = buildMailingRegistrationPayload(body)
+    assertKnownMappingSdwts(mapping, { sdwts: payload.sdwts })
     const recipientPayloads = buildMailingRecipientPayloads(payload)
     const results = []
     for (const recipientPayload of recipientPayloads) {
@@ -191,10 +206,18 @@ export async function handleMailingRegistrationRequest(req, res, url) {
         priorities: payload.priorities,
       },
     })
-  } catch {
-    sendJson(res, 500, createSafeApiError({
-      code: "MAILING_REGISTRATION_REQUEST_FAILED",
-      message: "Mailing 기준정보 요청을 처리하지 못했습니다.",
+  } catch (error) {
+    const mappingUnavailable = error.code === MAPPING_CONFIG_UNAVAILABLE_CODE
+    const mappingMismatch = error.code === MAPPING_SCOPE_MISMATCH_CODE
+    sendJson(res, mappingUnavailable ? 503 : mappingMismatch ? 400 : 500, createSafeApiError({
+      code: mappingUnavailable
+        ? MAPPING_CONFIG_UNAVAILABLE_CODE
+        : mappingMismatch ? MAPPING_SCOPE_MISMATCH_CODE : "MAILING_REGISTRATION_REQUEST_FAILED",
+      message: mappingUnavailable
+        ? "기준정보 매핑을 사용할 수 없어 Mailing 요청을 중단했습니다."
+        : mappingMismatch
+          ? "선택한 Line과 SDWT가 기준정보와 일치하지 않습니다."
+          : "Mailing 기준정보 요청을 처리하지 못했습니다.",
       scope: "mailing-registration",
     }))
   }

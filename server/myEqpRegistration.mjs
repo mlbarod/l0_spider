@@ -2,6 +2,14 @@ import { spawn } from "node:child_process"
 import { fileURLToPath, URL } from "node:url"
 
 import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
+import {
+  MAPPING_CONFIG_UNAVAILABLE_CODE,
+  MAPPING_SCOPE_MISMATCH_CODE,
+  assertKnownMappingLine,
+  assertKnownMappingLineSdwt,
+  readLineMapping,
+  requireLineMapping,
+} from "./mappingConfig.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
 
 const helperPath = fileURLToPath(new URL("../scripts/my_eqp_registration.py", import.meta.url))
@@ -222,20 +230,29 @@ export async function listMyEqpRegistrationRecords({ line, knoxId, activeOnly = 
   return Array.isArray(result.records) ? result.records : []
 }
 
-export async function handleMyEqpRegistrationRequest(req, res, url) {
+export async function handleMyEqpRegistrationRequest(
+  req,
+  res,
+  url,
+  {
+    mappingReader = readLineMapping,
+    registrationUserResolver = resolveRegistrationUserId,
+  } = {},
+) {
   if (!new Set(["GET", "POST", "DELETE"]).has(req.method)) {
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
     return
   }
 
   try {
+    const mapping = await requireLineMapping(mappingReader)
     const remoteIp = getRemoteIp(req)
     if (!remoteIp) {
       sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
       return
     }
 
-    const userId = await resolveRegistrationUserId(remoteIp)
+    const userId = await registrationUserResolver(remoteIp)
 
     if (req.method === "GET") {
       const line = normalizeText(url.searchParams.get("line"))
@@ -243,6 +260,7 @@ export async function handleMyEqpRegistrationRequest(req, res, url) {
         sendJson(res, 400, { ok: false, error: "Line Name이 필요합니다." })
         return
       }
+      assertKnownMappingLine(mapping, line)
       const activeOnly = url.searchParams.get("activeOnly") === "true"
       const records = await listMyEqpRegistrationRecords({ line, knoxId: userId, activeOnly })
       sendJson(res, 200, {
@@ -262,6 +280,7 @@ export async function handleMyEqpRegistrationRequest(req, res, url) {
         eqps: body.eqps,
         periode: body.periode,
       }, userId)
+      assertKnownMappingLineSdwt(mapping, { line: payload.line, pathSdwt: payload.sdwt })
       payload.execDate = normalizeDatabaseTimestamp(body.execDate)
       if (!payload.execDate) throw new Error("등록 시점 정보가 필요합니다.")
       const result = await runRegistrationHelper("delete", payload)
@@ -270,12 +289,21 @@ export async function handleMyEqpRegistrationRequest(req, res, url) {
     }
 
     const payload = buildMyEqpRegistrationPayload(body, userId)
+    assertKnownMappingLineSdwt(mapping, { line: payload.line, pathSdwt: payload.sdwt })
     const result = await runRegistrationHelper("insert", payload)
     sendJson(res, 200, { ...result, knoxId: userId, knoxIds: payload.knoxIds })
-  } catch {
-    sendJson(res, 500, createSafeApiError({
-      code: "MY_EQP_REGISTRATION_REQUEST_FAILED",
-      message: "My EQP 기준정보 요청을 처리하지 못했습니다.",
+  } catch (error) {
+    const mappingUnavailable = error.code === MAPPING_CONFIG_UNAVAILABLE_CODE
+    const mappingMismatch = error.code === MAPPING_SCOPE_MISMATCH_CODE
+    sendJson(res, mappingUnavailable ? 503 : mappingMismatch ? 400 : 500, createSafeApiError({
+      code: mappingUnavailable
+        ? MAPPING_CONFIG_UNAVAILABLE_CODE
+        : mappingMismatch ? MAPPING_SCOPE_MISMATCH_CODE : "MY_EQP_REGISTRATION_REQUEST_FAILED",
+      message: mappingUnavailable
+        ? "기준정보 매핑을 사용할 수 없어 My EQP 요청을 중단했습니다."
+        : mappingMismatch
+          ? "선택한 Line과 SDWT가 기준정보와 일치하지 않습니다."
+          : "My EQP 기준정보 요청을 처리하지 못했습니다.",
       scope: "my-eqp-registration",
     }))
   }

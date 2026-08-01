@@ -17,7 +17,7 @@ import {
   fetchCommonalityData,
 } from "../api/commonalityApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
-import { SPIDER_LINE_REV } from "../utils/fdcTrendMockData"
+import { isLineMappingQueryReady } from "../api/mappingContract.mjs"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 
 const EMPTY_MAPPING = Object.freeze({})
@@ -215,8 +215,9 @@ export function CommonalityAnomalyPage() {
     queryKey: ["l0-spider-line-mapping"],
     queryFn: fetchLineMapping,
   })
-  const lineMapping = mappingQuery.data?.line_mapping ?? SPIDER_LINE_REV
-  const sdwtMapping = mappingQuery.data?.sdwt_mapping ?? EMPTY_MAPPING
+  const mappingReady = isLineMappingQueryReady(mappingQuery)
+  const lineMapping = mappingReady ? mappingQuery.data.line_mapping : EMPTY_MAPPING
+  const sdwtMapping = mappingReady ? mappingQuery.data.sdwt_mapping : EMPTY_MAPPING
   const lines = useMemo(
     () => Array.from(new Set(Object.values(lineMapping))),
     [lineMapping],
@@ -250,7 +251,7 @@ export function CommonalityAnomalyPage() {
       sensor: selectedSensor,
       chStep: selectedChStep,
     }),
-    enabled: Boolean(activeLine && activeTeam && activeTeamLabel),
+    enabled: Boolean(mappingReady && activeLine && activeTeam && activeTeamLabel),
   })
   const stepDescs = dataQuery.data?.stepDescs ?? EMPTY_LIST
   const sensors = dataQuery.data?.sensors ?? EMPTY_LIST
@@ -505,6 +506,20 @@ export function CommonalityAnomalyPage() {
             </div>
           </div>
         </ResizableFilterArea>
+        {mappingQuery.isError ? (
+          <div className="flex items-center justify-between gap-3 border-t px-6 py-2 text-xs text-destructive">
+            <span>기준정보 매핑 오류: {mappingQuery.error.message}</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={mappingQuery.isFetching}
+              onClick={() => mappingQuery.refetch()}
+            >
+              다시 조회
+            </Button>
+          </div>
+        ) : null}
       </section>
 
       <main className="grid min-w-0 gap-4 p-4">

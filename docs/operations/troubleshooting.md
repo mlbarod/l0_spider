@@ -258,6 +258,7 @@ stat <expected-file>
 - data/filesystem owner에게 expected path, 시각과 기능 범위를 마스킹해 전달한다.
 - history file만 실패한 부분 성공과 주 data 실패를 구분한다.
 - cache 문제로 단정하기 전에 source file publish·mtime 상태를 확인한다.
+- mapping 실패 중에는 Self·동일성·공통부 종속 조회와 My EQP·Mailing 등록 read/write가 fail-closed하는 것이 정상이다. 내장 mapping이나 임의 파일로 우회하지 않고 화면의 **다시 조회**와 request ID로 원인을 추적한다.
 
 ### 정상 판정
 
