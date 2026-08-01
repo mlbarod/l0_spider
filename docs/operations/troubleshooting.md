@@ -487,7 +487,7 @@ source compile은 application owner, disk·permission·artifact 배포는 releas
 ### Risk
 
 - restart 중심 대응은 외부 dependency 장애와 부분 commit을 숨길 수 있다.
-- file·DB 오류 원문에는 내부 path와 상세정보가 포함될 수 있다.
+- CORE-03A 보호 대상 API 오류는 원문 대신 안정적 `code`와 `requestId`를 반환한다. 문의 시 발생 시각·endpoint·HTTP status·request ID를 함께 확인한다.
 - exact file 확인을 넘어 `/appdata`를 순회하면 운영 부하·노출 위험이 있다.
 - mail 오발송과 DB write는 application rollback만으로 복구되지 않는다.
 - proxy header·URL query·journal은 사용자·STEP 정보 노출 경계다.

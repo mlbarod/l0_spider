@@ -2,7 +2,6 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
-  buildMyEqpDebugRows,
   buildMyEqpRegistrationPayload,
   groupMyEqpRegistrationRecords,
   handleMyEqpRegistrationRequest,
@@ -48,27 +47,7 @@ test("전체 공개 요청이 포함되어도 신규 My EQP는 지정 사용자 
   assert.equal(payload.isPublic, false)
 })
 
-test("복수 선택한 EQP를 EQP별 개별 DB 행으로 만든다", () => {
-  const rows = buildMyEqpDebugRows({
-    line: "P1D",
-    sdwt: "DREAMS P1D",
-    prcGroup: "OXIDE ETCH",
-    eqps: ["EQP01_CH_A", "EQP02_CH_B"],
-    execDate: "2026-07-18 14:30:00",
-    periode: 15,
-    comment: "점검 대상",
-    knoxId: "user01",
-    knoxIds: ["user01"],
-    isPublic: true,
-  })
-
-  assert.equal(rows.length, 2)
-  assert.deepEqual(rows.map((row) => row.eqp), ["EQP01_CH_A", "EQP02_CH_B"])
-  assert.ok(rows.every((row) => row.line === "P1D" && row.periode === 15))
-  assert.ok(rows.every((row) => row.is_public === 1))
-})
-
-test("복수 knox_id와 EQP의 조합을 각각 DB 행으로 만든다", () => {
+test("복수 knox_id를 정규화하고 중복 제거한다", () => {
   const payload = buildMyEqpRegistrationPayload({
     line: "P1D",
     sdwt: "DREAMS P1D",
@@ -77,16 +56,9 @@ test("복수 knox_id와 EQP의 조합을 각각 DB 행으로 만든다", () => {
     periode: 7,
     knoxIds: ["user01", " user02@samsung.com ", "user01"],
   }, "owner")
-  const rows = buildMyEqpDebugRows(payload)
 
   assert.deepEqual(payload.knoxIds, ["user01", "user02"])
-  assert.equal(rows.length, 4)
-  assert.deepEqual(rows.map((row) => [row.knox_id, row.eqp]), [
-    ["user01", "EQP01"],
-    ["user01", "EQP02"],
-    ["user02", "EQP01"],
-    ["user02", "EQP02"],
-  ])
+  assert.deepEqual(payload.eqps, ["EQP01", "EQP02"])
 })
 
 test("동일 저장 조건의 EQP 행을 하나의 등록 조건으로 묶고 만료를 계산한다", () => {

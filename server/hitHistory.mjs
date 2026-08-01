@@ -3,6 +3,7 @@ import { fileURLToPath, URL } from "node:url"
 
 import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
 import { parsePassHistoryPath } from "./passHistory.mjs"
+import { createSafeApiError } from "./safeApiError.mjs"
 
 const helperPath = fileURLToPath(new URL("../scripts/hit_history.py", import.meta.url))
 
@@ -36,10 +37,9 @@ function runHitHistoryHelper(payload) {
   return new Promise((resolvePromise, reject) => {
     const child = spawn("python3", ["-B", helperPath], {
       env: process.env,
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "ignore"],
     })
     let stdout = ""
-    let stderr = ""
     let timedOut = false
     const timeout = setTimeout(() => {
       timedOut = true
@@ -47,7 +47,6 @@ function runHitHistoryHelper(payload) {
     }, 10_000)
 
     child.stdout.on("data", (chunk) => { stdout += chunk })
-    child.stderr.on("data", (chunk) => { stderr += chunk })
     child.on("error", (error) => {
       clearTimeout(timeout)
       reject(error)
@@ -63,11 +62,10 @@ function runHitHistoryHelper(payload) {
       try {
         result = JSON.parse(stdout.trim())
       } catch {
-        reject(new Error(stderr.trim() || "HIT 이력 응답을 해석하지 못했습니다."))
+        reject(new Error("HIT 이력 응답을 해석하지 못했습니다."))
         return
       }
       if (!result.ok) {
-        if (stderr.trim()) console.error(`[hit-history] ${stderr.trim()}`)
         reject(new Error(result.error || "HIT 이력을 저장하지 못했습니다."))
         return
       }
@@ -122,7 +120,11 @@ export async function handleHitHistoryRequest(req, res) {
     })
     const result = await runHitHistoryHelper(record)
     sendJson(res, 200, result)
-  } catch (error) {
-    sendJson(res, 500, { ok: false, error: error.message })
+  } catch {
+    sendJson(res, 500, createSafeApiError({
+      code: "HIT_HISTORY_REQUEST_FAILED",
+      message: "HIT 이력 요청을 처리하지 못했습니다.",
+      scope: "hit-history",
+    }))
   }
 }

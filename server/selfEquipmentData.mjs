@@ -8,6 +8,7 @@ import { buildTeamErdPath } from "../src/config/spiderDataPaths.mjs"
 import { getLruEntry, setLruEntry } from "./boundedCache.mjs"
 import { getRemoteIp } from "./currentUser.mjs"
 import { readLineMapping } from "./mappingConfig.mjs"
+import { createSafeApiError } from "./safeApiError.mjs"
 import {
   listMyEqpRegistrationRecords,
   resolveRegistrationUserId,
@@ -345,11 +346,12 @@ export async function handleSelfEquipmentDataRequest(req, res, url) {
       },
       sourcePath: filePath,
     })
-  } catch (error) {
-    sendJson(res, 500, {
-      ok: false,
-      error: `분임조별 ERD 이상감지 경로 데이터를 불러오지 못했습니다: ${error.message}`,
-    })
+  } catch {
+    sendJson(res, 500, createSafeApiError({
+      code: "SELF_EQUIPMENT_DATA_LOAD_FAILED",
+      message: "분임조별 ERD 이상감지 경로 데이터를 불러오지 못했습니다.",
+      scope: "self-equipment-data",
+    }))
   }
 }
 
@@ -438,11 +440,12 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
       availablePriorities,
       sourcePaths: dataSources.map((source) => source.filePath),
     })
-  } catch (error) {
-    sendJson(res, 500, {
-      ok: false,
-      error: `My EQP 이상감지 데이터를 불러오지 못했습니다: ${error.message}`,
-    })
+  } catch {
+    sendJson(res, 500, createSafeApiError({
+      code: "MY_EQP_DATA_LOAD_FAILED",
+      message: "My EQP 이상감지 데이터를 불러오지 못했습니다.",
+      scope: "my-eqp-data",
+    }))
   }
 }
 
@@ -731,8 +734,6 @@ export async function handleErdScatterDataRequest(req, res, url) {
     return
   }
 
-  let sourcePath = ""
-
   try {
     const imagePath = url.searchParams.get("path")?.trim() ?? ""
     const eqp = url.searchParams.get("eqp")?.trim() ?? ""
@@ -751,7 +752,6 @@ export async function handleErdScatterDataRequest(req, res, url) {
       sensor: pathSensor,
       chStep: pathChStep,
     } = resolveErdDataFilePath(imagePath)
-    sourcePath = filePath
     const sensor = requestedSensor || pathSensor
     const chStep = requestedChStep || pathChStep
     assertPathSegment("sensor", sensor)
@@ -779,8 +779,8 @@ export async function handleErdScatterDataRequest(req, res, url) {
     let historyError = ""
     try {
       historyRows = await readErdHistoryRows(historyPath)
-    } catch (error) {
-      historyError = `변경점 이력을 불러오지 못했습니다: ${error.message}`
+    } catch {
+      historyError = "변경점 이력을 불러오지 못했습니다."
     }
     sendJson(res, 200, buildErdScatterPayload(rows, {
       eqp,
@@ -791,12 +791,12 @@ export async function handleErdScatterDataRequest(req, res, url) {
       historyRows,
       historyError,
     }))
-  } catch (error) {
-    sendJson(res, 500, {
-      ok: false,
-      error: `ERD 이상감지 데이터를 불러오지 못했습니다: ${error.message}`,
-      sourcePath,
-    })
+  } catch {
+    sendJson(res, 500, createSafeApiError({
+      code: "ERD_SCATTER_LOAD_FAILED",
+      message: "ERD 이상감지 데이터를 불러오지 못했습니다.",
+      scope: "erd-scatter",
+    }))
   }
 }
 

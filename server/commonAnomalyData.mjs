@@ -7,6 +7,7 @@ import { compressors } from "hyparquet-compressors"
 import { buildCommonAnomalyPath } from "../src/config/spiderDataPaths.mjs"
 import { getLruEntry, setLruEntry } from "./boundedCache.mjs"
 import { COMMON_PASS_HISTORY_VERSION, listPassHistoryRecords } from "./passHistory.mjs"
+import { createSafeApiError } from "./safeApiError.mjs"
 
 export const COMMON_ANOMALY_COLUMNS = Object.freeze([
   "file_path",
@@ -378,11 +379,12 @@ export async function handleCommonAnomalyDataRequest(req, res, url) {
       },
       sourcePath: filePath,
     })
-  } catch (error) {
-    sendJson(res, 500, {
-      ok: false,
-      error: `공통부 이상감지 경로 데이터를 불러오지 못했습니다: ${error.message}`,
-    })
+  } catch {
+    sendJson(res, 500, createSafeApiError({
+      code: "COMMON_ANOMALY_DATA_LOAD_FAILED",
+      message: "공통부 이상감지 경로 데이터를 불러오지 못했습니다.",
+      scope: "common-anomaly-data",
+    }))
   }
 }
 
@@ -399,7 +401,11 @@ export function handleCommonAnomalyImageRequest(req, res, url) {
     return
   }
   if (!existsSync(filePath) || !statSync(filePath).isFile()) {
-    sendJson(res, 404, { ok: false, error: "공통부 이상감지 이미지 파일이 없습니다.", path: filePath })
+    sendJson(res, 404, createSafeApiError({
+      code: "COMMON_ANOMALY_IMAGE_NOT_FOUND",
+      message: "공통부 이상감지 이미지 파일이 없습니다.",
+      scope: "common-anomaly-image",
+    }))
     return
   }
 
@@ -606,11 +612,11 @@ export async function handleCommonAnomalyScatterRequest(req, res, url) {
       filePath: sourcePath,
       imagePath,
     }))
-  } catch (error) {
-    sendJson(res, 500, {
-      ok: false,
-      error: `공통부 이상감지 데이터를 불러오지 못했습니다: ${error.message}`,
-      sourcePath,
-    })
+  } catch {
+    sendJson(res, 500, createSafeApiError({
+      code: "COMMON_ANOMALY_SCATTER_LOAD_FAILED",
+      message: "공통부 이상감지 데이터를 불러오지 못했습니다.",
+      scope: "common-anomaly-scatter",
+    }))
   }
 }

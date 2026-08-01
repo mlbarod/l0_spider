@@ -1,4 +1,4 @@
-import { getApiErrorMessage, sanitizeErrorMessage } from "./errorMessage.js"
+import { getApiErrorMessage } from "./errorMessage.js"
 
 async function readPayload(response) {
   return response.json().catch(() => ({}))
@@ -19,12 +19,7 @@ export async function createMailingRegistration({ knoxId, knoxIds, sdwts }) {
   const payload = await readPayload(response)
 
   if (!response.ok) {
-    const error = new Error(getApiErrorMessage(payload, "Mailing 기준정보를 저장하지 못했습니다."))
-    error.table = payload.table
-    error.debugRow = payload.debugRow
-    error.dbErrorCode = payload.dbErrorCode
-    error.dbErrorDetail = sanitizeErrorMessage(payload.dbErrorDetail, "")
-    throw error
+    throw new Error(getApiErrorMessage(payload, "Mailing 기준정보를 저장하지 못했습니다."))
   }
   return payload
 }
@@ -38,10 +33,7 @@ export async function deleteMailingRegistrationLine({ knoxId, line, sdwts }) {
   const payload = await readPayload(response)
 
   if (!response.ok) {
-    const error = new Error(getApiErrorMessage(payload, "Mailing Line 조건을 삭제하지 못했습니다."))
-    error.dbErrorCode = payload.dbErrorCode
-    error.dbErrorDetail = sanitizeErrorMessage(payload.dbErrorDetail, "")
-    throw error
+    throw new Error(getApiErrorMessage(payload, "Mailing Line 조건을 삭제하지 못했습니다."))
   }
   return payload
 }

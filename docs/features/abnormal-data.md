@@ -268,7 +268,7 @@ Self·공통부는 모든 root를 최신순으로 탐색하지 않고 upstream i
 - ERD·common data와 image handler는 `resolve()`와 허용 root·확장자 검사를 사용한다.
 - 실제 `realpath`·symlink 탈출 방지, mount ACL과 read-only 설정은 `Unknown`이다.
 - API는 다음 조회를 위해 성공 payload에 `file_path`, `sourcePath`, `latest.path`를 포함할 수 있다.
-- frontend 오류 formatter는 경로를 마스킹하지만 network response와 access log 노출은 별도 `Risk`다.
+- CORE-03A 보호 대상 실패 응답은 고정 `error`, 안정적 `code`, `requestId`만 반환하며 원문 exception·실패 경로를 network response에 포함하지 않는다. 외부 access log 정책은 별도 `Unknown`이다.
 - 운영 파일의 절대 path를 API 계약에서 제거하려면 opaque ID 또는 server-side mapping으로 producer·consumer를 함께 변경해야 한다.
 
 ## 13. Mismatch
@@ -296,7 +296,7 @@ Self·공통부는 모든 root를 최신순으로 탐색하지 않고 upstream i
 ## 15. Risk
 
 - index row가 absolute path를 전달하므로 경로 변경·mount 이전이 API와 browser query까지 전파될 수 있다.
-- 성공·실패 payload의 source path가 network·log에서 운영 구조를 노출할 수 있다.
+- 성공 payload의 source path가 network에서 운영 구조를 노출할 수 있다. 보호 대상 실패 payload의 source path·원문 exception은 CORE-03A에서 제거됐다.
 - path prefix 검사가 lexical 비교 중심이어서 symlink 구성은 별도 운영 검증이 필요하다.
 - upstream publish가 원자적이지 않으면 index는 존재하지만 data/image가 아직 없는 부분 결과가 발생할 수 있다.
 - 동적 `${sensor}_${chStep}` column이 없거나 타입이 다르면 chart 전체가 실패할 수 있다.

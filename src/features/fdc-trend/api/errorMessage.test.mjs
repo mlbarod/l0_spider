@@ -22,3 +22,14 @@ test("경로가 없는 오류 메시지와 fallback은 그대로 사용한다", 
   assert.equal(sanitizeErrorMessage("조회 조건이 올바르지 않습니다."), "조회 조건이 올바르지 않습니다.")
   assert.equal(getApiErrorMessage({}, "데이터를 불러오지 못했습니다."), "데이터를 불러오지 못했습니다.")
 })
+
+test("안전한 문의 코드는 오류 메시지에 표시하고 잘못된 값은 무시한다", () => {
+  assert.equal(
+    getApiErrorMessage({ error: "조회 실패", requestId: "123e4567-e89b-12d3-a456-426614174000" }),
+    "조회 실패 [문의 코드: 123e4567-e89b-12d3-a456-426614174000]",
+  )
+  assert.equal(
+    getApiErrorMessage({ error: "조회 실패", requestId: "../../secret" }),
+    "조회 실패",
+  )
+})

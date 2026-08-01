@@ -16,6 +16,7 @@ import {
 } from "../src/features/fdc-trend/api/dashboardIntegrity.mjs"
 import { getLruEntry, setLruEntry } from "./boundedCache.mjs"
 import { mappingConfigPath, readLineMapping } from "./mappingConfig.mjs"
+import { createSafeApiError } from "./safeApiError.mjs"
 
 export const DASHBOARD_STATS_COLUMNS = SPIDER_DASHBOARD_COLUMNS.stats
 export const DASHBOARD_DETAIL_COLUMNS = SPIDER_DASHBOARD_COLUMNS.detail
@@ -829,13 +830,28 @@ export async function handleDashboardDataRequest(req, res, requestUrl) {
       res.end()
       return
     }
-    const isIntegrityError = error.code === DASHBOARD_INTEGRITY_ERROR_CODE
-    sendJson(res, statusCode, {
-      ok: false,
-      ...(isIntegrityError ? { code: DASHBOARD_INTEGRITY_ERROR_CODE } : {}),
-      error: isIntegrityError
-        ? "대시보드 데이터 정합성 오류가 발생했습니다. 다시 조회해 주세요."
-        : `대시보드 데이터를 불러오지 못했습니다: ${error.message}`,
-    })
+    const safeError = error.code === "DASHBOARD_LATEST_DATE_NOT_FOUND"
+      ? {
+          code: "DASHBOARD_LATEST_DATE_NOT_FOUND",
+          message: "대시보드 최신 데이터 기준일을 찾지 못했습니다.",
+        }
+      : error.code === "DASHBOARD_INVALID_FILTER"
+        ? {
+            code: "DASHBOARD_INVALID_FILTER",
+            message: "대시보드 조회 조건이 올바르지 않습니다.",
+          }
+        : error.code === DASHBOARD_INTEGRITY_ERROR_CODE
+          ? {
+              code: DASHBOARD_INTEGRITY_ERROR_CODE,
+              message: "대시보드 데이터 정합성 오류가 발생했습니다. 다시 조회해 주세요.",
+            }
+          : {
+              code: "DASHBOARD_DATA_LOAD_FAILED",
+              message: "대시보드 데이터를 불러오지 못했습니다.",
+            }
+    sendJson(res, statusCode, createSafeApiError({
+      ...safeError,
+      scope: "dashboard-data",
+    }))
   }
 }

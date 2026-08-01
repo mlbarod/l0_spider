@@ -294,6 +294,7 @@ mapping되지 않은 detail row는 집계에서 제외되며 화면은 `meta.unm
 
 숫자 formatter는 유효한 숫자로 변환되지 않으면 `—`를 표시하지만 API client가 세부 타입 오류를 먼저 차단하지는 않는다.
 `ratio`는 숫자 메서드를 직접 호출하므로 타입 호환이 깨지면 화면 오류가 발생할 수 있다.
+`TL.total`은 D-04 승인에 따라 null·빈 문자열·숫자 변환 실패를 기존과 같이 `0`으로 보정하며 `monitoringSensorTotal`의 non-null number 계약을 유지한다. 이 예외는 다른 숫자 field에 자동 적용하지 않는다.
 
 ## 14. 로딩, 빈 데이터, 부분 데이터와 오류
 
@@ -346,15 +347,14 @@ My EQP 메일 count는 sender가 같은 고유건 규칙으로 별도 계산하�
 | 조건 | HTTP status | GET body | HEAD body | 상태 |
 |---|---:|---|---|---|
 | 성공 | `200` | `{ok:true,...payload}` | 없음 | `Confirmed` |
-| 날짜·Line filter 오류 | `400` | `{ok:false,error:string}` | 없음 | `Confirmed` |
-| 유효한 Dashboard filename 없음 | `404` | `{ok:false,error:string}` | 없음 | `Confirmed` |
+| 날짜·Line filter 오류 | `400` | `{ok:false,code,error,requestId}` | 없음 | `Confirmed` |
+| 유효한 Dashboard filename 없음 | `404` | `{ok:false,code,error,requestId}` | 없음 | `Confirmed` |
 | 허용하지 않은 method | `405` | `{ok:false,error:"Method not allowed"}`, `Allow: GET, HEAD` | 해당 없음 | `Confirmed` |
-| success 응답 교차 불변조건 위반 | `500` | `{ok:false,code:"DASHBOARD_RESPONSE_INTEGRITY_ERROR",error:string}` | 없음 | `Confirmed` |
-| 파일·mapping·schema 등 기타 예외 | `500` | `{ok:false,error:string}` | 없음 | `Confirmed` |
+| success 응답 교차 불변조건 위반 | `500` | `{ok:false,code:"DASHBOARD_RESPONSE_INTEGRITY_ERROR",error,requestId}` | 없음 | `Confirmed` |
+| 파일·mapping·schema 등 기타 예외 | `500` | `{ok:false,code:"DASHBOARD_DATA_LOAD_FAILED",error,requestId}` | 없음 | `Confirmed` |
 
-브라우저 API client는 non-2xx의 `error`를 sanitize한 뒤 사용자 message로 사용하고, JSON이 아니면 일반 fallback message를 사용한다.
-정합성 오류에만 기계 판독용 안정적 `code`가 있다. 그 밖의 오류에는 안정적 code, field별 validation detail 또는 request ID가 없다.
-서버 error message가 내부 경로 정보를 포함할 가능성이 있어 response·log 노출은 `Risk`다.
+브라우저 API client는 non-2xx의 `error`를 sanitize하고 안전한 `requestId`가 있으면 문의 코드로 함께 표시한다. JSON이 아니면 일반 fallback message를 사용한다.
+보호 대상 오류는 `harness/contracts/safe-api-error.schema.json`의 `ok:false`, 안정적 `code`, 고정 사용자 `error`, UUID `requestId` 계약을 사용한다. 원문 exception과 내부 경로는 응답 또는 오류 로그에 결합하지 않는다.
 오류 `error` 문자열의 정확한 문구를 하위 호환 계약으로 고정할 근거는 부족하므로 `Needs Confirmation`이다.
 
 ## 19. 호환성 및 변경 영향 기준
@@ -378,15 +378,15 @@ My EQP 메일 count는 sender가 같은 고유건 규칙으로 별도 계산하�
 | `lineDashboard.summary` | `Confirmed` | `Schema Ready` | 타입·nullable·0 처리 확인 |
 | `lineSummary`, `dailyTrend`, `mailingSummary`, `meta` | `Confirmed` | `Schema Ready` | item 구조·빈 배열·정렬 근거 확인 |
 | 합계·Line 범위 교차 불변조건 | `Confirmed` | `Contract Ready` | 서버·브라우저 pure guard와 negative contract test 존재 |
-| 오류 기본 구조 | `Confirmed` | `Schema Ready` | status와 `{ok:false,error}` 확인 |
+| 오류 기본 구조 | `Confirmed` | `Contract Ready` | 보호 대상 오류는 `{ok:false,code,error,requestId}` 사용 |
 | 정합성 오류 code | `Confirmed` | `Contract Ready` | `DASHBOARD_RESPONSE_INTEGRITY_ERROR`로 고정 |
-| 그 밖의 오류 code·세부 문구 | `Unknown` / 문구 현재 구현 | `Needs Confirmation` | 안정적 code와 문구 호환 정책 없음 |
+| 그 밖의 보호 대상 오류 code | `Confirmed` | `Contract Ready` | filter·latest date·일반 load 오류 code 고정 |
 | 날짜·문자열 정규식 제약 | 생산 형식 `Confirmed` | `Needs Confirmation` | API version과 future format 정책 없음 |
 | `additionalProperties`·버전 정책 | `Unknown` | `Needs Confirmation` | producer·consumer 합의 없음 |
 | 실제 mail sender 소비 | `Unknown` | `Blocked` | 저장소에서 결합·발송 구현 미확인 |
 | mock 응답 일치 | `Out of Scope` | `Blocked` | `mock-agent` 미조사 |
 
-현재 JSON Schema는 성공 GET과 nullable 비교 field를 표현한다. `400`·`404`·`405`·`500` 오류 Schema는 아직 없어 후속 계약 범위다.
+Dashboard success Schema와 별도로 CORE-03A 보호 대상 오류 공통 Schema가 존재한다. `405` 같은 단순 method 오류는 공통 보호 대상 오류 Schema 범위가 아니다.
 Schema 작성 시 실제 운영 값이 아닌 최소 synthetic sample만 사용한다.
 
 ## 21. Mismatch
@@ -408,7 +408,7 @@ Schema 작성 시 실제 운영 값이 아닌 최소 synthetic sample만 사용�
 
 ### Risk
 
-성공 payload의 `sourcePaths`와 500 원문 message는 내부 운영 경로·file 상세를 노출할 수 있다.
+성공 payload의 `sourcePaths`는 내부 운영 경로를 노출할 수 있으며 `CORE-03B` 호환 전환 전까지 남는 `Risk`다. 보호 대상 실패 응답의 원문 message·경로 노출은 CORE-03A에서 제거했다.
 교차 무결성 guard가 검사하지 않는 상세 표시 field의 malformed 200 응답은 여전히 UI 깊은 위치에서 실패할 수 있다.
 mapping 제외 row는 화면이 아니라 `meta`에만 남는다.
 

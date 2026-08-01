@@ -148,8 +148,8 @@
 ### 4.5 CA-002 — 내부 경로·DB 진단·등록 행 노출
 
 - 원 심각도: P1
-- 현재 판정: `Confirmed`
-- 현재 근거: 성공 payload의 `sourcePath(s)`·`source_path`, 실패 payload의 `debugRow(s)`·`dbErrorDetail`·원문 `error.message`가 여러 API에 존재한다. 브라우저 마스킹은 network 원문을 제거하지 못한다.
+- 현재 판정: CORE-03A error/debug 부분 `Remediated`, success path 부분 `Confirmed`/잔존
+- 현재 근거: CORE-03A에서 실패 payload의 `debugRow(s)`·`dbErrorDetail`·원문 `error.message`·실패 경로와 helper stderr 전달을 제거하고 공통 안전 오류 계약을 추가했다. 성공 payload의 `sourcePath(s)`·`source_path`는 CORE-03B 호환 범위로 남아 있다.
 - 호환성 제약: Dashboard Schema와 Self/Common chart 후속 조회가 현재 절대 경로를 계약으로 사용한다.
 
 2단계 조치 계획:
@@ -160,11 +160,13 @@
 4. chart/image/history client를 새 resource 계약으로 전환한 뒤 legacy path field를 제거한다. 단순 Base64 경로는 opaque 경계로 인정하지 않는다.
 5. Dashboard 문서·Schema·fixture·contract test와 Self/Common 데이터 흐름 문서를 같은 변경에서 갱신한다.
 
-완료 기준:
+전체 CA-002 완료 기준:
 
 - success·400·403·404·500 body에 절대 운영 경로, DB detail, 등록 입력 행과 사용자 식별값이 없다.
 - resource ID round trip으로 기존 chart·image·history가 동일하게 동작한다.
 - legacy field 제거 전후 호환 기간과 rollback 경로가 문서화된다.
+
+CORE-03A 완료 기준은 보호 대상 실패 body에 path·DB detail·등록 입력 행이 없고 `code`·`requestId` 계약 test가 통과하는 것이다. 성공 body의 legacy path 제거는 CORE-03B gate다.
 
 ### 4.6 CA-003 — 잘못된 날짜의 자동 보정
 
@@ -192,18 +194,18 @@
 - 현재 판정: `Confirmed`
 - 현재 근거: `dashboardData.mjs`의 `normalizeNumber()`는 null·빈값·변환 실패를 모두 0으로 반환하며 success Schema는 `monitoringSensorTotal`을 non-null number로 고정한다.
 
-권장 조치:
+승인 결정(D-04):
 
-1. 실제 숫자 0, 결측, 형식 오류를 구분하는 typed parser를 도입한다.
-2. `TL.total`의 필수·nullable 원천 계약을 먼저 문서화한다. 운영 파일을 조사하지 않고 producer 계약 또는 합성 계약만 사용한다.
-3. success 계약의 non-null number를 유지하려면 변환 실패 시 `DASHBOARD_INVALID_SOURCE_DATA` non-2xx로 fail-closed 처리한다. `null` success로 바꾸려면 Schema·UI·메일 KPI 계약을 동시에 변경해야 하므로 별도 승인 없이는 선택하지 않는다.
-4. 오류 응답에는 원본 행이나 값을 포함하지 않고 invalid count와 안전한 code만 제공한다.
+1. `TL.total`은 기존 업무 정의대로 실제 `0`, 결측, 빈 문자열과 숫자 변환 실패를 모두 `0`으로 보정한다.
+2. 이 동작은 CA-004의 fail-closed 권고보다 우선하는 명시적 업무 예외이며, CORE-02와 후속 release에서 변경하지 않는다.
+3. `monitoringSensorTotal`의 non-null number 계약과 Dashboard·메일 KPI 소비 동작을 유지한다.
+4. 다른 숫자 field나 strict source integrity 정책으로 이 결정을 확대 적용하지 않는다.
 
 완료 기준:
 
-- 숫자 0과 잘못된 문자열이 서로 다른 결과를 낸다.
-- 잘못된 값이 “모니터링 센서 0개”로 표시되지 않는다.
-- Dashboard 화면·mail summary 소비자·Schema·fixture·contract test가 같은 nullable/error 정책을 사용한다.
+- `TL.total`의 기존 0 보정과 non-null number 계약이 유지된다.
+- 정상 Dashboard 화면·mail summary 소비자 동작이 바뀌지 않는다.
+- 향후 정책 변경은 D-04를 다시 승인하고 Schema·fixture·contract·UI를 함께 갱신한다.
 
 ### 4.8 CA-005 — 필터 변경 중 이전 Dashboard 범위 표시
 
@@ -335,9 +337,9 @@
 |---:|---|---|---|---|
 | 0 | `MX-01` Mock 계약 복구 | BQA-003 | `mock-agent` | 없음, Core 계약 준수 |
 | 1 | `CORE-01` Dashboard 응답 무결성 guard | BQA-001, BQA-002 | 즉시 구현 | 불변조건 문서화 |
-| 2 | `CORE-02` Dashboard stale·숫자 fail-closed | CA-004, CA-005 | 즉시 구현 | 숫자 결측 정책 확인 |
-| 3 | `CORE-03A` 오류 응답 긴급 축소 | CA-002 error/debug 부분 | 즉시 containment | 안정적 error code |
-| 4 | `CORE-04` Mapping fail-closed | CA-006 | 즉시 구현 가능 | fallback 유지 여부 결정 |
+| 2 | `CORE-02` Dashboard stale 표시 제거 | CA-005; CA-004는 D-04로 0 보정 유지 | 적용 완료 | 없음 |
+| 3 | `CORE-03A` 오류 응답 긴급 축소 | CA-002 error/debug 부분 | 적용 완료 | 없음 |
+| 4 | `CORE-04` Mapping fail-closed | CA-006 | 다음 구현 단위 | D-05 승인 완료 |
 | 5 | `CORE-05` Identity·Mailing authorization | CA-001, CA-007 | 보안 계약 변경 | 위임·관리자·legacy 정책 승인 |
 | 6 | `CORE-03B` opaque resource 전환 | CA-002 success path 부분 | 호환 migration | resource ID 설계 |
 | 7 | `CORE-06` strict source integrity | CA-003, CA-008 | 데이터 계약 변경 | timezone·Line alias 결정 |
@@ -355,10 +357,10 @@
 | 영역 | 필수 검증 |
 |---|---|
 | Dashboard 무결성 | 정상·empty·partial·합계 불일치·범위 밖 Line·필터 echo mismatch |
-| 숫자 | 0, 음수 허용 여부, 숫자 문자열, null, 빈 문자열, NaN형 문자열, overflow |
+| 숫자 | D-04에 따라 `TL.total`의 0·유효 숫자 문자열은 값이 유지되고, null·빈 문자열·NaN형 문자열·overflow는 0으로 보정되는지 검증 |
 | 날짜 | 정상, 월·일·윤일·시각 경계, suffix, Date, epoch 단위 |
 | identity/권한 | 본인, 타인, 위임, 관리자, 사용자 없음, DB 오류, timeout, body 변조 |
-| 오류 노출 | success/error body의 path·DB detail·사용자 행 부재 |
+| 오류 노출 | CORE-03A error body의 path·DB detail·사용자 행 부재; CORE-03B success body의 legacy path 부재 |
 | Mapping | 500, empty, 잘못된 type, stale snapshot, write 차단 |
 | My EQP Line | 정상 Line, 공식 alias, 혼합 Line, 전부 mismatch |
 | pagination | 0·1·20·21·1,200 row, EQP 경계 분할, filter/page reset, off-page 미마운트 |
@@ -405,8 +407,8 @@ Mock E2E·Playwright와 browser 성능 측정은 `main` Core 필수 검증에 �
 | D-01 | Mailing 타 recipient 등록·조회·삭제 권한 | actor 인증, 본인 조회/삭제, 위임은 명시 권한과 audit | 타인 작업 차단 또는 CA-001 미해결 유지 |
 | D-02 | 등록 actor 저장 방법 | additive audit field/table 후 migration | 운영 DB 변경 금지, self-only 임시안 검토 |
 | D-03 | success payload resource 표현 | 검증 가능한 opaque ID/root-relative key | legacy path 제거 금지 |
-| D-04 | invalid `TL.total` 정책 | success 0 보정 금지, non-2xx data error | CA-004 구현 보류 |
-| D-05 | mapping fallback 정책 | read/write fail-closed; 필요 시 versioned read-only snapshot | write에는 fallback 사용 금지 |
+| D-04 | invalid `TL.total` 정책 | **승인:** 기존 정의대로 `0` 보정 유지 | CA-004 fail-closed 미적용; 현행 계약 유지 |
+| D-05 | mapping fallback 정책 | **승인:** read/write fail-closed; 필요 시 versioned read-only snapshot | CORE-04에서 구현; write에는 fallback 사용 금지 |
 | D-06 | Line path와 `line_rev` 관계 | 공식 alias set 후 mismatch fail-closed | `includeAllLines` 임의 제거 금지 |
 | D-07 | cache memory·latency budget | byte 상한과 warm p95를 먼저 확정 | entry 수 확대 금지 |
 
@@ -417,8 +419,8 @@ Mock E2E·Playwright와 browser 성능 측정은 `main` Core 필수 검증에 �
 - 합계·상세 또는 요청·응답 범위 불일치를 정상 Dashboard로 표시함
 - 새 filter 아래 이전 범위 KPI·추이를 정상값처럼 표시함
 - 무권한 사용자가 다른 사용자의 Mailing/My EQP 행을 조회·변경함
-- API 응답에 절대 운영 경로, DB detail, debug registration row가 남음
-- invalid 날짜·숫자가 정상 point 또는 0 KPI로 보정됨
+- CORE-03A 보호 대상 실패 응답에 절대 운영 경로, DB detail, debug registration row가 남음. 성공 path는 CORE-03B gate로 분리한다.
+- invalid 날짜가 정상 point로 보정됨. 단, `TL.total`의 0 보정은 D-04 승인 예외다.
 - Mapping 실패 중 write가 실행됨
 - My EQP success payload에 허용되지 않은 Line 행이 포함됨
 - 공통부 한 페이지에 20개를 초과하는 card가 mount됨
@@ -453,8 +455,8 @@ Mock E2E·Playwright와 browser 성능 측정은 `main` Core 필수 검증에 �
 
 ## 11. 최종 권고
 
-첫 release 단위는 `CORE-01` Dashboard P0 guard와 `CORE-02`의 stale 표시 제거로 제한하는 것이 안전하다. `CORE-02`의 숫자 fail-closed는 D-04 결측 정책을 확정한 뒤 같은 작업 패키지의 후속 변경으로 진행한다. 동시에 `mock-agent`에서 BQA-003을 고쳐 자설비 회귀 검증을 복구한다.
+`CORE-01`과 `CORE-02` 적용 후 다음 release 단위는 `CORE-03A`로 제한한다. 등록·파일·Dashboard·history API의 server/dependency 실패는 고정된 사용자 메시지, 안정적 `code`, `requestId`만 반환하고 DB detail·debug row·원문 exception·실패 경로를 반환하거나 helper stderr로 기록하지 않는다. 정상 성공 응답의 `sourcePath(s)`는 호환 전환이 필요한 `CORE-03B` 범위로 유지한다.
 
-그다음 CA-002의 error/debug 노출을 먼저 축소하고, 권한·resource ID·Line alias처럼 계약 결정이 필요한 변경은 승인된 정책과 additive migration을 준비한 뒤 진행한다. 공통부 pagination은 독립된 성능 개선으로 적용할 수 있으나 클릭이력 의미와 page 밖 미마운트를 반드시 고정한다. Dashboard cache는 synthetic 측정과 memory budget 없이 수정하지 않는다.
+D-04에 따라 `TL.total`의 기존 0 보정은 유지한다. D-05는 권장안대로 승인됐으므로 `CORE-03A` 검증 후 `CORE-04`에서 mapping read/write를 fail-closed하고, versioned snapshot이 필요하더라도 조회 전용으로만 허용하며 모든 write에는 fallback을 사용하지 않는다. 권한·resource ID·Line alias처럼 별도 계약이 필요한 변경은 승인된 정책과 additive migration을 준비한 뒤 진행한다.
 
 이 계획은 P0 2건과 P1 11건을 모두 추적하며, 운영 자원을 직접 조사하거나 변경하지 않고 Core와 `mock-agent` 경계를 유지한다.

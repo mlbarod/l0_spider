@@ -193,7 +193,7 @@ flowchart LR
 
 - `lineDashboard.summary.mailingSummary`는 없고 실제 위치는 `lineDashboard.mailingSummary`다.
 - root·schema 오류는 `500`, 유효 최신 file 없음은 `404`, 잘못된 filter는 `400`으로 변환된다.
-- 상세 계약은 [dashboard.md](../features/dashboard.md), `harness/contracts/dashboard-api.schema.json`, Dashboard success·empty fixture와 `tests/contract/dashboard-api.contract.test.mjs`에 존재한다. 오류 응답 Schema와 root producer 직접 검증은 `Partial`이다.
+- 상세 계약은 [dashboard.md](../features/dashboard.md), `harness/contracts/dashboard-api.schema.json`, Dashboard success·empty fixture와 `tests/contract/dashboard-api.contract.test.mjs`에 존재한다. CORE-03A 보호 대상 오류는 `harness/contracts/safe-api-error.schema.json`과 해당 contract test가 담당하며 root producer 직접 검증은 `Partial`이다.
 
 ## 10. Self Equipment 및 이상 데이터 흐름
 

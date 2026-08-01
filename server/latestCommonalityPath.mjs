@@ -5,6 +5,7 @@ import {
   SPIDER_DATA_PATH_NAMES,
   SPIDER_DATA_PATH_TEMPLATES,
 } from "../src/config/spiderDataPaths.mjs"
+import { createSafeApiError } from "./safeApiError.mjs"
 
 export const commonalityRootPath = process.env.COMMONALITY_ROOT_PATH
   ?? SPIDER_DATA_PATH_TEMPLATES.commonalityRoot
@@ -74,17 +75,20 @@ export async function handleLatestCommonalityPathRequest(req, res) {
     })
     res.end(req.method === "HEAD" ? undefined : JSON.stringify(payload))
   } catch (error) {
-    const statusCode = error.code === "COMMONALITY_DATE_DIRECTORY_NOT_FOUND" ? 404 : 500
+    const notFound = error.code === "COMMONALITY_DATE_DIRECTORY_NOT_FOUND"
+    const statusCode = notFound ? 404 : 500
     res.writeHead(statusCode, {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
     })
-    res.end(req.method === "HEAD" ? undefined : JSON.stringify({
-      ok: false,
-      name: latestCommonalityPathName,
-      error: error.code === "COMMONALITY_DATE_DIRECTORY_NOT_FOUND"
-        ? error.message
-        : `동일성 최신날짜 경로를 확인하지 못했습니다: ${error.message}`,
-    }))
+    res.end(req.method === "HEAD" ? undefined : JSON.stringify(createSafeApiError({
+      code: notFound
+        ? "COMMONALITY_LATEST_DATE_NOT_FOUND"
+        : "COMMONALITY_LATEST_PATH_LOAD_FAILED",
+      message: notFound
+        ? "동일성 최신날짜 데이터가 없습니다."
+        : "동일성 최신날짜 경로를 확인하지 못했습니다.",
+      scope: "latest-commonality-path",
+    })))
   }
 }

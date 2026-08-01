@@ -2,6 +2,7 @@ import { spawn } from "node:child_process"
 import { fileURLToPath, URL } from "node:url"
 
 import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
+import { createSafeApiError } from "./safeApiError.mjs"
 
 const helperPath = fileURLToPath(new URL("../scripts/my_eqp_registration.py", import.meta.url))
 const MAX_EQP_COUNT = 500
@@ -108,21 +109,6 @@ export function buildMyEqpRegistrationPayload(body, knoxId) {
   }
 }
 
-export function buildMyEqpDebugRows(payload) {
-  const knoxIds = payload.knoxIds?.length ? payload.knoxIds : [payload.knoxId]
-  return knoxIds.flatMap((knoxId) => payload.eqps.map((eqp) => ({
-    line: payload.line,
-    sdwt: payload.sdwt,
-    prc_group: payload.prcGroup,
-    eqp,
-    exec_date: payload.execDate,
-    periode: payload.periode,
-    comment: payload.comment,
-    knox_id: knoxId,
-    is_public: payload.isPublic ? 1 : 0,
-  })))
-}
-
 export function groupMyEqpRegistrationRecords(records, nowMs = Date.now()) {
   const groups = new Map()
 
@@ -189,10 +175,9 @@ function runRegistrationHelper(action, payload) {
   return new Promise((resolvePromise, reject) => {
     const child = spawn("python3", ["-B", helperPath, action], {
       env: process.env,
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "ignore"],
     })
     let stdout = ""
-    let stderr = ""
     let timedOut = false
     const timeout = setTimeout(() => {
       timedOut = true
@@ -200,7 +185,6 @@ function runRegistrationHelper(action, payload) {
     }, 15_000)
 
     child.stdout.on("data", (chunk) => { stdout += chunk })
-    child.stderr.on("data", (chunk) => { stderr += chunk })
     child.on("error", (error) => {
       clearTimeout(timeout)
       reject(error)
@@ -216,12 +200,11 @@ function runRegistrationHelper(action, payload) {
       try {
         result = JSON.parse(stdout.trim())
       } catch {
-        reject(new Error(stderr.trim() || "My EQP 저장 응답을 해석하지 못했습니다."))
+        reject(new Error("My EQP 저장 응답을 해석하지 못했습니다."))
         return
       }
       if (!result.ok) {
-        if (stderr.trim()) console.error(`[my-eqp-registration] ${stderr.trim()}`)
-        reject(new Error(result.error || "My EQP 기준정보를 저장하지 못했습니다."))
+        reject(new Error("My EQP 기준정보를 저장하지 못했습니다."))
         return
       }
       resolvePromise(result)
@@ -245,7 +228,6 @@ export async function handleMyEqpRegistrationRequest(req, res, url) {
     return
   }
 
-  let debugRows = []
   try {
     const remoteIp = getRemoteIp(req)
     if (!remoteIp) {
@@ -288,15 +270,13 @@ export async function handleMyEqpRegistrationRequest(req, res, url) {
     }
 
     const payload = buildMyEqpRegistrationPayload(body, userId)
-    debugRows = buildMyEqpDebugRows(payload)
     const result = await runRegistrationHelper("insert", payload)
     sendJson(res, 200, { ...result, knoxId: userId, knoxIds: payload.knoxIds })
-  } catch (error) {
-    sendJson(res, 500, {
-      ok: false,
-      error: error.message,
-      table: "myeqp_regist",
-      debugRows,
-    })
+  } catch {
+    sendJson(res, 500, createSafeApiError({
+      code: "MY_EQP_REGISTRATION_REQUEST_FAILED",
+      message: "My EQP 기준정보 요청을 처리하지 못했습니다.",
+      scope: "my-eqp-registration",
+    }))
   }
 }

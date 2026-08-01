@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises"
 
 import { SPIDER_DATA_PATH_TEMPLATES } from "../src/config/spiderDataPaths.mjs"
+import { createSafeApiError } from "./safeApiError.mjs"
 
 export const mappingConfigPath = process.env.MAPPING_CONFIG_PATH
   ?? SPIDER_DATA_PATH_TEMPLATES.mappingConfig
@@ -56,15 +57,15 @@ export async function handleMappingConfigRequest(req, res) {
       "Cache-Control": "no-cache",
     })
     res.end(req.method === "HEAD" ? undefined : JSON.stringify(payload))
-  } catch (error) {
+  } catch {
     res.writeHead(500, {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
     })
-    res.end(JSON.stringify({
-      ok: false,
-      error: `기준정보 매핑 파일을 불러오지 못했습니다: ${error.message}`,
-      source_path: mappingConfigPath,
-    }))
+    res.end(JSON.stringify(createSafeApiError({
+      code: "MAPPING_CONFIG_LOAD_FAILED",
+      message: "기준정보 매핑을 불러오지 못했습니다.",
+      scope: "mapping-config",
+    })))
   }
 }

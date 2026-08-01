@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process"
 import { fileURLToPath, URL } from "node:url"
 
+import { createSafeApiError } from "./safeApiError.mjs"
+
 const lookupScriptPath = fileURLToPath(new URL("../scripts/my_eqp_reference.py", import.meta.url))
 const CACHE_TTL_MS = 5 * 60 * 1000
 let cachedPayload = null
@@ -33,10 +35,9 @@ export function readMyEqpReferenceRows() {
   pendingLookup = new Promise((resolve, reject) => {
     const child = spawn("python3", ["-B", lookupScriptPath], {
       env: process.env,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["ignore", "pipe", "ignore"],
     })
     let stdout = ""
-    let stderr = ""
     let timedOut = false
     const timeout = setTimeout(() => {
       timedOut = true
@@ -44,7 +45,6 @@ export function readMyEqpReferenceRows() {
     }, 15_000)
 
     child.stdout.on("data", (chunk) => { stdout += chunk })
-    child.stderr.on("data", (chunk) => { stderr += chunk })
     child.on("error", (error) => {
       clearTimeout(timeout)
       reject(error)
@@ -60,13 +60,12 @@ export function readMyEqpReferenceRows() {
       try {
         payload = JSON.parse(stdout.trim())
       } catch {
-        reject(new Error(stderr.trim() || "erdtsum_info 기준정보 응답을 해석하지 못했습니다."))
+        reject(new Error("erdtsum_info 기준정보 응답을 해석하지 못했습니다."))
         return
       }
 
       if (!payload.ok) {
-        if (stderr.trim()) console.error(`[my-eqp-reference] ${stderr.trim()}`)
-        reject(new Error(payload.error || "erdtsum_info 기준정보를 조회하지 못했습니다."))
+        reject(new Error("erdtsum_info 기준정보를 조회하지 못했습니다."))
         return
       }
 
@@ -92,7 +91,11 @@ export async function handleMyEqpReferenceRequest(req, res) {
   try {
     const rows = await readMyEqpReferenceRows()
     sendJson(res, 200, { ok: true, rows }, req.method)
-  } catch (error) {
-    sendJson(res, 500, { ok: false, error: error.message }, req.method)
+  } catch {
+    sendJson(res, 500, createSafeApiError({
+      code: "MY_EQP_REFERENCE_LOAD_FAILED",
+      message: "My EQP 기준정보를 불러오지 못했습니다.",
+      scope: "my-eqp-reference",
+    }), req.method)
   }
 }

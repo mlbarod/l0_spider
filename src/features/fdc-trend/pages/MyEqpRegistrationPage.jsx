@@ -29,14 +29,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
@@ -58,18 +50,6 @@ const EMPTY_LIST = Object.freeze([])
 const ALL_EQP = "ALL"
 const MAX_COMMENT_LENGTH = 90
 const KNOX_ID_PATTERN = /^[A-Za-z0-9._-]+$/
-const DEBUG_COLUMNS = Object.freeze([
-  "line",
-  "sdwt",
-  "prc_group",
-  "eqp",
-  "exec_date",
-  "periode",
-  "comment",
-  "knox_id",
-  "is_public",
-])
-
 function matchesQuery(value, query) {
   return String(value).toLocaleLowerCase("ko").includes(query.trim().toLocaleLowerCase("ko"))
 }
@@ -304,7 +284,6 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
   const [comment, setComment] = useState("")
   const [recipientKnoxInput, setRecipientKnoxInput] = useState("")
   const [recipientKnoxIds, setRecipientKnoxIds] = useState([])
-  const [saveFailure, setSaveFailure] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [queries, setQueries] = useState({ line: "", sdwt: "", prcGroup: "", eqp: "" })
 
@@ -335,22 +314,12 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
   const registrationMutation = useMutation({
     mutationFn: createMyEqpRegistration,
     onSuccess: (result) => {
-      setSaveFailure(null)
       queryClient.invalidateQueries({ queryKey: ["my-eqp-registrations"] })
       toast.success("My EQP 기준정보를 저장했습니다.", {
         description: `${result.knoxIds?.length?.toLocaleString() ?? 1}명 · ${result.requestedRows?.toLocaleString() ?? 0}행 저장 완료`,
       })
     },
-    onError: (error) => {
-      toast.error(error.message)
-      if (error.debugRows?.length) {
-        setSaveFailure({
-          message: error.message,
-          table: error.table || "myeqp_regist",
-          rows: error.debugRows,
-        })
-      }
-    },
+    onError: (error) => toast.error(error.message),
   })
 
   const lineMapping = mappingQuery.data?.line_mapping ?? SPIDER_LINE_REV
@@ -884,58 +853,6 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={Boolean(saveFailure)}
-        onOpenChange={(open) => {
-          if (!open) setSaveFailure(null)
-        }}
-      >
-        <DialogContent className="flex max-h-[88vh] flex-col sm:max-w-[95vw] xl:max-w-7xl">
-          <DialogHeader>
-            <DialogTitle>My EQP 저장 실패 데이터</DialogTitle>
-            <DialogDescription>
-              {saveFailure?.message} 아래는 {saveFailure?.table ?? "myeqp_regist"} 테이블에 저장하려던 데이터입니다.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-auto rounded-lg border">
-            <Table>
-              <TableHeader className="sticky top-0 z-10 bg-muted">
-                <TableRow>
-                  <TableHead className="w-14 text-right">#</TableHead>
-                  {DEBUG_COLUMNS.map((column) => (
-                    <TableHead key={column} className="whitespace-nowrap font-mono text-xs">
-                      {column}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(saveFailure?.rows ?? EMPTY_LIST).map((row, index) => (
-                  <TableRow key={`${row.eqp}-${index}`}>
-                    <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
-                      {index + 1}
-                    </TableCell>
-                    {DEBUG_COLUMNS.map((column) => (
-                      <TableCell key={column} className="max-w-72 whitespace-nowrap font-mono text-xs">
-                        {String(row[column] ?? "")}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-            <span>저장 예정 행: {(saveFailure?.rows.length ?? 0).toLocaleString()}개</span>
-            <span>EQP 1개당 1행</span>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setSaveFailure(null)}>
-              닫기
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 })

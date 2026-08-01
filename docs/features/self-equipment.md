@@ -278,6 +278,8 @@ Self Equipment는 별도 최신 directory를 탐색하지 않고 index row의 `f
 | 잘못된 HMAC token | 전용 오류 응답 없음 | 일반 STEP 미선택과 구분 안 됨 | 별도 안내 없음 | `Mismatch` |
 
 근거: `FdcTrendPage.jsx:2100-2234`, `selfEquipmentData.mjs:321-446,728-833`.
+
+보호 대상 `500`·일부 `404`는 고정 사용자 메시지, 안정적 `code`, `requestId`만 반환한다. history 부분 실패의 `historyError`도 원문 exception 없이 고정 메시지만 반환하며, 브라우저는 안전한 request ID를 문의 코드로 표시한다.
 ## 20. 캐시, 재조회와 최신 데이터
 
 | 항목 | 설정 또는 구현 | 적용 대상 | 영향 | 상태 |
@@ -332,7 +334,7 @@ Self Equipment는 별도 최신 directory를 탐색하지 않고 index row의 `f
 | proxy→현재 사용자 | forwarding header·remote address | IP 기반 사용자 조회 | proxy 신뢰 정책 미확인 | `Risk` | environment·security 문서 |
 | server→DB | 사용자·등록·history 조건 | Python helper | 권한·개인정보 범위 | `Risk` | operations·security 문서 |
 | server→운영 file | mapping·Parquet·image path | root·segment 검사 | 운영 경로 의존 | `Confirmed`/`Risk` | data-flow·operations |
-| API→browser | payload·error | JSON | `sourcePath`·예외 메시지 노출 가능 | `Risk` | error contract |
+| API→browser | payload·error | JSON | 성공 `sourcePath` 노출; 실패 원문은 CORE-03A에서 차단 | `Risk` / 일부 `Implemented` | error contract |
 | server secret | HMAC 후보 | 구현 확인 안 됨 | key 관리·검증 부재 | `Unknown` | STEP·security 문서 |
 
 URL에 실제 token이나 비밀정보를 기록해서는 안 된다.
@@ -400,7 +402,7 @@ mock 구현을 이유로 `main`의 route·query·API 계약을 바꾸지 않는�
 | URL state 재동기화 | `Unknown` | 뒤로가기·공유 UX | browser 검증 | 중간 |
 | React Query 기본 정책 | `Unknown` | focus retry·재조회 | QueryClient 설정 조사 | 중간 |
 | 공유 URL 노출 | `Risk` | query가 log/referrer에 남을 수 있음 | proxy·logging 정책 확인 | 높음 |
-| error path 노출 | `Risk` | API `sourcePath`·error가 browser에 전달 가능 | 오류 응답 정비 | 높음 |
+| success path 노출 | `Risk` | API 성공 `sourcePath(s)`가 browser에 전달됨 | CORE-03B opaque resource 전환 | 높음 |
 | IP header 신뢰 | `Risk` | 현재 사용자·MY EQP 범위 | proxy trust 정책 확인 | 높음 |
 | 운영 file·DB 의존 | `Risk` | 누락 시 기능 실패 | runbook·health 검증 | 높음 |
 | 메뉴얼 image 최신성 | `Mismatch` | 화면 안내 혼선 | 현재 UI capture | 중간 |

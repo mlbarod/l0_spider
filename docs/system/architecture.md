@@ -191,7 +191,7 @@ Python helper는 요청 시 생성되는 자식 프로세스이며 미확인 STE
 | HMAC 비밀키 | 정의되지 않음 | 키 노출, 검증 부재 | 구현·키 이름 미확인 | Unknown | `security.md`, STEP ADR |
 | DB 쓰기 | 운영 자원 | 오등록·DDL 영향 | Node validation과 Python transaction | Risk | 운영·배포 문서 |
 | 메일 수신자·인증 | 개인정보·비밀 | 오발송·수신자 혼합 | template 요구사항만 확인 | Documented | `mailing.md`, `security.md` |
-| log·오류 응답 | 운영 정보 | 경로·DB detail 노출 | console·stderr 사용, 일부 원문 응답 | Risk | `security.md` |
+| log·오류 응답 | 운영 정보 | 성공 path·외부 log 노출 | CORE-03A 실패 응답은 safe code/request ID, 성공 legacy path는 유지 | Partial | `security.md` |
 
 확인되지 않은 보호 방식을 구현 사실로 확장하지 않으며 상세 위협·비밀·오류 정보 정책은 향후 `docs/system/security.md`에서 정의한다.
 

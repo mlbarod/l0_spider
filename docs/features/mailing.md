@@ -294,9 +294,9 @@ contract test는 기존 Ajv 2020 validator와 `node:test`, `npm run test:contrac
 
 ## 18. 오류와 관찰성
 
-Dashboard API 실패는 `400`, `404`, `405`, `500`과 `{ok:false,error}` 기본 구조를 사용하지만 이 Schema는 성공 fragment만 다룬다.
-등록 helper는 stderr와 API error body에 DB detail·debug row를 포함할 수 있어 개인정보·schema 노출 `Risk`가 있다.
-sender log, recipient별 delivery status, request ID, correlation ID와 보존 정책은 `Unknown`이다.
+Dashboard API 실패는 `400`, `404`, `500`에서 `{ok:false,code,error,requestId}` 보호 오류 구조를 사용하지만 이 문서의 Mailing summary Schema는 성공 fragment만 다룬다.
+Mailing 등록 helper stderr는 Node process log에 전달하지 않고, API error body는 고정 메시지·안정적 code·request ID만 반환한다. DB detail·debug row·table·recipient 입력값은 실패 body에 포함하지 않는다.
+sender log, recipient별 delivery status와 보존 정책은 `Unknown`이다.
 
 메일 계약 test 실패는 Schema drift를 의미할 뿐 운영 발송 실패를 검증하지 않는다.
 
@@ -326,7 +326,7 @@ sender log, recipient별 delivery status, request ID, correlation ID와 보존 �
 
 - recipient별 row 분리가 구현에서 검증되지 않아 오발송 가능성이 있다.
 - query link는 Line·SDWT·Grade·EQP 정보를 주소·메일·log에 노출할 수 있다.
-- 등록 API 오류 body와 process stderr가 recipient·DB detail을 노출할 수 있다.
+- 등록 API 오류는 문의 코드만 사용자에게 제공하므로 상세 원인 확인에는 보호된 server-side 관찰 체계가 추가로 필요하다.
 - 실제 발송 차단 flag가 확인되지 않아 sender가 별도 환경에 있다면 안전 경계 확인이 필요하다.
 - 날짜 filename, DB `NOW()`와 renderer 시각의 timezone 불일치 가능성이 있다.
 

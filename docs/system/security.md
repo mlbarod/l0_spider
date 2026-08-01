@@ -128,7 +128,7 @@ Proxy가 존재해도 신뢰 header 정책과 Node 직접 접근 차단이 확�
 | sessionStorage | 사용 위치 확인 안 됨 | 민감값 저장 여부 | `Unknown`이나 source 검색상 미사용 | code search |
 | browser 설정 | `VITE_SITE_URL`이 Vite config에 사용됨 | `VITE_*` secret은 bundle 노출 가능 | `Policy` | `vite.config.mjs:29-33` |
 | API base URL | feature client는 상대 `/api` 사용 | origin 경계 변경 | same-origin `Implemented` | `src/features/fdc-trend/api/*.js` |
-| 오류 표시 | API `error`에서 파일 경로 패턴을 마스킹 | DB detail·식별자 등 비경로 정보 노출 | 일부 `Implemented` | `errorMessage.js:1-20` |
+| 오류 표시 | API `error`의 경로 마스킹과 안전한 `requestId` 문의 코드 표시 | 보호 대상 외 legacy 오류의 비경로 정보 | 일부 `Implemented` | `errorMessage.js`; `safeApiError.mjs` |
 | query cache | React Query memory cache, 기본 retry 1 | 브라우저 memory에 업무 payload 잔류 | `Needs Validation` | `src/lib/queryClient.js:8-17` |
 | source map | Vite build에서 명시 설정 미확인 | production source 노출 여부 | `Unknown` | `vite.config.mjs` |
 
@@ -136,20 +136,20 @@ Proxy가 존재해도 신뢰 header 정책과 Node 직접 접근 차단이 확�
 
 | API 또는 영역 | 입력 | 검증 위치 | 실패 결과 | 정보 노출 위험 | 상태 | 근거 |
 |---|---|---|---|---|---|---|
-| Dashboard | `startDate`, `endDate`, repeated `line` | strict date·range parsing | 400·404·500 JSON | 원문 file error | `Implemented` / `Risk` | `dashboardData.mjs:79-120,786-826` |
+| Dashboard | `startDate`, `endDate`, repeated `line` | strict date·range parsing | 보호 오류 `code`·`requestId` | 성공 `sourcePaths` | `Implemented` / `Risk` | `dashboardData.mjs`; `safeApiError.mjs` |
 | Self Equipment | `line`, `pathSdwt`, `sdwt`, filters | 필수값·path segment·option matching | 400·500 | 성공 `sourcePath` | 일부 `Implemented` | `selfEquipmentData.mjs:62-65,321-353` |
-| ERD scatter | `path`, `eqp`, `sensor`, `chStep`, `days` | root·segment·0~30 integer | 400·500 | `sourcePath`, history error | 일부 `Implemented` | `selfEquipmentData.mjs:728-799` |
-| image | absolute `path` | root·extension·file 존재 | 403·404 | 일부 오류의 actual path | 일부 `Implemented` | file handlers |
-| registration | JSON, user IDs, 목록 | 1 MiB, count·length·pattern | 대부분 500 | debug row·DB detail | 일부 `Implemented` / `Risk` | registration handlers |
-| history | JSON, file path, batch | 64 KiB~2 MiB, root parse, batch 500 | 400·405·500 | raw error | 일부 `Implemented` | history handlers |
+| ERD scatter | `path`, `eqp`, `sensor`, `chStep`, `days` | root·segment·0~30 integer | 400·보호 오류 500 | 성공 `sourcePath` | 일부 `Implemented` / `Risk` | `selfEquipmentData.mjs`; `safeApiError.mjs` |
+| image | absolute `path` | root·extension·file 존재 | 403·보호 오류 404/500 | 성공 요청 계약에 path 사용 | 일부 `Implemented` | file handlers |
+| registration | JSON, user IDs, 목록 | 1 MiB, count·length·pattern | 보호 오류 500 | debug row·DB detail 제거 | 일부 `Implemented` | registration handlers |
+| history | JSON, file path, batch | 64 KiB~2 MiB, root parse, batch 500 | 보호 오류 500 | 성공 payload 호환 유지 | 일부 `Implemented` | history handlers |
 | method | endpoint별 GET/HEAD/POST/DELETE | handler allowlist | 405 | 낮음 | `Implemented` | server handlers |
 | content type | POST JSON | body를 JSON parse하나 request `Content-Type` 강제 확인 없음 | parse error | content confusion | `Not Implemented` | `readJsonBody` functions |
 | global query/body limit | 공통 middleware 없음 | endpoint별 구현 | endpoint별 상이 | 누락 route·대형 URL | `Not Implemented` globally | `server.mjs` |
 | rate limit | 구현 확인 안 됨 | 해당 없음 | 없음 | 반복 file·DB 요청 | `Not Implemented` in application | code search |
-| stack trace | response에 직접 stack을 넣지 않음 | catch body | message만 반환 | message 자체가 민감할 수 있음 | 일부 `Implemented` | server catches |
+| stack trace | response에 stack·원문 exception을 넣지 않음 | 보호 대상 catch body | 고정 message·code·requestId | legacy 단순 오류는 별도 | 일부 `Implemented` | `safeApiError.mjs`; server catches |
 
 입력 형식 오류가 여러 handler에서 500으로 반환되므로 client error와 server fault가 명확히 분리되지 않는다.
-성공 response의 `sourcePath`와 실패 response의 raw `error.message`는 browser 마스킹 전에 네트워크 응답으로 전달된다.
+성공 response의 `sourcePath(s)`는 browser network 응답에 남아 있어 CORE-03B 호환 전환이 필요하다. CORE-03A 보호 대상 실패 response는 raw `error.message`, DB detail, debug row와 실패 경로를 반환하지 않는다.
 
 ## 10. 데이터 경로와 파일 시스템 보안
 
@@ -253,7 +253,7 @@ Hard-coded 내부 host 후보는 위치와 유형만 `Risk`로 기록하며 실�
 | timeout | Node child timeout은 일부 존재; DB connect/read/write timeout 없음 | blocked DB call 후 child 종료 동작 | 일부 `Implemented` / `Unknown` | server helpers; connect args |
 | TLS | PyMySQL `ssl` option 미확인 | network 기밀성 | `Unknown` | connect calls |
 | 최소 권한 | 실제 DB account grants 미확인 | read/write/DDL 과권한 | `Unknown` / `Risk` | 운영 확인 필요 |
-| 오류 | helper stderr와 일부 API에 DB detail 전달 | schema·query·값 정보 노출 | `Risk` | mailing helper·handler |
+| 오류 | 보호 대상 helper stderr 차단, API는 safe error 계약 사용 | 직접 helper 실행·외부 DB log는 별도 경계 | 일부 `Implemented` | Node helper orchestration·`safeApiError.mjs` |
 
 실제 DB에 접속하거나 계정 권한·TLS·transaction 결과를 검증하지 않았다.
 Parameterized value query는 SQL injection 위험을 줄이지만 인증·권한과 최소 권한을 대신하지 않는다.
@@ -281,18 +281,18 @@ Parameterized value query는 SQL injection 위험을 줄이지만 인증·권한
 
 | 로그 지점 | 포함 가능 정보 | 현재 마스킹 | 노출 대상 | 위험 | 상태 | 근거 |
 |---|---|---|---|---|---|---|
-| Node stderr | Python stderr 원문 | 없음 확인 | process log | DB·path detail | `Risk` | helper orchestration |
-| Python stderr | exception string | 일부 generic JSON과 별도로 원문 print | process log | DB detail·credential path | `Risk` | `scripts/*.py` |
-| API error body | `error.message`, DB code/detail | server-side 공통 마스킹 없음 | network client | 내부 path·schema detail | `Risk` | handler catches |
-| API debug body | `debugRows`, `debugRow`, table | 없음 | network client·UI | 사용자·장비·등록 입력 | `Risk` | registration handlers |
+| Node stderr | 보호 오류 `scope`, `code`, `requestId` | 원문 exception 미기록 | process log | request correlation | `Implemented` | `safeApiError.mjs` |
+| Python stderr | helper가 출력할 수 있으나 보호 대상 Node child에서 `ignore` | Node process log로 전달하지 않음 | child 내부 | 직접 실행 시 원문 가능 | 일부 `Implemented` | helper orchestration; `scripts/*.py` |
+| API error body | 고정 `error`, 안정적 `code`, `requestId` | 공통 보호 오류 builder | network client | 내부 detail 제거 | `Implemented` for CORE-03A scope | `safeApiError.mjs`; handler catches |
+| API debug body | 없음 | debug row·DB detail field 제거 | network client·UI | 해당 없음 | `Implemented` | registration handlers·pages |
 | success payload | `sourcePath`, `sourcePaths` | 없음 | network client | 운영 file topology | `Risk` | Dashboard·Self handlers |
-| browser display | server error | file path regex 마스킹 | 사용자 UI | 비경로 정보는 남음 | 일부 `Implemented` | `errorMessage.js` |
+| browser display | server error·request ID | file path regex 마스킹, 문의 코드 표시 | 사용자 UI | 보호 대상은 고정 문구 | 일부 `Implemented` | `errorMessage.js` |
 | server startup log | bind host·port | 없음 | process log | network topology | `Low` | `server.mjs:301-304` |
 | query string log | access log 구현 없음 | 해당 없음 | 외부 proxy 후보 | STEP token·filter 노출 | `Unknown` | 저장소 밖 |
 | request body log | application에서 전체 body log 미확인 | 해당 없음 | process log | 개인정보 | source상 미확인 |
 | systemd journal | 설정 없음 | 미확인 | 운영자 | 보존·권한 | `Unknown` | unit file 부재 |
 
-API response를 받은 뒤 browser가 마스킹하더라도 원문 network response 노출은 제거되지 않는다.
+보호 대상 오류의 network response 원문 노출은 CORE-03A에서 제거했다. 성공 payload의 legacy path와 보호 대상 밖 단순 오류는 별도 계약 범위다.
 Log·오류 정책은 token, 실제 path, 수신자·사용자 정보, DB detail을 기본적으로 기록하지 않는 `Policy`를 따라야 한다.
 
 ## 18. 네트워크와 host 경계
@@ -411,7 +411,7 @@ Dashboard `lineDashboard.summary.mailingSummary` 후보와 실제 sibling `lineD
 | SEC-R02 | authorization | `Risk` / `Needs Validation` | Mailing 등록이 caller 지정 수신자 ID를 받음 | 무단 등록·삭제 가능성 | `High` | 요구·gateway·row authorization review |
 | SEC-R03 | My EQP | `Risk` / `Needs Validation` | user lookup 실패 시 remote IP fallback, 복수 수신자 지정 가능 | owner 경계 혼동 | `High` | 실패 정책·권한 요구 확정 |
 | SEC-R04 | HMAC | `Mismatch` / `Unknown` | 개별 STEP 생성·검증·secret·expiry 부재 | link 무결성 요구 미충족 | `High` | ADR·unit·integration |
-| SEC-R05 | error | `Risk` / `Confirmed` | source path, debug row, DB detail을 API가 반환 | 운영·사용자 정보 노출 | `High` | response field 제거·mask contract |
+| SEC-R05 | error | `Partial` | error/debug/DB detail은 제거됐으나 성공 source path는 유지 | 운영 file topology 노출 | `High` | CORE-03B opaque resource 전환 |
 | SEC-R06 | DB privilege | `Risk` / `Unknown` | runtime DDL과 read/write가 같은 credential 후보 | 과권한 blast radius | `High` | DB grant·migration 책임 확인 |
 | SEC-R07 | filesystem | `Unknown` | `/appdata` ACL·read-only·symlink 구성 미확인 | 무단 read/write·root 우회 조건 | `Medium` | owner·mode·mount·realpath 점검 |
 | SEC-R08 | network | `Unknown` | TLS·firewall·reverse proxy·security header 미확인 | 전송·browser 보호 공백 | `High` | 운영 proxy·TLS configuration review |
@@ -433,7 +433,7 @@ Dashboard `lineDashboard.summary.mailingSummary` 후보와 실제 sibling `lineD
 | SEC-V01 | path traversal·root 밖 path 거부 | unit | 아니오, synthetic path | `Test Ready` | file handler tests |
 | SEC-V02 | symlink·canonical path 정책 | integration | 격리 temp filesystem | `Needs Design` | path security test |
 | SEC-V03 | 잘못된 query·body·크기·Content-Type | contract | 아니오 | `Partial` | API contract tests |
-| SEC-V04 | error body에서 path·DB detail·user data 제거 | contract | 아니오 | `Needs Design` | error contract |
+| SEC-V04 | error body에서 path·DB detail·user data 제거 | contract | 아니오 | `Test Ready` / CORE-03A 작성 | `safe-api-error` Schema·contract test |
 | SEC-V05 | HMAC 결정성·정상·변조·누락 | unit | 아니오, synthetic key | `Blocked` | STEP/HMAC unit test |
 | SEC-V06 | HMAC expiry·rotation·`eqpCh` 서명 | integration | 아니오, synthetic key | `Blocked` | ADR·integration test |
 | SEC-V07 | forwarded header trust | 운영 설정 review | 예 | `Blocked` | proxy·deployment doc |

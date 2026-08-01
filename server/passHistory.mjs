@@ -3,6 +3,7 @@ import { relative, resolve, sep } from "node:path"
 import { fileURLToPath, URL } from "node:url"
 
 import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
+import { createSafeApiError } from "./safeApiError.mjs"
 
 const ERD_FILE_ROOT = "/appdata/abnormal_trend/pic/erd"
 const COMMON_FILE_ROOT = "/appdata/abnormal_trend/pic/common"
@@ -381,10 +382,9 @@ function runPassHistoryHelper(action, payload) {
   return new Promise((resolvePromise, reject) => {
     const child = spawn("python3", ["-B", helperPath, action], {
       env: process.env,
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "ignore"],
     })
     let stdout = ""
-    let stderr = ""
     let timedOut = false
     const timeout = setTimeout(() => {
       timedOut = true
@@ -392,7 +392,6 @@ function runPassHistoryHelper(action, payload) {
     }, 10_000)
 
     child.stdout.on("data", (chunk) => { stdout += chunk })
-    child.stderr.on("data", (chunk) => { stderr += chunk })
     child.on("error", (error) => {
       clearTimeout(timeout)
       reject(error)
@@ -408,11 +407,10 @@ function runPassHistoryHelper(action, payload) {
       try {
         result = JSON.parse(stdout.trim())
       } catch {
-        reject(new Error(stderr.trim() || "PASS 이력 응답을 해석하지 못했습니다."))
+        reject(new Error("PASS 이력 응답을 해석하지 못했습니다."))
         return
       }
       if (!result.ok) {
-        if (stderr.trim()) console.error(`[pass-history] ${stderr.trim()}`)
         reject(new Error(result.error || "PASS 이력을 처리하지 못했습니다."))
         return
       }
@@ -532,7 +530,11 @@ export async function handlePassHistoryRequest(req, res, url) {
     }
 
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
-  } catch (error) {
-    sendJson(res, 500, { ok: false, error: error.message })
+  } catch {
+    sendJson(res, 500, createSafeApiError({
+      code: "PASS_HISTORY_REQUEST_FAILED",
+      message: "PASS 이력 요청을 처리하지 못했습니다.",
+      scope: "pass-history",
+    }))
   }
 }

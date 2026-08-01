@@ -208,7 +208,6 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
   const [lineQuery, setLineQuery] = useState("")
   const [sdwtQuery, setSdwtQuery] = useState("")
   const [urlTarget, setUrlTarget] = useState(null)
-  const [saveFailure, setSaveFailure] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
 
   const currentUserQuery = useQuery({
@@ -301,7 +300,6 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
     onSuccess: (result) => {
       const savedKnoxIds = result.registration?.knoxIds ?? recipientKnoxIds
       const savedKnoxId = savedKnoxIds.at(-1) ?? ""
-      setSaveFailure(null)
       setLookupKnoxId(savedKnoxId)
       savedKnoxIds.forEach((knoxId) => {
         queryClient.invalidateQueries({ queryKey: ["mailing-registrations", knoxId] })
@@ -310,17 +308,7 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
         description: `${savedKnoxIds.length}명 · ${result.registration?.sdwts?.length ?? resolvedSdwts.length}개 SDWT · 5개 Grade`,
       })
     },
-    onError: (error) => {
-      toast.error(error.message)
-      if (error.debugRow) {
-        setSaveFailure({
-          message: error.message,
-          row: error.debugRow,
-          dbErrorCode: error.dbErrorCode,
-          dbErrorDetail: error.dbErrorDetail,
-        })
-      }
-    },
+    onError: (error) => toast.error(error.message),
   })
   const deleteMutation = useMutation({
     mutationFn: deleteMailingRegistrationLine,
@@ -774,40 +762,6 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(saveFailure)} onOpenChange={(open) => !open && setSaveFailure(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Mailing 등록 실패 데이터</DialogTitle>
-            <DialogDescription>{saveFailure?.message}</DialogDescription>
-          </DialogHeader>
-          {saveFailure?.dbErrorCode ? (
-            <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 font-mono text-xs text-destructive">
-              DB error {saveFailure.dbErrorCode}: {saveFailure.dbErrorDetail}
-            </p>
-          ) : null}
-          <div className="overflow-auto rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>email</TableHead>
-                  <TableHead>sdwt</TableHead>
-                  <TableHead>priority</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-mono text-xs">{saveFailure?.row?.email}</TableCell>
-                  <TableCell className="max-w-52 break-all font-mono text-xs">{saveFailure?.row?.sdwt}</TableCell>
-                  <TableCell className="font-mono text-xs">{saveFailure?.row?.priority}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setSaveFailure(null)}>닫기</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 })

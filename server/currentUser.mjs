@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process"
 import { fileURLToPath, URL } from "node:url"
 
+import { createSafeApiError } from "./safeApiError.mjs"
+
 const lookupScriptPath = fileURLToPath(new URL("../scripts/current_user.py", import.meta.url))
 const CACHE_TTL_MS = 5 * 60 * 1000
 const userCache = new Map()
@@ -40,10 +42,9 @@ export function resolveCurrentUser(remoteIp) {
   const lookup = new Promise((resolve, reject) => {
     const child = spawn("python3", ["-B", lookupScriptPath], {
       env: { ...process.env, REMOTE_ADDR: remoteIp },
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["ignore", "pipe", "ignore"],
     })
     let stdout = ""
-    let stderr = ""
     let timedOut = false
     const timeout = setTimeout(() => {
       timedOut = true
@@ -51,7 +52,6 @@ export function resolveCurrentUser(remoteIp) {
     }, 10_000)
 
     child.stdout.on("data", (chunk) => { stdout += chunk })
-    child.stderr.on("data", (chunk) => { stderr += chunk })
     child.on("error", (error) => {
       clearTimeout(timeout)
       reject(error)
@@ -67,12 +67,11 @@ export function resolveCurrentUser(remoteIp) {
       try {
         payload = JSON.parse(stdout.trim())
       } catch {
-        reject(new Error(stderr.trim() || "접속자 조회 응답을 해석하지 못했습니다."))
+        reject(new Error("접속자 조회 응답을 해석하지 못했습니다."))
         return
       }
 
       if (!payload.ok) {
-        if (stderr.trim()) console.error(`[current-user] ${stderr.trim()}`)
         const error = new Error(payload.error || "접속자 정보를 확인하지 못했습니다.")
         error.code = payload.code
         reject(error)
@@ -115,7 +114,13 @@ export async function handleCurrentUserRequest(req, res) {
     const payload = await resolveCurrentUser(remoteIp)
     sendJson(res, 200, payload)
   } catch (error) {
-    const statusCode = error.code === "USER_NOT_FOUND" ? 404 : 500
-    sendJson(res, statusCode, { ok: false, error: error.message })
+    const userNotFound = error.code === "USER_NOT_FOUND"
+    sendJson(res, userNotFound ? 404 : 500, createSafeApiError({
+      code: userNotFound ? "CURRENT_USER_NOT_FOUND" : "CURRENT_USER_LOOKUP_FAILED",
+      message: userNotFound
+        ? "접속자 정보를 확인하지 못했습니다."
+        : "접속자 조회를 처리하지 못했습니다.",
+      scope: "current-user",
+    }))
   }
 }

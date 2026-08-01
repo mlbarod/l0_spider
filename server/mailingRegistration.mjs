@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process"
 import { fileURLToPath, URL } from "node:url"
 
+import { createSafeApiError } from "./safeApiError.mjs"
+
 const helperPath = fileURLToPath(new URL("../scripts/mailing_registration.py", import.meta.url))
 const MAX_KNOX_ID_LENGTH = 128
 const MAX_KNOX_ID_COUNT = 100
@@ -93,14 +95,6 @@ export function normalizeMailingRecords(records) {
   })).filter((record) => record.knoxId && record.sdwts.length && record.priorities.length)
 }
 
-export function buildMailingDebugRow(payload) {
-  return {
-    email: payload.knoxId,
-    sdwt: JSON.stringify(payload.sdwts),
-    priority: JSON.stringify(payload.priorities),
-  }
-}
-
 export function buildMailingRecipientPayloads(payload) {
   const { knoxIds, ...sharedPayload } = payload
   return knoxIds.map((knoxId) => ({
@@ -113,10 +107,9 @@ function runMailingHelper(action, payload) {
   return new Promise((resolvePromise, reject) => {
     const child = spawn("python3", ["-B", helperPath, action], {
       env: process.env,
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "ignore"],
     })
     let stdout = ""
-    let stderr = ""
     let timedOut = false
     const timeout = setTimeout(() => {
       timedOut = true
@@ -124,7 +117,6 @@ function runMailingHelper(action, payload) {
     }, 15_000)
 
     child.stdout.on("data", (chunk) => { stdout += chunk })
-    child.stderr.on("data", (chunk) => { stderr += chunk })
     child.on("error", (error) => {
       clearTimeout(timeout)
       reject(error)
@@ -140,15 +132,11 @@ function runMailingHelper(action, payload) {
       try {
         result = JSON.parse(stdout.trim())
       } catch {
-        reject(new Error(stderr.trim() || "Mailing DB 응답을 해석하지 못했습니다."))
+        reject(new Error("Mailing DB 응답을 해석하지 못했습니다."))
         return
       }
       if (!result.ok) {
-        if (stderr.trim()) console.error(`[mailing-registration] ${stderr.trim()}`)
-        const error = new Error(result.error || "Mailing 기준정보를 처리하지 못했습니다.")
-        error.dbErrorCode = result.dbErrorCode
-        error.dbErrorDetail = result.dbErrorDetail
-        reject(error)
+        reject(new Error("Mailing 기준정보를 처리하지 못했습니다."))
         return
       }
       resolvePromise(result)
@@ -163,7 +151,6 @@ export async function handleMailingRegistrationRequest(req, res, url) {
     return
   }
 
-  let debugRow = null
   try {
     if (req.method === "GET") {
       const knoxId = normalizeKnoxId(url.searchParams.get("knoxId"))
@@ -187,7 +174,6 @@ export async function handleMailingRegistrationRequest(req, res, url) {
     const recipientPayloads = buildMailingRecipientPayloads(payload)
     const results = []
     for (const recipientPayload of recipientPayloads) {
-      debugRow = buildMailingDebugRow(recipientPayload)
       results.push(await runMailingHelper("insert", recipientPayload))
     }
     const result = {
@@ -205,14 +191,11 @@ export async function handleMailingRegistrationRequest(req, res, url) {
         priorities: payload.priorities,
       },
     })
-  } catch (error) {
-    sendJson(res, 500, {
-      ok: false,
-      error: error.message,
-      table: "email",
-      debugRow,
-      dbErrorCode: error.dbErrorCode,
-      dbErrorDetail: error.dbErrorDetail,
-    })
+  } catch {
+    sendJson(res, 500, createSafeApiError({
+      code: "MAILING_REGISTRATION_REQUEST_FAILED",
+      message: "Mailing 기준정보 요청을 처리하지 못했습니다.",
+      scope: "mailing-registration",
+    }))
   }
 }

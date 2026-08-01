@@ -3,6 +3,7 @@ import { readdir, stat } from "node:fs/promises"
 import { join, relative, resolve, sep } from "node:path"
 
 import { getLatestCommonalityPath } from "./latestCommonalityPath.mjs"
+import { createSafeApiError } from "./safeApiError.mjs"
 
 const INDEX_CACHE_TTL_MS = 5 * 60 * 1000
 const DIRECTORY_READ_CONCURRENCY = 64
@@ -249,7 +250,13 @@ export async function handleCommonalityDataRequest(req, res, url) {
       || error.code === "COMMONALITY_SDWT_DIRECTORY_NOT_FOUND"
       ? 404
       : 500
-    sendJson(res, statusCode, { ok: false, error: error.message })
+    sendJson(res, statusCode, createSafeApiError({
+      code: statusCode === 404 ? "COMMONALITY_DATA_NOT_FOUND" : "COMMONALITY_DATA_LOAD_FAILED",
+      message: statusCode === 404
+        ? "동일성 데이터 경로를 찾지 못했습니다."
+        : "동일성 데이터를 불러오지 못했습니다.",
+      scope: "commonality-data",
+    }))
   }
 }
 
@@ -268,7 +275,11 @@ export async function handleCommonalityImageRequest(req, res, url) {
       return
     }
     if (!await isRegularFile(resolvedPath)) {
-      sendJson(res, 404, { ok: false, error: "동일성 이미지 파일을 찾지 못했습니다.", path: resolvedPath })
+      sendJson(res, 404, createSafeApiError({
+        code: "COMMONALITY_IMAGE_NOT_FOUND",
+        message: "동일성 이미지 파일을 찾지 못했습니다.",
+        scope: "commonality-image",
+      }))
       return
     }
 
@@ -281,11 +292,11 @@ export async function handleCommonalityImageRequest(req, res, url) {
       return
     }
     createReadStream(resolvedPath).pipe(res)
-  } catch (error) {
-    sendJson(res, 500, {
-      ok: false,
-      error: `동일성 이미지를 불러오지 못했습니다: ${error.message}`,
-      path: requestedPath,
-    })
+  } catch {
+    sendJson(res, 500, createSafeApiError({
+      code: "COMMONALITY_IMAGE_LOAD_FAILED",
+      message: "동일성 이미지를 불러오지 못했습니다.",
+      scope: "commonality-image",
+    }))
   }
 }

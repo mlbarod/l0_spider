@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from "node:url"
 
 import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
 import { parsePassHistoryPath } from "./passHistory.mjs"
+import { createSafeApiError } from "./safeApiError.mjs"
 
 const COMMON_FILE_ROOT = "/appdata/abnormal_trend/pic/common"
 const helperPath = fileURLToPath(new URL("../scripts/clicked_category_history.py", import.meta.url))
@@ -133,13 +134,11 @@ function runHelper(payload) {
   return new Promise((resolvePromise, reject) => {
     const child = spawn("python3", ["-B", helperPath], {
       env: process.env,
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "ignore"],
     })
     let stdout = ""
-    let stderr = ""
     const timeout = setTimeout(() => child.kill("SIGTERM"), 10_000)
     child.stdout.on("data", (chunk) => { stdout += chunk })
-    child.stderr.on("data", (chunk) => { stderr += chunk })
     child.on("error", (error) => {
       clearTimeout(timeout)
       reject(error)
@@ -150,11 +149,10 @@ function runHelper(payload) {
       try {
         result = JSON.parse(stdout.trim())
       } catch {
-        reject(new Error(stderr.trim() || "클릭이력 응답을 해석하지 못했습니다."))
+        reject(new Error("클릭이력 응답을 해석하지 못했습니다."))
         return
       }
       if (!result.ok) {
-        if (stderr.trim()) console.error(`[clicked-category-history] ${stderr.trim()}`)
         reject(new Error(result.error || "클릭이력을 저장하지 못했습니다."))
         return
       }
@@ -182,7 +180,11 @@ export async function handleClickedCategoryHistoryRequest(req, res) {
       throw new Error("클릭이력이 DB에 반영되지 않았습니다.")
     }
     sendJson(res, 200, result)
-  } catch (error) {
-    sendJson(res, 500, { ok: false, error: error.message })
+  } catch {
+    sendJson(res, 500, createSafeApiError({
+      code: "CLICKED_CATEGORY_HISTORY_REQUEST_FAILED",
+      message: "클릭이력 요청을 처리하지 못했습니다.",
+      scope: "clicked-category-history",
+    }))
   }
 }

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://l0-spider.local/contracts/safe-api-error.schema.json",
+  "title": "L0 Spider protected API error response",
+  "description": "CORE-03A가 보호하는 서버 및 의존성 실패 응답 계약이다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "code", "error", "requestId"],
+  "properties": {
+    "ok": { "const": false },
+    "code": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+    },
+    "error": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requestId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    }
+  }
+}
