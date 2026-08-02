@@ -98,6 +98,16 @@ Core에서는 확인된 lint, build, unit과 contract 명령만 실행하며 moc
 문서, 계약, fixture와 scenario 갱신 필요성을 확인하고 미실행 검증과 남은 위험을 기록한다.
 저장소에서 확인되지 않은 명령이나 운영 절차를 임의로 작성하지 않는다.
 
+### Development Validation Gate
+
+상세 역할, 입력, 권한, gate와 업무 경계의 단일 기준은 [개발 에이전트 검증 workflow](docs/operations/development-agent-workflow.md)를 따른다.
+
+- 모든 코드 변경은 확정된 diff를 대상으로 build 전에 `pre-build-review`의 독립 정적 검토를 받아야 한다.
+- `BLOCKER`가 해결되지 않으면 build하거나 완료를 선언하지 않는다. 메인 에이전트가 수정한 뒤 diff를 다시 확정하고 영향받은 항목을 독립 재검토한다.
+- `SPECIALIST_REQUIRED`가 반환되거나 공유 API·Schema·집계·보안·운영 경계, cross-layer 공통 모듈, 실행 확인이 필요한 비동기·browser·성능 위험 또는 그 밖의 구체적 고위험 근거가 있으면 메인 에이전트가 정확히 한 프로필을 지정해 `specialist-validator`를 호출한다.
+- 메인 에이전트는 검증 결과를 근거 없이 무시하거나 통과를 위해 test·계약 기준을 완화하지 않는다.
+- 검증 서브에이전트는 어떤 파일도 수정하지 않으며 지정된 검증이나 실패 test를 skip·완화하지 않는다.
+
 ## 8. Documentation and Reporting
 
 - 설명 문서와 작업 보고는 한국어로 작성하되 코드 식별자, API, 경로와 환경변수는 원문을 유지한다.

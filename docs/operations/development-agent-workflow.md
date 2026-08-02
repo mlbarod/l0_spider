@@ -1,23 +1,19 @@
 # L0 Spider 개발 에이전트 검증 workflow
 
 > 문서 목적: 메인 개발 에이전트와 두 검증 서브에이전트의 역할, 권한, 검증 gate와 업무 경계를 관리하는 단일 기준<br>
-> 문서 상태: `Draft / Stage 3 Complete`<br>
+> 문서 상태: `Active / Stage 4 Complete`<br>
 > 기준 branch: `main`<br>
-> 기준 commit: `18b1b16`<br>
+> 기준 commit: `6de92fb`<br>
 > 작성일: 2026-08-02<br>
 > 시범 검증일: 2026-08-03<br>
-> 적용 상태: custom agent 발견·직접 호출·실제 읽기 전용·무변경·표준 출력과 명시적 시범 운영 완료, 프로젝트 최상위 의무는 `Not Active`
+> 최종 검증일: 2026-08-03<br>
+> 적용 상태: custom agent 구성과 `AGENTS.md` 지침 기반 의무 호출은 `Implemented`; hook·CI 기계적 자동화는 `Not Implemented`
 
 ## 1. 목적과 현재 적용 범위
 
 이 문서는 L0 Spider 변경의 구현 주체와 검증 주체를 분리하는 상세 운영 기준이다. 메인 개발 에이전트가 구현과 최종 책임을 맡고, 상시 프리 빌드 리뷰 서브에이전트가 확정된 변경을 빠르게 독립 검토하며, 조건부 전문 검증 서브에이전트가 지정된 고위험 분야를 깊게 검증한다.
 
-현재는 도입 계획의 3단계까지 완료한 상태다. 새 Codex 세션에서 두 project custom agent의 발견과 명시적 직접 호출을 확인했고, 부모와 서브에이전트의 실제 읽기 전용 권한, 호출 전후 무변경과 표준 출력 준수를 검증했다. 작은 실제 변경과 application 밖 synthetic 고위험 fixture로 `PASS`, `BLOCKER`, `SPECIALIST_REQUIRED`, 전문 검증과 수정 후 독립 재검토 흐름을 시범 확인했다. 다음 항목은 아직 활성화하지 않았다.
-
-- 모든 코드 변경에 대한 의무 호출
-- `AGENTS.md` 최상위 의무 반영
-
-현재까지는 사용자가 승인한 명시적 호출에만 이 workflow를 적용한다. 4단계 최종 확정에서만 `AGENTS.md`에 의무 절차를 연결한다.
+도입 계획의 4단계까지 완료했다. 새 Codex 세션에서 두 project custom agent의 발견과 명시적 직접 호출, 실제 읽기 전용 권한, 호출 전후 무변경과 표준 출력을 검증했고, `AGENTS.md` 후보에 따른 의무 호출과 `BLOCKER` 중단 조건을 positive·negative smoke로 확인했다. 모든 코드 변경의 build 전 검토는 프로젝트 최상위 지침으로 활성화됐으며, hook·CI 같은 기계적 자동 호출은 구현하지 않았다.
 
 ## 2. 공통 불변 원칙
 
@@ -217,7 +213,7 @@
 - 1단계: 이 기준 문서와 두 custom agent 정의를 작성한다.
 - 2단계: 새 세션 발견, 명시적 호출, 실제 권한·무변경과 출력 형식을 검증한다. — `Completed`
 - 3단계: 승인된 사례에서 명시적 시범 운영하고 시간·오탐·결함 발견을 측정한다. — `Completed`
-- 4단계: 앞 단계가 통과한 경우에만 `AGENTS.md`에 이 문서 링크와 의무 호출·중단 조건을 추가한다.
+- 4단계: `AGENTS.md`에 이 문서 링크와 의무 호출·중단 조건을 추가하고 새 세션 smoke로 검증한다. — `Completed`
 
 도입 후 상세 역할·책임·gate는 이 문서를 단일 기준으로 관리한다. `reports/development-validation-subagent-workflow.md`는 합의 배경과 의사결정 기록으로 유지하며 상세 절차를 중복 갱신하지 않는다. 프리 빌드 결과를 release 필수 증거로 사용하기로 별도 결정한 경우에만 `release-checklist.md`를 변경한다.
 

@@ -1,12 +1,12 @@
 # L0 Spider 개발 검증 서브에이전트 도입 리포트
 
 > 문서 목적: 메인 개발과 독립 검증의 책임을 분리하는 To-Be 업무 흐름과 운영 원칙 정의<br>
-> 문서 상태: `Proposed / Agreed Direction`<br>
+> 문서 상태: `Implemented / Stage 4 Complete`<br>
 > 기준 branch: `main`<br>
 > 기준 commit: `642e4ce`<br>
 > 작성일: 2026-08-02<br>
-> 구현 상태: custom agent 구성과 지침 기반 의무 호출은 `Not Implemented`; 기계적 자동화는 현재 범위 밖<br>
-> 문서 역할: 도입 배경과 합의 내용을 보존하는 의사결정 기록이며, 도입 후 상세 운영 기준은 `docs/operations/development-agent-workflow.md`에서 관리
+> 구현 상태: custom agent 구성 `Implemented`; 지침 기반 의무 호출 `Implemented`; hook·CI 기계적 자동화 `Not Implemented`<br>
+> 문서 역할: 도입 배경과 합의 내용을 보존하는 의사결정 기록이며, 상세 운영 기준은 [개발 에이전트 검증 workflow](../docs/operations/development-agent-workflow.md)에서 관리
 
 ## 1. 도입 배경
 
@@ -257,17 +257,7 @@ To-Be 방향은 모든 코드 변경에 가벼운 **상시 프리 빌드 리뷰*
 
 ## 8. 도입 상태와 후속 작업
 
-이 문서는 사용자 인터뷰에서 합의한 목표 역할과 흐름을 기록한 보고서다. 현재 저장소에는 이 문서의 프리 빌드 리뷰와 전문 검증 호출 구조가 구현되었다고 판단할 근거가 없으므로 custom agent 구성과 지침 기반 의무 호출은 `Not Implemented`다. `AGENTS.md`는 지속 지침을 제공하지만 hook이나 CI처럼 기계적으로 호출을 강제하지 않으며 기계적 자동화는 현재 도입 범위에 포함하지 않는다.
-
-실제 도입 시에는 별도 승인 범위에서 다음 작업이 필요하다.
-
-1. 프리 빌드 리뷰 에이전트의 간결한 역할 지침과 출력 형식을 작성한다.
-2. 전문 검증 에이전트의 프로필, 호출 조건과 허용 검증을 정의한다.
-3. 메인 개발 에이전트의 호출·재검토·중단 조건을 작업 지침에 연결한다.
-4. 승인된 실제 변경 또는 application을 수정하지 않는 synthetic diff로 시범 적용하고 속도·오탐·결함 발견 지표를 측정한다.
-5. 측정 결과를 바탕으로 검토 범위만 조정하며 test·계약 기준은 완화하지 않는다.
-
-도입 후에는 `docs/operations/development-agent-workflow.md`를 상세 역할·책임·gate의 단일 기준으로 사용한다. 이 리포트에는 구현 결과와 기준 문서 링크만 추가하고 동일한 상세 절차를 계속 중복 갱신하지 않는다.
+2026-08-03 Stage 4 검증 완료 결과, custom agent 구성과 `AGENTS.md` 지침 기반 의무 호출은 `Implemented`다. hook·CI 같은 기계적 자동화는 `Not Implemented`로 유지한다. 상세 역할·책임·gate는 [개발 에이전트 검증 workflow](../docs/operations/development-agent-workflow.md)를 단일 기준으로 사용한다.
 
 ## 9. 근거 문서와 이번 리포트 작업 범위
 
@@ -277,7 +267,7 @@ To-Be 방향은 모든 코드 변경에 가벼운 **상시 프리 빌드 리뷰*
 - [사용자 메뉴얼](../docs/user-manual/USER_MANUAL.md) — 현재 사용자 기능과 기존 동작 보존 범위
 - [P0/P1 종합 조치 계획](audit/2026-08-01-p0-p1-remediation-plan.md) — QA·Audit·Performance 결과의 현재 main 재검증과 통합 기준
 
-이번 작업은 리포트 문서만 추가한다. application, API, Schema, fixture, test, agent 설정과 지침 기반 의무 호출은 변경하지 않으며 build, server, DB, `/appdata`, mail, browser와 운영 자원 검증은 `Not Run`이다.
+초기 제안 리포트 작성 작업은 이 문서만 추가했으며 당시 application, API, Schema, fixture, test, agent 설정과 지침 기반 의무 호출은 변경하지 않았다. 현재 구현 상태는 8절과 단일 기준 문서에서 관리한다.
 
 ## 10. 실제 도입 시 변경 대상
 
