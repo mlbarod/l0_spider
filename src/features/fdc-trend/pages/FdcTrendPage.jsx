@@ -434,6 +434,67 @@ function IdentityXAxisTick({ x, y, payload, groups }) {
   )
 }
 
+function useChartDrawReveal(chartRef, revealToken, chartReady) {
+  useLayoutEffect(() => {
+    const chart = chartRef.current
+    if (!chart || !revealToken || !chartReady) return undefined
+
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      return undefined
+    }
+
+    if (typeof requestAnimationFrame !== "function") {
+      return undefined
+    }
+
+    let chartObserver = null
+    let drawFrame = null
+    let revealFrame = null
+    const handleAnimationEnd = (event) => {
+      if (event.animationName !== "chart-plot-enter") return
+      chart.classList.remove("chart-plot-enter", "chart-plot-enter-active")
+      chart.removeEventListener("animationend", handleAnimationEnd)
+    }
+    const revealChart = () => {
+      chartObserver?.disconnect()
+      chartObserver = null
+      chart.classList.add("chart-plot-enter")
+      chart.addEventListener("animationend", handleAnimationEnd)
+      drawFrame = requestAnimationFrame(() => {
+        revealFrame = requestAnimationFrame(() => {
+          chart.classList.add("chart-plot-enter-active")
+        })
+      })
+    }
+
+    if (chart.querySelector("svg.recharts-surface") || typeof MutationObserver === "undefined") {
+      revealChart()
+    } else {
+      chartObserver = new MutationObserver(() => {
+        if (chart.querySelector("svg.recharts-surface")) revealChart()
+      })
+      chartObserver.observe(chart, { childList: true, subtree: true })
+    }
+
+    return () => {
+      chartObserver?.disconnect()
+      if (drawFrame !== null) cancelAnimationFrame(drawFrame)
+      if (revealFrame !== null) cancelAnimationFrame(revealFrame)
+      chart.removeEventListener("animationend", handleAnimationEnd)
+      chart.classList.remove("chart-plot-enter", "chart-plot-enter-active")
+    }
+  }, [chartReady, chartRef, revealToken])
+}
+
+function ChartLoadingSurface({ active, label }) {
+  return (
+    <div className="chart-loading-surface relative grid h-[320px] w-full min-w-0 place-items-center overflow-hidden rounded-md">
+      {active ? <div className="chart-loading-gauge" aria-hidden="true" /> : null}
+      <span className="sr-only">{label}</span>
+    </div>
+  )
+}
+
 export function IdentityChartDialog({
   row,
   eqp,
@@ -717,6 +778,7 @@ export function IdentityChartDialog({
 
 const ThreeDayIdentityChartCard = memo(function ThreeDayIdentityChartCard({ row, eqp }) {
   const cardRef = useRef(null)
+  const chartRef = useRef(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
 
   useEffect(() => {
@@ -766,6 +828,11 @@ const ThreeDayIdentityChartCard = memo(function ThreeDayIdentityChartCard({ row,
     120,
     Math.max(62, groups.reduce((length, group) => Math.max(length, group.eqpCb.length), 0) * 6 + 16),
   )
+  useChartDrawReveal(
+    chartRef,
+    identityQuery.dataUpdatedAt,
+    Boolean(isNearViewport && groups.length),
+  )
 
   return (
     <article ref={cardRef} className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-primary/25 bg-card shadow-sm">
@@ -784,18 +851,21 @@ const ThreeDayIdentityChartCard = memo(function ThreeDayIdentityChartCard({ row,
           ) : null}
         </div>
       </header>
-      <div className="grid min-h-[320px] place-items-center bg-background p-3">
+      <div
+        className="grid min-h-[320px] place-items-center bg-background p-3"
+        aria-busy={!isNearViewport || identityQuery.isLoading}
+      >
         {!isNearViewport || identityQuery.isLoading ? (
-          <div className="grid justify-items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-            최근 3일 동일성 데이터를 준비 중입니다.
-          </div>
+          <ChartLoadingSurface
+            active={isNearViewport && identityQuery.isLoading}
+            label="최근 3일 동일성 차트를 준비 중입니다."
+          />
         ) : identityQuery.isError ? (
           <div className="max-w-md px-4 text-center text-sm text-destructive">
             {identityQuery.error.message}
           </div>
         ) : groups.length ? (
-          <div className="h-[320px] w-full min-w-0">
+          <div ref={chartRef} className="h-[320px] w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 18, right: 14, bottom: 8, left: 8 }}>
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
@@ -1114,6 +1184,11 @@ const ErdScatterCard = memo(function ErdScatterCard({
   })
   const points = chartQuery.data?.points ?? EMPTY_LIST
   const changeHistory = chartQuery.data?.changeHistory ?? EMPTY_LIST
+  useChartDrawReveal(
+    chartContainerRef,
+    chartQuery.dataUpdatedAt,
+    Boolean(isNearViewport && points.length),
+  )
   const renderedPointSeries = useMemo(() => {
     const visiblePoints = zoomDomain
       ? points.filter((point) => (
@@ -1231,14 +1306,15 @@ const ErdScatterCard = memo(function ErdScatterCard({
           <span>드래그 확대 · 더블클릭 원복</span>
         </div>
       </header>
-      <div className="grid min-h-[320px] place-items-center bg-background p-3">
-        {!isNearViewport ? (
-          <div className="text-sm text-muted-foreground">화면에 표시할 차트를 준비 중입니다.</div>
-        ) : chartQuery.isLoading ? (
-          <div className="grid justify-items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-            ERD 이상감지 데이터를 불러오는 중입니다.
-          </div>
+      <div
+        className="grid min-h-[320px] place-items-center bg-background p-3"
+        aria-busy={!isNearViewport || chartQuery.isLoading}
+      >
+        {!isNearViewport || chartQuery.isLoading ? (
+          <ChartLoadingSurface
+            active={isNearViewport && chartQuery.isLoading}
+            label="Scatter chart를 준비 중입니다."
+          />
         ) : chartQuery.isError ? (
           <div className="max-w-md px-4 text-center text-sm text-destructive">
             {chartQuery.error.message}
