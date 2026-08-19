@@ -1,6 +1,12 @@
 export const MAX_RENDERED_POINTS_PER_SERIES = 800
 export const MAX_OTHER_IDENTITY_POINTS_PER_EQP = 600
 export const IDENTITY_GROUP_INSET = 0.06
+// Recharts applies a hovered point index to every Scatter sharing a dataKey.
+// Keep separate-array series keys unique so the tooltip selects only the hovered series.
+export const ERD_SCATTER_SERIES_DATA_KEYS = Object.freeze({
+  previous: "previousValue",
+  recent: "recentValue",
+})
 const RECENT_WINDOW_MS = 26 * 60 * 60 * 1000
 
 export function samplePoints(points, limit = MAX_RENDERED_POINTS_PER_SERIES) {
@@ -13,6 +19,29 @@ export function samplePoints(points, limit = MAX_RENDERED_POINTS_PER_SERIES) {
   }
   sampled.push(points.at(-1))
   return sampled
+}
+
+export function buildRenderedScatterSeries(points, zoomDomain) {
+  const visiblePoints = zoomDomain
+    ? points.filter((point) => (
+      point.actTimeMs >= zoomDomain.x[0]
+      && point.actTimeMs <= zoomDomain.x[1]
+      && point.value >= zoomDomain.y[0]
+      && point.value <= zoomDomain.y[1]
+    ))
+    : points
+
+  const buildSeries = (series) => {
+    const dataKey = ERD_SCATTER_SERIES_DATA_KEYS[series]
+    return samplePoints(
+      visiblePoints.filter((point) => point.isRecent === (series === "recent")),
+    ).map((point) => ({ ...point, [dataKey]: point.value }))
+  }
+
+  return {
+    previous: buildSeries("previous"),
+    recent: buildSeries("recent"),
+  }
 }
 
 export function buildIdentityChartPoints(groups) {

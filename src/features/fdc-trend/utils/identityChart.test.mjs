@@ -2,7 +2,9 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  buildRenderedScatterSeries,
   buildIdentityChartPoints,
+  ERD_SCATTER_SERIES_DATA_KEYS,
   selectRenderedIdentityPoints,
 } from "./identityChart.mjs"
 
@@ -12,6 +14,35 @@ function createPoint(index, value = index) {
     value,
   }
 }
+
+test("단일 scatter의 이전·최근 series는 tooltip이 구분할 수 있는 dataKey를 사용한다", () => {
+  const previousPoint = {
+    ...createPoint(0, 10),
+    isRecent: false,
+    waferId: "WAFER-PREVIOUS",
+  }
+  const recentPoint = {
+    ...createPoint(1, 20),
+    isRecent: true,
+    waferId: "WAFER-RECENT",
+  }
+  const rendered = buildRenderedScatterSeries([previousPoint, recentPoint], null)
+
+  assert.notEqual(
+    ERD_SCATTER_SERIES_DATA_KEYS.previous,
+    ERD_SCATTER_SERIES_DATA_KEYS.recent,
+  )
+  assert.deepEqual(rendered.previous, [{
+    ...previousPoint,
+    [ERD_SCATTER_SERIES_DATA_KEYS.previous]: previousPoint.value,
+  }])
+  assert.deepEqual(rendered.recent, [{
+    ...recentPoint,
+    [ERD_SCATTER_SERIES_DATA_KEYS.recent]: recentPoint.value,
+  }])
+  assert.equal(rendered.recent[0].waferId, "WAFER-RECENT")
+  assert.equal(ERD_SCATTER_SERIES_DATA_KEYS.previous in rendered.recent[0], false)
+})
 
 test("동일성 포인트는 자기 EQP 구간의 경계 안쪽에 배치한다", () => {
   const groups = [

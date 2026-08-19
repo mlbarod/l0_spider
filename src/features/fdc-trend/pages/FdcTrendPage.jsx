@@ -71,8 +71,9 @@ import {
   resolveSelfEquipmentTeam,
 } from "../utils/selfEquipmentUrlFilters.mjs"
 import {
+  buildRenderedScatterSeries,
   buildIdentityChartPoints,
-  samplePoints,
+  ERD_SCATTER_SERIES_DATA_KEYS,
   selectRenderedIdentityPoints,
 } from "../utils/identityChart.mjs"
 
@@ -1189,21 +1190,10 @@ const ErdScatterCard = memo(function ErdScatterCard({
     chartQuery.dataUpdatedAt,
     Boolean(isNearViewport && points.length),
   )
-  const renderedPointSeries = useMemo(() => {
-    const visiblePoints = zoomDomain
-      ? points.filter((point) => (
-        point.actTimeMs >= zoomDomain.x[0]
-        && point.actTimeMs <= zoomDomain.x[1]
-        && point.value >= zoomDomain.y[0]
-        && point.value <= zoomDomain.y[1]
-      ))
-      : points
-
-    return {
-      recent: samplePoints(visiblePoints.filter((point) => point.isRecent)),
-      previous: samplePoints(visiblePoints.filter((point) => !point.isRecent)),
-    }
-  }, [points, zoomDomain])
+  const renderedPointSeries = useMemo(
+    () => buildRenderedScatterSeries(points, zoomDomain),
+    [points, zoomDomain],
+  )
   const axisColumn = chartQuery.data?.axisColumn ?? `${row.sensor}_${row.step}`
   const baseDomain = useMemo(() => ({
     x: numericDomain([
@@ -1381,13 +1371,13 @@ const ErdScatterCard = memo(function ErdScatterCard({
                 ))}
                 <Scatter
                   data={renderedPointSeries.previous}
-                  dataKey="value"
+                  dataKey={ERD_SCATTER_SERIES_DATA_KEYS.previous}
                   fill="#9ca3af"
                   isAnimationActive={false}
                 />
                 <Scatter
                   data={renderedPointSeries.recent}
-                  dataKey="value"
+                  dataKey={ERD_SCATTER_SERIES_DATA_KEYS.recent}
                   fill="#ef4444"
                   isAnimationActive={false}
                 />
