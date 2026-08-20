@@ -3,11 +3,12 @@ import { relative, resolve, sep } from "node:path"
 import { fileURLToPath, URL } from "node:url"
 
 import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
+import { commonCommonalityRootPath } from "./latestCommonCommonalityPath.mjs"
 import { parsePassHistoryPath } from "./passHistory.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
 
 const COMMON_FILE_ROOT = "/appdata/abnormal_trend/pic/common"
-const COMMON_COMMONALITY_FILE_ROOT = "/appdata/abnormal_trend/pic/path_common_commonality"
+const COMMON_COMMONALITY_FILE_ROOT = commonCommonalityRootPath
 const helperPath = fileURLToPath(new URL("../scripts/clicked_category_history.py", import.meta.url))
 const SUPPORTED_APPS = new Set(["self", "commonality", "common"])
 const MY_EQP_GRADES = Object.freeze(["A", "B", "D", "N", "M"])
@@ -53,10 +54,13 @@ function parseCommonPath(filePath) {
   return { sdwt, grade, sensor }
 }
 
-function parseCommonalityPath(filePath) {
+export function parseCommonalityPath(
+  filePath,
+  commonCommonalityFileRoot = COMMON_COMMONALITY_FILE_ROOT,
+) {
   const resolvedPath = resolve(normalizeText(filePath))
-  if (resolvedPath.startsWith(`${COMMON_COMMONALITY_FILE_ROOT}${sep}`)) {
-    const segments = relative(COMMON_COMMONALITY_FILE_ROOT, resolvedPath).split(sep)
+  if (resolvedPath.startsWith(`${commonCommonalityFileRoot}${sep}`)) {
+    const segments = relative(commonCommonalityFileRoot, resolvedPath).split(sep)
     if (segments.length !== 6 || segments.at(-1) !== "img.png") {
       throw new Error("공통부 동일성 Drawing 경로 형식이 올바르지 않습니다.")
     }

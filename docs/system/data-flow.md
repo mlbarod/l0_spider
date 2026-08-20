@@ -247,7 +247,8 @@ PNG endpoint는 허용 common root를 검사해 stream하고 scatter endpoint는
 ### Flow ID: `DF-ABN-03` — 공통부 동일성 이미지
 
 `CommonalityAnomalyPage`의 `commonCommonality` variant가 mapping으로 Line·SDWT를 만들고 `GET /api/common-commonality-data`를 호출한다.
-서버는 `path_common_commonality`의 최신 날짜 directory에서 `sdwt/eqp_model/grade/sensor@ch_step/img.png` 구조를 index한다.
+서버는 `COMMON_COMMONALITY_ROOT_PATH`를 우선 사용하고, 없으면 기존 commonality/dashboard root와 같은 mount의 형제
+`path_common_commonality`를 선택해 최신 날짜 directory의 `sdwt/eqp_model/grade/sensor@ch_step/img.png` 구조를 index한다.
 선택 EQP_MODEL·sensor·ch_step으로 image row를 반환하고 화면은 한 페이지 최대 18개만 `GET /api/common-commonality-image`로 표시한다.
 sensor `ALL`이면 선택 EQP_MODEL의 모든 sensor row와 `chStep=ALL`만 허용하며, 클릭이력은 기존 동일성 category 구조를 사용한다.
 

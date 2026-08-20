@@ -145,6 +145,7 @@ node server.mjs
 | `DB_INFO_PATH` | `/appdata/l0_spider/db_info.pkl` | Python helper의 DB 접속정보 |
 | `MAPPING_CONFIG_PATH` | `/appdata/l0_spider/mapping_config.json` | Line/SDWT 매핑 파일 override |
 | `COMMONALITY_ROOT_PATH` | `/appdata/abnormal_trend/pic/erd_commonality` | 동일성 데이터 루트 override |
+| `COMMON_COMMONALITY_ROOT_PATH` | 기존 데이터 root의 형제 `path_common_commonality` | 공통부 동일성 데이터 루트 override |
 | `SPIDER_DASHBOARD_PATH_ROOT` | `/appdata/abnormal_trend/pic/path` | 대시보드 일시별 상세파일 루트 override |
 
 `LIVE_RELOAD=0`에서는 존재하는 정적 파일을 `dist`에서 제공하고, 그 외 브라우저 경로는 `dist/index.html`로 돌려 SPA 라우팅을 유지합니다.

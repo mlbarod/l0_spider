@@ -382,6 +382,7 @@ SDWT 필터 마지막의 `SKIP LIST`를 선택하면 선택 Line에서 `ver = NA
 
 날짜 형식의 디렉터리가 없으면 API는 `404`와 명확한 오류 메시지를 반환한다.
 운영 경로를 예외적으로 변경해야 할 때만 서버 환경변수 `COMMONALITY_ROOT_PATH`를 사용한다.
+공통부 동일성 root가 같은 mount의 형제 경로가 아니면 `COMMON_COMMONALITY_ROOT_PATH`로 직접 지정한다.
 
 ### 동일성 이상감지 App
 

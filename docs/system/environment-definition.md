@@ -100,6 +100,7 @@
 | Vite | `VITE_SITE_URL` | 허용 host와 HMR 조건 | 빈 값 | 선택 | Vite 시작/build | `vite.config.mjs:29-30,129-140` | 아니오 | 조건부 설정 미적용 | `Confirmed` |
 | 데이터 | `MAPPING_CONFIG_PATH` | mapping 설정 파일 override | `SPIDER_DATA_PATH_TEMPLATES.mappingConfig` | 선택 | API 요청 | `server/mappingConfig.mjs:5-7` | 경로 주의 | 코드 경로 사용 | `Confirmed` |
 | 데이터 | `COMMONALITY_ROOT_PATH` | commonality root override | 코드 경로 template | 선택 | API 요청 | `server/latestCommonalityPath.mjs:9-11` | 경로 주의 | 코드 root 사용 | `Confirmed` |
+| 데이터 | `COMMON_COMMONALITY_ROOT_PATH` | 공통부 동일성 root override | 기존 commonality/dashboard root의 형제 `path_common_commonality`, 이후 코드 template | 선택 | 프로세스 시작 | `server/latestCommonCommonalityPath.mjs` | 경로 주의 | 기존 데이터 mount의 형제 경로 사용 | `Confirmed` |
 | 데이터 | `SPIDER_DASHBOARD_PATH_ROOT` | dashboard 통계 root override | dashboard template의 상위 경로 | 선택 | API 요청 | `server/dashboardData.mjs:20-22` | 경로 주의 | 코드 root 사용 | `Confirmed` |
 | DB | `DB_INFO_PATH` | DB credential pickle 위치 | `/appdata/l0_spider/db_info.pkl` | DB 기능에 조건부 | helper 실행 | `scripts/*.py` | 값 자체는 아니나 민감 경로 | 코드 경로 사용 | `Confirmed` |
 | DB | `REMOTE_ADDR` | 현재 사용자 식별용 주소 | 없음 | 현재 사용자 조회에 조건부 | 요청별 helper 실행 | `server/currentUser.mjs:42`, `scripts/current_user.py:15` | 개인정보 주의 | helper 오류 | `Confirmed` |
@@ -116,7 +117,7 @@
 |---|---|---|---|
 | 서버 listen 설정 | `PORT`, `HOST` 사용 | README에 `PORT` 예시 일부 존재 | `Confirmed` |
 | 정적 모드 설정 | `LIVE_RELOAD`, `BUILD_ON_START` 사용 | README에 두 설정 설명 존재 | `Confirmed` |
-| 데이터 경로 override | 세 환경변수 사용 | 구조 문서에 이름 기록 | `Confirmed` |
+| 데이터 경로 override | 네 환경변수 사용 | 구조 문서에 이름 기록 | `Confirmed` |
 | DB credential 경로 | `DB_INFO_PATH` 사용 | README에 이름 기록 | `Confirmed` |
 | 전체 환경변수 예제 | 여러 변수를 코드가 소비 | tracked `.env.example` 없음 | `Mismatch` |
 | HMAC 설정 예제 | 구현과 변수 이름 미확인 | 후보 요구만 문서화 | `Unknown` |
@@ -147,7 +148,7 @@
 | dashboard 통계 | `SPIDER_DASHBOARD_PATH_ROOT` 또는 코드 template | directory·Parquet 읽기 | API 오류 또는 빈 구조는 함수별 상이 | `Confirmed` |
 | mapping 설정 | `MAPPING_CONFIG_PATH` 또는 코드 template | UTF-8 JSON 읽기 | 읽기·파싱 실패 시 API `500` | `Confirmed` |
 | commonality image | `COMMONALITY_ROOT_PATH` 또는 코드 template | directory·PNG 읽기 | 최신 날짜 없음 `404`, 기타 오류 `500` | `Confirmed` |
-| common-commonality image | `path_common_commonality` 코드 template | directory·PNG 읽기 | 최신 날짜 없음 `404`, 기타 오류 `500` | `Confirmed` |
+| common-commonality data·image | `COMMON_COMMONALITY_ROOT_PATH`, 기존 데이터 root의 형제 경로 또는 코드 template | directory·PNG 읽기 | data API의 최신 날짜·SDWT 없음 `404`; image API의 경로 탐색 오류 `500` | `Confirmed` |
 | self equipment | 코드에 정의된 ERD·backup·common root | Parquet·PNG 읽기 | endpoint별 오류 또는 빈 응답 | `Confirmed` |
 | DB credential | `DB_INFO_PATH` 또는 코드 기본 경로 | pickle 읽기 | helper 오류 | `Confirmed` |
 
@@ -171,7 +172,7 @@
 
 ### 13.1 데이터 경로와 화면 연결
 
-- 화면의 상대 `/api/*` 요청은 Node 또는 Vite handler를 거쳐 코드 경로 template과 세 data-root override를 사용한다.
+- 화면의 상대 `/api/*` 요청은 Node 또는 Vite handler를 거쳐 코드 경로 template과 네 data-root override를 사용한다.
 - mapping, dashboard, commonality는 일부 override가 가능하지만 self equipment의 주요 root는 코드에 고정되어 있다.
 - 읽기 권한, mount 준비, 데이터 생성 주체와 운영별 경로 차이는 `Unknown`이다.
 

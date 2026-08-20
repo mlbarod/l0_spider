@@ -125,8 +125,10 @@ async function resolveSdwtPath(latestPath, pathSdwt, displaySdwt) {
   throw error
 }
 
-async function getCommonCommonalityIndex({ pathSdwt, sdwt }) {
-  const latestPath = await getLatestCommonCommonalityPath()
+async function getCommonCommonalityIndex({ pathSdwt, sdwt }, { rootPath } = {}) {
+  const latestPath = rootPath
+    ? await getLatestCommonCommonalityPath(rootPath)
+    : await getLatestCommonCommonalityPath()
   const { sdwtPath, folderSdwt } = await resolveSdwtPath(latestPath, pathSdwt, sdwt)
   const cacheKey = `${latestPath.path}\u0000${sdwtPath}`
   const cached = commonCommonalityIndexCache.get(cacheKey)
@@ -213,7 +215,7 @@ export function buildCommonCommonalityFilterPayload(index, filters) {
   }
 }
 
-export async function handleCommonCommonalityDataRequest(req, res, url) {
+export async function handleCommonCommonalityDataRequest(req, res, url, options = {}) {
   if (req.method !== "GET") {
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
     return
@@ -233,19 +235,22 @@ export async function handleCommonCommonalityDataRequest(req, res, url) {
       return
     }
 
-    const index = await getCommonCommonalityIndex(filters)
+    const index = await getCommonCommonalityIndex(filters, options)
     sendJson(res, 200, buildCommonCommonalityFilterPayload(index, filters))
   } catch (error) {
-    const statusCode = error.code === "COMMONALITY_DATE_DIRECTORY_NOT_FOUND"
-      || error.code === "COMMON_COMMONALITY_SDWT_DIRECTORY_NOT_FOUND"
-      ? 404
-      : 500
+    const latestDateNotFound = error.code === "COMMONALITY_DATE_DIRECTORY_NOT_FOUND"
+    const sdwtNotFound = error.code === "COMMON_COMMONALITY_SDWT_DIRECTORY_NOT_FOUND"
+    const statusCode = latestDateNotFound || sdwtNotFound ? 404 : 500
     sendJson(res, statusCode, createSafeApiError({
-      code: statusCode === 404
-        ? "COMMON_COMMONALITY_DATA_NOT_FOUND"
+      code: latestDateNotFound
+        ? "COMMON_COMMONALITY_LATEST_DATE_NOT_FOUND"
+        : sdwtNotFound
+        ? "COMMON_COMMONALITY_SDWT_NOT_FOUND"
         : "COMMON_COMMONALITY_DATA_LOAD_FAILED",
-      message: statusCode === 404
-        ? "공통부 동일성 데이터 경로를 찾지 못했습니다."
+      message: latestDateNotFound
+        ? "공통부 동일성 최신날짜 폴더를 찾지 못했습니다."
+        : sdwtNotFound
+        ? "선택한 SDWT의 공통부 동일성 폴더를 찾지 못했습니다."
         : "공통부 동일성 데이터를 불러오지 못했습니다.",
       scope: "common-commonality-data",
     }))

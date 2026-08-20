@@ -230,7 +230,7 @@ HMAC은 서명 대상의 무결성과 진위 확인을 위한 방식이며 STEP 
 | HMAC secret | 이름 미확인 | 생성·검증 주체 미확인 | 미확인 | 미확인 | 미확인 | 정책만 있음 | `Unknown` | STEP·environment docs |
 | mail credential | 이름 미확인 | sender 미확인 | 미확인 | 미확인 | 미확인 | 미확인 | `Unknown` | sender 부재 |
 | site host | `VITE_SITE_URL` | Vite config | browser build 영향 가능 | hard-coded host 후보 | 빈 문자열 | 비밀로 사용 금지 정책 | `Confirmed` | `vite.config.mjs:27-34` |
-| file roots | `SPIDER_DASHBOARD_PATH_ROOT`, `COMMONALITY_ROOT_PATH`, `MAPPING_CONFIG_PATH` | Node | response·error에 간접 노출 가능 | code path | fallback path | secret 아님 | `Confirmed` | server modules |
+| file roots | `SPIDER_DASHBOARD_PATH_ROOT`, `COMMONALITY_ROOT_PATH`, `COMMON_COMMONALITY_ROOT_PATH`, `MAPPING_CONFIG_PATH` | Node | response·error에 간접 노출 가능 | code path | fallback path | secret 아님 | `Confirmed` | server modules |
 | process bind | `HOST`, `PORT` | Node | service endpoint로 관찰 가능 | code default | fallback | secret 아님 | `Confirmed` | `server.mjs:37-38` |
 | runtime mode | `BUILD_ON_START`, `LIVE_RELOAD` | Node | 동작에 간접 영향 | enabled unless `0` | default enabled | secret 아님 | `Confirmed` | `server.mjs:39-40` |
 

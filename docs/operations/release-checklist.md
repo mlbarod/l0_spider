@@ -125,7 +125,7 @@ lint·필수 test·build 실패는 원인과 승인된 예외가 없으면 relea
 
 - [ ] `HOST`, `PORT`, `LIVE_RELOAD`, `BUILD_ON_START`의 이름과 적용 mode를 확인했다.
 - [ ] `VITE_SITE_URL`에 secret이 없고 host·HMR 영향이 검토됐다.
-- [ ] `MAPPING_CONFIG_PATH`, `COMMONALITY_ROOT_PATH`, `SPIDER_DASHBOARD_PATH_ROOT` 영향이 검토됐다.
+- [ ] `MAPPING_CONFIG_PATH`, `COMMONALITY_ROOT_PATH`, `COMMON_COMMONALITY_ROOT_PATH`, `SPIDER_DASHBOARD_PATH_ROOT` 영향이 검토됐다.
 - [ ] `DB_INFO_PATH` 위치와 service user read 권한을 값 노출 없이 확인했다.
 - [ ] 실제 환경값을 CLI output, journal, ticket, 문서와 Git에 기록하지 않았다.
 - [ ] tracked `.env.example` 부재를 알고 실제 주입 source와 owner를 확인했다.

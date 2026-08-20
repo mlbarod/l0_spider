@@ -152,6 +152,7 @@ require_code_reference "server.mjs" "process.env.BUILD_ON_START" "BUILD_ON_START
 require_code_reference "vite.config.mjs" "process.env.VITE_SITE_URL" "VITE_SITE_URL"
 require_code_reference "server/mappingConfig.mjs" "process.env.MAPPING_CONFIG_PATH" "MAPPING_CONFIG_PATH"
 require_code_reference "server/latestCommonalityPath.mjs" "process.env.COMMONALITY_ROOT_PATH" "COMMONALITY_ROOT_PATH"
+require_code_reference "server/latestCommonCommonalityPath.mjs" "process.env.COMMON_COMMONALITY_ROOT_PATH" "COMMON_COMMONALITY_ROOT_PATH"
 require_code_reference "server/dashboardData.mjs" "process.env.SPIDER_DASHBOARD_PATH_ROOT" "SPIDER_DASHBOARD_PATH_ROOT"
 require_code_reference "scripts/current_user.py" 'os.environ.get("DB_INFO_PATH")' "DB_INFO_PATH"
 require_code_reference "server/currentUser.mjs" "REMOTE_ADDR" "REMOTE_ADDR"
@@ -168,6 +169,7 @@ if [[ -f "${REPO_ROOT}/.env.example" ]]; then
     VITE_SITE_URL
     MAPPING_CONFIG_PATH
     COMMONALITY_ROOT_PATH
+    COMMON_COMMONALITY_ROOT_PATH
     SPIDER_DASHBOARD_PATH_ROOT
     DB_INFO_PATH
   )

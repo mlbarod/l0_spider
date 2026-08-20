@@ -136,8 +136,11 @@ CommonalityAnomalyPage variant="commonCommonality"
 ```
 
 Line은 기존 동일성 화면처럼 mapping에서 SDWT 후보를 제한하며 실제 파일 경로 segment에는 포함되지 않는다.
+root는 `COMMON_COMMONALITY_ROOT_PATH`를 우선하고, 없으면 `COMMONALITY_ROOT_PATH` 또는
+`SPIDER_DASHBOARD_PATH_ROOT`의 형제 `path_common_commonality`, 이후 코드 기본 경로 순으로 결정한다.
 서버는 `eqpModel → sensor → chStep` 종속 option을 만들고 `Sensor=ALL`이면 `chStep=ALL`만 허용한다.
 화면은 기존 동일성 화면과 같은 방식으로 한 페이지에 최대 18개 이미지를 렌더링하고 최종 row를 `EQP_MODEL`로 그룹화한다.
+최신 날짜 directory가 없을 때와 선택 SDWT directory가 없을 때는 서로 다른 안전한 오류 코드·문구를 반환한다.
 
 ## 4. API와 데이터 원천
 
