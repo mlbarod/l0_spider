@@ -52,6 +52,7 @@ Vite 단독 개발 mode는 통합 server보다 API route가 적으므로 운영 
 | server source | `server.mjs`, `server/` | HTTP·API·파일 조회 | runtime 배포 단위 |
 | DB helper | `scripts/*.py`, `scripts/requirements.txt` | DB 조회·등록·이력 | runtime 배포 단위 |
 | config source | `src/config/`와 환경변수 | path·mapping 기본 계약 | 코드와 환경을 분리 |
+| sensor 제외 설정 | `config/sensor-exclusions.json` | 네 이상감지 App과 Mailing의 기본 runtime 설정 | runtime 배포 필수; application user 읽기 가능 여부 확인 |
 | static artifact | `dist/` | 정적 mode의 SPA | build 결과; Git 기준 여부 미확인 |
 | 문서·계약 | `docs/`, `harness/contracts/` | 운영·API 기준 | 코드 변경과 함께 검토 |
 
@@ -71,7 +72,7 @@ Vite 단독 개발 mode는 통합 server보다 API route가 적으므로 운영 
 | `COMMONALITY_ROOT_PATH` | API 요청 | 코드 기본 root | 운영 root 변경 영향 검토 |
 | `COMMON_COMMONALITY_ROOT_PATH` | 프로세스 시작 | 기존 commonality/dashboard root의 형제 `path_common_commonality` 또는 코드 기본 root | 별도 mount면 명시적으로 설정하고 프로세스를 재시작 |
 | `SPIDER_DASHBOARD_PATH_ROOT` | API 요청 | 코드 기본 root | Dashboard detail·stats 범위 확인 |
-| `SENSOR_EXCLUSION_CONFIG_PATH` | 경로는 프로세스 시작; 동일 경로의 내용은 API 요청 | 빈 값·제외 없음 | 외부 JSON은 application read-only, 개발자·배포 계정만 수정; 반영 전 validation |
+| `SENSOR_EXCLUSION_CONFIG_PATH` | 경로는 프로세스 시작; 동일 경로의 내용은 API 요청 | `config/sensor-exclusions.json` | 기본 파일 또는 override JSON은 application read-only, 개발자·배포 계정만 수정; 반영 전 validation |
 | `DB_INFO_PATH` | Python helper | 코드 기본 path | 값이 아니라 credential file 위치; 노출 금지 |
 
 tracked `.env.example`, `EnvironmentFile`, secret manager와 실제 주입 우선순위는 `Unknown`이다.
@@ -99,6 +100,8 @@ Dockerfile, Compose, tracked systemd unit, CI workflow와 artifact registry는 �
 git branch --show-current
 git rev-parse --short HEAD
 git status --short
+test -r config/sensor-exclusions.json
+npm run sensor-exclusions:validate -- config/sensor-exclusions.json
 npm run lint
 npm run test:unit
 npm run test:contract
@@ -110,11 +113,11 @@ npm run build
 
 사전 확인 항목:
 
-1. release commit과 변경 파일·계약·문서를 식별한다.
+1. release commit과 변경 파일·계약·문서를 식별하고 `config/sensor-exclusions.json`과 전용 운영 가이드가 release source에 포함됐는지 확인한다.
 2. Node·Python 실제 버전과 지원 기준을 운영자에게 확인한다. 저장소에는 version 선언이 없다.
 3. 정적 mode이면 `dist/index.html`과 asset 생성 성공을 확인한다.
 4. runtime 환경변수 이름만 대조하고 실제 값은 출력하지 않는다.
-5. 대상 application user의 source·dist·Python script·credential·운영 file 읽기 권한을 확인한다.
+5. 대상 application user의 source·dist·Python script·credential·운영 file과 `config/sensor-exclusions.json` 읽기 권한을 확인한다. 실행 계정과 배포 계정을 분리하는 환경에서는 실행 계정의 설정 파일 쓰기 불가도 확인한다.
 6. 사용할 port와 service manager를 확인하고 기존 process 중복을 방지한다.
 7. DB schema·권한, `/appdata` mount와 데이터 freshness를 담당 owner에게 확인한다.
 8. 실제 mail sender는 이 저장소와 분리해 발송 영향과 중복 방지 여부를 확인한다.
@@ -125,7 +128,7 @@ npm run build
 
 1. 변경 동결: 대상 commit, 영향 API와 rollback 기준을 기록한다.
 2. 사전 검증: 운영 자원 비의존 lint·unit·contract와 build 결과를 확인한다.
-3. artifact 준비: source와 `dist/`의 동일 commit 관계를 유지한다.
+3. artifact 준비: source와 `dist/`의 동일 commit 관계를 유지하고 기본 sensor 제외 JSON과 운영 가이드 누락 여부를 확인한다.
 4. 환경 대조: service manager가 주입할 이름과 파일 read 권한만 확인한다.
 5. traffic 처리: proxy·무중단 전환 방식은 `Unknown`이므로 운영 승인 없이 변경하지 않는다.
 6. service 반영: 확인된 manager 절차로 한 instance씩 반영한다. 실제 instance 수는 `Unknown`이다.

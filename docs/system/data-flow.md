@@ -107,7 +107,7 @@ flowchart LR
 | Data Source ID | 유형 | 경로·table·자원 pattern | 접근 주체 | 읽기·쓰기 | 생성 책임 | 사용 Flow | 상태 | 근거 |
 |---|---|---|---|---|---|---|---|---|
 | `DS-MAP-01` | JSON | `MAPPING_CONFIG_PATH` 또는 mapping template | Node | 읽기 | `Unknown` | Dashboard·Self·이상·등록 | `Confirmed` | `mappingConfig.mjs` — `readLineMapping` |
-| `DS-EXCLUDE-01` | JSON | `SENSOR_EXCLUSION_CONFIG_PATH` | Node | 읽기 | 개발자·배포 담당자 | 네 이상감지 App·Mailing 후보 요약 | `Confirmed` | `sensorExclusionConfig.mjs` — `readSensorExclusionConfig` |
+| `DS-EXCLUDE-01` | JSON | 기본 `config/sensor-exclusions.json`, 선택적 `SENSOR_EXCLUSION_CONFIG_PATH` override | Node | 읽기 | 개발자·배포 담당자 | 네 이상감지 App·Mailing 후보 요약 | `Confirmed` | `sensorExclusionConfig.mjs` — `readSensorExclusionConfig` |
 | `DS-DASH-01` | Parquet | `path/{latest_date}` | Node | 읽기 | `Unknown` | `DF-DASH-01`, `DF-MAIL-02` | `Confirmed` | `dashboardData.mjs` — `listDashboardDateFiles` |
 | `DS-DASH-02` | Parquet | `stats/{latest_date}_spider_step_stats.parquets` | Node | 읽기 | `Unknown` | `DF-DASH-01`, `DF-MAIL-02` | `Confirmed` | `buildDashboardStatsPath` |
 | `DS-SELF-01` | Parquet | `path/{line}/{sdwt}/df_path.parquet` | Node | 읽기 | `Unknown` | `DF-SELF-01`, `DF-SELF-03` | `Confirmed` | `selfEquipmentData.mjs` — `readTeamErdRows` |

@@ -335,7 +335,7 @@ route·query 이름 변경 시 Dashboard table, URL utility, Self Equipment 소�
 
 ## 17. 메일 요약과의 관계
 
-`lineDashboard.mailingSummary`는 Dashboard와 같은 5개 식별자 고유조합을 날짜·Line·SDWT·원본 Grade별로 합산한다. 단, `SENSOR_EXCLUSION_CONFIG_PATH`의 `apps.mailing.contains`에 일치하는 sensor는 이 배열에서만 제외한다. `summary`, `lineSummary`, `dailyTrend`와 화면 KPI에는 이 규칙을 적용하지 않는다. Template은 `abnormalCount`를 전체설비 report count의 원천으로 요구한다.
+`lineDashboard.mailingSummary`는 Dashboard와 같은 5개 식별자 고유조합을 날짜·Line·SDWT·원본 Grade별로 합산한다. 단, 기본 `config/sensor-exclusions.json` 또는 경로 override 설정의 `apps.mailing.contains`에 일치하는 sensor는 이 배열에서만 제외한다. `summary`, `lineSummary`, `dailyTrend`와 화면 KPI에는 이 규칙을 적용하지 않는다. Template은 `abnormalCount`를 전체설비 report count의 원천으로 요구한다.
 `dashboard_monitoring_sensor_total`, `dashboard_change_from_previous_day`, `dashboard_previous_date_time`은 같은 무필터 Dashboard 응답에서 가져오고, `dashboard_change_color`는 numeric change 값만으로 결정하도록 문서화돼 있다.
 My EQP 메일 count는 sender가 같은 고유건 규칙으로 별도 계산하며 `lineDashboard` 변경 대상이 아니다.
 등록 조건 결합, 실제 renderer·scheduler·sender, 수신자 결정과 발송 결과는 `Unknown`이다.

@@ -70,7 +70,7 @@
 | `PORT`, `HOST` | 아니오 | 예 | `server.mjs` listen 주소를 결정한다. |
 | `LIVE_RELOAD`, `BUILD_ON_START` | 아니오 | 예 | 통합 서버의 Vite 사용과 시작 build 여부를 결정한다. |
 | 데이터 root 설정 | 아니오 | 예 | API 요청 처리 중 파일 탐색 위치를 결정한다. |
-| `SENSOR_EXCLUSION_CONFIG_PATH` | 아니오 | 예 | App별 sensor 포함문자 제외 JSON 위치를 지정한다. |
+| `SENSOR_EXCLUSION_CONFIG_PATH` | 아니오 | 예 | 기본 `config/sensor-exclusions.json` 대신 사용할 App별 sensor 제외 JSON 위치를 지정한다. |
 | `DB_INFO_PATH`, `REMOTE_ADDR` | 아니오 | 예 | Python DB helper가 credential 파일과 사용자 주소를 해석한다. |
 | `dist/` | build 결과 | 정적 모드 입력 | build 결과가 없으면 정적 모드 시작이 실패할 수 있다. |
 | `public/` 자산 | build 입력 | 정적 URL | Vite가 template, 이미지 등 공개 자산을 다룬다. |
@@ -103,7 +103,7 @@
 | 데이터 | `COMMONALITY_ROOT_PATH` | commonality root override | 코드 경로 template | 선택 | API 요청 | `server/latestCommonalityPath.mjs:9-11` | 경로 주의 | 코드 root 사용 | `Confirmed` |
 | 데이터 | `COMMON_COMMONALITY_ROOT_PATH` | 공통부 동일성 root override | 기존 commonality/dashboard root의 형제 `path_common_commonality`, 이후 코드 template | 선택 | 프로세스 시작 | `server/latestCommonCommonalityPath.mjs` | 경로 주의 | 기존 데이터 mount의 형제 경로 사용 | `Confirmed` |
 | 데이터 | `SPIDER_DASHBOARD_PATH_ROOT` | dashboard 통계 root override | dashboard template의 상위 경로 | 선택 | API 요청 | `server/dashboardData.mjs:20-22` | 경로 주의 | 코드 root 사용 | `Confirmed` |
-| 데이터 | `SENSOR_EXCLUSION_CONFIG_PATH` | 네 이상감지 App과 Mailing의 sensor 제외 JSON | 빈 값 | 선택 | 경로는 프로세스 시작; 내용은 API 요청 | `server/sensorExclusionConfig.mjs` | 경로 주의 | 제외 규칙 없음 | `Confirmed` |
+| 데이터 | `SENSOR_EXCLUSION_CONFIG_PATH` | 기본 sensor 제외 JSON 경로 override | `config/sensor-exclusions.json` | 선택 | 경로는 프로세스 시작; 내용은 API 요청 | `server/sensorExclusionConfig.mjs` | 경로 주의 | 기본 파일 사용 | `Confirmed` |
 | DB | `DB_INFO_PATH` | DB credential pickle 위치 | `/appdata/l0_spider/db_info.pkl` | DB 기능에 조건부 | helper 실행 | `scripts/*.py` | 값 자체는 아니나 민감 경로 | 코드 경로 사용 | `Confirmed` |
 | DB | `REMOTE_ADDR` | 현재 사용자 식별용 주소 | 없음 | 현재 사용자 조회에 조건부 | 요청별 helper 실행 | `server/currentUser.mjs:42`, `scripts/current_user.py:15` | 개인정보 주의 | helper 오류 | `Confirmed` |
 | 메뉴얼 | `MANUAL_BASE_URL` | 기존 UI 서버 사용 여부 | 코드 기본 loopback URL, port `4173` | 선택 | 도구 시작 | `scripts/generate-user-manual-screenshots.mjs:11-12` | 아니오 | 자체 Vite 시작 | `Confirmed` |
@@ -149,7 +149,7 @@
 |---|---|---|---|---|
 | dashboard 통계 | `SPIDER_DASHBOARD_PATH_ROOT` 또는 코드 template | directory·Parquet 읽기 | API 오류 또는 빈 구조는 함수별 상이 | `Confirmed` |
 | mapping 설정 | `MAPPING_CONFIG_PATH` 또는 코드 template | UTF-8 JSON 읽기 | 읽기·파싱 실패 시 API `500` | `Confirmed` |
-| sensor 제외 설정 | `SENSOR_EXCLUSION_CONFIG_PATH`; 미지정 시 빈 규칙 | UTF-8 JSON 읽기·mtime/size cache | 최초 읽기 실패 시 오류 log와 빈 규칙; 정상 로드 후 잘못된 변경은 마지막 정상값 유지 | `Confirmed` |
+| sensor 제외 설정 | 기본 `config/sensor-exclusions.json`; `SENSOR_EXCLUSION_CONFIG_PATH`는 선택적 override | UTF-8 JSON 읽기·mtime/size cache | 최초 읽기 실패 시 오류 log와 빈 규칙; 정상 로드 후 잘못된 변경은 마지막 정상값 유지 | `Confirmed` |
 | commonality image | `COMMONALITY_ROOT_PATH` 또는 코드 template | directory·PNG 읽기 | 최신 날짜 없음 `404`, 기타 오류 `500` | `Confirmed` |
 | common-commonality data·image | `COMMON_COMMONALITY_ROOT_PATH`, 기존 데이터 root의 형제 경로 또는 코드 template | directory·PNG 읽기 | data API의 최신 날짜·SDWT 없음 `404`; image API의 경로 탐색 오류 `500` | `Confirmed` |
 | self equipment | 코드에 정의된 ERD·backup·common root | Parquet·PNG 읽기 | endpoint별 오류 또는 빈 응답 | `Confirmed` |

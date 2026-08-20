@@ -175,7 +175,7 @@ sequenceDiagram
 | equipment API | `steps`, `eqpChannels`, `sensors`, `chSteps` | 같은 builder | 4개 종속 option 목록 | 빈 목록 placeholder | `Confirmed` |
 | equipment API | `rows`, `counts` | 같은 builder | EQP group과 chart 대상 | rows가 없으면 빈 chart 안내 | `Confirmed` |
 | MY EQP API | `availablePriorities`, registration counts | MY EQP handler | Grade option·매칭 없음 경고 | 등록/매칭 count로 구분 | `Confirmed` |
-| 일반·MY EQP API | `counts.excludedSensorRows` | sensor 제외 설정 | SKIP 제외 후 sensor 제외 건수; 화면 직접 표시는 없음 | 경로 미지정·최초 읽기 실패는 0, 재로딩 실패는 마지막 정상 규칙 적용 | `Confirmed` |
+| 일반·MY EQP API | `counts.excludedSensorRows` | sensor 제외 설정 | SKIP 제외 후 sensor 제외 건수; 화면 직접 표시는 없음 | 기본 파일 최초 읽기 실패는 0, 재로딩 실패는 마지막 정상 규칙 적용 | `Confirmed` |
 | scatter API | `points`, `axisColumn`, timing fields | scatter builder | 산점도·최근 point 구분 | point 없음은 card 빈 상태 | `Confirmed` |
 | scatter API | `changeHistory`, `historyError` | scatter builder | 변경점 이력 dialog | history만 실패해도 HTTP 200 | `Confirmed` |
 | identity API | `groups`, `windowDays`, point counts | identity builder | 동일성 chart | group 없음 안내 | `Confirmed` |
@@ -190,7 +190,7 @@ sequenceDiagram
 | `DS-SELF-02-H` | Parquet | sibling `{eqp}.parquet` | `readErdHistoryRows` | 변경점 이력 | Self 흐름 읽기 | `Unknown` | `Confirmed` |
 | `DS-SELF-IMG` | image | 허용 ERD root의 image | `handleErdFileRequest` | stream endpoint | 읽기 | `Unknown` | endpoint `Confirmed` |
 | `DS-MAP` | JSON | mapping config | `readLineMapping` | Line·SDWT·MY EQP path 매핑 | 읽기 | `Unknown` | `Confirmed` |
-| `DS-SENSOR-EXCLUSION` | JSON | `SENSOR_EXCLUSION_CONFIG_PATH` | `readSensorExclusionConfig` | 일반·MY EQP sensor 포함문자 제외 | 읽기 | 개발자·배포 담당자 | `Confirmed` |
+| `DS-SENSOR-EXCLUSION` | JSON | 기본 `config/sensor-exclusions.json`, 선택적 `SENSOR_EXCLUSION_CONFIG_PATH` override | `readSensorExclusionConfig` | 일반·MY EQP sensor 포함문자 제외 | 읽기 | 개발자·배포 담당자 | `Confirmed` |
 | `DS-DB-REG` | DB | `myeqp_regist` | registration helper | 사용자별 active MY EQP | 읽기·등록 기능 쓰기 | L0 Spider 일부 쓰기 | `Confirmed` |
 | `DS-DB-HIST` | DB | `pass_history`, `hit_history`, `clicked_category_history` | history helper | SKIP·결과·선택 이력 | 읽기·쓰기 | L0 Spider 쓰기 | `Confirmed` |
 

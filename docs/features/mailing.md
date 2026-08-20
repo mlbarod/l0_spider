@@ -102,7 +102,7 @@ CORE-04에서 등록 조회·저장·삭제는 mapping을 사용할 수 있을 �
 `lineDashboard.mailingSummary`는 `lineDashboard.summary`의 하위가 아니라 sibling 배열이다.
 생산자는 detail row의 SDWT를 mapping으로 Line과 표시 SDWT에 연결한다.
 mapping에 없는 row는 집계에서 제외되고 `meta.unmappedRows`에 반영된다.
-`SENSOR_EXCLUSION_CONFIG_PATH`의 `apps.mailing.contains`에 포함문자가 등록되면, sensor를 대소문자 구분 없이 비교해 일치 row를 `mailingSummary` 집계에서 먼저 제외한다.
+기본 `config/sensor-exclusions.json` 또는 `SENSOR_EXCLUSION_CONFIG_PATH` override의 `apps.mailing.contains`에 포함문자가 등록되면, sensor를 대소문자 구분 없이 비교해 일치 row를 `mailingSummary` 집계에서 먼저 제외한다.
 이 규칙은 Dashboard 화면의 `summary`, `lineSummary`, `dailyTrend`와 KPI에는 적용하지 않는다.
 
 고유건 식별 key는 다음 5개 field를 순서대로 정규화한 조합이다.

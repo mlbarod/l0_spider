@@ -1,16 +1,66 @@
 import assert from "node:assert/strict"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
 
 import {
+  SENSOR_EXCLUSION_APP_KEYS,
+  defaultSensorExclusionConfigPath,
   excludeSensorRows,
   isSensorExcluded,
   normalizeSensorExclusionConfig,
   readSensorExclusionConfig,
   resetSensorExclusionConfigCacheForTest,
 } from "../../server/sensorExclusionConfig.mjs"
+
+const sensorExclusionModuleUrl = new URL(
+  "../../server/sensorExclusionConfig.mjs",
+  import.meta.url,
+)
+
+async function importSensorExclusionModuleWithEnv(value, caseName) {
+  const previousValue = process.env.SENSOR_EXCLUSION_CONFIG_PATH
+  if (value === undefined) delete process.env.SENSOR_EXCLUSION_CONFIG_PATH
+  else process.env.SENSOR_EXCLUSION_CONFIG_PATH = value
+  try {
+    return await import(`${sensorExclusionModuleUrl.href}?env-case=${caseName}`)
+  } finally {
+    if (previousValue === undefined) delete process.env.SENSOR_EXCLUSION_CONFIG_PATH
+    else process.env.SENSOR_EXCLUSION_CONFIG_PATH = previousValue
+  }
+}
+
+test("unset·공백 환경변수는 기본 파일을, 명시적 환경변수는 override 파일을 사용한다", async (t) => {
+  assert.match(defaultSensorExclusionConfigPath, /config[/\\]sensor-exclusions\.json$/)
+  const defaultPayload = JSON.parse(await readFile(defaultSensorExclusionConfigPath, "utf8"))
+  const expectedDefaultSignature = normalizeSensorExclusionConfig(defaultPayload).signature
+
+  const unsetModule = await importSensorExclusionModuleWithEnv(undefined, "unset")
+  assert.equal(unsetModule.sensorExclusionConfigPath, unsetModule.defaultSensorExclusionConfigPath)
+  assert.equal((await unsetModule.readSensorExclusionConfig()).signature, expectedDefaultSignature)
+
+  const blankModule = await importSensorExclusionModuleWithEnv("   ", "blank")
+  assert.equal(blankModule.sensorExclusionConfigPath, blankModule.defaultSensorExclusionConfigPath)
+  assert.equal((await blankModule.readSensorExclusionConfig()).signature, expectedDefaultSignature)
+
+  const directory = await mkdtemp(join(tmpdir(), "l0-sensor-exclusion-override-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const overridePath = join(directory, "sensor-exclusions.json")
+  await writeFile(overridePath, JSON.stringify({
+    version: 1,
+    apps: { selfEquipment: { contains: ["OVERRIDE_ONLY"] } },
+  }))
+
+  const overrideModule = await importSensorExclusionModuleWithEnv(overridePath, "override")
+  assert.equal(overrideModule.sensorExclusionConfigPath, overridePath)
+  const overrideConfig = await overrideModule.readSensorExclusionConfig()
+  assert.deepEqual(overrideConfig.apps.selfEquipment.contains, ["OVERRIDE_ONLY"])
+  assert.deepEqual(Object.keys(overrideConfig.apps), SENSOR_EXCLUSION_APP_KEYS)
+  SENSOR_EXCLUSION_APP_KEYS.forEach((appKey) => {
+    assert.ok(Array.isArray(overrideConfig.apps[appKey].contains))
+  })
+})
 
 test("App별 contains 규칙을 대소문자 구분 없이 sensor에만 적용한다", () => {
   const config = normalizeSensorExclusionConfig({

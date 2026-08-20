@@ -1,4 +1,5 @@
 import { readFile, stat } from "node:fs/promises"
+import { fileURLToPath } from "node:url"
 
 export const SENSOR_EXCLUSION_APP_KEYS = Object.freeze([
   "selfEquipment",
@@ -8,9 +9,13 @@ export const SENSOR_EXCLUSION_APP_KEYS = Object.freeze([
   "mailing",
 ])
 
+export const defaultSensorExclusionConfigPath = fileURLToPath(
+  new URL("../config/sensor-exclusions.json", import.meta.url),
+)
+
 export const sensorExclusionConfigPath = String(
   process.env.SENSOR_EXCLUSION_CONFIG_PATH ?? "",
-).trim()
+).trim() || defaultSensorExclusionConfigPath
 
 const MAX_TERMS_PER_APP = 100
 const MAX_TERM_LENGTH = 128

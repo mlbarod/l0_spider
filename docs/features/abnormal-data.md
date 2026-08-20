@@ -33,7 +33,7 @@ STEP 딥링크, Dashboard 응답 계약과 보안 원칙은 각 기준 문서를
 
 분석 결과 파일은 Node가 읽고 stream한다. 사용자·등록·SKIP·조회 이력은 Python helper가 DB에서 읽거나 쓴다.
 
-`SENSOR_EXCLUSION_CONFIG_PATH`가 가리키는 외부 JSON은 `selfEquipment`, `matchingAnomaly`,
+기본 `config/sensor-exclusions.json` 또는 `SENSOR_EXCLUSION_CONFIG_PATH`가 가리키는 JSON은 `selfEquipment`, `matchingAnomaly`,
 `commonAnomaly`, `commonCommonalityAnomaly`별 `contains` 배열을 제공한다.
 서버는 실제 row·directory에서 얻은 `sensor`를 대소문자 구분 없이 비교하고, 포함문자가 일치하는 row를 종속 filter option과 최종 결과 생성 전에 제외한다.
 자설비의 일반 조회와 MY EQP는 같은 `selfEquipment` 규칙을 사용하며 App별 규칙은 서로 상속하지 않는다.
@@ -256,7 +256,7 @@ L0 Spider의 확인된 책임은 파일 결과를 선택·검증·읽기·집계
 | 동일성 | 최신 유효 `YYYY-MM-DD hh:mm:ss` directory | directory index 5분 TTL, latest path 포함 key | 기본 stale 60초 | 동일 latest directory 내부 변경은 최대 TTL 영향 가능 |
 | 공통부 동일성 | 최신 유효 `YYYY-MM-DD` directory | directory index 5분 TTL, latest path 포함 key | 기본 stale 60초 | 동일 latest directory 내부 변경은 최대 TTL 영향 가능 |
 | 공통부 index·chart | index row `file_path`가 가리키는 결과 | path 1개, scatter 1개; mtime·size 검사 | 기본 stale 60초, 일부 history 30초 | file 교체는 server mtime·size로 판정 |
-| sensor 제외 설정 | 외부 JSON의 App별 `contains` | 마지막 정상값; mtime·size 검사 | 기존 query cache는 다음 refetch 전 유지 가능 | 다음 API 요청부터 새 규칙 적용 |
+| sensor 제외 설정 | 기본 또는 override JSON의 App별 `contains` | 마지막 정상값; mtime·size 검사 | 기존 query cache는 다음 refetch 전 유지 가능 | 다음 API 요청부터 새 규칙 적용 |
 | 이미지 HTTP | path가 직접 가리키는 file | 별도 memory cache 없음 | commonality/common `private,max-age=300`; ERD `no-cache` | endpoint별 정책 상이 |
 
 Dashboard의 날짜 연산은 UTC 기반 검증·증감을 사용하지만 filename이 표현하는 업무 timezone은 `Unknown`이다.

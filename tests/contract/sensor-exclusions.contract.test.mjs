@@ -7,12 +7,15 @@ import Ajv2020 from "ajv/dist/2020.js"
 import { normalizeSensorExclusionConfig } from "../../server/sensorExclusionConfig.mjs"
 
 const schemaUrl = new URL("../../harness/contracts/sensor-exclusions.schema.json", import.meta.url)
+const defaultConfigUrl = new URL("../../config/sensor-exclusions.json", import.meta.url)
 const exampleUrl = new URL("../../config/sensor-exclusions.example.json", import.meta.url)
 const schema = JSON.parse(await readFile(schemaUrl, "utf8"))
+const defaultConfig = JSON.parse(await readFile(defaultConfigUrl, "utf8"))
 const example = JSON.parse(await readFile(exampleUrl, "utf8"))
 const validate = new Ajv2020({ strict: true }).compile(schema)
 
-test("외부 sensor 제외 설정 예제가 JSON Schema와 runtime 검증을 통과한다", () => {
+test("기본 sensor 제외 설정과 예제가 JSON Schema와 runtime 검증을 통과한다", () => {
+  assert.equal(validate(defaultConfig), true, JSON.stringify(validate.errors))
   assert.equal(validate(example), true, JSON.stringify(validate.errors))
   const normalized = normalizeSensorExclusionConfig(example)
   assert.equal(normalized.version, 1)
