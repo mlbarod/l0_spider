@@ -15,6 +15,10 @@ import {
   handleCommonalityDataRequest,
   handleCommonalityImageRequest,
 } from "./server/commonalityData.mjs"
+import {
+  handleCommonCommonalityDataRequest,
+  handleCommonCommonalityImageRequest,
+} from "./server/commonCommonalityData.mjs"
 import { handleLatestCommonalityPathRequest } from "./server/latestCommonalityPath.mjs"
 import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
 import { handlePassHistoryRequest } from "./server/passHistory.mjs"
@@ -64,6 +68,11 @@ function mappingConfigApi() {
           return
         }
 
+        if (url.pathname === "/api/common-commonality-data") {
+          handleCommonCommonalityDataRequest(req, res, url)
+          return
+        }
+
         if (url.pathname === "/api/common-anomaly-data") {
           handleCommonAnomalyDataRequest(req, res, url)
           return
@@ -81,6 +90,11 @@ function mappingConfigApi() {
 
         if (url.pathname === "/api/commonality-image") {
           handleCommonalityImageRequest(req, res, url)
+          return
+        }
+
+        if (url.pathname === "/api/common-commonality-image") {
+          handleCommonCommonalityImageRequest(req, res, url)
           return
         }
 

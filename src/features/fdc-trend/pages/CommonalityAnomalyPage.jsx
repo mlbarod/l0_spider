@@ -16,6 +16,10 @@ import {
   buildCommonalityImageUrl,
   fetchCommonalityData,
 } from "../api/commonalityApi"
+import {
+  buildCommonCommonalityImageUrl,
+  fetchCommonCommonalityData,
+} from "../api/commonCommonalityApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
 import { isLineMappingQueryReady } from "../api/mappingContract.mjs"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
@@ -25,6 +29,45 @@ const EMPTY_LIST = Object.freeze([])
 const ALL_SENSORS = "ALL"
 const ALL_CH_STEPS = "ALL"
 const IMAGES_PER_PAGE = 18
+
+const PAGE_VARIANTS = Object.freeze({
+  matching: Object.freeze({
+    queryKey: "commonality-data",
+    title: "동일성 이상감지",
+    badge: "Matching",
+    description: "동일성 최신날짜의 그래프를 Line, SDWT, STEP, Sensor, ch_step 기준으로 조회합니다.",
+    categoryLabel: "STEP",
+    categoryOptionKey: "stepDescs",
+    categoryFilterKey: "stepDesc",
+    categoryRowKey: "stepDesc",
+    categoryQueryKey: "stepDesc",
+    latestLoadingText: "동일성 경로를 탐색하는 중입니다.",
+    resultTitle: "동일성 기준 이상감지 그래프",
+    resultDescription: "최종 필터 선택 결과를 step_desc 기준으로 분류합니다.",
+    resultCategoryName: "STEP categories",
+    emptySelectionText: "Line Name, SDWT, STEP, Sensor와 ch_step을 선택하면 동일성 그래프가 표시됩니다.",
+    fetchData: fetchCommonalityData,
+    buildImageUrl: buildCommonalityImageUrl,
+  }),
+  commonCommonality: Object.freeze({
+    queryKey: "common-commonality-data",
+    title: "공통부 동일성 이상감지",
+    badge: "Common Matching",
+    description: "공통부 동일성 최신날짜의 그래프를 Line, SDWT, EQP_MODEL, Sensor, ch_step 기준으로 조회합니다.",
+    categoryLabel: "EQP_MODEL",
+    categoryOptionKey: "eqpModels",
+    categoryFilterKey: "eqpModel",
+    categoryRowKey: "eqpModel",
+    categoryQueryKey: "eqpModel",
+    latestLoadingText: "공통부 동일성 경로를 탐색하는 중입니다.",
+    resultTitle: "공통부 동일성 기준 이상감지 그래프",
+    resultDescription: "최종 필터 선택 결과를 EQP_MODEL 기준으로 분류합니다.",
+    resultCategoryName: "EQP_MODEL categories",
+    emptySelectionText: "Line Name, SDWT, EQP_MODEL, Sensor와 ch_step을 선택하면 공통부 동일성 그래프가 표시됩니다.",
+    fetchData: fetchCommonCommonalityData,
+    buildImageUrl: buildCommonCommonalityImageUrl,
+  }),
+})
 
 function SelectRow({ label, meta, selected, onClick }) {
   return (
@@ -129,9 +172,12 @@ function FilterCard({
   )
 }
 
-function CommonalityImageCard({ row }) {
+function CommonalityImageCard({ row, config }) {
   const [imageFailed, setImageFailed] = useState(false)
-  const imageUrl = buildCommonalityImageUrl(row.filePath)
+  const imageUrl = config.buildImageUrl(row.filePath)
+  const detailText = row.eqpModel
+    ? `${row.grade} · ${row.eqpModel}`
+    : `${row.grade} · ${row.stepSeq} · ${row.ppid}`
 
   return (
     <article className="grid min-w-0 overflow-hidden rounded-xl border bg-background shadow-sm">
@@ -139,7 +185,7 @@ function CommonalityImageCard({ row }) {
         <div className="min-w-0">
           <h4 className="truncate text-sm font-semibold">{row.sensor} / {row.chStep}</h4>
           <p className="mt-1 truncate text-xs text-muted-foreground">
-            {row.grade} · {row.stepSeq} · {row.ppid}
+            {detailText}
           </p>
         </div>
         <Badge variant="outline">{row.grade}</Badge>
@@ -153,7 +199,7 @@ function CommonalityImageCard({ row }) {
         ) : (
           <img
             src={imageUrl}
-            alt={`${row.stepDesc} ${row.sensor} ${row.chStep} 동일성 이상감지`}
+            alt={`${row[config.categoryRowKey]} ${row.sensor} ${row.chStep} ${config.title}`}
             className="max-h-[520px] w-full object-contain"
             loading="lazy"
             onError={() => setImageFailed(true)}
@@ -202,7 +248,8 @@ function buildPageItems(totalPages, activePage) {
   })
 }
 
-export function CommonalityAnomalyPage() {
+export function CommonalityAnomalyPage({ variant = "matching" }) {
+  const config = PAGE_VARIANTS[variant] ?? PAGE_VARIANTS.matching
   const queryClient = useQueryClient()
   const [selectedLine, setSelectedLine] = useState("")
   const [selectedTeam, setSelectedTeam] = useState("")
@@ -235,7 +282,7 @@ export function CommonalityAnomalyPage() {
   const activeTeamLabel = teamOptions.find((team) => team.key === activeTeam)?.label ?? ""
   const dataQuery = useQuery({
     queryKey: [
-      "commonality-data",
+      config.queryKey,
       activeLine,
       activeTeam,
       activeTeamLabel,
@@ -243,20 +290,20 @@ export function CommonalityAnomalyPage() {
       selectedSensor,
       selectedChStep,
     ],
-    queryFn: () => fetchCommonalityData({
+    queryFn: () => config.fetchData({
       line: activeLine,
       pathSdwt: activeTeam,
       sdwt: activeTeamLabel,
-      stepDesc: selectedStepDesc,
+      [config.categoryQueryKey]: selectedStepDesc,
       sensor: selectedSensor,
       chStep: selectedChStep,
     }),
     enabled: Boolean(mappingReady && activeLine && activeTeam && activeTeamLabel),
   })
-  const stepDescs = dataQuery.data?.stepDescs ?? EMPTY_LIST
+  const stepDescs = dataQuery.data?.[config.categoryOptionKey] ?? EMPTY_LIST
   const sensors = dataQuery.data?.sensors ?? EMPTY_LIST
   const chSteps = dataQuery.data?.chSteps ?? EMPTY_LIST
-  const activeStepDesc = dataQuery.data?.filters?.stepDesc ?? ""
+  const activeStepDesc = dataQuery.data?.filters?.[config.categoryFilterKey] ?? ""
   const activeSensor = dataQuery.data?.filters?.sensor ?? ""
   const activeChStep = dataQuery.data?.filters?.chStep ?? ""
   const imageRows = selectedChStep && activeChStep === selectedChStep
@@ -271,13 +318,14 @@ export function CommonalityAnomalyPage() {
   const imageGroups = useMemo(() => {
     const groups = new Map()
     visibleImageRows.forEach((row) => {
-      const rows = groups.get(row.stepDesc) ?? []
+      const categoryValue = row[config.categoryRowKey]
+      const rows = groups.get(categoryValue) ?? []
       rows.push(row)
-      groups.set(row.stepDesc, rows)
+      groups.set(categoryValue, rows)
     })
-    return Array.from(groups, ([stepDesc, rows]) => ({ stepDesc, rows }))
-      .sort((left, right) => left.stepDesc.localeCompare(right.stepDesc, "ko", { numeric: true }))
-  }, [visibleImageRows])
+    return Array.from(groups, ([categoryValue, rows]) => ({ categoryValue, rows }))
+      .sort((left, right) => left.categoryValue.localeCompare(right.categoryValue, "ko", { numeric: true }))
+  }, [config.categoryRowKey, visibleImageRows])
   const pageItems = useMemo(
     () => buildPageItems(totalImagePages, activeImagePage),
     [activeImagePage, totalImagePages],
@@ -300,7 +348,7 @@ export function CommonalityAnomalyPage() {
 
     try {
       const queryKey = [
-        "commonality-data",
+        config.queryKey,
         activeLine,
         activeTeam,
         activeTeamLabel,
@@ -310,11 +358,11 @@ export function CommonalityAnomalyPage() {
       ]
       const payload = await queryClient.fetchQuery({
         queryKey,
-        queryFn: () => fetchCommonalityData({
+        queryFn: () => config.fetchData({
           line: activeLine,
           pathSdwt: activeTeam,
           sdwt: activeTeamLabel,
-          stepDesc: selectedStepDesc,
+          [config.categoryQueryKey]: selectedStepDesc,
           sensor: selectedSensor,
           chStep: nextChStep,
         }),
@@ -370,11 +418,11 @@ export function CommonalityAnomalyPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold tracking-tight">동일성 이상감지</h1>
-              <Badge variant="outline">Matching</Badge>
+              <h1 className="text-lg font-semibold tracking-tight">{config.title}</h1>
+              <Badge variant="outline">{config.badge}</Badge>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              동일성 최신날짜의 그래프를 Line, SDWT, STEP, Sensor, ch_step 기준으로 조회합니다.
+              {config.description}
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" asChild>
@@ -436,10 +484,10 @@ export function CommonalityAnomalyPage() {
               ))}
             </FilterCard>
             <FilterCard
-              title="STEP"
+              title={config.categoryLabel}
               badge={stepDescs.length}
               disabled={!activeTeam || dataQuery.isLoading}
-              placeholder={dataQuery.isLoading ? "동일성 경로를 탐색하는 중입니다." : "선택 SDWT에 해당하는 STEP이 없습니다."}
+              placeholder={dataQuery.isLoading ? config.latestLoadingText : `선택 SDWT에 해당하는 ${config.categoryLabel}이 없습니다.`}
               isActive={Boolean(activeStepDesc)}
               isLoading={dataQuery.isFetching && !selectedStepDesc}
               query={queries.stepDesc}
@@ -464,7 +512,7 @@ export function CommonalityAnomalyPage() {
               title="Sensor"
               badge={sensors.length}
               disabled={!selectedStepDesc || dataQuery.isLoading}
-              placeholder={selectedStepDesc ? "선택 STEP에 해당하는 Sensor가 없습니다." : "STEP을 먼저 선택하세요"}
+              placeholder={selectedStepDesc ? `선택 ${config.categoryLabel}에 해당하는 Sensor가 없습니다.` : `${config.categoryLabel}을 먼저 선택하세요`}
               isActive={Boolean(activeSensor)}
               isLoading={dataQuery.isFetching && !selectedSensor}
               query={queries.sensor}
@@ -538,12 +586,12 @@ export function CommonalityAnomalyPage() {
         <section className="grid min-w-0 gap-3">
           <div className="flex items-end justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold">동일성 기준 이상감지 그래프</h2>
-              <p className="mt-1 text-xs text-muted-foreground">최종 필터 선택 결과를 step_desc 기준으로 분류합니다.</p>
+              <h2 className="text-base font-semibold">{config.resultTitle}</h2>
+              <p className="mt-1 text-xs text-muted-foreground">{config.resultDescription}</p>
             </div>
             {activeChStep ? (
               <div className="flex items-center gap-2">
-                <Badge variant="secondary">{imageGroups.length.toLocaleString()} STEP categories</Badge>
+                <Badge variant="secondary">{imageGroups.length.toLocaleString()} {config.resultCategoryName}</Badge>
                 <Badge variant="outline">{imageRows.length.toLocaleString()} images</Badge>
               </div>
             ) : null}
@@ -552,7 +600,7 @@ export function CommonalityAnomalyPage() {
           {activeChStep && totalImagePages > 1 ? (
             <nav
               className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3"
-              aria-label="동일성 이미지 페이지"
+              aria-label={`${config.title} 이미지 페이지`}
             >
               <span className="text-xs tabular-nums text-muted-foreground">
                 {((activeImagePage - 1) * IMAGES_PER_PAGE + 1).toLocaleString()}
@@ -586,21 +634,21 @@ export function CommonalityAnomalyPage() {
 
           {!activeChStep ? (
             <div className="grid min-h-52 place-items-center rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
-              Line Name, SDWT, STEP, Sensor와 ch_step을 선택하면 동일성 그래프가 표시됩니다.
+              {config.emptySelectionText}
             </div>
           ) : imageGroups.length ? (
             <div className="grid min-w-0 gap-5">
               {imageGroups.map((group) => (
-                <section key={group.stepDesc} className="min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm">
+                <section key={group.categoryValue} className="min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm">
                   <header className="flex items-center justify-between gap-3 border-b bg-muted/60 px-4 py-3">
                     <div className="flex min-w-0 items-center gap-2">
-                      <Badge>STEP</Badge>
-                      <h3 className="truncate text-sm font-semibold">{group.stepDesc}</h3>
+                      <Badge>{config.categoryLabel}</Badge>
+                      <h3 className="truncate text-sm font-semibold">{group.categoryValue}</h3>
                     </div>
                     <Badge variant="secondary">{group.rows.length.toLocaleString()} images</Badge>
                   </header>
                   <div className="grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2 xl:grid-cols-3">
-                    {group.rows.map((row) => <CommonalityImageCard key={row.id} row={row} />)}
+                    {group.rows.map((row) => <CommonalityImageCard key={row.id} row={row} config={config} />)}
                   </div>
                 </section>
               ))}

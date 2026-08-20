@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { Activity, BookOpen, CalendarClock, ChartNoAxesCombined, Gauge, Mail, Network, Radar, ScanSearch, Users } from "lucide-react"
+import { Activity, BookOpen, CalendarClock, ChartNoAxesCombined, Gauge, GitCompareArrows, Mail, Network, Radar, ScanSearch, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
@@ -33,6 +33,15 @@ const spiderApps = [
     subtitle: "공통 설비와 공정 구간의 이상 징후를 통합 관점으로 봅니다.",
     category: "Common",
     href: "/common-anomaly",
+    active: true,
+    status: "운영중",
+  },
+  {
+    icon: GitCompareArrows,
+    title: "공통부 동일성 이상감지",
+    subtitle: "공통부 EQP Model별 신호 분포 차이를 비교해 이상 패턴을 찾습니다.",
+    category: "Common Matching",
+    href: "/common-commonality-anomaly",
     active: true,
     status: "운영중",
   },

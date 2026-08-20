@@ -34,6 +34,10 @@ const fdcTrendChildren = [
     element: <CommonAnomalyPage />,
   },
   {
+    path: "common-commonality-anomaly",
+    element: <CommonalityAnomalyPage variant="commonCommonality" />,
+  },
+  {
     path: "manual",
     element: <UserManualPage />,
   },

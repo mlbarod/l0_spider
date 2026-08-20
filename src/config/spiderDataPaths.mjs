@@ -8,6 +8,8 @@ export const SPIDER_DATA_PATH_TEMPLATES = Object.freeze({
   dashboardDetail: `${PIC_ROOT}/path/{latest_date}`,
   commonalityRoot: `${PIC_ROOT}/erd_commonality`,
   commonalityImage: `${PIC_ROOT}/erd_commonality/{latest_date}/{sdwt}/{grade}/{step_seq}/{step_desc}/{ppid}/{ppid}/{sensor}_{ch_step}/img.png`,
+  commonCommonalityRoot: `${PIC_ROOT}/path_common_commonality`,
+  commonCommonalityImage: `${PIC_ROOT}/path_common_commonality/{latest_date}/{sdwt}/{eqp_model}/{grade}/{sensor}@{ch_step}/img.png`,
   backupImage: `${PIC_ROOT}/backup/#appdata#abnormal_trend#pic#erd#{latest_date}#{sdwt}#{step_desc}#{ver}#{ppid}#{grade}#{sensor}#{ch_step}#{eqp}.png`,
   latestDateFile: `${PIC_ROOT}/path/{latest_date}`,
   teamErdPath: `${PIC_ROOT}/path/{line}/{sdwt}/df_path.parquet`,
@@ -24,6 +26,7 @@ export const SPIDER_DASHBOARD_COLUMNS = Object.freeze({
 
 export const SPIDER_DATA_PATH_NAMES = Object.freeze({
   latestCommonality: "동일성 최신날짜",
+  latestCommonCommonality: "공통부 동일성 최신날짜",
 })
 
 export const LATEST_DATE_FILE_PATTERN = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/
@@ -57,6 +60,10 @@ export function buildDashboardDetailPath(latestDate) {
 
 export function buildCommonalityImagePath(values) {
   return fillPathTemplate(SPIDER_DATA_PATH_TEMPLATES.commonalityImage, values)
+}
+
+export function buildCommonCommonalityImagePath(values) {
+  return fillPathTemplate(SPIDER_DATA_PATH_TEMPLATES.commonCommonalityImage, values)
 }
 
 export function buildBackupImagePath(values) {

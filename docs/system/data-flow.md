@@ -4,7 +4,7 @@
 > 문서 상태: `Active Baseline`
 > 데이터 흐름 범위: `As-Is`
 > 검증 기준 branch: `main`
-> 검증 기준 코드 commit: `99c4361164d4109a71f0153a5c963fa4f5d52cb4`
+> 검증 기준 코드 commit: `2d5535366fc56ecff7a322139ddfe6f09cd4df25` + 현재 working tree 변경
 > 최신 하네스 감사: [reports/audit/harness-final-review.md](../../reports/audit/harness-final-review.md)
 > 주요 근거: `AGENTS.md`, `reports/audit/system-inventory.md`, `docs/system/overview.md`, `docs/system/architecture.md`, `docs/system/environment-definition.md`
 > 조사 제한: 실제 운영 데이터, DB, `.env`, 비밀키와 메일 전송 시스템은 열거나 실행하지 않았다.
@@ -54,7 +54,8 @@
 | `DF-SELF-03` | MY EQP 조회 | `sdwt=MY_EQP` | 사용자·등록 조건·mapping·path row 결합 | `myeqp_regist`, mapping JSON, team Parquet | 등록 EQP 필터와 chart row | `Complete` | `Confirmed` |
 | `DF-ABN-01` | 동일성 이상감지 | `/matching-anomaly` | 최신 directory index와 종속 필터 | `erd_commonality` directory·PNG | 분석 이미지 카드 | `Complete` | `Confirmed` |
 | `DF-ABN-02` | 공통부 이상감지 | `/common-anomaly` | path row·SKIP 제외·data/image 변환 | `path_common` Parquet, common Parquet·PNG, DB | 이미지·scatter·동일성 chart | `Complete` | `Confirmed` |
-| `DF-COMMON-01` | 조회 카테고리 이력 | 세 이상감지 화면의 최종 필터 | drawing path→category 변환·사용자 결합 | `clicked_category_history` | 저장 성공·실패 toast | `Complete` | `Confirmed` |
+| `DF-ABN-03` | 공통부 동일성 이상감지 | `/common-commonality-anomaly` | 최신 directory index와 EQP_MODEL 종속 필터 | `path_common_commonality` directory·PNG | 분석 이미지 카드 | `Complete` | `Confirmed` |
+| `DF-COMMON-01` | 조회 카테고리 이력 | 네 이상감지 화면의 최종 필터 | drawing path→category 변환·사용자 결합 | `clicked_category_history` | 저장 성공·실패 toast | `Complete` | `Confirmed` |
 | `DF-MAIL-01` | Mailing·MY EQP 조건 등록 | `/registration` | 입력 정규화·Python helper·transaction | `email`, `myeqp_regist`, `erdtsum_info` | 등록 목록·저장/삭제 결과 | `Complete` | `Confirmed` |
 | `DF-MAIL-02` | Mailing Report | HTML template | Dashboard summary와 등록 조건 결합 후보 | Dashboard 응답, DB 조건, template | HTML·메일 후보 | `Partial` | 일부 `Confirmed`, 전달은 `Unknown` |
 | `DF-STEP-01` | STEP·MY EQP 딥링크 | Dashboard 또는 메일 LINK | URL query 생성·정규화·초기 필터 적용 | URL query, MY EQP·파일 데이터 | Self Equipment 진입 | `Partial` | `step=ALL`은 `Confirmed`, HMAC은 `Mismatch` |
@@ -98,6 +99,7 @@ flowchart LR
 | 등록 Hub | `/registration`; alias `/my-eqp`, `/recipients` | 화면 내부 사용자·Line 조건 | `RegistrationHubPage`, `MailingRegistrationPage`, `MyEqpRegistrationPage` | 메뉴얼 5장 | `Confirmed` | `routes.jsx`; `RegistrationHubPage` |
 | 동일성 | `/matching-anomaly` | 화면 상태로 Line·SDWT·STEP·sensor·ch_step | `CommonalityAnomalyPage` | 메뉴얼 6.1 | `Confirmed` | `CommonalityAnomalyPage` |
 | 공통부 | `/common-anomaly` | 화면 상태로 Line·SDWT·prc_group·eqp·sensor | `CommonAnomalyPage` | 메뉴얼 6.2 | `Confirmed` | `CommonAnomalyPage` |
+| 공통부 동일성 | `/common-commonality-anomaly` | 화면 상태로 Line·SDWT·EQP_MODEL·sensor·ch_step | `CommonalityAnomalyPage` variant | 메뉴얼 6.3 | `Confirmed` | `routes.jsx`; `CommonalityAnomalyPage` |
 | Mailing LINK | `/self-equipment?...` | 전체설비: Line·SDWT·Grade; MY EQP: 추가 `step=ALL`, `eqpCh` | `FdcTrendPage` | 메뉴얼 7장 | 링크 형식 `Confirmed` | `public/mailing-report.html`; URL filter utility |
 
 ## 6. 데이터 원천 카탈로그
@@ -111,6 +113,7 @@ flowchart LR
 | `DS-SELF-02` | Parquet·PNG | `erd/{latest_date}/.../{sensor}/{ch_step}/data.parquet`, sibling image·history | Node | 읽기·stream | `Unknown` | `DF-SELF-02` | `Confirmed` | `resolveErdDataFilePath`, `handleErdFileRequest` |
 | `DS-ABN-01` | directory·PNG | `erd_commonality/{latest_date}/.../{sensor}_{ch_step}/img.png` | Node | directory 읽기·stream | `Unknown` | `DF-ABN-01` | `Confirmed` | `commonalityData.mjs` — `collectCommonalityRows` |
 | `DS-ABN-02` | Parquet·PNG | `path_common/{line}/{sdwt}/df_path.parquet` → `common/.../data.parquet`, PNG | Node | 읽기·stream | `Unknown` | `DF-ABN-02` | `Confirmed` | `commonAnomalyData.mjs` |
+| `DS-ABN-03` | directory·PNG | `path_common_commonality/{latest_date}/{sdwt}/{eqp_model}/{grade}/{sensor}@{ch_step}/img.png` | Node | directory 읽기·stream | `Unknown` | `DF-ABN-03` | `Confirmed` | `commonCommonalityData.mjs` |
 | `DS-DB-USER` | DB | `v_ipms_ip_info`, `user_info` | Python | 읽기 | DB 관리 주체 `Unknown` | Self·등록·이력 | `Confirmed` | `scripts/current_user.py` |
 | `DS-DB-REF` | DB | `erdtsum_info` | Python | 읽기 | DB 관리 주체 `Unknown` | `DF-MAIL-01` MY EQP 기준 | `Confirmed` | `scripts/my_eqp_reference.py` |
 | `DS-DB-REG` | DB | `myeqp_regist`, `email` | Python | 읽기·쓰기; 일부 DDL | L0 Spider 쓰기, schema 책임 `Unknown` | `DF-SELF-03`, `DF-MAIL-01/02` | `Confirmed` | registration helper |
@@ -132,6 +135,7 @@ flowchart LR
 | `DF-SELF-03` | MY EQP | `FdcTrendPage` — `my-eqp-equipment-data` | `GET /api/my-eqp-equipment-data` | 등록·매칭 count, filter option, rows | `Confirmed` | `fetchMyEqpEquipmentData` |
 | `DF-ABN-01` | `/matching-anomaly` | `CommonalityAnomalyPage` — `commonality-data` | `GET /api/commonality-data`, image | filter option·rows → paged PNG card | `Confirmed` | `commonalityApi.js`; page |
 | `DF-ABN-02` | `/common-anomaly` | `CommonAnomalyPage` — common query keys | data·scatter·image API | path rows·point groups·PNG → cards/charts | `Confirmed` | `commonAnomalyApi.js`; page |
+| `DF-ABN-03` | `/common-commonality-anomaly` | `CommonalityAnomalyPage` — `common-commonality-data` | data·image API | EQP_MODEL option·rows → paged PNG card | `Confirmed` | `commonCommonalityApi.js`; page |
 | `DF-COMMON-01` | 최종 필터 click | 각 page mutation성 호출 | `POST /api/clicked-category-history` | `affectedRows` → 실패 toast | `Confirmed` | `clickedCategoryHistoryApi.js` |
 | `DF-MAIL-01` | `/registration` | registration query·mutation | registration·reference·current user API | 등록 목록·toast·삭제 결과 | `Confirmed` | 두 registration page |
 | `DF-MAIL-02` | 발송 메일 후보 | renderer 미확인 | 현재 저장소의 HTTP 호출 없음 | template KPI·표·LINK | `Partial` | `public/mailing-report.html` |
@@ -147,6 +151,7 @@ flowchart LR
 | `DF-SELF-03` | `GET /api/my-eqp-equipment-data` | 사용자·등록 조회 후 `filterMyEqpRows` | DB·mapping·복수 `DS-SELF-01` | active registration과 EQP 정규화 매칭 | `Confirmed` | `handleMyEqpEquipmentDataRequest` |
 | `DF-ABN-01` | commonality data/image API | latest path·directory index·filter payload | `DS-ABN-01` | folder segment를 image row로 변환 | `Confirmed` | commonality modules |
 | `DF-ABN-02` | common anomaly APIs | path·scatter·image handler | `DS-ABN-02`, `pass_history` | path→data/image, EQP match, point group | `Confirmed` | `commonAnomalyData.mjs` |
+| `DF-ABN-03` | common-commonality APIs | latest path·directory index·filter payload | `DS-ABN-03` | folder segment를 image row로 변환 | `Confirmed` | common-commonality modules |
 | `DF-COMMON-01` | clicked history POST | `buildClickedCategoryHistoryRecord`, Python helper | drawing path, 사용자 DB, `clicked_category_history` | category 문자열·sensor `ALL` 정규화 | `Confirmed` | clicked history Node/Python |
 | `DF-MAIL-01` | registration APIs | Node validation→Python action | `DS-DB-REF`, `DS-DB-REG` | group·list serialize·transaction | `Confirmed` | registration Node/Python |
 | `DF-MAIL-02` | 실행 진입점 없음 | Dashboard producer와 template만 확인 | `lineDashboard`, 등록 DB 후보 | 최종 결합·render·send 미확인 | `Partial` | Dashboard module·template |
@@ -239,6 +244,13 @@ sensor `ALL`이면 모든 sensor row와 `chStep=ALL`만 허용하는 종속 조�
 PNG endpoint는 허용 common root를 검사해 stream하고 scatter endpoint는 sensor·ch_step axis로 point group을 만든다.
 화면은 이미지 카드, SKIP 작업, scatter와 identity chart로 결과를 소비한다.
 
+### Flow ID: `DF-ABN-03` — 공통부 동일성 이미지
+
+`CommonalityAnomalyPage`의 `commonCommonality` variant가 mapping으로 Line·SDWT를 만들고 `GET /api/common-commonality-data`를 호출한다.
+서버는 `path_common_commonality`의 최신 날짜 directory에서 `sdwt/eqp_model/grade/sensor@ch_step/img.png` 구조를 index한다.
+선택 EQP_MODEL·sensor·ch_step으로 image row를 반환하고 화면은 한 페이지 최대 18개만 `GET /api/common-commonality-image`로 표시한다.
+sensor `ALL`이면 선택 EQP_MODEL의 모든 sensor row와 `chStep=ALL`만 허용하며, 클릭이력은 기존 동일성 category 구조를 사용한다.
+
 ## 11. STEP 딥링크와 HMAC 데이터 흐름
 
 | 단계 | 입력 | 처리 주체 | 처리 방식 | 출력 | 신뢰 경계 | 상태 | 근거 |
@@ -287,6 +299,7 @@ PNG endpoint는 허용 common root를 검사해 stream하고 scatter endpoint는
 | `DF-SELF-03` | DB registration+path rows | My EQP handler | SDWT mapping, EQP 표기 정규화, active filter | 등록 대상 chart rows | `Confirmed` | My EQP handler |
 | `DF-ABN-01` | directory tree | `collectCommonalityRows` | path segment와 `sensor_chStep` 분해 | image row | `Confirmed` | commonality module |
 | `DF-ABN-02` | path row | common payload builder | selected filter, path→data·image 변환 | image/chart row | `Confirmed` | common module |
+| `DF-ABN-03` | directory tree | `collectCommonCommonalityRows` | path segment와 `sensor@chStep` 분해 | image row | `Confirmed` | common-commonality module |
 | `DF-COMMON-01` | drawing paths | history record builder | path에서 SDWT·Grade·sensor 추출; sensor `ALL` 보존 | DB record | `Confirmed` | clicked history module |
 | `DF-MAIL-01` | form state | Node·Python | list dedupe·serialize, row fan-out | DB rows | `Confirmed` | registration modules |
 | `DF-MAIL-02` | summary·등록 조건 | 외부 sender 후보 | 수신자별 결합 rule만 문서화 | template context | `Unknown` | 실행 코드 없음 |
@@ -333,6 +346,7 @@ PNG endpoint는 허용 common root를 검사해 stream하고 scatter endpoint는
 | Dashboard 최신 | server | 유효 날짜·시각 file 중 기간별 최신 | `DF-DASH-01` | `Confirmed` | dashboard module |
 | Dashboard D-1 | server | 최신 시각의 전일 동일 `hh:mm` | `DF-DASH-01/MAIL-02` | `Confirmed` | `selectPreviousDashboardFileAtSameTime` |
 | 동일성 최신 | server | 유효 directory 이름 내림차순 첫 값 | `DF-ABN-01` | `Confirmed` | latest commonality module |
+| 공통부 동일성 최신 | server | 유효 directory 이름 내림차순 첫 값 | `DF-ABN-03` | `Confirmed` | latest common-commonality module |
 | active SKIP | Node/Python | `exec_date` 기준 72시간 | Self·공통부 | `Confirmed` | pass history modules |
 | active MY EQP | DB query | `exec_date`+`periode`와 DB `NOW()` | `DF-SELF-03` | `Confirmed`, timezone `Unknown` | registration helper |
 | React Query 기본 | browser | stale 60초, retry 1, focus refetch off | 공통 | `Confirmed` | `queryClient.js` |
@@ -340,6 +354,7 @@ PNG endpoint는 허용 common root를 검사해 stream하고 scatter endpoint는
 | registration query | browser | stale 15초, 30초 polling | `DF-SELF-03/MAIL-01` | `Confirmed` | registration pages |
 | file cache | Node | 대체로 `mtimeMs`·size; bounded entry | file flows | `Confirmed` | data modules |
 | commonality index | Node | 5분 TTL | `DF-ABN-01` | `Confirmed` | commonality module |
+| common-commonality index | Node | 5분 TTL | `DF-ABN-03` | `Confirmed` | common-commonality module |
 | current user | Node | 주소별 5분 TTL | DB flows | `Confirmed` | current user module |
 
 - 날짜 filename 검증에는 UTC 계산이 쓰이지만 DB와 운영 timezone 일치 정책은 `Unknown`이다.

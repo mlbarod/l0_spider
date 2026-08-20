@@ -1,7 +1,7 @@
 # SPIDER 웹 서비스 구조
 
 > 현재 저장소의 실제 코드 연결을 기준으로 정리한 구조 문서입니다.  
-> 기준일/브랜치: 2026-07-31 / `main`<br>
+> 기준일/브랜치: 2026-08-20 / `main`<br>
 > 기준 파일: `server.mjs`, `vite.config.mjs`, `src/`, `server/`, `scripts/`, `src/config/spiderDataPaths.mjs`
 
 ## 0. 한 장 요약
@@ -212,6 +212,7 @@ flowchart TD
     SELF["/self-equipment<br/>FdcTrendPage"]
     MATCH["/matching-anomaly<br/>CommonalityAnomalyPage"]
     COMMON["/common-anomaly<br/>CommonAnomalyPage"]
+    COMMON_MATCH["/common-commonality-anomaly<br/>CommonalityAnomalyPage variant"]
     REG["/registration<br/>RegistrationHubPage"]
     ALIAS["/my-eqp · /recipients<br/>RegistrationHubPage alias"]
     MANUAL["/manual<br/>UserManualPage"]
@@ -222,6 +223,7 @@ flowchart TD
     SHELL --> SELF
     SHELL --> MATCH
     SHELL --> COMMON
+    SHELL --> COMMON_MATCH
     SHELL --> REG
     SHELL --> ALIAS
     SHELL --> MANUAL
@@ -234,6 +236,7 @@ flowchart TD
 | `/self-equipment` | `FdcTrendPage.jsx` | 자설비·MY EQP·SKIP LIST 필터, Scatter/동일성 차트, SKIP/HIT/클릭이력 | 운영 파일 + DB |
 | `/matching-anomaly` | `CommonalityAnomalyPage.jsx` | 동일성 디렉터리 기반 필터와 `img.png` 카드 | 운영 파일 |
 | `/common-anomaly` | `CommonAnomalyPage.jsx` | 공통부 이미지, 동일성 차트, SKIP LIST | 운영 파일 + DB |
+| `/common-commonality-anomaly` | `CommonalityAnomalyPage.jsx` | 공통부 동일성 EQP_MODEL 필터와 `img.png` 카드 | 운영 파일 |
 | `/registration` | `RegistrationHubPage.jsx` | Mailing 등록과 My EQP 등록 통합 화면 | DB |
 | `/my-eqp`, `/recipients` | `RegistrationHubPage.jsx` | `/registration`과 같은 화면의 호환 alias | DB |
 | `/manual` | `UserManualPage.jsx` | `docs/user-manual/USER_MANUAL.md`를 HTML로 렌더링 | 빌드 리소스 |
@@ -367,7 +370,27 @@ flowchart LR
 - 결과 이미지는 페이지당 18개만 렌더링하고 숫자·말줄임표 페이지 탐색을 제공합니다.
 - 마지막 필터 선택 시 `/api/clicked-category-history`로 Drawing 이력을 저장합니다.
 
-### 5.5 공통부 이상감지
+### 5.5 공통부 동일성 이상감지
+
+```mermaid
+flowchart LR
+    PAGE["CommonalityAnomalyPage<br/>commonCommonality variant"]
+    DATAAPI["GET /api/common-commonality-data"]
+    NODE["commonCommonalityData.mjs"]
+    LATEST["latestCommonCommonalityPath.mjs"]
+    ROOT["path_common_commonality/{latest date time}"]
+    IMGAPI["GET /api/common-commonality-image"]
+
+    PAGE --> DATAAPI --> NODE --> LATEST --> ROOT
+    PAGE --> IMGAPI --> NODE --> ROOT
+```
+
+- 필터 순서는 Line → SDWT → EQP_MODEL → Sensor → `ch_step`입니다.
+- `sdwt/eqp_model/grade/sensor@ch_step/img.png` 고정 계층을 제한 병렬 탐색합니다.
+- 첫 번째 `@` 앞을 Sensor로, 나머지를 `ch_step`으로 보존합니다.
+- Sensor `ALL`, ch_step `ALL`, 18개 이미지 페이지네이션은 기존 동일성 화면과 같은 계약입니다.
+
+### 5.6 공통부 이상감지
 
 ```mermaid
 flowchart LR
@@ -391,7 +414,7 @@ flowchart LR
 - 공통부 SKIP도 `pass_history`를 사용하지만 `ver = NA`로 구분합니다.
 - 공통부 일반 결과의 SKIP 동일성 비교는 `line_id`, `sdwt`, `desc`, `priority`, `sensor`, `step`, `eqp` 기준입니다.
 
-### 5.6 Mailing 및 My EQP 등록
+### 5.7 Mailing 및 My EQP 등록
 
 ```mermaid
 flowchart LR
@@ -435,10 +458,12 @@ flowchart LR
 | `/api/pass-history` | POST | SKIP, EQP ALL SKIP | `passHistory.mjs` | `pass_history` INSERT 또는 기존 동일행 UPDATE |
 | `/api/pass-history` | DELETE | SKIP 해제 | `passHistory.mjs` | `pass_history` DELETE |
 | `/api/hit-history` | POST | `hitHistoryApi.js` / 자설비 이력저장 | `hitHistory.mjs` | `hit_history` INSERT |
-| `/api/clicked-category-history` | POST | 세 이상감지 화면 | `clickedCategoryHistory.mjs` | `clicked_category_history` INSERT |
+| `/api/clicked-category-history` | POST | 네 이상감지 화면 | `clickedCategoryHistory.mjs` | `clicked_category_history` INSERT |
 | `/api/latest-commonality-path` | GET, HEAD | 직접 API 모듈은 있으나 화면은 서버 내부 탐색 사용 | `latestCommonalityPath.mjs` | 최신 동일성 디렉터리 |
 | `/api/commonality-data` | GET | `commonalityApi.js` / 동일성 이상감지 | `commonalityData.mjs` | 동일성 디렉터리 index |
 | `/api/commonality-image` | GET, HEAD | 동일성 이미지 URL builder | `commonalityData.mjs` | `img.png` stream |
+| `/api/common-commonality-data` | GET | `commonCommonalityApi.js` / 공통부 동일성 | `commonCommonalityData.mjs` | 공통부 동일성 디렉터리 index |
+| `/api/common-commonality-image` | GET, HEAD | 공통부 동일성 이미지 URL builder | `commonCommonalityData.mjs` | `img.png` stream |
 | `/api/common-anomaly-data` | GET | `commonAnomalyApi.js` / 공통부 | `commonAnomalyData.mjs` | 공통부 `df_path.parquet` + `pass_history` |
 | `/api/common-anomaly-image` | GET, HEAD | 공통부 이미지 URL builder | `commonAnomalyData.mjs` | `{eqp}.png` stream |
 | `/api/common-anomaly-scatter-data` | GET | 공통부 동일성 차트 | `commonAnomalyData.mjs` | 공통부 `data.parquet` |
@@ -519,7 +544,7 @@ flowchart LR
 | `email` | SELECT, INSERT, UPDATE, DELETE | `mailing_registration.py` | `/api/mailing-registration` | Mailing 수신인의 SDWT·Grade 조건 |
 | `pass_history` | SELECT, INSERT, UPDATE, DELETE | `pass_history.py` | `/api/pass-history` | 자설비/공통부 SKIP, SKIP LIST, 72시간 제외 |
 | `hit_history` | INSERT | `hit_history.py` | `/api/hit-history` | 자설비 `이력저장` 클릭 |
-| `clicked_category_history` | INSERT | `clicked_category_history.py` | `/api/clicked-category-history` | 세 이상감지 App의 Drawing 시작 이력 |
+| `clicked_category_history` | INSERT | `clicked_category_history.py` | `/api/clicked-category-history` | 네 이상감지 App의 Drawing 시작 이력 |
 | `information_schema.COLUMNS` | SELECT | `mailing_registration.py`, `my_eqp_registration.py` | 등록 API 내부 | `email` 컬럼 길이 확인, `myeqp_regist.is_public` 존재 확인 |
 
 ### 8.3 주요 저장 규칙

@@ -19,6 +19,10 @@ import {
   handleCommonalityDataRequest,
   handleCommonalityImageRequest,
 } from "./server/commonalityData.mjs"
+import {
+  handleCommonCommonalityDataRequest,
+  handleCommonCommonalityImageRequest,
+} from "./server/commonCommonalityData.mjs"
 import { handleLatestCommonalityPathRequest } from "./server/latestCommonalityPath.mjs"
 import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
 import { handleMailingRegistrationRequest } from "./server/mailingRegistration.mjs"
@@ -173,6 +177,13 @@ const server = createServer((req, res) => {
     return
   }
 
+  if (url.pathname === "/api/common-commonality-data") {
+    handleCommonCommonalityDataRequest(req, res, url).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
   if (url.pathname === "/api/common-anomaly-data") {
     handleCommonAnomalyDataRequest(req, res, url).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
@@ -194,6 +205,13 @@ const server = createServer((req, res) => {
 
   if (url.pathname === "/api/commonality-image") {
     handleCommonalityImageRequest(req, res, url).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/common-commonality-image") {
+    handleCommonCommonalityImageRequest(req, res, url).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
     return

@@ -7,7 +7,7 @@
 | 목적 | 기준 commit의 L0 Spider As-Is 보안 경계, 구현 통제, 외부 통제 후보와 보안 공백을 정의한다. |
 | 문서 상태 | `Active Baseline` |
 | 검증 기준 branch | `main` |
-| 검증 기준 코드 commit | `99c4361164d4109a71f0153a5c963fa4f5d52cb4` |
+| 검증 기준 코드 commit | `2d5535366fc56ecff7a322139ddfe6f09cd4df25` + 현재 working tree 변경 |
 | 최신 하네스 감사 | [reports/audit/harness-final-review.md](../../reports/audit/harness-final-review.md) |
 | 포함 | 브라우저, 프론트엔드, Node API, Python DB helper, DB, `/appdata`, STEP/HMAC, 메일 template, 설정·로그·배포 경계 |
 | 제외 | 실제 운영 인프라, secret, 운영 데이터, 침투 테스트, 취약점 조회, 실행 검증 |
@@ -161,6 +161,7 @@ Proxy가 존재해도 신뢰 header 정책과 Node 직접 접근 차단이 확�
 | common data | image 또는 data path | `resolveCommonAnomalyDataPath` | suffix 변환, common root prefix | Parquet read | symlink·경로 노출 | `Implemented` / `Needs Validation` | `commonAnomalyData.mjs:261-276` |
 | ERD image | absolute path query | `handleErdFileRequest` | ERD root·image extension·regular file | stream read | 직접 file 존재 oracle | `Implemented` / `Risk` | `selfEquipmentData.mjs:803-833` |
 | commonality image | absolute path query | commonality handler | 최신 root·`img.png`·regular file | stream read | 404·500 path 노출 | `Implemented` / `Risk` | `commonalityData.mjs:256-289` |
+| common-commonality image | absolute path query | common-commonality handler | 공통부 동일성 최신 root·`img.png`·regular file | stream read | 404·500 path 노출 | `Implemented` / `Risk` | `commonCommonalityData.mjs` |
 | static dist | browser pathname | `resolveStaticPath` | normalize·dist prefix | stream read | symlink·security header | 일부 `Implemented` | `server.mjs:89-128` |
 | mapping | env 또는 fixed path | `readLineMapping` | JSON parse·공통 runtime 계약·빈 Line 거부 | file read | 성공 `source_path`는 CORE-03B 잔여 | `Implemented` / CORE-04 | mapping contract·`server/mappingConfig.mjs` |
 | DB history path | body `filePath` | pass path parser | ERD/common root·segment count | DB write | 원본 경로가 DB·log에 남을 가능성 | 일부 `Implemented` | `passHistory.mjs:316-364,435-458` |
@@ -349,7 +350,7 @@ Node가 직접 외부에 노출되는지, proxy가 모든 forwarded header를 �
 | 장애 조건 | 영향 범위 | 현재 처리 | 추가 확인 | 상태 | 근거 |
 |---|---|---|---|---|---|
 | DB 장애 | current user·registration·history·MY EQP | helper 오류와 timeout 후 API 500 | DB timeout·circuit breaker | 일부 `Implemented` | helper orchestration |
-| `/appdata` 누락 | Dashboard·Self·commonality | 404 또는 500·화면 오류 | mount readiness·health | 일부 `Implemented` | file handlers |
+| `/appdata` 누락 | Dashboard·Self·commonality·common-commonality | 404 또는 500·화면 오류 | mount readiness·health | 일부 `Implemented` | file handlers |
 | history file 누락 | scatter history 부분 | chart payload에 `historyError`와 빈 history 가능 | 실제 UX | 부분 격리 `Implemented` | `selfEquipmentData.mjs:777-793` |
 | mail sender 장애 | mail delivery | sender 미확인 | retry·dedupe·alert | `Unknown` | sender 부재 |
 | HMAC secret 누락 | 개별 STEP link 후보 | 구현 없음 | fail-closed 정책 | `Unknown` | STEP doc |

@@ -7,6 +7,7 @@ import { parsePassHistoryPath } from "./passHistory.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
 
 const COMMON_FILE_ROOT = "/appdata/abnormal_trend/pic/common"
+const COMMON_COMMONALITY_FILE_ROOT = "/appdata/abnormal_trend/pic/path_common_commonality"
 const helperPath = fileURLToPath(new URL("../scripts/clicked_category_history.py", import.meta.url))
 const SUPPORTED_APPS = new Set(["self", "commonality", "common"])
 const MY_EQP_GRADES = Object.freeze(["A", "B", "D", "N", "M"])
@@ -53,7 +54,19 @@ function parseCommonPath(filePath) {
 }
 
 function parseCommonalityPath(filePath) {
-  const segments = resolve(normalizeText(filePath)).split(sep).filter(Boolean)
+  const resolvedPath = resolve(normalizeText(filePath))
+  if (resolvedPath.startsWith(`${COMMON_COMMONALITY_FILE_ROOT}${sep}`)) {
+    const segments = relative(COMMON_COMMONALITY_FILE_ROOT, resolvedPath).split(sep)
+    if (segments.length !== 6 || segments.at(-1) !== "img.png") {
+      throw new Error("공통부 동일성 Drawing 경로 형식이 올바르지 않습니다.")
+    }
+    const [, sdwt, , grade, sensorChStep] = segments
+    const delimiterIndex = sensorChStep.indexOf("@")
+    if (delimiterIndex <= 0) throw new Error("공통부 동일성 Drawing 경로에서 sensor를 찾지 못했습니다.")
+    return { sdwt, grade, sensor: sensorChStep.slice(0, delimiterIndex) }
+  }
+
+  const segments = resolvedPath.split(sep).filter(Boolean)
   if (segments.length < 8 || segments.at(-1) !== "img.png") {
     throw new Error("동일성 Drawing 경로 형식이 올바르지 않습니다.")
   }

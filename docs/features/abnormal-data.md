@@ -6,14 +6,14 @@
 | 문서 상태 | `Baseline` |
 | 기능 범위 | `As-Is` |
 | 기준 브랜치 | `main` |
-| 기준 commit | `7d65493` |
-| 관련 Flow ID | `DF-DASH-01`, `DF-SELF-01~03`, `DF-ABN-01~02` |
+| 기준 commit | `2d553536` + 현재 working tree 변경 |
+| 관련 Flow ID | `DF-DASH-01`, `DF-SELF-01~03`, `DF-ABN-01~03` |
 | 조사 방식 | 저장소 정적 조사만 수행했으며 실제 `/appdata`, DB와 운영 서비스를 사용하지 않았다. |
 | 브랜치 경계 | `mock-agent`의 mock Parquet·이미지·E2E는 `Out of Scope`다. |
 
 ## 1. 목적과 범위
 
-이 문서는 Dashboard, Self Equipment, 동일성 이상감지와 공통부 이상감지가 파일 기반 분석 결과를 어떻게 조회·변환·표시하는지 정의한다.
+이 문서는 Dashboard, Self Equipment, 동일성 이상감지, 공통부 이상감지와 공통부 동일성 이상감지가 파일 기반 분석 결과를 어떻게 조회·변환·표시하는지 정의한다.
 경로 문자열만 나열하지 않고 `화면 → 프론트엔드 조회 → API → handler → 파일·DB → 화면 출력`을 현재 코드 기준으로 연결한다.
 전체 Parquet Schema, upstream 생성 작업, 운영 mount와 보존 정책은 확인하지 않았으므로 구현 사실로 확정하지 않는다.
 STEP 딥링크, Dashboard 응답 계약과 보안 원칙은 각 기준 문서를 우선하며 이 문서는 데이터 결과 연결에 집중한다.
@@ -29,6 +29,7 @@ STEP 딥링크, Dashboard 응답 계약과 보안 원칙은 각 기준 문서를
 | MY EQP | 같은 route의 `sdwt=MY_EQP` | 등록 DB, mapping, 복수 team Parquet | active 등록 EQP와 path row 매칭 | 등록 EQP용 필터·chart | `Confirmed` |
 | 동일성 이상감지 | `/matching-anomaly` | `erd_commonality` 디렉터리·PNG | 최신 시각 디렉터리와 계층 필터 | 페이지된 분석 이미지 | `Confirmed` |
 | 공통부 이상감지 | `/common-anomaly` | `path_common` Parquet, common `data.parquet`·PNG, SKIP DB | index row와 종속 필터 | 이미지, scatter, 동일성 chart | `Confirmed` |
+| 공통부 동일성 이상감지 | `/common-commonality-anomaly` | `path_common_commonality` 디렉터리·PNG | 최신 시각 디렉터리와 EQP_MODEL 계층 필터 | 페이지된 분석 이미지 | `Confirmed` |
 
 분석 결과 파일은 Node가 읽고 stream한다. 사용자·등록·SKIP·조회 이력은 Python helper가 DB에서 읽거나 쓴다.
 
@@ -121,6 +122,23 @@ path row의 `file_path`가 `.png`이면 같은 directory의 `data.parquet`로 �
 scatter와 identity는 `sensor`와 path row의 `step`을 합친 `${sensor}_${chStep}` Parquet column을 읽는다.
 최근 72시간의 공통부 SKIP record는 index row에서 제외되며 DB 자체는 분석 point의 저장소가 아니다.
 
+### 3.5 공통부 동일성 이상감지
+
+```text
+CommonalityAnomalyPage variant="commonCommonality"
+→ fetchCommonCommonalityData()
+→ GET /api/common-commonality-data
+→ path_common_commonality/{latest_date}의 최신 유효 디렉터리
+→ SDWT/EQP_MODEL/Grade/Sensor@ch_step 계층
+→ GET /api/common-commonality-image
+→ img.png stream
+→ EQP_MODEL별 이미지 카드
+```
+
+Line은 기존 동일성 화면처럼 mapping에서 SDWT 후보를 제한하며 실제 파일 경로 segment에는 포함되지 않는다.
+서버는 `eqpModel → sensor → chStep` 종속 option을 만들고 `Sensor=ALL`이면 `chStep=ALL`만 허용한다.
+화면은 기존 동일성 화면과 같은 방식으로 한 페이지에 최대 18개 이미지를 렌더링하고 최종 row를 `EQP_MODEL`로 그룹화한다.
+
 ## 4. API와 데이터 원천
 
 | 메서드 | API | handler | 주요 원천 | 결과 |
@@ -133,6 +151,8 @@ scatter와 identity는 `sensor`와 path row의 `step`을 합친 `${sensor}_${chS
 | `GET/HEAD` | `/api/latest-commonality-path` | `handleLatestCommonalityPathRequest` | commonality root directory | 최신 path·date |
 | `GET` | `/api/commonality-data` | `handleCommonalityDataRequest` | commonality directory tree | filter option·image row |
 | `GET/HEAD` | `/api/commonality-image` | `handleCommonalityImageRequest` | `img.png` | PNG stream |
+| `GET` | `/api/common-commonality-data` | `handleCommonCommonalityDataRequest` | 공통부 동일성 directory tree | filter option·image row |
+| `GET/HEAD` | `/api/common-commonality-image` | `handleCommonCommonalityImageRequest` | 공통부 동일성 `img.png` | PNG stream |
 | `GET` | `/api/common-anomaly-data` | `handleCommonAnomalyDataRequest` | common path Parquet, `pass_history` | filter option·image/chart row |
 | `GET` | `/api/common-anomaly-scatter-data` | `handleCommonAnomalyScatterRequest` | common `data.parquet` | scatter·identity JSON |
 | `GET/HEAD` | `/api/common-anomaly-image` | `handleCommonAnomalyImageRequest` | common PNG | PNG stream |
@@ -157,6 +177,7 @@ scatter와 identity는 `sensor`와 path row의 `step`을 합친 `${sensor}_${chS
 | `ABN-P10` | `/appdata/abnormal_trend/pic/common/{latest_date}/{sdwt}/{step_desc}/{grade}/{sensor}/{ch_step}/data.parquet` | 공통부 point 원천 | index PNG/data path를 sibling data로 변환 | `Confirmed` |
 | `ABN-P11` | 같은 common directory의 `{eqp_cb}.png` | 공통부 결과 image | data path와 EQP로 조립 | `Confirmed` |
 | `ABN-P12` | `..._spider_step_stats_except_v.parquets` | 제외-V stats 후보 | runtime 사용 위치 미확인 | 선언 `Confirmed`, 소비 `Unknown` |
+| `ABN-P13` | `/appdata/abnormal_trend/pic/path_common_commonality/{latest_date}/{sdwt}/{eqp_model}/{grade}/{sensor}@{ch_step}/img.png` | 공통부 동일성 이미지 | 최신 directory 계층 탐색 | `Confirmed` |
 
 `src/config/spiderDataPaths.mjs`는 대표 pattern을 모으지만 runtime 전체가 builder를 사용하지는 않는다.
 Self와 공통부의 후속 데이터는 index row의 절대 `file_path`를 기준으로 sibling 경로를 파생한다.
@@ -175,6 +196,7 @@ Self와 공통부의 후속 데이터는 index row의 절대 `file_path`를 기�
 | `sensor` | row·directory | `sensor` | row filter와 axis column | filter·card·axis | `Confirmed` |
 | `ch_step` | row `step`·directory suffix | query `chStep` | path segment, `${sensor}_${chStep}` column | filter·chart title | `Confirmed` |
 | `eqp` | index row·image basename·DB 등록 | query `eqp` 또는 `eqpCh` | EQP row filter, image·history filename | EQP group·chart | `Confirmed` |
+| `eqp_model` | 공통부 동일성 directory | query `eqpModel` | directory segment와 종속 filter | EQP_MODEL filter·group title | `Confirmed` |
 | `ver` | team index row·ERD path | query로 직접 전달하지 않음 | ERD path와 history identity | 일부 chart metadata·이력 | `Confirmed` |
 
 ### 6.1 명칭 대응
@@ -322,6 +344,7 @@ Self·공통부는 모든 root를 최신순으로 탐색하지 않고 upstream i
 - `server/selfEquipmentData.mjs:137-162,196-291,321-834` — team index·ERD data·image·chart
 - `server/latestCommonalityPath.mjs:13-89` — 최신 commonality directory
 - `server/commonalityData.mjs:83-290` — directory index·filter·PNG stream
+- `server/commonCommonalityData.mjs` — 공통부 동일성 directory index·filter·PNG stream
 - `server/commonAnomalyData.mjs:223-615` — common index·data/image 변환·chart
 - `src/features/fdc-trend/api/{dashboardApi,selfEquipmentApi,commonalityApi,commonAnomalyApi}.js` — browser query
 - `src/features/fdc-trend/pages/{FdcTrendPage,CommonalityAnomalyPage,CommonAnomalyPage}.jsx` — filter·출력
@@ -329,5 +352,5 @@ Self·공통부는 모든 root를 최신순으로 탐색하지 않고 upstream i
 - `docs/system/data-flow.md`, `docs/system/security.md` — 상위 흐름과 보안 경계
 - `docs/user-manual/USER_MANUAL.md:37-120,167-192` — 사용자 관점
 
-이 문서는 `7d65493` 시점의 코드 경로 조립과 정적 호출 관계를 기준으로 한다.
+이 문서는 `2d553536`과 현재 working tree 변경의 코드 경로 조립·정적 호출 관계를 기준으로 한다.
 실제 운영 파일의 존재·내용·성능과 upstream 생성 동작은 검증하지 않았다.

@@ -3,9 +3,9 @@
 > 문서 목적: 현재 L0 Spider의 목적, 주요 기능, 시스템 경계와 Core Harness 범위를 빠르게 이해하기 위한 기준 개요
 > 문서 상태: `Active Baseline`
 > 검증 기준 branch: `main`
-> 검증 기준 코드 commit: `99c4361164d4109a71f0153a5c963fa4f5d52cb4`
+> 검증 기준 코드 commit: `2d5535366fc56ecff7a322139ddfe6f09cd4df25` + 현재 working tree 변경
 > 최신 하네스 감사: [reports/audit/harness-final-review.md](../../reports/audit/harness-final-review.md)
-> 검증일: 2026-07-31
+> 검증일: 2026-08-20
 > 주요 근거: `reports/audit/system-inventory.md`
 > 상세 시스템·기능·운영 문서와 Core 계약·검증 진입점은 현재 tree에 존재하며, `Blocked`·`Unknown`은 각 기준 문서에서 구분한다.
 
@@ -51,6 +51,7 @@ React SPA가 화면을 제공하고 Node 서버가 API, 파일 검증·집계와
 | Self Equipment·MY EQP | 조건별 Scatter·동일성 차트와 SKIP/HIT 기능 | `/self-equipment` | [self-equipment.md](../features/self-equipment.md) — `Active Baseline` |
 | 동일성 이상감지 | STEP·sensor 조건별 분석 이미지 | `/matching-anomaly` | [abnormal-data.md](../features/abnormal-data.md) — `Baseline` |
 | 공통부 이상감지 | 공통부 이미지와 설비 비교 차트 | `/common-anomaly` | [abnormal-data.md](../features/abnormal-data.md) — `Baseline` |
+| 공통부 동일성 이상감지 | EQP_MODEL·sensor 조건별 공통부 분석 이미지 | `/common-commonality-anomaly` | [abnormal-data.md](../features/abnormal-data.md) — `Baseline` |
 | MY EQP·Mailing 등록 | 개인 설비와 수신 조건 관리 | `/registration` | [mailing.md](../features/mailing.md) — summary 계약 존재, 실제 발송 `Blocked` |
 | STEP 딥링크 | URL 조건을 자설비 필터에 적용 | `/self-equipment?...` | [step-deeplink.md](../features/step-deeplink.md) — ALL 흐름 확인, HMAC `Blocked` |
 | Mailing Report | 대시보드 요약, 수신인별 표와 상세 링크 | `public/mailing-report.html` | 실제 발송 흐름은 `Unknown` |

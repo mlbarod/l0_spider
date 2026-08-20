@@ -4,7 +4,7 @@
 
 - 이 문서는 L0 Spider Core Harness가 기준으로 삼을 실행 환경, 설정 주입 지점, 외부 의존성과 운영 경계를 정의한다.
 - 기준(Baseline)은 현재 `main` 브랜치의 코드와 설정이며, 현재 상태(As-Is)와 향후 확인 항목을 구분한다.
-- 조사 기준 브랜치와 시작 commit은 각각 `main`, `7c50478`이다.
+- 조사 기준 브랜치와 시작 commit은 각각 `main`, `2d553536`이며 본 기능은 현재 working tree 변경을 포함한다.
 - 주요 근거 문서는 `reports/audit/system-inventory.md`, `docs/system/overview.md`, `docs/system/architecture.md`이다.
 - 실제 `.env`, 운영 DB, `/appdata` 파일, 서비스 관리자와 외부 브랜치는 확인하지 않았다.
 - 실제 비밀번호, 토큰, 이메일 주소, 내부 IP와 내부 host 값은 이 문서에 기록하지 않는다.
@@ -147,6 +147,7 @@
 | dashboard 통계 | `SPIDER_DASHBOARD_PATH_ROOT` 또는 코드 template | directory·Parquet 읽기 | API 오류 또는 빈 구조는 함수별 상이 | `Confirmed` |
 | mapping 설정 | `MAPPING_CONFIG_PATH` 또는 코드 template | UTF-8 JSON 읽기 | 읽기·파싱 실패 시 API `500` | `Confirmed` |
 | commonality image | `COMMONALITY_ROOT_PATH` 또는 코드 template | directory·PNG 읽기 | 최신 날짜 없음 `404`, 기타 오류 `500` | `Confirmed` |
+| common-commonality image | `path_common_commonality` 코드 template | directory·PNG 읽기 | 최신 날짜 없음 `404`, 기타 오류 `500` | `Confirmed` |
 | self equipment | 코드에 정의된 ERD·backup·common root | Parquet·PNG 읽기 | endpoint별 오류 또는 빈 응답 | `Confirmed` |
 | DB credential | `DB_INFO_PATH` 또는 코드 기본 경로 | pickle 읽기 | helper 오류 | `Confirmed` |
 

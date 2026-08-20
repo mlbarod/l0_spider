@@ -141,8 +141,8 @@ lint·필수 test·build 실패는 원인과 승인된 예외가 없으면 relea
 - [ ] 실제 file을 수정·순회하지 않고 코드 path contract와 변경 diff를 검토했다.
 - [ ] Dashboard detail·stats·mapping 경로와 latest 선택 규칙을 유지했다.
 - [ ] Self·MY EQP `df_path.parquet`, sibling `data.parquet`·history·image 관계를 확인했다.
-- [ ] 동일성 `erd_commonality`와 공통부 `path_common`·common data/image 관계를 확인했다.
-- [ ] `latest_date`, `line`, `sdwt`, `grade`, `step_seq`, `step_desc`, `ppid`, `sensor`, `ch_step`, `eqp`, `ver` 전파 영향을 검토했다.
+- [ ] 동일성 `erd_commonality`, 공통부 동일성 `path_common_commonality`와 공통부 `path_common`·common data/image 관계를 확인했다.
+- [ ] `latest_date`, `line`, `sdwt`, `grade`, `step_seq`, `step_desc`, `eqp_model`, `ppid`, `sensor`, `ch_step`, `eqp`, `ver` 전파 영향을 검토했다.
 - [ ] Parquet column·type·nullable·dynamic axis 변경을 producer와 consumer가 함께 승인했다.
 - [ ] index·data·image의 부분 publish·복구 가능성을 평가했다.
 - [ ] data producer·mount·permission·freshness owner의 release 준비 확인을 받았다.
@@ -153,10 +153,10 @@ lint·필수 test·build 실패는 원인과 승인된 예외가 없으면 relea
 
 ## 9. API·화면 호환성
 
-- [ ] `/`, `/self-equipment`, `/matching-anomaly`, `/common-anomaly`의 route 영향을 검토했다.
+- [ ] `/`, `/self-equipment`, `/matching-anomaly`, `/common-anomaly`, `/common-commonality-anomaly`의 route 영향을 검토했다.
 - [ ] `GET /api/dashboard-data`의 request·response·empty·error 계약을 유지했다.
 - [ ] `lineDashboard.mailingSummary`가 `summary`의 sibling이라는 실제 위치를 유지했다.
-- [ ] Self·commonality·common anomaly API의 query·option·부분 결과를 유지했다.
+- [ ] Self·commonality·common-commonality·common anomaly API의 query·option·부분 결과를 유지했다.
 - [ ] DB 등록·history API의 body limit·validation·현재 사용자 결정 영향을 확인했다.
 - [ ] Vite 단독 mode와 통합 `server.mjs` route 범위 `Mismatch`를 배포 mode에서 고려했다.
 - [ ] frontend와 server를 서로 다른 incompatible version으로 반영하지 않는다.

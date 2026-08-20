@@ -238,7 +238,7 @@ SDWT 필터의 마지막에는 가상 항목인 `SKIP LIST`가 표시된다. 일
 
 ### `clicked_category_history`
 
-세 이상감지 App에서 마지막 필터를 선택해 Chart Drawing을 시작한 클릭이력을 저장한다.
+네 이상감지 App에서 마지막 필터를 선택해 Chart Drawing을 시작한 클릭이력을 저장한다.
 
 | 컬럼 | 타입 |
 | --- | --- |
@@ -304,6 +304,7 @@ My EQP 딥링크는 STEP 이름을 URL에 노출하지 않고 항상 `step=ALL`�
 | stats 파일 | `{latest_date}_spider_step_stats.parquets` | `/appdata/abnormal_trend/pic/stats/{latest_date}_spider_step_stats.parquets` | `exec_date`, `recipe_id`, `priority`, `ng`, `total` |
 | V제외 stats 파일 | `{latest_date}_spider_step_stats_except_v.parquets` | `/appdata/abnormal_trend/pic/stats/{latest_date}_spider_step_stats_except_v.parquets` | 미정 (개발하면서 순차 정의) |
 | 동일성 기준 이상 감지 그래프 | `img.png` | `/appdata/abnormal_trend/pic/erd_commonality/{latest_date}/{sdwt}/{grade}/{step_seq}/{step_desc}/{ppid}/{ppid}/{sensor}_{ch_step}/img.png` | 미정 (개발하면서 순차 정의) |
+| 공통부 동일성 기준 이상 감지 그래프 | `img.png` | `/appdata/abnormal_trend/pic/path_common_commonality/{latest_date}/{sdwt}/{eqp_model}/{grade}/{sensor}@{ch_step}/img.png` | 해당 없음 (이미지 파일) |
 | 이상감지 이력 이미지 | `#appdata#abnormal_trend#pic#erd#{latest_date}#{sdwt}#{step_desc}#{ver}#{ppid}#{grade}#{sensor}#{ch_step}#{eqp}.png` | `/appdata/abnormal_trend/pic/backup/#appdata#abnormal_trend#pic#erd#{latest_date}#{sdwt}#{step_desc}#{ver}#{ppid}#{grade}#{sensor}#{ch_step}#{eqp}.png` | 해당 없음 (이미지 파일) |
 | `latest_date` 결정 및 대시보드 세부 파일 | `{latest_date}` | `/appdata/abnormal_trend/pic/path/{latest_date}` | `sdwt`, `desc`, `recipe_id`, `priority`, `sensor`, `eqp` |
 | 분임조별 ERD 이상감지 경로 데이터 | `df_path.parquet` | `/appdata/abnormal_trend/pic/path/{line}/{sdwt}/df_path.parquet` | `sdwt`, `desc`, `ver`, `recipe_id`, `priority`, `sensor`, `step`, `eqp`, `file_path`, `line_rev` |
@@ -416,4 +417,21 @@ Line Name, SDWT와 STEP까지 선택한 범위에 속한 모든 Sensor와 ch_ste
 - 필터·이미지 목록 API: `GET /api/commonality-data`
 - 이미지 제공 API: `GET /api/commonality-image?path=...`
 - 서버 탐색 모듈: `server/commonalityData.mjs`
+- 화면: `src/features/fdc-trend/pages/CommonalityAnomalyPage.jsx`
+
+### 공통부 동일성 이상감지 App
+
+`/common-commonality-anomaly`은 `path_common_commonality`의 최신 유효 날짜 디렉터리를 사용한다.
+Line Name과 SDWT는 기존 동일성 화면과 같은 mapping을 사용하고, 필터 순서는 Line Name →
+SDWT → EQP_MODEL → Sensor → `ch_step`이다. 고정 경로 깊이의 디렉터리를 제한 병렬 조회하고
+결과를 5분간 캐시하며, `{sensor}@{ch_step}`은 첫 번째 `@`를 기준으로 분리하므로
+`ch_step` 내부의 `@`는 그대로 유지한다.
+
+Sensor `ALL`, ch_step `ALL`, 최대 18개 이미지 페이지네이션과 클릭이력 저장은 기존 동일성
+화면과 같은 계약을 사용한다. 최종 결과는 EQP_MODEL별로 분류하며 이미지 endpoint는 최신
+공통부 동일성 root 아래의 `img.png`만 제공한다.
+
+- 필터·이미지 목록 API: `GET /api/common-commonality-data`
+- 이미지 제공 API: `GET /api/common-commonality-image?path=...`
+- 서버 탐색 모듈: `server/commonCommonalityData.mjs`
 - 화면: `src/features/fdc-trend/pages/CommonalityAnomalyPage.jsx`
