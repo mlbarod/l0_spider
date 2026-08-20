@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://l0-spider.local/contracts/sensor-exclusions.schema.json",
+  "title": "L0 Spider sensor exclusion configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "apps"],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "apps": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selfEquipment": { "$ref": "#/$defs/appConfig" },
+        "matchingAnomaly": { "$ref": "#/$defs/appConfig" },
+        "commonAnomaly": { "$ref": "#/$defs/appConfig" },
+        "commonCommonalityAnomaly": { "$ref": "#/$defs/appConfig" },
+        "mailing": { "$ref": "#/$defs/appConfig" }
+      }
+    }
+  },
+  "$defs": {
+    "appConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contains"],
+      "properties": {
+        "contains": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "\\S"
+          }
+        }
+      }
+    }
+  }
+}

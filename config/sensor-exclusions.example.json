@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "apps": {
+    "selfEquipment": {
+      "contains": []
+    },
+    "matchingAnomaly": {
+      "contains": []
+    },
+    "commonAnomaly": {
+      "contains": []
+    },
+    "commonCommonalityAnomaly": {
+      "contains": []
+    },
+    "mailing": {
+      "contains": []
+    }
+  }
+}

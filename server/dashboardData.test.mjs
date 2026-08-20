@@ -183,6 +183,19 @@ test("sdwt를 라인으로 매핑한 뒤 날짜·라인별 5개 컬럼 고유조
   assert.equal(payload.meta.unmappedRows, 2)
 })
 
+test("Mailing sensor 제외는 mailingSummary만 바꾸고 Dashboard 집계는 유지한다", () => {
+  const baseline = buildLinePayload()
+  const payload = buildLinePayload({ mailingSensorExclusionPatterns: ["temp"] })
+
+  assert.deepEqual(payload.summary, baseline.summary)
+  assert.deepEqual(payload.lineSummary, baseline.lineSummary)
+  assert.deepEqual(payload.dailyTrend, baseline.dailyTrend)
+  assert.deepEqual(payload.mailingSummary, [
+    { lineId: "P1", sdwt: "SDWT 1", sensorGrade: "B", abnormalCount: 1 },
+    { lineId: "P2", sdwt: "SDWT 3", sensorGrade: "D", abnormalCount: 2 },
+  ])
+})
+
 test("데이터 파일이 없는 날짜도 라인별 0건으로 채우고 날짜 오름차순을 유지한다", () => {
   const payload = buildLinePayload()
 

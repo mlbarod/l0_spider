@@ -106,6 +106,22 @@ curl --fail --silent --show-error --head <base-url>/
 
 실제 HMAC과 mail sender는 저장소에서 확인되지 않아 readiness 대상으로 확정하지 않는다.
 
+### 4.5 Sensor 제외 설정
+
+`SENSOR_EXCLUSION_CONFIG_PATH`는 웹 UI가 아닌 개발자·배포 담당자 관리 파일을 가리킨다.
+실제 파일은 `public/`, `dist/`와 source checkout 밖에 두고 application 실행 계정에는 읽기 권한만 부여한다.
+형식은 `config/sensor-exclusions.example.json`과 `harness/contracts/sensor-exclusions.schema.json`을 기준으로 한다.
+
+```bash
+# 실행하지 않은 운영자용 명령
+cd <application-root>
+npm run sensor-exclusions:validate -- <sensor-exclusion-config-path>
+```
+
+검증 성공 후 승인된 배포 방식으로 파일을 교체한다. 프로세스 재build는 필요하지 않으며 다음 관련 API 요청에서 mtime·size 변경을 확인해 새 규칙을 읽는다.
+최초 설정 읽기에 실패하면 server log에 고정 오류를 한 번 남기고 제외 없음으로 계속 동작한다. 정상 설정을 한 번 읽은 뒤 잘못된 JSON으로 바뀌면 마지막 정상 설정을 유지하며, 같은 파일 상태의 반복 오류 log는 억제한다.
+실제 경로, 제외 단어와 내부 sensor 이름을 ticket·journal 원문으로 공유하지 않는다.
+
 ## 5. 시작·중지·재시작
 
 ### 5.1 시작

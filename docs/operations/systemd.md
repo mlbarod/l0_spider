@@ -64,6 +64,7 @@ systemd 실행 user는 다음 최소 범위만 가져야 한다.
 - `HOST`, `PORT`, `LIVE_RELOAD`, `BUILD_ON_START`
 - `VITE_SITE_URL`
 - `MAPPING_CONFIG_PATH`, `COMMONALITY_ROOT_PATH`, `COMMON_COMMONALITY_ROOT_PATH`, `SPIDER_DASHBOARD_PATH_ROOT`
+- `SENSOR_EXCLUSION_CONFIG_PATH`
 - `DB_INFO_PATH`
 
 `REMOTE_ADDR`는 요청별 Python helper에 전달되는 내부 값이며 static unit 설정으로 고정하지 않는다.

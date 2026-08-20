@@ -71,6 +71,7 @@ Vite 단독 개발 mode는 통합 server보다 API route가 적으므로 운영 
 | `COMMONALITY_ROOT_PATH` | API 요청 | 코드 기본 root | 운영 root 변경 영향 검토 |
 | `COMMON_COMMONALITY_ROOT_PATH` | 프로세스 시작 | 기존 commonality/dashboard root의 형제 `path_common_commonality` 또는 코드 기본 root | 별도 mount면 명시적으로 설정하고 프로세스를 재시작 |
 | `SPIDER_DASHBOARD_PATH_ROOT` | API 요청 | 코드 기본 root | Dashboard detail·stats 범위 확인 |
+| `SENSOR_EXCLUSION_CONFIG_PATH` | 경로는 프로세스 시작; 동일 경로의 내용은 API 요청 | 빈 값·제외 없음 | 외부 JSON은 application read-only, 개발자·배포 계정만 수정; 반영 전 validation |
 | `DB_INFO_PATH` | Python helper | 코드 기본 path | 값이 아니라 credential file 위치; 노출 금지 |
 
 tracked `.env.example`, `EnvironmentFile`, secret manager와 실제 주입 우선순위는 `Unknown`이다.

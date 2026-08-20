@@ -9,6 +9,7 @@ import { getLruEntry, setLruEntry } from "./boundedCache.mjs"
 import { getRemoteIp } from "./currentUser.mjs"
 import { readLineMapping } from "./mappingConfig.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
+import { excludeSensorRows, readSensorExclusionConfig } from "./sensorExclusionConfig.mjs"
 import {
   listMyEqpRegistrationRecords,
   resolveRegistrationUserId,
@@ -332,17 +333,24 @@ export async function handleSelfEquipmentDataRequest(req, res, url) {
       return
     }
 
-    const [{ filePath, rows }, passRecords] = await Promise.all([
+    const [{ filePath, rows }, passRecords, sensorExclusionConfig] = await Promise.all([
       readTeamErdRows(filters),
       listPassHistoryRecords({ lineId: filters.line, sdwt: filters.sdwt }),
+      readSensorExclusionConfig(),
     ])
     const visibleRows = excludeRecentlySkippedRows(rows, passRecords)
-    const payload = buildSelfEquipmentPayload(visibleRows, filters)
+    const sensorExclusion = excludeSensorRows(
+      visibleRows,
+      sensorExclusionConfig,
+      "selfEquipment",
+    )
+    const payload = buildSelfEquipmentPayload(sensorExclusion.rows, filters)
     sendJson(res, 200, {
       ...payload,
       counts: {
         ...payload.counts,
         excludedSkipRows: rows.length - visibleRows.length,
+        excludedSensorRows: sensorExclusion.excludedCount,
       },
       sourcePath: filePath,
     })
@@ -374,9 +382,10 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
     }
 
     const userId = await resolveRegistrationUserId(remoteIp)
-    const [registrationRecords, mapping] = await Promise.all([
+    const [registrationRecords, mapping, sensorExclusionConfig] = await Promise.all([
       listMyEqpRegistrationRecords({ line: filters.line, knoxId: userId, activeOnly: true }),
       readLineMapping(),
+      readSensorExclusionConfig(),
     ])
     const pathBySdwt = new Map()
     Object.entries(mapping.line_mapping)
@@ -415,11 +424,23 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
       source.registrations,
       { sdwtMatchedBySource: true },
     ))
+    const prioritySensorExclusion = excludeSensorRows(
+      registeredRows,
+      sensorExclusionConfig,
+      "selfEquipment",
+    )
     const availablePriorities = Array.from(new Set(
-      registeredRows.map((row) => String(row.priority ?? "").trim()).filter(Boolean),
+      prioritySensorExclusion.rows
+        .map((row) => String(row.priority ?? "").trim())
+        .filter(Boolean),
     )).sort((left, right) => left.localeCompare(right, "ko", { numeric: true }))
     const visibleRows = excludeRecentlySkippedRows(registeredRows, passRecordGroups.flat())
-    const payload = buildSelfEquipmentPayload(visibleRows, {
+    const sensorExclusion = excludeSensorRows(
+      visibleRows,
+      sensorExclusionConfig,
+      "selfEquipment",
+    )
+    const payload = buildSelfEquipmentPayload(sensorExclusion.rows, {
       ...filters,
       pathSdwt: "__MY_EQP__",
       sdwt: "MY EQP",
@@ -436,6 +457,7 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
         matchedRegistrationRows: registeredRows.length,
         registeredEqps: new Set(registrationRecords.map((record) => normalizeSkipEqp(record.eqp))).size,
         excludedSkipRows: registeredRows.length - visibleRows.length,
+        excludedSensorRows: sensorExclusion.excludedCount,
       },
       availablePriorities,
       sourcePaths: dataSources.map((source) => source.filePath),

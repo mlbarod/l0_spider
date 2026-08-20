@@ -107,6 +107,7 @@ flowchart LR
 | Data Source ID | 유형 | 경로·table·자원 pattern | 접근 주체 | 읽기·쓰기 | 생성 책임 | 사용 Flow | 상태 | 근거 |
 |---|---|---|---|---|---|---|---|---|
 | `DS-MAP-01` | JSON | `MAPPING_CONFIG_PATH` 또는 mapping template | Node | 읽기 | `Unknown` | Dashboard·Self·이상·등록 | `Confirmed` | `mappingConfig.mjs` — `readLineMapping` |
+| `DS-EXCLUDE-01` | JSON | `SENSOR_EXCLUSION_CONFIG_PATH` | Node | 읽기 | 개발자·배포 담당자 | 네 이상감지 App·Mailing 후보 요약 | `Confirmed` | `sensorExclusionConfig.mjs` — `readSensorExclusionConfig` |
 | `DS-DASH-01` | Parquet | `path/{latest_date}` | Node | 읽기 | `Unknown` | `DF-DASH-01`, `DF-MAIL-02` | `Confirmed` | `dashboardData.mjs` — `listDashboardDateFiles` |
 | `DS-DASH-02` | Parquet | `stats/{latest_date}_spider_step_stats.parquets` | Node | 읽기 | `Unknown` | `DF-DASH-01`, `DF-MAIL-02` | `Confirmed` | `buildDashboardStatsPath` |
 | `DS-SELF-01` | Parquet | `path/{line}/{sdwt}/df_path.parquet` | Node | 읽기 | `Unknown` | `DF-SELF-01`, `DF-SELF-03` | `Confirmed` | `selfEquipmentData.mjs` — `readTeamErdRows` |
@@ -194,7 +195,7 @@ flowchart LR
 | `summary.previousDateTime` | line payload builder | 선택된 비교 file 시각 | KPI 설명 | 비교 없으면 `null` | `Confirmed` |
 | `lineSummary` | line payload builder | 기간·Line별 count·ratio·Grade | 막대·상세 table·LINK | row 없으면 빈 상태 | `Confirmed` |
 | `dailyTrend` | line payload builder | 날짜×Line count, 없는 날짜 0 | 기간 trend chart | 빈 array 가능 | `Confirmed` |
-| `mailingSummary` | line payload builder | Line·SDWT·Grade별 동일 5-key count | browser는 shape만 검사; sender 후보 | 빈 array 가능 | `Confirmed` |
+| `mailingSummary` | line payload builder | Line·SDWT·Grade별 동일 5-key count에서 Mailing sensor 규칙 제외 | browser는 shape만 검사; sender 후보 | 빈 array 가능 | `Confirmed` |
 
 - `lineDashboard.summary.mailingSummary`는 없고 실제 위치는 `lineDashboard.mailingSummary`다.
 - root·schema 오류는 `500`, 유효 최신 file 없음은 `404`, 잘못된 filter는 `400`으로 변환된다.
@@ -210,8 +211,8 @@ flowchart LR
 | 2 | `fetchSelfEquipmentData` | filter state | 반복 priority와 선택 query 직렬화 | `GET /api/self-equipment-data` | `Confirmed` | API module |
 | 3 | Self handler | `line`, `pathSdwt`, `sdwt` 등 | 필수값·path segment 검증 | 조회 조건 | `Confirmed` | `readFilters` |
 | 4 | `readTeamErdRows` | Line·path SDWT | team path Parquet 읽기·정규화 | path rows | `Confirmed` | `DS-SELF-01` |
-| 5 | history 결합 | path rows·`pass_history` | 최근 72시간 활성 SKIP row 제외 | visible rows | `Confirmed` | `excludeRecentlySkippedRows` |
-| 6 | payload builder | visible rows·filter | 종속 option과 최종 chart rows 생성 | JSON | `Confirmed` | `buildSelfEquipmentPayload` |
+| 5 | 설정·history 결합 | path rows·sensor 제외 JSON·`pass_history` | App 규칙 일치 sensor와 최근 72시간 활성 SKIP row 제외 | visible rows | `Confirmed` | `excludeSensorRows`; `excludeRecentlySkippedRows` |
+| 6 | payload builder | visible rows·filter | 제외 후 종속 option과 최종 chart rows 생성 | JSON | `Confirmed` | `buildSelfEquipmentPayload` |
 | 7 | page | JSON rows | EQP grouping·pagination | 최대 20 실제 chart/page | `Confirmed` | `paginateChartGroups` |
 
 ### Flow ID: `DF-SELF-02` — ERD chart와 파일
@@ -227,7 +228,7 @@ identity mode는 요청 `days` 범위의 EQP group을 만들고 point 수를 제
 `sdwt=MY_EQP`는 화면에서 virtual team `__MY_EQP__`로 해석되고 `GET /api/my-eqp-equipment-data`를 사용한다.
 서버는 요청 주소로 현재 사용자를 확인하고 active `myeqp_regist`와 mapping을 조회한다.
 등록 SDWT를 path key로 변환해 여러 team Parquet를 읽고 정규화된 EQP를 등록 조건과 매칭한다.
-SKIP을 제외한 결과는 일반 payload builder에 `allowAllSteps`를 적용하여 STEP `ALL`을 제공한다.
+`selfEquipment` sensor 규칙과 SKIP을 제외한 결과는 일반 payload builder에 `allowAllSteps`를 적용하여 STEP `ALL`을 제공한다. `availablePriorities`도 sensor 제외 후 row에서 계산한다.
 등록은 있으나 path row가 매칭되지 않으면 count를 근거로 별도 빈 결과 안내를 표시한다.
 
 ### Flow ID: `DF-ABN-01` — 동일성 이미지
@@ -277,7 +278,7 @@ sensor `ALL`이면 선택 EQP_MODEL의 모든 sensor row와 `chStep=ALL`만 허�
 | 조건 등록 | `/registration` pages | Line·SDWT·수신 식별자·MY EQP | API payload 정규화 | registration API | `Confirmed` | registration pages |
 | Mailing DB | Node→`mailing_registration.py` | SDWT·고정 Grade·식별자 | 기존 list와 merge·직렬화·transaction | `email` | `Confirmed` | helper |
 | MY EQP DB | Node→`my_eqp_registration.py` | SDWT·PRC Group·EQP·기간 | 수신인×EQP row insert | `myeqp_regist` | `Confirmed` | helper |
-| Dashboard 집계 | `dashboardData.mjs` | detail·stats rows | 5-key 고유집계 | KPI·`mailingSummary` | `Confirmed` | `DF-DASH-01` |
+| Dashboard 집계 | `dashboardData.mjs` | detail·stats rows·Mailing sensor 규칙 | Dashboard 5-key 집계는 유지하고 `mailingSummary`만 규칙 적용 | KPI·`mailingSummary` | `Confirmed` | `DF-DASH-01` |
 | 수신자·데이터 결합 | template 주석 | Dashboard·`email`·active `myeqp_regist` 후보 | 수신자별 `rows`, `my_eqp_rows` 요구 | template context | `Documented` | template comment |
 | 색상 결정 | template 주석 | numeric change | 증감·동일·비교 없음 색상 요구 | `dashboard_change_color` | `Documented` | template comment |
 | HTML render | Jinja 호환 template | context 변수 | loop·format·URL encode·빈 table fallback | HTML 후보 | template `Confirmed`, 실행 `Unknown` | template |
@@ -293,7 +294,7 @@ sensor `ALL`이면 선택 EQP_MODEL의 모든 sensor row와 `chStep=ALL`만 허�
 
 | Flow ID | 변환 전 | 변환 주체 | 규칙 | 변환 후 | 상태 | 근거 |
 |---|---|---|---|---|---|---|
-| `DF-DASH-01` | detail rows | `aggregateDashboardLineRows` | 5개 식별 field 고유조합, SDWT→Line mapping | Line·Grade·Mailing count | `Confirmed` | dashboard module |
+| `DF-DASH-01` | detail rows | `aggregateDashboardLineRows` | 5개 식별 field 고유조합과 SDWT→Line mapping; Mailing map만 sensor 규칙 적용 | Dashboard Line·Grade count와 Mailing count | `Confirmed` | dashboard module |
 | `DF-DASH-01` | stats rows | summary builder | TL row의 `total` 합·고유 Grade count | KPI metrics | `Confirmed` | dashboard module |
 | `DF-SELF-01` | team path rows | normalizer·payload builder | text 정규화, priority·종속 filter, SKIP 제외 | filter option·chart row | `Confirmed` | self module |
 | `DF-SELF-02` | Parquet rows | scatter/identity builder | 날짜·숫자 정규화, EQP group·sampling | chart point model | `Confirmed` | self module |
