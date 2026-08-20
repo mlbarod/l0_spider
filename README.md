@@ -422,7 +422,7 @@ Line Name, SDWT와 STEP까지 선택한 범위에 속한 모든 Sensor와 ch_ste
 
 ### 공통부 동일성 이상감지 App
 
-`/common-commonality-anomaly`은 `path_common_commonality`의 최신 유효 날짜 디렉터리를 사용한다.
+`/common-commonality-anomaly`은 `path_common_commonality`의 최신 유효 `YYYY-MM-DD` 날짜 디렉터리를 사용한다.
 Line Name과 SDWT는 기존 동일성 화면과 같은 mapping을 사용하고, 필터 순서는 Line Name →
 SDWT → EQP_MODEL → Sensor → `ch_step`이다. 고정 경로 깊이의 디렉터리를 제한 병렬 조회하고
 결과를 5분간 캐시하며, `{sensor}@{ch_step}`은 첫 번째 `@`를 기준으로 분리하므로

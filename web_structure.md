@@ -247,7 +247,7 @@ flowchart TD
 
 - `/fdc_trend/self-equipment`처럼 모든 내부 경로는 `/fdc_trend` prefix로도 접근할 수 있습니다.
 - 메인 화면의 Defect/L1/L3 카드는 위 내부 route가 아니라 별도 외부 서비스 URL로 이동합니다.
-- Hard Limit 추천 카드도 외부 서비스로 이동합니다.
+- Hard Limit 추천 카드는 5열 기준 두 번째 줄 첫 칸에 배치되며 외부 서비스로 이동합니다.
 - `SpiderFeaturePage.jsx`가 지원하는 `hardSpec`, `yieldSpec`, `recipients` 타입 중 일부는 현재 route에 직접 연결되어 있지 않은 prototype 코드입니다.
 
 ## 5. 화면 → API → 서버 → 저장소 연결
@@ -379,7 +379,7 @@ flowchart LR
     DATAAPI["GET /api/common-commonality-data"]
     NODE["commonCommonalityData.mjs"]
     LATEST["latestCommonCommonalityPath.mjs"]
-    ROOT["path_common_commonality/{latest date time}"]
+    ROOT["path_common_commonality/{YYYY-MM-DD}"]
     IMGAPI["GET /api/common-commonality-image"]
 
     PAGE --> DATAAPI --> NODE --> LATEST --> ROOT
@@ -387,6 +387,7 @@ flowchart LR
 ```
 
 - 필터 순서는 Line → SDWT → EQP_MODEL → Sensor → `ch_step`입니다.
+- 공통부 동일성의 최신 경로는 시각을 제외한 `YYYY-MM-DD` 디렉터리만 사용합니다.
 - `sdwt/eqp_model/grade/sensor@ch_step/img.png` 고정 계층을 제한 병렬 탐색합니다.
 - 첫 번째 `@` 앞을 Sensor로, 나머지를 `ch_step`으로 보존합니다.
 - Sensor `ALL`, ch_step `ALL`, 18개 이미지 페이지네이션은 기존 동일성 화면과 같은 계약입니다.

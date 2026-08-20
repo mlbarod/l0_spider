@@ -123,7 +123,7 @@ test("각 root precedence에서 handler가 EQP_MODEL 선택지를 반환한다",
   for (const [index, rootCase] of rootCases.entries()) {
     const resolvedRoot = resolveCommonCommonalityRootPath(rootCase.options)
     assert.equal(resolvedRoot, rootCase.expectedRoot)
-    const sdwtPath = join(resolvedRoot, "2026-08-20 12:00:00", "SDWT-1")
+    const sdwtPath = join(resolvedRoot, "2026-08-20", "SDWT-1")
     await createImage(sdwtPath, {
       eqpModel: `MODEL-${index + 1}`,
       grade: "A",
@@ -149,26 +149,28 @@ test("최신날짜 없음과 선택 SDWT 없음 404를 구분한다", async (con
   assert.equal(noLatest.payload.error, "공통부 동일성 최신날짜 폴더를 찾지 못했습니다.")
 
   const noSdwtRoot = join(fixtureRoot, "no-sdwt")
-  await mkdir(join(noSdwtRoot, "2026-08-20 12:00:00"), { recursive: true })
+  await mkdir(join(noSdwtRoot, "2026-08-20"), { recursive: true })
   const noSdwt = await requestCommonCommonalityData(noSdwtRoot, "SDWT-MISSING")
   assert.equal(noSdwt.response.statusCode, 404)
   assert.equal(noSdwt.payload.code, "COMMON_COMMONALITY_SDWT_NOT_FOUND")
   assert.equal(noSdwt.payload.error, "선택한 SDWT의 공통부 동일성 폴더를 찾지 못했습니다.")
 })
 
-test("공통부 동일성 root의 최신 유효 날짜 디렉터리를 선택한다", async (context) => {
+test("공통부 동일성 root는 날짜·시간이 아닌 최신 YYYY-MM-DD 디렉터리를 선택한다", async (context) => {
   const rootPath = await mkdtemp(join(tmpdir(), "common-commonality-latest-"))
   context.after(() => rm(rootPath, { recursive: true, force: true }))
   await Promise.all([
-    mkdir(join(rootPath, "2026-08-19 23:00:00")),
-    mkdir(join(rootPath, "2026-08-20 12:00:00")),
+    mkdir(join(rootPath, "2026-08-19")),
+    mkdir(join(rootPath, "2026-08-20")),
+    mkdir(join(rootPath, "2026-08-21 12:00:00")),
+    mkdir(join(rootPath, "2026-02-30")),
     mkdir(join(rootPath, "temporary")),
   ])
 
   assert.deepEqual(await getLatestCommonCommonalityPath(rootPath), {
     name: latestCommonCommonalityPathName,
-    path: join(rootPath, "2026-08-20 12:00:00"),
-    date: "2026-08-20 12:00:00",
+    path: join(rootPath, "2026-08-20"),
+    date: "2026-08-20",
   })
 })
 
@@ -195,7 +197,7 @@ test("공통부 동일성 경로를 EQP_MODEL, sensor, ch_step 종속 필터로 
   ])
   await mkdir(join(sdwtPath, "MODEL-C", "M", "INVALID"), { recursive: true })
 
-  const latest = { name: "공통부 동일성 최신날짜", path: latestRoot, date: "2026-08-20 12:00:00" }
+  const latest = { name: "공통부 동일성 최신날짜", path: latestRoot, date: "2026-08-20" }
   const rows = await collectCommonCommonalityRows(sdwtPath, latest, "SDWT-1")
 
   assert.equal(rows.length, 3)

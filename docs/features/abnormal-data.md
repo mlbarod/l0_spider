@@ -29,7 +29,7 @@ STEP 딥링크, Dashboard 응답 계약과 보안 원칙은 각 기준 문서를
 | MY EQP | 같은 route의 `sdwt=MY_EQP` | 등록 DB, mapping, 복수 team Parquet | active 등록 EQP와 path row 매칭 | 등록 EQP용 필터·chart | `Confirmed` |
 | 동일성 이상감지 | `/matching-anomaly` | `erd_commonality` 디렉터리·PNG | 최신 시각 디렉터리와 계층 필터 | 페이지된 분석 이미지 | `Confirmed` |
 | 공통부 이상감지 | `/common-anomaly` | `path_common` Parquet, common `data.parquet`·PNG, SKIP DB | index row와 종속 필터 | 이미지, scatter, 동일성 chart | `Confirmed` |
-| 공통부 동일성 이상감지 | `/common-commonality-anomaly` | `path_common_commonality` 디렉터리·PNG | 최신 시각 디렉터리와 EQP_MODEL 계층 필터 | 페이지된 분석 이미지 | `Confirmed` |
+| 공통부 동일성 이상감지 | `/common-commonality-anomaly` | `path_common_commonality` 디렉터리·PNG | 최신 `YYYY-MM-DD` 디렉터리와 EQP_MODEL 계층 필터 | 페이지된 분석 이미지 | `Confirmed` |
 
 분석 결과 파일은 Node가 읽고 stream한다. 사용자·등록·SKIP·조회 이력은 Python helper가 DB에서 읽거나 쓴다.
 
@@ -128,7 +128,7 @@ scatter와 identity는 `sensor`와 path row의 `step`을 합친 `${sensor}_${chS
 CommonalityAnomalyPage variant="commonCommonality"
 → fetchCommonCommonalityData()
 → GET /api/common-commonality-data
-→ path_common_commonality/{latest_date}의 최신 유효 디렉터리
+→ path_common_commonality/{latest_date}의 최신 `YYYY-MM-DD` 디렉터리
 → SDWT/EQP_MODEL/Grade/Sensor@ch_step 계층
 → GET /api/common-commonality-image
 → img.png stream
@@ -140,6 +140,7 @@ root는 `COMMON_COMMONALITY_ROOT_PATH`를 우선하고, 없으면 `COMMONALITY_R
 `SPIDER_DASHBOARD_PATH_ROOT`의 형제 `path_common_commonality`, 이후 코드 기본 경로 순으로 결정한다.
 서버는 `eqpModel → sensor → chStep` 종속 option을 만들고 `Sensor=ALL`이면 `chStep=ALL`만 허용한다.
 화면은 기존 동일성 화면과 같은 방식으로 한 페이지에 최대 18개 이미지를 렌더링하고 최종 row를 `EQP_MODEL`로 그룹화한다.
+공통부 동일성에 한해 `latest_date` 경로 segment는 시각을 제외한 `YYYY-MM-DD`만 사용한다.
 최신 날짜 directory가 없을 때와 선택 SDWT directory가 없을 때는 서로 다른 안전한 오류 코드·문구를 반환한다.
 
 ## 4. API와 데이터 원천
@@ -180,7 +181,7 @@ root는 `COMMON_COMMONALITY_ROOT_PATH`를 우선하고, 없으면 `COMMONALITY_R
 | `ABN-P10` | `/appdata/abnormal_trend/pic/common/{latest_date}/{sdwt}/{step_desc}/{grade}/{sensor}/{ch_step}/data.parquet` | 공통부 point 원천 | index PNG/data path를 sibling data로 변환 | `Confirmed` |
 | `ABN-P11` | 같은 common directory의 `{eqp_cb}.png` | 공통부 결과 image | data path와 EQP로 조립 | `Confirmed` |
 | `ABN-P12` | `..._spider_step_stats_except_v.parquets` | 제외-V stats 후보 | runtime 사용 위치 미확인 | 선언 `Confirmed`, 소비 `Unknown` |
-| `ABN-P13` | `/appdata/abnormal_trend/pic/path_common_commonality/{latest_date}/{sdwt}/{eqp_model}/{grade}/{sensor}@{ch_step}/img.png` | 공통부 동일성 이미지 | 최신 directory 계층 탐색 | `Confirmed` |
+| `ABN-P13` | `/appdata/abnormal_trend/pic/path_common_commonality/{latest_date}/{sdwt}/{eqp_model}/{grade}/{sensor}@{ch_step}/img.png` | 공통부 동일성 이미지 | `latest_date=YYYY-MM-DD` 최신 directory 계층 탐색 | `Confirmed` |
 
 `src/config/spiderDataPaths.mjs`는 대표 pattern을 모으지만 runtime 전체가 builder를 사용하지는 않는다.
 Self와 공통부의 후속 데이터는 index row의 절대 `file_path`를 기준으로 sibling 경로를 파생한다.
@@ -247,6 +248,7 @@ L0 Spider의 확인된 책임은 파일 결과를 선택·검증·읽기·집계
 | Self index | `df_path.parquet` row 자체 | LRU 1개; mtime·size 검사 | 기본 stale 60초 | 새 row는 재조회 시 반영 |
 | ERD chart | index image의 sibling data; path 첫 segment를 latestDate로 사용 | scatter 1개, history 1개; mtime·size 검사 | chart query `staleTime: Infinity` | 같은 query key의 file 교체는 자동 refetch되지 않음 |
 | 동일성 | 최신 유효 `YYYY-MM-DD hh:mm:ss` directory | directory index 5분 TTL, latest path 포함 key | 기본 stale 60초 | 동일 latest directory 내부 변경은 최대 TTL 영향 가능 |
+| 공통부 동일성 | 최신 유효 `YYYY-MM-DD` directory | directory index 5분 TTL, latest path 포함 key | 기본 stale 60초 | 동일 latest directory 내부 변경은 최대 TTL 영향 가능 |
 | 공통부 index·chart | index row `file_path`가 가리키는 결과 | path 1개, scatter 1개; mtime·size 검사 | 기본 stale 60초, 일부 history 30초 | file 교체는 server mtime·size로 판정 |
 | 이미지 HTTP | path가 직접 가리키는 file | 별도 memory cache 없음 | commonality/common `private,max-age=300`; ERD `no-cache` | endpoint별 정책 상이 |
 

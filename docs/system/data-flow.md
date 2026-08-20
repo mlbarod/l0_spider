@@ -248,7 +248,7 @@ PNG endpoint는 허용 common root를 검사해 stream하고 scatter endpoint는
 
 `CommonalityAnomalyPage`의 `commonCommonality` variant가 mapping으로 Line·SDWT를 만들고 `GET /api/common-commonality-data`를 호출한다.
 서버는 `COMMON_COMMONALITY_ROOT_PATH`를 우선 사용하고, 없으면 기존 commonality/dashboard root와 같은 mount의 형제
-`path_common_commonality`를 선택해 최신 날짜 directory의 `sdwt/eqp_model/grade/sensor@ch_step/img.png` 구조를 index한다.
+`path_common_commonality`를 선택해 최신 `YYYY-MM-DD` 날짜 directory의 `sdwt/eqp_model/grade/sensor@ch_step/img.png` 구조를 index한다.
 선택 EQP_MODEL·sensor·ch_step으로 image row를 반환하고 화면은 한 페이지 최대 18개만 `GET /api/common-commonality-image`로 표시한다.
 sensor `ALL`이면 선택 EQP_MODEL의 모든 sensor row와 `chStep=ALL`만 허용하며, 클릭이력은 기존 동일성 category 구조를 사용한다.
 
@@ -347,7 +347,7 @@ sensor `ALL`이면 선택 EQP_MODEL의 모든 sensor row와 `chStep=ALL`만 허�
 | Dashboard 최신 | server | 유효 날짜·시각 file 중 기간별 최신 | `DF-DASH-01` | `Confirmed` | dashboard module |
 | Dashboard D-1 | server | 최신 시각의 전일 동일 `hh:mm` | `DF-DASH-01/MAIL-02` | `Confirmed` | `selectPreviousDashboardFileAtSameTime` |
 | 동일성 최신 | server | 유효 directory 이름 내림차순 첫 값 | `DF-ABN-01` | `Confirmed` | latest commonality module |
-| 공통부 동일성 최신 | server | 유효 directory 이름 내림차순 첫 값 | `DF-ABN-03` | `Confirmed` | latest common-commonality module |
+| 공통부 동일성 최신 | server | 유효 `YYYY-MM-DD` directory 이름 내림차순 첫 값 | `DF-ABN-03` | `Confirmed` | latest common-commonality module |
 | active SKIP | Node/Python | `exec_date` 기준 72시간 | Self·공통부 | `Confirmed` | pass history modules |
 | active MY EQP | DB query | `exec_date`+`periode`와 DB `NOW()` | `DF-SELF-03` | `Confirmed`, timezone `Unknown` | registration helper |
 | React Query 기본 | browser | stale 60초, retry 1, focus refetch off | 공통 | `Confirmed` | `queryClient.js` |

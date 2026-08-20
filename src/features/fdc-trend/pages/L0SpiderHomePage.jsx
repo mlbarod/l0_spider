@@ -54,6 +54,7 @@ const spiderApps = [
     active: true,
     external: true,
     status: "운영중",
+    gridClassName: "2xl:col-start-1 2xl:row-start-2",
   },
   {
     key: "yield-hard-limit-placeholder",
@@ -171,7 +172,7 @@ function SpiderAppCard({ app, animationIndex = 0 }) {
       href={app.href}
       target="_blank"
       rel="noreferrer"
-      className="spider-app-enter group relative block h-full"
+      className={cn("spider-app-enter group relative block h-full", app.gridClassName)}
       style={animationStyle}
     >
       {content}
@@ -179,7 +180,7 @@ function SpiderAppCard({ app, animationIndex = 0 }) {
   ) : (
     <Link
       to={app.href}
-      className="spider-app-enter group relative block h-full"
+      className={cn("spider-app-enter group relative block h-full", app.gridClassName)}
       style={animationStyle}
     >
       {content}
@@ -261,7 +262,13 @@ export function L0SpiderHomePage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
               {spiderApps.map((app, index) => (
                 app.empty
-                  ? <div key={app.key} className="min-h-[140px]" aria-hidden="true" />
+                  ? (
+                    <div
+                      key={app.key}
+                      className="hidden min-h-[140px] 2xl:col-start-5 2xl:row-start-1 2xl:block"
+                      aria-hidden="true"
+                    />
+                  )
                   : <SpiderAppCard key={app.title} app={app} animationIndex={index} />
               ))}
             </div>
