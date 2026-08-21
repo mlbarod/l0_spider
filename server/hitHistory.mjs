@@ -1,7 +1,10 @@
 import { spawn } from "node:child_process"
+import { isAbsolute, relative, resolve, sep } from "node:path"
 import { fileURLToPath, URL } from "node:url"
 
 import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
+import { commonCommonalityRootPath } from "./latestCommonCommonalityPath.mjs"
+import { commonalityRootPath } from "./latestCommonalityPath.mjs"
 import { parsePassHistoryPath } from "./passHistory.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
 
@@ -17,6 +20,117 @@ function sendJson(res, statusCode, payload) {
 
 function normalizeText(value) {
   return String(value ?? "").trim()
+}
+
+const COMMON_ANOMALY_ROOT = "/appdata/abnormal_trend/pic/common"
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
+const DATE_TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/
+
+function isValidDateParts(match) {
+  if (!match) return false
+  const [, year, month, day, hour = "0", minute = "0", second = "0"] = match
+  const date = new Date(Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second),
+  ))
+  return date.getUTCFullYear() === Number(year)
+    && date.getUTCMonth() === Number(month) - 1
+    && date.getUTCDate() === Number(day)
+    && date.getUTCHours() === Number(hour)
+    && date.getUTCMinutes() === Number(minute)
+    && date.getUTCSeconds() === Number(second)
+}
+
+function isValidDateOnly(value) {
+  return isValidDateParts(normalizeText(value).match(DATE_ONLY_PATTERN))
+}
+
+function isValidDateTime(value) {
+  return isValidDateParts(normalizeText(value).match(DATE_TIME_PATTERN))
+}
+
+function assertSafeAbsolutePath(filePath) {
+  if (!isAbsolute(filePath)) throw new Error("Chart 파일 경로는 절대 경로여야 합니다.")
+  if (filePath.slice(1).split(/[\\/]/).some((segment) => segment === "")) {
+    throw new Error("Chart 파일 경로에 빈 segment가 있습니다.")
+  }
+  if (filePath.split(/[\\/]/).some((segment) => segment === "." || segment === "..")) {
+    throw new Error("Chart 파일 경로에 허용되지 않은 segment가 있습니다.")
+  }
+}
+
+function hasRequiredSegments(segments) {
+  return segments.every((segment) => normalizeText(segment))
+}
+
+function parsePathSegments(filePath, rootPath) {
+  const normalizedRoot = resolve(normalizeText(rootPath).replaceAll("/pic_server2/", "/pic/"))
+  const normalizedFile = resolve(filePath)
+  if (!normalizedFile.startsWith(`${normalizedRoot}${sep}`)) return null
+  return relative(normalizedRoot, normalizedFile).split(sep).filter(Boolean)
+}
+
+export function parseHitHistoryPath(filePath, {
+  commonalityRoot = commonalityRootPath,
+  commonCommonalityRoot = commonCommonalityRootPath,
+} = {}) {
+  const originalPath = normalizeText(filePath)
+  assertSafeAbsolutePath(originalPath)
+  const normalizedPath = originalPath.replaceAll("/pic_server2/", "/pic/")
+
+  const commonSegments = parsePathSegments(normalizedPath, COMMON_ANOMALY_ROOT)
+  if (commonSegments) {
+    const imageName = commonSegments.at(-1) ?? ""
+    if (commonSegments.length !== 7
+      || !hasRequiredSegments(commonSegments)
+      || (!isValidDateOnly(commonSegments[0]) && !isValidDateTime(commonSegments[0]))
+      || !imageName.toLowerCase().endsWith(".png")
+      || imageName.slice(0, -".png".length).trim() === "") {
+      throw new Error("공통부 이상감지 결과 경로에서 HIT 이력 정보를 찾지 못했습니다.")
+    }
+    return { updateDate: commonSegments[0], sdwt: commonSegments[1] }
+  }
+
+  const commonalitySegments = parsePathSegments(normalizedPath, commonalityRoot)
+  if (commonalitySegments) {
+    const sensorChStep = commonalitySegments[7] ?? ""
+    const delimiterIndex = sensorChStep.lastIndexOf("_")
+    if (commonalitySegments.length !== 9
+      || !hasRequiredSegments(commonalitySegments)
+      || !isValidDateTime(commonalitySegments[0])
+      || commonalitySegments[6] !== commonalitySegments[5]
+      || delimiterIndex <= 0
+      || delimiterIndex === sensorChStep.length - 1
+      || commonalitySegments.at(-1) !== "img.png") {
+      throw new Error("동일성 이상감지 결과 경로에서 HIT 이력 정보를 찾지 못했습니다.")
+    }
+    return { updateDate: commonalitySegments[0], sdwt: commonalitySegments[1] }
+  }
+
+  const commonCommonalitySegments = parsePathSegments(normalizedPath, commonCommonalityRoot)
+  if (commonCommonalitySegments) {
+    const sensorChStep = commonCommonalitySegments[4] ?? ""
+    const delimiterIndex = sensorChStep.indexOf("@")
+    if (commonCommonalitySegments.length !== 6
+      || !hasRequiredSegments(commonCommonalitySegments)
+      || !isValidDateOnly(commonCommonalitySegments[0])
+      || delimiterIndex <= 0
+      || delimiterIndex === sensorChStep.length - 1
+      || commonCommonalitySegments.at(-1) !== "img.png") {
+      throw new Error("공통부 동일성 이상감지 결과 경로에서 HIT 이력 정보를 찾지 못했습니다.")
+    }
+    return { updateDate: commonCommonalitySegments[0], sdwt: commonCommonalitySegments[1] }
+  }
+
+  const { updateDate, sdwt } = parsePassHistoryPath(normalizedPath)
+  if (!isValidDateOnly(updateDate) && !isValidDateTime(updateDate)) {
+    throw new Error("ERD 차트 경로의 날짜가 올바르지 않습니다.")
+  }
+  return { updateDate, sdwt }
 }
 
 async function readJsonBody(req) {
@@ -87,7 +201,7 @@ export function buildHitHistoryRecord({
   if (!normalizedLineId) throw new Error("Line Name이 필요합니다.")
   if (!originalFilePath) throw new Error("Chart 파일 경로가 필요합니다.")
 
-  const parsedPath = parsePassHistoryPath(originalFilePath)
+  const parsedPath = parseHitHistoryPath(originalFilePath)
   return {
     updateDate: parsedPath.updateDate,
     lineId: normalizedLineId,

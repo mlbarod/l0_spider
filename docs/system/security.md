@@ -104,7 +104,7 @@ Proxy가 존재해도 신뢰 header 정책과 Node 직접 접근 차단이 확�
 | route guard | 사용자 route에 guard component 없음 | React Router | 직접 route rendering | `Not Implemented` | `src/features/fdc-trend/routes.jsx:11-68` |
 | API auth middleware | global middleware·Bearer/JWT 확인 안 됨 | `server.mjs` direct dispatch | handler별 처리 | `Not Implemented` in application | `server.mjs:131-273` |
 | current user | forwarded/socket IP를 DB 승인 사용자와 매핑 | `getRemoteIp`, `resolveCurrentUser` | 400·403·500 또는 일부 fallback | 일부 `Implemented` | `server/currentUser.mjs:17-119` |
-| history write identity | body `knoxId` 대신 server 조회 결과 사용 | hit·click·pass handlers | 사용자 조회 실패 시 write 실패 | `Implemented` | `hitHistory.mjs:109-126`; `passHistory.mjs:505-530` |
+| history write identity | body `knoxId` 대신 server 조회 결과 사용 | hit·click·pass handlers | 사용자 조회 실패 시 write 실패 | `Implemented` | `hitHistory.mjs:215-236`; `passHistory.mjs:505-530` |
 | My EQP 조회 | current user ID와 `is_public=1` 조건 | Node·Python helper | 조회 오류 500 | 일부 `Implemented` | `myEqpRegistration.mjs:258-271`; Python query |
 | My EQP 등록 | current user 조회 실패 시 remote IP fallback; 복수 `knoxIds` 허용 | Node handler | helper 오류 500 | `Needs Validation` | `myEqpRegistration.mjs:179-185,290-300` |
 | Mailing 등록 | caller가 `knoxId`·`knoxIds`를 지정 | Node handler | 형식 오류도 catch에서 500 | `Needs Validation` | `mailingRegistration.mjs:53-75,160-217` |
@@ -164,7 +164,7 @@ Proxy가 존재해도 신뢰 header 정책과 Node 직접 접근 차단이 확�
 | common-commonality image | absolute path query | common-commonality handler | 공통부 동일성 최신 root·`img.png`·regular file | stream read | 404·500 path 노출 | `Implemented` / `Risk` | `commonCommonalityData.mjs` |
 | static dist | browser pathname | `resolveStaticPath` | normalize·dist prefix | stream read | symlink·security header | 일부 `Implemented` | `server.mjs:89-128` |
 | mapping | env 또는 fixed path | `readLineMapping` | JSON parse·공통 runtime 계약·빈 Line 거부 | file read | 성공 `source_path`는 CORE-03B 잔여 | `Implemented` / CORE-04 | mapping contract·`server/mappingConfig.mjs` |
-| DB history path | body `filePath` | pass path parser | ERD/common root·segment count | DB write | 원본 경로가 DB·log에 남을 가능성 | 일부 `Implemented` | `passHistory.mjs:316-364,435-458` |
+| DB history path | body `filePath` | pass·hit path parser | 절대 경로, dot segment 거부, ERD/common/commonality/common-commonality root·날짜·segment·결과 파일명 | DB write | 원본 경로가 DB·log에 남을 가능성 | 일부 `Implemented` | `passHistory.mjs:316-364,435-458`; `hitHistory.mjs` |
 
 확인된 core runtime은 `/appdata` 파일을 읽거나 stream하며 해당 경로에 파일을 쓰는 코드는 확인하지 못했다.
 실제 `/appdata`의 mount, owner, mode, ACL, symlink 구성, read-only 여부와 데이터 생성 주체는 `Unknown`이다.

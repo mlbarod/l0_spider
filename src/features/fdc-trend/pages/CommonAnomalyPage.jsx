@@ -18,6 +18,7 @@ import {
   fetchCommonSkipListData,
 } from "../api/commonAnomalyApi"
 import { fetchCurrentUser } from "../api/currentUserApi"
+import { createHitHistory } from "../api/hitHistoryApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
 import { isLineMappingQueryReady } from "../api/mappingContract.mjs"
 import { deletePassHistory, fetchPassHistory } from "../api/passHistoryApi"
@@ -198,6 +199,18 @@ const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({
       prcGroup: row.prc_group,
     })
   }
+  const saveHitHistoryMutation = useMutation({
+    mutationFn: createHitHistory,
+    onSuccess: () => toast.success("이력저장 완료"),
+    onError: (error) => toast.error(error.message),
+  })
+  const handleHistorySave = () => {
+    saveHitHistoryMutation.mutate({
+      lineId,
+      filePath: row.image_path,
+      execDate: new Date().toISOString(),
+    })
+  }
 
   return (
     <article className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border bg-card shadow-sm">
@@ -262,7 +275,19 @@ const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({
             queryKeyPrefix="common-anomaly-identity-data"
             lotIdLabel="lotid"
           />
-          <Button type="button" variant="outline" size="sm" className="h-9 px-[0.9rem] text-sm" disabled title="버튼 기능 정의 예정">이력저장</Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 px-[0.9rem] text-sm"
+            onClick={handleHistorySave}
+            disabled={saveHitHistoryMutation.isPending}
+          >
+            {saveHitHistoryMutation.isPending
+              ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              : null}
+            이력저장
+          </Button>
         </div>
       </footer>
     </article>

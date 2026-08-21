@@ -56,6 +56,7 @@
 | `DF-ABN-02` | 공통부 이상감지 | `/common-anomaly` | path row·SKIP 제외·data/image 변환 | `path_common` Parquet, common Parquet·PNG, DB | 이미지·scatter·동일성 chart | `Complete` | `Confirmed` |
 | `DF-ABN-03` | 공통부 동일성 이상감지 | `/common-commonality-anomaly` | 최신 directory index와 EQP_MODEL 종속 필터 | `path_common_commonality` directory·PNG | 분석 이미지 카드 | `Complete` | `Confirmed` |
 | `DF-COMMON-01` | 조회 카테고리 이력 | 네 이상감지 화면의 최종 필터 | drawing path→category 변환·사용자 결합 | `clicked_category_history` | 저장 성공·실패 toast | `Complete` | `Confirmed` |
+| `DF-COMMON-02` | 결과 이력 저장 | 네 이상감지 화면의 결과 카드 | App별 image path 검증·사용자 결합 | `hit_history` | 카드별 저장 성공·실패 toast | `Complete` | `Confirmed` |
 | `DF-MAIL-01` | Mailing·MY EQP 조건 등록 | `/registration` | 입력 정규화·Python helper·transaction | `email`, `myeqp_regist`, `erdtsum_info` | 등록 목록·저장/삭제 결과 | `Complete` | `Confirmed` |
 | `DF-MAIL-02` | Mailing Report | HTML template | Dashboard summary와 등록 조건 결합 후보 | Dashboard 응답, DB 조건, template | HTML·메일 후보 | `Partial` | 일부 `Confirmed`, 전달은 `Unknown` |
 | `DF-STEP-01` | STEP·MY EQP 딥링크 | Dashboard 또는 메일 LINK | URL query 생성·정규화·초기 필터 적용 | URL query, MY EQP·파일 데이터 | Self Equipment 진입 | `Partial` | `step=ALL`은 `Confirmed`, HMAC은 `Mismatch` |
@@ -118,7 +119,7 @@ flowchart LR
 | `DS-DB-USER` | DB | `v_ipms_ip_info`, `user_info` | Python | 읽기 | DB 관리 주체 `Unknown` | Self·등록·이력 | `Confirmed` | `scripts/current_user.py` |
 | `DS-DB-REF` | DB | `erdtsum_info` | Python | 읽기 | DB 관리 주체 `Unknown` | `DF-MAIL-01` MY EQP 기준 | `Confirmed` | `scripts/my_eqp_reference.py` |
 | `DS-DB-REG` | DB | `myeqp_regist`, `email` | Python | 읽기·쓰기; 일부 DDL | L0 Spider 쓰기, schema 책임 `Unknown` | `DF-SELF-03`, `DF-MAIL-01/02` | `Confirmed` | registration helper |
-| `DS-DB-HIST` | DB | `pass_history`, `hit_history`, `clicked_category_history` | Python | 읽기·쓰기 | L0 Spider 쓰기 | `DF-SELF-01/02`, `DF-ABN-02`, `DF-COMMON-01` | `Confirmed` | history helper |
+| `DS-DB-HIST` | DB | `pass_history`, `hit_history`, `clicked_category_history` | Python | 읽기·쓰기 | L0 Spider 쓰기 | `DF-SELF-01/02`, `DF-ABN-01~03`, `DF-COMMON-01/02` | `Confirmed` | history helper |
 | `DS-MAIL-01` | HTML | `public/mailing-report.html` | 외부 renderer 후보 | template 소비 | 저장소가 template 관리 | `DF-MAIL-02`, `DF-STEP-01` | template `Confirmed` | Jinja 호환 변수·loop |
 
 - 파일 원천은 현재 흐름에서 L0 Spider가 읽는 외부 결과이며 생성 주체와 주기는 `Unknown`이다.
@@ -138,6 +139,7 @@ flowchart LR
 | `DF-ABN-02` | `/common-anomaly` | `CommonAnomalyPage` — common query keys | data·scatter·image API | path rows·point groups·PNG → cards/charts | `Confirmed` | `commonAnomalyApi.js`; page |
 | `DF-ABN-03` | `/common-commonality-anomaly` | `CommonalityAnomalyPage` — `common-commonality-data` | data·image API | EQP_MODEL option·rows → paged PNG card | `Confirmed` | `commonCommonalityApi.js`; page |
 | `DF-COMMON-01` | 최종 필터 click | 각 page mutation성 호출 | `POST /api/clicked-category-history` | `affectedRows` → 실패 toast | `Confirmed` | `clickedCategoryHistoryApi.js` |
+| `DF-COMMON-02` | 결과 image/chart card | 각 card의 `createHitHistory` mutation | `POST /api/hit-history` | `affectedRows` → 성공·실패 toast | `Confirmed` | `hitHistoryApi.js`; 세 page |
 | `DF-MAIL-01` | `/registration` | registration query·mutation | registration·reference·current user API | 등록 목록·toast·삭제 결과 | `Confirmed` | 두 registration page |
 | `DF-MAIL-02` | 발송 메일 후보 | renderer 미확인 | 현재 저장소의 HTTP 호출 없음 | template KPI·표·LINK | `Partial` | `public/mailing-report.html` |
 | `DF-STEP-01` | `/self-equipment?...` | URL filter utility, `FdcTrendPage` | 초기 query가 이후 Self API filter로 변환 | Line·SDWT·Grade·ALL STEP·EQP 초기 선택 | `Partial` | `selfEquipmentUrlFilters.mjs` |
@@ -154,6 +156,7 @@ flowchart LR
 | `DF-ABN-02` | common anomaly APIs | path·scatter·image handler | `DS-ABN-02`, `pass_history` | path→data/image, EQP match, point group | `Confirmed` | `commonAnomalyData.mjs` |
 | `DF-ABN-03` | common-commonality APIs | latest path·directory index·filter payload | `DS-ABN-03` | folder segment를 image row로 변환 | `Confirmed` | common-commonality modules |
 | `DF-COMMON-01` | clicked history POST | `buildClickedCategoryHistoryRecord`, Python helper | drawing path, 사용자 DB, `clicked_category_history` | category 문자열·sensor `ALL` 정규화 | `Confirmed` | clicked history Node/Python |
+| `DF-COMMON-02` | hit history POST | `buildHitHistoryRecord`, Python helper | App별 image path, 사용자 DB, `hit_history` | 날짜·SDWT 추출, slash→`#`, 6-column INSERT | `Confirmed` | `hitHistory.mjs`; `hit_history.py` |
 | `DF-MAIL-01` | registration APIs | Node validation→Python action | `DS-DB-REF`, `DS-DB-REG` | group·list serialize·transaction | `Confirmed` | registration Node/Python |
 | `DF-MAIL-02` | 실행 진입점 없음 | Dashboard producer와 template만 확인 | `lineDashboard`, 등록 DB 후보 | 최종 결합·render·send 미확인 | `Partial` | Dashboard module·template |
 
@@ -334,7 +337,7 @@ sensor `ALL`이면 선택 EQP_MODEL의 모든 sensor row와 `chStep=ALL`만 허�
 | 동일성·공통부 PNG | 경로 검증·stream | 예 | scoped flow에서 미확인 | `Unknown` | `Confirmed` |
 | 사용자·reference DB | 식별·기준 조회 | 예 | 해당 flow에서 미확인 | DB 관리 주체 `Unknown` | `Confirmed` |
 | `pass_history` | SKIP 조회·등록·해제 | 예 | INSERT/UPDATE/DELETE | L0 Spider 작업 | `Confirmed` |
-| `hit_history` | 결과 이력 저장 | 해당 흐름에서 미확인 | INSERT | L0 Spider 작업 | `Confirmed` |
+| `hit_history` | 네 App의 카드별 결과 이력 저장 | 해당 흐름에서 미확인 | INSERT | L0 Spider 작업 | `Confirmed` |
 | `clicked_category_history` | 최종 filter 조회 이력 | 해당 흐름에서 미확인 | INSERT | L0 Spider 작업 | `Confirmed` |
 | `myeqp_regist` | MY EQP 조회·등록·삭제 | 예 | INSERT/DELETE, 조건부 DDL | L0 Spider 작업·schema 책임 `Unknown` | `Confirmed` / `Risk` |
 | `email` | Mailing 조건 조회·merge·삭제 | 예 | INSERT/UPDATE/DELETE | L0 Spider 작업 | `Confirmed` |
