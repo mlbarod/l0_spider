@@ -8,6 +8,7 @@ import { buildCommonAnomalyPath } from "../src/config/spiderDataPaths.mjs"
 import { getLruEntry, setLruEntry } from "./boundedCache.mjs"
 import { COMMON_PASS_HISTORY_VERSION, listPassHistoryRecords } from "./passHistory.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
+import { excludeSensorRows, readSensorExclusionConfig } from "./sensorExclusionConfig.mjs"
 
 export const COMMON_ANOMALY_COLUMNS = Object.freeze([
   "file_path",
@@ -365,17 +366,24 @@ export async function handleCommonAnomalyDataRequest(req, res, url) {
       sendJson(res, 400, { ok: false, error: "line, pathSdwt, sdwt 조건이 필요합니다." })
       return
     }
-    const [{ filePath, rows }, passRecords] = await Promise.all([
+    const [{ filePath, rows }, passRecords, sensorExclusionConfig] = await Promise.all([
       readCommonPathRows(filters),
       listPassHistoryRecords({ lineId: filters.line }),
+      readSensorExclusionConfig(),
     ])
     const visibleRows = excludeRecentlySkippedCommonRows(rows, passRecords)
-    const payload = buildCommonAnomalyPayload(visibleRows, filters)
+    const sensorExclusion = excludeSensorRows(
+      visibleRows,
+      sensorExclusionConfig,
+      "commonAnomaly",
+    )
+    const payload = buildCommonAnomalyPayload(sensorExclusion.rows, filters)
     sendJson(res, 200, {
       ...payload,
       counts: {
         ...payload.counts,
         excludedSkipRows: rows.length - visibleRows.length,
+        excludedSensorRows: sensorExclusion.excludedCount,
       },
       sourcePath: filePath,
     })

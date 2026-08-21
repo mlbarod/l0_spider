@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "manual:screenshots": "node scripts/generate-user-manual-screenshots.mjs",
+    "sensor-exclusions:validate": "node scripts/validate_sensor_exclusions.mjs",
     "preview": "node server.mjs",
     "start": "node server.mjs",
     "lint": "eslint .",

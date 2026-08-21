@@ -106,6 +106,26 @@ curl --fail --silent --show-error --head <base-url>/
 
 실제 HMAC과 mail sender는 저장소에서 확인되지 않아 readiness 대상으로 확정하지 않는다.
 
+### 4.5 Sensor 제외 설정
+
+기본 설정 파일은 application root의 `config/sensor-exclusions.json`이며 웹 UI가 아닌 개발자·배포 담당자가 관리한다.
+`PORT=<port> node server.mjs` 실행 시 별도 환경변수 없이 이 파일을 자동으로 읽는다.
+source 밖의 파일이 필요한 환경에서만 `SENSOR_EXCLUSION_CONFIG_PATH`로 경로를 override한다.
+형식은 기본 파일, `config/sensor-exclusions.example.json`과 `harness/contracts/sensor-exclusions.schema.json`을 기준으로 한다.
+별도 서버의 파일 작성, 환경변수 주입, 검증, 반영 확인, 복구와 `ALL`·Mailing 경계는
+[Sensor 제외 설정 운영 가이드](sensor-exclusion-config.md)를 단일 절차로 사용한다.
+
+```bash
+# 실행하지 않은 운영자용 명령
+cd <application-root>
+npm run sensor-exclusions:validate -- config/sensor-exclusions.next.json
+```
+
+활성 파일을 직접 편집하지 않고 같은 directory의 임시본을 검증한 뒤 기본 파일로 교체한다. 자세한 명령과 owner·mode 보존 절차는 전용 운영 가이드를 따른다.
+검증된 기본 파일로 교체하면 프로세스 재build·재시작은 필요하지 않으며 다음 관련 API 요청에서 mtime·size 변경을 확인해 새 규칙을 읽는다.
+최초 설정 읽기에 실패하면 server log에 고정 오류를 한 번 남기고 제외 없음으로 계속 동작한다. 정상 설정을 한 번 읽은 뒤 잘못된 JSON으로 바뀌면 마지막 정상 설정을 유지하며, 같은 파일 상태의 반복 오류 log는 억제한다.
+실제 경로, 제외 단어와 내부 sensor 이름을 ticket·journal 원문으로 공유하지 않는다.
+
 ## 5. 시작·중지·재시작
 
 ### 5.1 시작

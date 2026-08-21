@@ -17,6 +17,7 @@ import {
 import { getLruEntry, setLruEntry } from "./boundedCache.mjs"
 import { mappingConfigPath, readLineMapping } from "./mappingConfig.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
+import { isSensorExcluded, readSensorExclusionConfig } from "./sensorExclusionConfig.mjs"
 
 export const DASHBOARD_STATS_COLUMNS = SPIDER_DASHBOARD_COLUMNS.stats
 export const DASHBOARD_DETAIL_COLUMNS = SPIDER_DASHBOARD_COLUMNS.detail
@@ -319,7 +320,12 @@ export function buildDashboardSummary(statsRows, detailRows, source = {}) {
   )
 }
 
-function aggregateDashboardLineRows(rows, sdwtLineLookup, sdwtDisplayLookup) {
+function aggregateDashboardLineRows(
+  rows,
+  sdwtLineLookup,
+  sdwtDisplayLookup,
+  { mailingSensorExclusionPatterns = [] } = {},
+) {
   const combinationsByLine = new Map()
   const combinationsByLineGrade = new Map()
   const combinationsByMailingRow = new Map()
@@ -357,11 +363,13 @@ function aggregateDashboardLineRows(rows, sdwtLineLookup, sdwtDisplayLookup) {
     gradeCombinations.add(combinationKey)
     combinationsByLineGrade.set(gradeKey, gradeCombinations)
 
-    const mailingKey = [lineId, sdwt, priority].join("\u0000")
-    const mailingCombinations = combinationsByMailingRow.get(mailingKey) ?? new Set()
-    mailingCombinations.add(combinationKey)
-    combinationsByMailingRow.set(mailingKey, mailingCombinations)
-    mailingDimensionsByKey.set(mailingKey, { lineId, sdwt, sensorGrade: priority })
+    if (!isSensorExcluded(row.sensor, mailingSensorExclusionPatterns)) {
+      const mailingKey = [lineId, sdwt, priority].join("\u0000")
+      const mailingCombinations = combinationsByMailingRow.get(mailingKey) ?? new Set()
+      mailingCombinations.add(combinationKey)
+      combinationsByMailingRow.set(mailingKey, mailingCombinations)
+      mailingDimensionsByKey.set(mailingKey, { lineId, sdwt, sensorGrade: priority })
+    }
   })
 
   const countsByLine = new Map(
@@ -559,13 +567,16 @@ export function buildLineDashboardPayload(datedRows, mappingConfig, filters) {
   const comparisonDateTime = normalizeText(filters.comparisonDateTime)
   const datedAggregates = Array.from(rowsByDate.values(), ({ dateTime, rows }) => ({
     dateTime,
-    ...aggregateDashboardLineRows(rows, sdwtLineLookup, sdwtDisplayLookup),
+    ...aggregateDashboardLineRows(rows, sdwtLineLookup, sdwtDisplayLookup, {
+      mailingSensorExclusionPatterns: filters.mailingSensorExclusionPatterns,
+    }),
   }))
   const comparisonAggregate = isValidDateTimeFileName(comparisonDateTime)
     ? aggregateDashboardLineRows(
       filters.comparisonRows ?? [],
       sdwtLineLookup,
       sdwtDisplayLookup,
+      { mailingSensorExclusionPatterns: filters.mailingSensorExclusionPatterns },
     )
     : null
   return buildLineDashboardPayloadFromAggregates(
@@ -603,19 +614,30 @@ async function readParquetRows(filePath, columns) {
   }
 }
 
-async function readDashboardAggregate(fileInfo, mappingConfig, includeDetailSummary) {
+async function readDashboardAggregate(
+  fileInfo,
+  mappingConfig,
+  includeDetailSummary,
+  mailingSensorExclusionPatterns,
+  sensorExclusionSignature,
+) {
   const fileStat = await stat(fileInfo.filePath)
   const cached = getLruEntry(dashboardAggregateCache, fileInfo.filePath)
   if (
     cached?.mtimeMs === fileStat.mtimeMs
     && cached?.size === fileStat.size
     && cached?.mappingConfig === mappingConfig
+    && cached?.sensorExclusionSignature === sensorExclusionSignature
     && (!includeDetailSummary || cached.detailSummary)
   ) {
     return cached.aggregate
   }
 
-  const pendingKey = `${fileInfo.filePath}\u0000${includeDetailSummary ? "detail" : "line"}`
+  const pendingKey = [
+    fileInfo.filePath,
+    includeDetailSummary ? "detail" : "line",
+    sensorExclusionSignature,
+  ].join("\u0000")
   if (dashboardAggregatePending.has(pendingKey)) {
     return dashboardAggregatePending.get(pendingKey)
   }
@@ -633,6 +655,7 @@ async function readDashboardAggregate(fileInfo, mappingConfig, includeDetailSumm
         rows,
         buildSdwtLineLookup(mappingConfig),
         buildSdwtDisplayLookup(mappingConfig),
+        { mailingSensorExclusionPatterns },
       ),
       detailSummary: includeDetailSummary ? buildDashboardDetailSummary(rows) : null,
     }
@@ -643,6 +666,7 @@ async function readDashboardAggregate(fileInfo, mappingConfig, includeDetailSumm
         mtimeMs: fileStat.mtimeMs,
         size: fileStat.size,
         mappingConfig,
+        sensorExclusionSignature,
         detailSummary: aggregate.detailSummary,
         aggregate,
       },
@@ -741,13 +765,19 @@ export async function getDashboardSummary(requestedFilters = {}) {
   ).values())
   const statsPath = latestFile ? buildDashboardStatsPath(latestFile.dateTime) : ""
 
-  const mappingConfig = await readDashboardMapping()
+  const [mappingConfig, sensorExclusionConfig] = await Promise.all([
+    readDashboardMapping(),
+    readSensorExclusionConfig(),
+  ])
+  const mailingSensorExclusionPatterns = sensorExclusionConfig.apps.mailing.contains
   const [statsRows, fileAggregates] = await Promise.all([
     latestFile ? readParquetRows(statsPath, DASHBOARD_STATS_COLUMNS) : [],
     mapWithConcurrency(filesToRead, (file) => readDashboardAggregate(
       file,
       mappingConfig,
       file.dateTime === latestFile?.dateTime,
+      mailingSensorExclusionPatterns,
+      sensorExclusionConfig.signature,
     )),
   ])
 

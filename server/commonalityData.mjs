@@ -4,6 +4,7 @@ import { join, relative, resolve, sep } from "node:path"
 
 import { getLatestCommonalityPath } from "./latestCommonalityPath.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
+import { excludeSensorRows, readSensorExclusionConfig } from "./sensorExclusionConfig.mjs"
 
 const INDEX_CACHE_TTL_MS = 5 * 60 * 1000
 const DIRECTORY_READ_CONCURRENCY = 64
@@ -243,8 +244,27 @@ export async function handleCommonalityDataRequest(req, res, url) {
       return
     }
 
-    const index = await getCommonalityIndex(filters)
-    sendJson(res, 200, buildCommonalityFilterPayload(index, filters))
+    const [index, sensorExclusionConfig] = await Promise.all([
+      getCommonalityIndex(filters),
+      readSensorExclusionConfig(),
+    ])
+    const sensorExclusion = excludeSensorRows(
+      index.rows,
+      sensorExclusionConfig,
+      "matchingAnomaly",
+    )
+    const payload = buildCommonalityFilterPayload(
+      { ...index, rows: sensorExclusion.rows },
+      filters,
+    )
+    sendJson(res, 200, {
+      ...payload,
+      counts: {
+        ...payload.counts,
+        indexedImages: index.rows.length,
+        excludedSensorImages: sensorExclusion.excludedCount,
+      },
+    })
   } catch (error) {
     const statusCode = error.code === "COMMONALITY_DATE_DIRECTORY_NOT_FOUND"
       || error.code === "COMMONALITY_SDWT_DIRECTORY_NOT_FOUND"

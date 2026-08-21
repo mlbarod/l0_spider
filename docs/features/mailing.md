@@ -102,6 +102,8 @@ CORE-04에서 등록 조회·저장·삭제는 mapping을 사용할 수 있을 �
 `lineDashboard.mailingSummary`는 `lineDashboard.summary`의 하위가 아니라 sibling 배열이다.
 생산자는 detail row의 SDWT를 mapping으로 Line과 표시 SDWT에 연결한다.
 mapping에 없는 row는 집계에서 제외되고 `meta.unmappedRows`에 반영된다.
+기본 `config/sensor-exclusions.json` 또는 `SENSOR_EXCLUSION_CONFIG_PATH` override의 `apps.mailing.contains`에 포함문자가 등록되면, sensor를 대소문자 구분 없이 비교해 일치 row를 `mailingSummary` 집계에서 먼저 제외한다.
+이 규칙은 Dashboard 화면의 `summary`, `lineSummary`, `dailyTrend`와 KPI에는 적용하지 않는다.
 
 고유건 식별 key는 다음 5개 field를 순서대로 정규화한 조합이다.
 
@@ -124,6 +126,9 @@ desc | recipe_id | priority | sensor | eqp
 정렬은 `lineId` 자연 정렬, `sdwt` 자연 정렬, Grade `A → B → D → M → N` 순서다.
 A와 B는 이 배열에서 `A/B`로 합치지 않는다.
 유효 row가 없으면 `mailingSummary`는 빈 배열이다.
+
+현재 저장소에서 제외 규칙이 적용되는 실행 가능한 Mailing 경계는 `lineDashboard.mailingSummary`다.
+실제 renderer·sender와 MY EQP mail row 생산 함수는 확인되지 않았으므로, 외부 sender가 별도로 재집계하는 데이터까지 적용됐다고 확정하지 않는다.
 
 ## 8. Template context 인벤토리
 
@@ -337,6 +342,7 @@ sender log, recipient별 delivery status와 보존 정책은 `Unknown`이다.
 ## 21. 변경 영향과 보존 규칙
 
 - `lineDashboard.mailingSummary`의 위치, field, Grade와 집계 key 변경 시 Dashboard 문서·Schema·fixture·contract test를 함께 갱신한다.
+- `apps.mailing.contains` 변경은 `mailingSummary`만 바꾸며 Dashboard 화면 집계를 바꾸지 않는다.
 - 5-key 고유건 규칙 변경은 Dashboard KPI, 전체설비 mail count와 향후 MY EQP count를 함께 검토한다.
 - template 변수 변경 시 context producer가 확인되기 전에는 required·nullable을 추정하지 않는다.
 - recipient join 변경 시 다른 recipient 데이터가 섞이지 않는 격리 test가 필요하다.

@@ -218,6 +218,8 @@ Mailing Report에는 다음 내용이 포함됩니다.
 
 두 Report의 이상건수는 대시보드와 같은 고유 이상건 조합 기준입니다. 전체설비 Report와 My EQP Report는 메일을 받는 `knox_id`의 등록 조건만 각각 표시합니다. 한쪽에만 등록했다면 다른 Report는 빈 표로 표시됩니다. LINK로 자설비 화면에 접속하면 URL에 포함된 Line·SDWT·Grade가 자동 선택되며, A 또는 B Grade는 화면의 `A/B` 필터로 적용됩니다. My EQP Report의 LINK는 `sdwt=MY_EQP`로 구분되어 자설비의 **MY EQP** 필터를 자동 선택하고, `step=ALL`과 `eqpCh`로 전체 STEP 범위의 해당 EQP까지 선택합니다.
 
+개발자가 관리하는 App별 제외 설정에 sensor 포함문자가 등록되면 해당 sensor는 네 이상감지 App의 필터와 결과에서 표시되지 않습니다. Mailing 전용 제외 설정은 현재 서버가 생산하는 `lineDashboard.mailingSummary` 후보 요약에 적용되지만 Dashboard 화면의 지표·표·추이는 변경하지 않습니다. 실제 메일 renderer·sender의 이 요약 사용 여부는 아직 확인되지 않았습니다.
+
 자설비에서 **MY EQP**를 선택하면 STEP 첫 항목에 **ALL**이 제공됩니다. ALL을 선택할 경우 앞에서 선택한 Line·Grade 조건에 속하는 모든 STEP의 EQP가 `eqp_ch` 선택지에 표시됩니다.
 
 메일의 **모니터링 센서 총합**과 **전일 대비**는 발송 시 별도로 재집계하지 않고, 같은 시점의 SPIDER Dashboard 응답값을 그대로 표시합니다. 전일 대비는 Dashboard와 동일하게 최신 데이터의 D-1 동일 시각 데이터를 기준으로 합니다.
