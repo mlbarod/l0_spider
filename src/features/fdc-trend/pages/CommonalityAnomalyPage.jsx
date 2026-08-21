@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, Check, ChevronRight, FileWarning, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 import { createClickedCategoryHistory } from "../api/clickedCategoryHistoryApi"
+import { createHitHistory } from "../api/hitHistoryApi"
 import { ResizableFilterArea } from "../components/ResizableFilterArea"
 import {
   buildCommonalityImageUrl,
@@ -172,12 +173,24 @@ function FilterCard({
   )
 }
 
-function CommonalityImageCard({ row, config }) {
+function CommonalityImageCard({ row, config, lineId }) {
   const [imageFailed, setImageFailed] = useState(false)
   const imageUrl = config.buildImageUrl(row.filePath)
   const detailText = row.eqpModel
     ? `${row.grade} · ${row.eqpModel}`
     : `${row.grade} · ${row.stepSeq} · ${row.ppid}`
+  const saveHitHistoryMutation = useMutation({
+    mutationFn: createHitHistory,
+    onSuccess: () => toast.success("이력저장 완료"),
+    onError: (error) => toast.error(error.message),
+  })
+  const handleHistorySave = () => {
+    saveHitHistoryMutation.mutate({
+      lineId,
+      filePath: row.filePath,
+      execDate: new Date().toISOString(),
+    })
+  }
 
   return (
     <article className="grid min-w-0 overflow-hidden rounded-xl border bg-background shadow-sm">
@@ -206,6 +219,21 @@ function CommonalityImageCard({ row, config }) {
           />
         )}
       </div>
+      <footer className="flex items-center justify-end border-t bg-muted/20 px-4 py-2.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 px-[0.9rem] text-sm"
+          onClick={handleHistorySave}
+          disabled={saveHitHistoryMutation.isPending}
+        >
+          {saveHitHistoryMutation.isPending
+            ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+            : null}
+          이력저장
+        </Button>
+      </footer>
     </article>
   )
 }
@@ -648,7 +676,9 @@ export function CommonalityAnomalyPage({ variant = "matching" }) {
                     <Badge variant="secondary">{group.rows.length.toLocaleString()} images</Badge>
                   </header>
                   <div className="grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2 xl:grid-cols-3">
-                    {group.rows.map((row) => <CommonalityImageCard key={row.id} row={row} config={config} />)}
+                    {group.rows.map((row) => (
+                      <CommonalityImageCard key={row.id} row={row} config={config} lineId={activeLine} />
+                    ))}
                   </div>
                 </section>
               ))}
