@@ -1,265 +1,81 @@
-# L0 Spider 개발 에이전트 검증 workflow
+# L0 Spider Development Validation Workflow
 
-> 문서 목적: 메인 개발 에이전트와 두 검증 서브에이전트의 역할, 권한, 검증 gate와 업무 경계를 관리하는 단일 기준<br>
-> 문서 상태: `Active / Stage 4 Complete`<br>
-> 기준 branch: `main`<br>
-> 기준 commit: `6de92fb`<br>
-> 작성일: 2026-08-02<br>
-> 시범 검증일: 2026-08-03<br>
-> 최종 검증일: 2026-08-03<br>
-> 적용 상태: custom agent 구성과 `AGENTS.md` 지침 기반 의무 호출은 `Implemented`; hook·CI 기계적 자동화는 `Not Implemented`
+## 1. Purpose
 
-## 1. 목적과 현재 적용 범위
+이 문서는 일반 개발 절차를 정의하지 않는다.
+일반 기능 구현과 버그 수정은 루트 `AGENTS.md`의 기본 개발 및 검증 원칙을 따른다.
+이 문서는 다음과 같이 추가적인 독립 검수가 실제로 필요한 경우에만 사용한다.
 
-이 문서는 L0 Spider 변경의 구현 주체와 검증 주체를 분리하는 상세 운영 기준이다. 메인 개발 에이전트가 구현과 최종 책임을 맡고, 상시 프리 빌드 리뷰 서브에이전트가 확정된 변경을 빠르게 독립 검토하며, 조건부 전문 검증 서브에이전트가 지정된 고위험 분야를 깊게 검증한다.
+* 사용자가 독립 검수를 명시적으로 요청한 경우
+* 중요한 인증 또는 보안 경계 변경
+* 공개 API 또는 데이터 계약의 큰 변경
+* 여러 subsystem에 걸쳐 회귀 위험이 명확히 큰 변경
+* release 또는 명시적인 audit 업무
 
-도입 계획의 4단계까지 완료했다. 새 Codex 세션에서 두 project custom agent의 발견과 명시적 직접 호출, 실제 읽기 전용 권한, 호출 전후 무변경과 표준 출력을 검증했고, `AGENTS.md` 후보에 따른 의무 호출과 `BLOCKER` 중단 조건을 positive·negative smoke로 확인했다. 모든 코드 변경의 build 전 검토는 프로젝트 최상위 지침으로 활성화됐으며, hook·CI 같은 기계적 자동 호출은 구현하지 않았다.
+단순 기능 구현, 문구·스타일 변경, 로컬 버그 수정 또는 기존 계약을 유지하는 내부 변경에는 이 workflow를 적용하지 않는다.
 
-## 2. 공통 불변 원칙
+## 2. Review Timing
 
-1. 메인 개발 에이전트만 application, test, config, dependency, fixture, Schema와 문서를 수정한다.
-2. 두 검증 서브에이전트는 독립적으로 읽기·검증·보고만 수행하며 어떤 파일도 수정하지 않는다.
-3. 메인 개발 에이전트는 검증 결과를 근거 없이 무시하거나 통과를 위해 test·계약 기준을 완화하지 않는다.
-4. 검증 서브에이전트는 지정된 검증을 임의로 건너뛰거나 실패 test를 skip·완화하지 않는다.
-5. 검증할 수 없는 항목은 성공으로 간주하지 않고 `Not Run`, `Partial`, `Blocked` 또는 `Unknown`과 사유를 기록한다.
-6. 기존 사용자 동작, 데이터 해석, route·API 호환성, 운영 안전과 `main`·`mock-agent` 경계를 보존한다.
-7. 검증 서브에이전트는 다른 에이전트를 호출하거나 자신의 검증 범위를 임의로 확대하지 않는다.
+독립 검수는 구현 중간에 수행하지 않는다.
+메인 개발 에이전트가 다음을 완료한 안정된 최종 diff에서만 검수를 시작한다.
 
-## 3. 역할과 책임
+1. 요청된 구현 완료
+2. 변경 범위에 직접 관련된 검증 완료
+3. 필요한 경우 직접 영향받는 문서 또는 계약 반영
+4. 최종 변경 범위 확인
 
-### 3.1 메인 개발 에이전트
+독립 검수는 업무당 최대 1회만 수행한다.
+검수 이후 단순 문서 정리나 비차단 개선을 이유로 자동 재검수를 수행하지 않는다.
 
-메인 개발 에이전트는 운영 중인 L0 Spider 전체와 변경 결과의 최종 책임자이며 소스와 test를 수정할 수 있는 유일한 역할이다.
+## 3. Review Input
 
-#### 시스템 책임
+독립 검수에는 판단에 필요한 최소 정보만 제공한다.
 
-- Dashboard, Self Equipment·MY EQP, 동일성·공통부, 등록·이력과 Mailing 기능을 유지·개발한다.
-- 기존 사용자 동작, 데이터 의미, browser route와 API 호환성을 우선 보존한다.
-- `사용자 화면 → 브라우저 route → frontend component → API → Node·Python service → file·DB 경로`의 영향을 추적한다.
-- 시스템·기능·운영·사용자 문서, API·데이터 계약, 최소 synthetic fixture와 unit·contract 검증으로 구성된 Core Harness를 관리한다.
-- Dashboard 계약, STEP deep link·HMAC, Mailing, DB·데이터 경로와 운영 자원 영향을 현재 코드와 근거 상태에 따라 관리한다.
-- 운영 DB test 쓰기·DDL·migration, `/appdata` 변경, 실제 mail·recipient를 사용한 test와 secret 출력·기록은 승인 여부와 관계없이 수행하지 않는다.
-- 운영 service와 network는 사용자 요청과 명시적 승인 없이 변경하지 않는다.
-- `main`을 실제 코드와 Core Harness의 기준으로 유지하고 mock 전용 구현을 `main`의 필수 의존성으로 만들지 않는다.
+* 원 사용자 요구사항
+* 검수 대상 변경 범위
+* 기준 branch와 필요 시 commit
+* 최종 diff
+* 메인 에이전트가 수행한 주요 검증 결과
+* 판단에 중요한 미실행 검증이 있는 경우 그 사유
 
-#### 변경 책임과 권한
+관련 없는 과거 작업, 전체 프로젝트 문서, 전체 테스트 로그 또는 불필요한 운영 정보는 전달하지 않는다.
+검수자는 제공된 정보와 최종 diff를 기준으로 시작하고, 구체적인 판단에 필요한 파일만 선택적으로 읽는다.
 
-- 요구사항, 승인 범위와 직접·간접 영향 경로를 조사하고 필요한 코드·계약·test·문서를 구현한다.
-- 구현 후 변경을 잠시 중단하고 원 요구사항, 승인 범위, 기준 commit과 검토 대상 diff를 확정한다.
-- 프리 빌드 리뷰를 요청하고 `SPECIALIST_REQUIRED` 또는 독립적인 위험 근거가 있으면 단일 전문 프로필을 지정해 전문 검증을 호출한다.
-- 발견 사항을 코드 수정, 재현 가능한 반증 또는 사용자 결정으로 해소하고, 코드가 다시 바뀌면 영향받은 판정을 재검토한다.
-- 해결되지 않은 `BLOCKER`가 있으면 build 또는 완료 단계로 진행하지 않는다.
-- 허용된 lint, build, unit과 contract 검증을 실행하고 미실행·부분 검증과 남은 위험을 최종 보고한다.
+## 4. Independent Review Scope
 
-### 3.2 상시 프리 빌드 리뷰 서브에이전트
+실제 검수 범위와 판정 기준은 `.codex/agents/pre-build-review.toml`을 따른다.
+메인 에이전트는 reviewer에게 저장소 전체 감사나 현재 변경과 관계없는 검토를 추가로 요구하지 않는다.
 
-프리 빌드 리뷰 에이전트는 메인 에이전트가 확정한 변경 diff를 build 전에 검토하는 빠른 독립 정적 gate다.
+## 5. Review Result
 
-#### 필수 입력
+검수 결과는 `PASS` 또는 `BLOCKER`다.
+판정 기준은 `.codex/agents/pre-build-review.toml`을 따른다.
 
-- 원래 사용자 요구사항과 승인된 변경 범위
-- 기준 branch·commit과 검토 대상 diff
-- 적용되는 `AGENTS.md`
-- 변경 기능의 현재 코드, 계약, test와 기준 문서
+- `PASS` → 완료 보고로 진행한다.
+- `BLOCKER` → 발견 사항을 메인 에이전트가 일괄 수정하고 직접 관련된 검증을 수행한다
 
-필수 입력이나 안정된 기준 diff가 없으면 범위를 추정하지 않고 `BLOCKER`와 `Not Run`을 보고한다.
+## 6. BLOCKER Handling
 
-#### 검토 범위
+`BLOCKER`가 반환되면 메인 개발 에이전트가 발견 사항을 일괄 수정하고 직접 관련된 검증을 수행한다.
+수정 후 독립 검수를 자동으로 다시 호출하지 않는다.
+최종 보고에서는 다음을 구분한다.
 
-- 요구사항 누락, 요청 범위 밖 변경과 기존 사용자 동작 회귀
-- route, API·Schema, 데이터 의미, nullable·빈 데이터·오류 계약
-- 날짜·숫자 변환, stale response, race condition, 요청 취소와 오류 복구
-- timer, listener, subscription, cache, Object URL, stream과 subprocess 정리 누락
-- 불필요한 render·중복 요청·반복 계산, 대량 데이터·차트 mount와 무제한 cache 위험
-- secret·내부 경로·DB detail 노출, 운영 자원과 Core·mock 경계 위반
-- 필요한 test, Schema, fixture와 문서 갱신 누락
-- 추가 전문 검증이 필요한 단일 프로필과 근거
+* 독립 검수에서 발견된 사항
+* 메인 에이전트가 수행한 수정
+* 수정 후 수행한 검증
+* 재검수를 수행하지 않았다는 사실
 
-#### 업무 경계
+사용자가 수정 후 새로운 독립 검수를 명시적으로 요청한 경우에만 별도 업무로 다시 수행한다.
 
-- 정적 검토만 수행하며 build, test, server, browser, DB, mail과 mock 검증을 실행하지 않는다.
-- 수정 방향은 제안할 수 있지만 patch, formatting, dependency 설치와 자동 최적화를 수행하지 않는다.
-- 전문 에이전트를 직접 호출하지 않고 권장 프로필과 이유만 메인 에이전트에 반환한다.
+## 7. Reviewer Restrictions
 
-### 3.3 조건부 전문 검증 서브에이전트
+`pre-build-review`의 실행 권한과 금지 사항은 `.codex/agents/pre-build-review.toml`을 따른다.
+메인 에이전트는 검수를 위해 reviewer의 권한을 확대하거나 다른 agent 또는 CLI로 우회하지 않는다.
 
-전문 검증 에이전트는 프리 빌드 정적 검토만으로 판단하기 어렵거나 영향이 큰 변경을 지정된 한 분야에서 검증한다.
+## 8. Execution Limits
 
-#### 호출 조건
+- 독립 검수는 필요한 업무에서 최대 1회 수행한다.
+- 구현 중간 또는 수정 후 자동 재검수는 수행하지 않는다.
+- 권한이나 환경 문제로 검수를 수행할 수 없으면 다른 agent, CLI 또는 권한 변경으로 우회하지 않는다.
 
-- 프리 빌드 리뷰가 `SPECIALIST_REQUIRED`를 반환함
-- 공유 API·Schema·집계·보안·운영 경계를 변경함
-- 여러 화면이나 Node·Python 경계를 통과하는 공통 모듈을 변경함
-- 비동기 상태, browser rendering, 메모리 누수 여부 또는 시스템 속도를 실행으로 확인해야 함
-- 메인 에이전트가 구체적인 위험 근거로 추가 검증이 필요하다고 판단함
-
-#### 전문 프로필
-
-| 프로필 | 주요 검증 |
-|---|---|
-| `Frontend` | 상태 전환, render, query cache, cleanup, 접근성과 사용자 흐름 |
-| `API-Data` | 요청·응답 Schema, 필터·집계, 데이터 정합성, 빈 데이터와 오류 계약 |
-| `Security-Operations` | 권한, 입력 검증, secret·내부 정보 노출과 운영 자원 경계 |
-| `Test` | 정상·빈값·오류·경계값·회귀 test의 실효성과 공백 |
-| `Performance-Memory` | synthetic 반복 실행, heap·listener·query 증가와 render·API 처리 속도 |
-| `Cross-layer` | 화면부터 API, Node·Python service와 데이터 경로까지의 전체 영향 |
-
-한 번의 호출은 메인 에이전트가 지정한 정확히 한 프로필만 수행한다. 프로필이 없거나 복수 분야가 모호하게 지정되면 검증을 시작하지 않고 `Blocked`와 필요한 범위를 반환한다.
-
-#### 필수 입력
-
-- 원래 사용자 요구사항과 승인된 변경 범위
-- 기준 branch·commit과 안정된 검토 diff
-- 정확히 한 전문 프로필과 해당 프로필의 검증 범위
-- 실행을 허용한 비파괴 명령 목록 또는 실행 명령 없음(`None`)
-- 사용 가능한 synthetic data·환경과 호출별 금지 자원
-
-허용 명령이나 실행 환경이 없거나 모호하면 임의로 명령을 선택하지 않는다. 정적 검토로 범위를 충족할 수 있으면 실행 항목을 `Not Run`으로 기록하고, 실행이 필수이면 `Blocked`로 반환한다.
-
-#### 업무 경계
-
-- 메인 에이전트가 호출마다 명시적으로 허용한 비파괴적 명령과 synthetic data만 사용한다.
-- 일반 build 전체를 대신 수행하지 않으며 지정 프로필에 필요한 최소 검증만 실행한다.
-- workspace를 변경할 수 있는 명령, 새 권한 승인이 필요한 명령 또는 운영 자원 접근은 실행하지 않고 `Blocked`로 기록한다.
-- mock 의존 browser·성능 측정은 승인된 `mock-agent` 환경에서만 수행하며 `main`에서 실행하지 않는다.
-- synthetic 측정 결과를 운영 수용량이나 실제 사용자 성능으로 일반화하지 않는다.
-- 결과를 보고할 뿐 수정 patch를 적용하지 않는다.
-
-## 4. 읽기 전용과 무변경 확인
-
-두 custom agent는 기본값으로 `sandbox_mode = "read-only"`를 선언한다. 다만 부모 세션의 실시간 sandbox·permission override가 custom agent 설정보다 우선할 수 있으므로 TOML 선언만으로 무수정을 확정하지 않는다.
-
-메인 에이전트와 검증 서브에이전트는 호출마다 다음을 지킨다.
-
-1. 호출 직전에 기준 branch·commit, `git status --short`와 검토 대상 diff를 기록한다.
-2. 검증 시작 시 실제 적용된 권한이 읽기 전용인지 확인한다. 확인할 수 없으면 검증을 진행하지 않고 `Blocked`로 보고한다.
-3. 검증 중 `apply_patch`, formatter, dependency 설치와 파일 생성·수정 명령을 사용하지 않는다.
-4. 검증 종료 시 `git status --short`와 diff를 다시 확인해 시작 기준과 대조한다.
-5. 검증 에이전트에 귀속되는 변경이 하나라도 생기면 프리 빌드 리뷰는 `Gate: BLOCKER`와 `Mutation check: Fail`, 전문 검증은 `Result: Fail`과 `Mutation check: Fail`로 보고한다.
-6. 검토 기준을 안정적으로 유지하기 위해 검증 중에는 메인 에이전트도 동일 작업 트리를 수정하지 않는다.
-
-## 5. 상태와 gate
-
-### 5.1 근거와 실행 상태
-
-- 근거 상태: `Confirmed`, `Documented`, `Inferred`, `Unknown`, `Mismatch`
-- 실행 상태: `Pass`, `Fail`, `Not Run`, `Partial`, `Blocked`
-
-`WARNING`은 비차단 발견 사항이고 `Unknown`은 근거 상태다. 둘 다 최종 gate 값으로 사용하지 않는다.
-
-### 5.2 프리 빌드 최종 gate
-
-| Gate | 의미와 후속 조치 |
-|---|---|
-| `PASS` | build를 차단할 문제가 발견되지 않음. 비차단 `WARNING`과 잔여 `Unknown`은 별도 기록 |
-| `BLOCKER` | build 전 수정, 재현 가능한 반증 또는 사용자 결정이 필요함 |
-| `SPECIALIST_REQUIRED` | 지정한 단일 전문 프로필의 추가 검증이 필요함 |
-
-필수 기준이 `Unknown`이면 `PASS`할 수 없다. 허용된 추가 검증으로 판단할 수 있으면 `SPECIALIST_REQUIRED`, 허용 범위에서 해소할 수 없고 안전한 진행 근거도 없으면 `BLOCKER`다.
-
-### 5.3 표준 출력
-
-프리 빌드 리뷰는 다음 항목을 반환한다.
-
-1. `Gate`: `PASS`, `BLOCKER`, `SPECIALIST_REQUIRED` 중 하나
-2. 검토 범위, 기준 branch·commit과 diff
-3. 발견 사항 ID, 심각도, 근거 상태, 영향, 파일·행 근거와 권장 조치
-4. 비차단 `WARNING`과 잔여 `Unknown`
-5. 전문 검증 권장 프로필 하나와 이유 또는 `None`
-6. `Not Run`·제약
-7. 호출 전후 무변경 확인 결과
-
-전문 검증은 다음 항목을 반환한다.
-
-1. 지정 프로필과 결과 `Pass`, `Fail`, `Blocked`, `Partial` 중 하나
-2. 검증 범위, 기준 branch·commit과 diff
-3. 수행 방법·명령
-4. 발견 사항 ID, 근거 상태, 영향, 파일·행 근거와 권장 조치
-5. 실제 측정값과 조건 또는 `Not Run`
-6. `Not Run`·제약과 잔여 위험
-7. 호출 전후 무변경 확인 결과
-
-## 6. 업무 흐름
-
-```text
-요구사항·영향 조사
-→ 메인 에이전트 구현
-→ 변경 중단 및 기준 diff 확정
-→ 프리 빌드 독립 리뷰
-    ├─ BLOCKER → 메인 수정 → diff 재확정 → 독립 재검토
-    ├─ SPECIALIST_REQUIRED → 메인 지정 프로필 전문 검증
-    │                         → 필요 시 메인 수정·재검토
-    └─ PASS → 비차단 항목 기록
-→ lint/build/unit/contract
-→ 실패 시 메인 수정 → 영향받은 검증 재수행
-→ 최종 결과 보고
-```
-
-- 해결되지 않은 `BLOCKER`는 build와 완료를 차단한다.
-- 코드가 바뀌면 영향받은 이전 판정을 그대로 재사용하지 않는다.
-- build 성공은 계약·정책 위반을 상쇄하지 않으며 리뷰 통과는 test 실패를 상쇄하지 않는다.
-- `main`의 프리 빌드 리뷰는 변경 diff에 대한 정적 개발 gate이며 기존 `mock-agent` QA·Audit·Performance 검수를 대체하지 않는다.
-
-## 7. 운영·branch 경계
-
-- `main`에서는 운영 자원에 의존하지 않는 정적 검토와 승인된 Core 검증만 수행한다.
-- mock server·data·DB, Playwright Browser QA와 mock 성능 측정은 `mock-agent` 범위다.
-- 검증에 운영 DB, `/appdata`, 실제 mail·recipient, 실제 secret, 내부 주소, 운영 service와 network를 사용하지 않는다.
-- 검증 서브에이전트는 commit, push, merge, rebase, branch 전환과 사용자 변경 되돌리기를 수행하지 않는다.
-- 실제 코드 수정은 메인 에이전트가 별도 변경 단계에서 수행하고, mock 구현·설정은 `main`으로 병합하지 않는다.
-
-## 8. 활성화와 문서 관리
-
-- 1단계: 이 기준 문서와 두 custom agent 정의를 작성한다.
-- 2단계: 새 세션 발견, 명시적 호출, 실제 권한·무변경과 출력 형식을 검증한다. — `Completed`
-- 3단계: 승인된 사례에서 명시적 시범 운영하고 시간·오탐·결함 발견을 측정한다. — `Completed`
-- 4단계: `AGENTS.md`에 이 문서 링크와 의무 호출·중단 조건을 추가하고 새 세션 smoke로 검증한다. — `Completed`
-
-도입 후 상세 역할·책임·gate는 이 문서를 단일 기준으로 관리한다. `reports/development-validation-subagent-workflow.md`는 합의 배경과 의사결정 기록으로 유지하며 상세 절차를 중복 갱신하지 않는다. 프리 빌드 결과를 release 필수 증거로 사용하기로 별도 결정한 경우에만 `release-checklist.md`를 변경한다.
-
-## 9. 3단계 시범 운영 결과
-
-시범 운영은 실제 application을 수정하지 않았다. 작은 변경은 승인·반영된 `eaff4b9..18b1b16`을 사용했고, 고위험 변경은 `/tmp`의 최소 synthetic baseline·target fixture를 사용했다. 측정 시간은 새 Codex session 생성과 agent 대기를 포함한 wall-clock이며 운영 서비스 성능이나 일반 개발 시간으로 일반화하지 않는다.
-
-| 사례 | 결과 | 시간 | 확인 내용 |
-|---|---|---:|---|
-| 작은 실제 변경 최초 검토 | `SPECIALIST_REQUIRED` | 162.64초 | diff 밖 Stage 2 실행 증거가 없어 필수 `Unknown`으로 전환 |
-| 작은 변경 증거 재검토 | `PASS` | 114.13초 | 실제 발견·호출·무변경 증거로 해소, 전문 agent 미호출 |
-| 고위험 negative diff | `BLOCKER` | 81.00초 | listener·timer cleanup 누락과 `test.skip` 발견, build 미실행 |
-| 불완전한 수정 diff 재검토 | `BLOCKER` 2회 | 47.45초, 140.77초 | 기준선, lifecycle 연결과 test discovery 누락을 fail-closed 처리 |
-| 완전한 synthetic fixture 재검토 | `SPECIALIST_REQUIRED` | 96.21초 | 정적 cleanup은 확인했으나 반복 실행 결과가 `Unknown` |
-| Frontend 전문 검증 최초 호출 | `Blocked` | 82.88초 | 허용 명령에 필수 지침 열람 명령이 없어 test 미실행 |
-| Frontend 전문 검증 재호출 | `Partial` | 104.98초 | target test `pass 1`, `fail 0`, `skip 0`; mutation `Pass` |
-| 전문 결과 반영 최종 재검토 | `PASS` | 125.52초 | 필수 `Unknown` 해소, 잔여 browser 통합 `Unknown`은 synthetic 범위 밖 |
-
-### 9.1 측정 요약
-
-- agent 호출: 9회 — 프리 빌드 7회, 전문 검증 2회
-- agent wall-clock 합계: 955.58초
-- 의도한 negative blocker 발견: 1/1
-- 확인된 오탐: 0건
-- 증거 누락으로 인한 추가 gate: 작은 변경 1회
-- 입력 부족을 안전하게 차단한 호출: 프리 빌드 2회, 전문 검증 1회
-- 수정·증거 보완 후 재검토: 작은 변경 1회, 고위험 프리 빌드 4회, 전문 검증 1회
-- 전문 target test: `pass 1`, `fail 0`, `skip 0`, 359.464ms
-- 메인 동일 명령 재현: `pass 1`, `fail 0`, `skip 0`, 297.215ms
-- blocker 이후 build: `Not Run`; build 후 실패율: `Unknown`
-- 검증 agent 귀속 workspace 변경: 0건
-- 운영 DB, `/appdata`, mail, secret, service, network와 mock browser·성능 접근: 0건
-
-### 9.2 시범 결론과 4단계 입력
-
-- 세 gate와 수정 후 독립 재검토 흐름은 의도대로 동작했다.
-- 전문 검증은 프리 빌드 근거가 명확한 경우에만 `Frontend` 단일 프로필로 호출됐다.
-- 입력에는 안정된 diff뿐 아니라 기준 branch·commit, 실제 lifecycle·test discovery와 필수 지침 열람 명령을 포함해야 불필요한 `Blocked` 재호출을 줄일 수 있다.
-- 검증 기준을 완화하거나 test를 skip하지 않고 증거와 입력을 보완해 gate를 해소했다.
-- `main`에서 mock 검증을 실행하지 않았으며 기존 QA·Audit·Performance 역할을 대체하지 않았다.
-- 일반 변경의 실제 장기 속도, 오탐률과 build 후 실패 감소 효과는 표본이 작아 `Unknown`이다.
-
-## 10. 관련 문서
-
-- [개발 검증 서브에이전트 도입 계획](../../reports/development-validation-subagent-adoption-plan.md)
-- [개발 검증 서브에이전트 도입 리포트](../../reports/development-validation-subagent-workflow.md)
-- [프로젝트 지침](../../AGENTS.md)
-- [시스템 개요](../system/overview.md)
-- [릴리스 체크리스트](release-checklist.md)
+중요한 미검수 사항과 이유는 최종 보고에 남긴다.

@@ -1,122 +1,79 @@
 # L0 Spider Project Instructions
 
-## 1. Project Mission and Status
+## 1. Core Principles
 
-L0 Spider는 이상감지 결과, 자설비·공통부·동일성 화면, 등록과 이력 기능을 제공하는 운영 중 웹서비스다.
-신규 프로젝트가 아니므로 기존 사용자 동작, 데이터 해석과 API 호환성 보존을 최우선으로 한다.
-요청 범위 밖의 대규모 리팩터링, 소스 이동 또는 시스템 교체를 수행하지 않는다.
+L0 Spider는 운영 중인 웹서비스다.
+기존 사용자 동작, 데이터 해석과 API 호환성을 보존한다. 사용자가 명시적으로 변경을 요청하지 않은 기존 동작은 유지한다.
+요청을 해결하는 데 필요한 최소 범위만 수정한다. 요청과 관계없는 리팩터링, 소스 이동, 구조 개편 또는 시스템 교체를 하지 않는다.
+작업은 사용자 요청과 직접 관련된 코드부터 확인한다. 저장소 전체를 사전에 조사하거나 문서를 미리 읽지 않는다.
+현재 코드 또는 요구사항에서 구체적인 의존성이나 영향이 확인된 경우에만 조사와 변경 범위를 확대한다.
+사실 판단은 현재 코드, 설정과 재현 가능한 검증 결과를 우선한다. 확인하지 않은 내용을 사실처럼 가정하지 않는다.
 
-## 2. Sources of Truth
+## 2. Documentation and Contracts
 
-사실 판단은 다음 우선순위를 적용한다.
-1. 재현 가능한 실행 및 검증 결과
-2. 현재 코드와 설정
-3. 테스트와 실행 가능한 계약
-4. 시스템 구조 문서
-5. 사용자 메뉴얼
-6. 과거 보고서와 추정
-문서와 코드가 다르면 어느 한쪽을 임의로 맞추지 말고 근거와 함께 `Mismatch`로 기록한다.
+모든 문서를 작업 전에 읽지 않는다.
+현재 코드만으로 안전하게 판단하기 어렵거나, 변경이 사용자 동작, API·데이터 계약, 시스템 구조 또는 운영 방식에 직접 영향을 주는 경우에만 관련 문서나 계약을 선택적으로 확인한다.
+문구·스타일 변경, 단순 버그 수정 또는 기존 계약을 유지하는 내부 구현 변경에서는 문서 전체를 검색하지 않는다.
+현재 변경으로 기존 문서나 계약이 실제로 부정확해지는 경우에만 필요한 범위를 함께 수정한다.
 
-## 3. Evidence Status
+## 3. Documentation Map
 
-- `Confirmed`: 현재 코드, 설정 또는 재현 가능한 실행 결과로 확인됨
-- `Documented`: 기존 문서에만 기록되고 현재 구현은 확인되지 않음
-- `Inferred`: 코드 구조나 명칭을 근거로 추정함
-- `Unknown`: 현재 자료와 허용된 조사로 확인할 수 없음
-- `Mismatch`: 코드, 설정, 계약 또는 문서 사이에 명확한 차이가 있음
-조사, 문서와 보고서에서 확인 상태를 명시하고 추정을 사실처럼 표현하지 않는다.
+문서를 사전에 모두 읽지 않는다. 현재 작업에 필요한 경우에만 아래 위치를 우선 사용한다.
 
-## 4. Harness Branch Boundary and Target Structure
+* 전체 시스템 구조와 주요 경로 → `docs/system/`
+* 기능별 동작과 계약 → `docs/features/`
+* 운영·배포·검증 절차 → `docs/operations/`
+* 사용자 화면과 사용 방법 → `docs/user-manual/`
+* 중요한 설계 결정과 변경 이유 → `docs/decisions/`
+* API·데이터 계약 → `harness/contracts/`
 
-`main`은 실제 코드와 전체 시스템의 기준이며 Core Harness를 반영하는 브랜치다.
-Core Harness는 다음을 관리한다.
-- 공통 지침과 시스템·기능·운영·사용자 문서
-- 데이터 경로 추적, Dashboard 계약, STEP/HMAC와 Mailing 정의
-- 환경·배포·보안 규칙과 API·데이터 계약
-- 운영 자원에 의존하지 않는 unit·contract 검증과 안전한 검증 script
-- audit, architecture와 change-impact 보고서
-Core 목표는 `docs/{system,features,operations,user-manual,decisions}/`, `harness/contracts/`, `tests/{unit,contract}/`, `scripts/`, `reports/`다.
-`main`의 fixture는 개인정보·운영 데이터가 없는 최소 synthetic 계약 샘플만 허용한다.
-`mock-agent` 전용 Mock Validation Extension에는 mock 서버·API·DB·데이터·Parquet·이미지와 대규모 UI fixture를 둔다.
-`scripts/bootstrap-mock.sh`, `scripts/run-mock.sh`, mock smoke·integration·E2E, Playwright Browser QA와 mock 성능 검증은 `mock-agent`에만 둔다.
-따라서 `harness/mock/`, mock 전용 scenario와 mock 의존 `verify-ui.sh`는 Core 필수 목표가 아니다.
-`main`의 코드·문서·빌드·검증은 `mock-agent`에 의존하지 않는다.
-`mock-agent`는 `main`의 코드와 계약을 따르며 기본 동기화 방향은 `main → mock-agent`다.
-mock 구현은 `main`으로 병합하지 않되, 발견된 실제 코드 수정과 보고서는 별도로 선별할 수 있다.
-이 구조를 위해 기존 애플리케이션 디렉터리나 소스를 이동·교체하지 않는다.
+특정 문서가 현재 작업과 직접 관련된 경우에만 해당 문서를 읽는다.
 
-## 5. Mandatory Harness Coverage
+## 4. Validation
 
-### Data Path to UI Traceability
+변경 범위에 가장 가까운 작은 검증부터 수행한다.
+직접 관련된 test 또는 실행 확인을 우선하고, 필요한 경우에만 해당 영역의 lint 또는 build를 수행한다.
+명확한 필요가 없는 전체 test suite, 전체 contract 검증, 전체 문서 감사 또는 관련 없는 검증을 실행하지 않는다.
+같은 검증은 관련 코드가 다시 변경되지 않은 한 반복하지 않는다. 실행할 수 없는 중요한 검증은 반복 시도하지 말고 미실행 상태와 이유를 보고한다.
+완료 전에는 변경 내용을 확인하고 가능한 경우 `git diff --check`를 실행한다.
 
-`사용자 화면 → 브라우저 라우트 → 프론트엔드 컴포넌트 → API → 백엔드 서비스 → 데이터 경로`를 추적 가능하게 한다.
-화면, 라우트, API, 서비스, 경로 패턴, 파라미터 출처, 데이터 생성 주체, 데이터 없음 처리, 오류, 근거 코드와 확인 상태를 기록한다.
-기준 문서는 `docs/system/data-flow.md`, `docs/features/dashboard.md`, `docs/features/self-equipment.md`, `docs/features/abnormal-data.md`를 목표로 한다.
-실제 `/appdata`를 조사하지 말고 코드 경로 패턴과 최소 synthetic 계약 샘플만 사용한다.
+### Environment-Limited Validation
 
-### Dashboard API Contract
+운영 웹서비스, 사내망, 운영 DB 또는 실제 데이터에 접근할 수 없는 경우 실제 환경 재현을 필수로 요구하지 않는다.
+사용자가 제공한 오류·로그·조건과 현재 코드를 근거로 원인을 좁히고, 가능한 경우 기존 test, contract 또는 최소 synthetic data로 직접 영향 범위를 검증한다.
+실제 운영 환경에서만 확인 가능한 사항은 추측으로 통과 처리하지 않고 미검증 사항으로 보고한다.
 
-메서드, 경로, 요청, 응답 타입, nullable, 빈 데이터, 오류 응답, 호환성과 프론트엔드 소비 위치를 계약으로 관리한다.
-현재 코드에서 `GET /api/dashboard-data`와 `lineDashboard.summary.monitoringSensorTotal`, `changeFromPreviousDay`, `previousDateTime`은 `Confirmed`다.
-현재 `mailingSummary`는 `lineDashboard.mailingSummary`이며 `lineDashboard.summary.mailingSummary` 후보는 `Mismatch`다.
-산출물은 `docs/features/dashboard.md`, `harness/contracts/dashboard-api.schema.json`, 선택적 최소 synthetic 샘플과 `tests/contract/`를 목표로 한다.
-API 변경 시 코드, JSON Schema, fixture와 contract test의 동시 갱신 여부를 검토한다.
 
-### STEP Deep Link and HMAC
+## 5. Independent Review
 
-`/self-equipment?...&step={HMAC토큰}&eqpCh=...`와 `/self-equipment?...&step=ALL&eqpCh=...` 후보를 실제 코드와 대조한다.
-쿼리 의미, 서명 원문과 정규화, 알고리즘, URL 인코딩, 비밀키 환경변수, `step=ALL`, `eqpCh`, 누락·변조 처리, 만료와 로그 노출을 정의한다.
-현재 `step=ALL`과 `eqpCh` 파싱은 `Confirmed`이고 HMAC 생성·검증과 비밀키는 `Unknown`이므로, 개별 STEP HMAC 구현 후보는 `Mismatch`다.
-실제 비밀키를 문서, fixture, 테스트, 로그 또는 보고서에 기록하지 않는다.
-기준 문서는 `docs/features/step-deeplink.md`, `docs/features/self-equipment.md`, `docs/system/security.md`, `docs/decisions/ADR-003-step-hmac-token.md`를 목표로 한다.
-
-### Mailing
-
-발송 트리거·주기, 수신자, 집계·중복 제거, 템플릿 변수, 색상, 이미지·링크, 성공·실패·재시도·로그와 빈 데이터를 정의한다.
-`dashboard_monitoring_sensor_total`, `dashboard_change_from_previous_day`, `dashboard_previous_date_time`, `dashboard_change_color`는 현재 템플릿에서 `Confirmed`다.
-집계·수신조건 등록과 `public/mailing-report.html`은 `Confirmed`지만 실제 발송기와 스케줄러는 `Unknown`이다.
-Core 검증은 실제 메일을 발송하지 않으며 mock 발송 차단·렌더링 검증은 `mock-agent`에서 수행한다.
-산출물은 `docs/features/mailing.md`, `harness/contracts/mailing-summary.schema.json`, `tests/unit/`과 `tests/contract/`를 목표로 한다.
+일반 기능 구현과 버그 수정에서는 독립 subagent 검수를 수행하지 않는다.
+`pre-build-review`는 사용자가 독립 검수를 요청했거나, 중요한 인증·보안 경계, 공개 API·데이터 계약, 여러 subsystem에 걸친 변경, release 또는 audit 업무처럼 회귀 위험이 명확히 큰 경우에만 사용한다.
+필요한 경우에도 구현과 직접 검증이 끝난 안정된 최종 diff에서 최대 1회만 호출한다.
+`specialist-validator`는 사용자가 명시적으로 요청하지 않는 한 호출하지 않는다.
+독립 검수가 실제로 필요한 경우에만 `docs/operations/development-agent-workflow.md`를 읽는다.
 
 ## 6. Operational Safety
 
-- 운영 DB에 테스트용 쓰기, DDL 또는 migration을 실행하지 않는다.
-- `/appdata` 운영 파일을 삭제, 이동, 변경하거나 덮어쓰지 않는다.
-- fixture, 테스트 결과와 보고서를 운영 경로에 저장하지 않는다.
-- 실제 메일과 운영 수신자를 테스트에 사용하지 않는다.
-- 비밀번호, HMAC 키, 토큰과 실제 `.env` 값을 출력·문서화하거나 Git에 넣지 않는다.
-- 운영 systemd 서비스, 네트워크, 포트, 방화벽과 프록시를 요청 없이 변경하지 않는다.
-- 파괴적인 Git 명령, force push와 사용자 변경사항 되돌리기를 수행하지 않는다.
-- 이 안전 규칙은 하위 `AGENTS.md`에서 완화할 수 없다.
+운영 DB에 테스트용 쓰기, DDL 또는 migration을 실행하지 않는다. `/appdata` 운영 파일을 삭제·이동·변경·덮어쓰기하지 않는다. 테스트 산출물을 운영 경로에 저장하지 않는다.
+실제 메일이나 운영 수신자를 테스트에 사용하지 않는다. 비밀번호, HMAC 키, 토큰과 실제 `.env` 값을 출력·문서화하거나 Git에 기록하지 않는다.
+운영 service, network, port, firewall 또는 proxy를 사용자 요청 없이 변경하지 않는다.
+파괴적인 Git 명령, force push 또는 사용자 변경사항을 되돌리는 작업을 수행하지 않는다.
+운영 자원 확인이 필요한 경우 비파괴적이고 읽기 전용인 방법을 우선한다.
 
-## 7. Change Workflow
+## 7. Harness Boundary
 
-변경 전에는 관련 시스템 문서와 사용자 메뉴얼을 읽고 화면, API, 서비스와 데이터 경로의 영향 범위를 조사한다.
-DB, 메일, HMAC, 환경변수와 운영 자원 영향도 함께 확인한다.
-변경 후에는 변경 파일과 `git diff`를 검토하고 `git diff --check`를 실행한다.
-Core에서는 확인된 lint, build, unit과 contract 명령만 실행하며 mock 의존 integration·e2e는 `mock-agent` 범위다.
-문서, 계약, fixture와 scenario 갱신 필요성을 확인하고 미실행 검증과 남은 위험을 기록한다.
-저장소에서 확인되지 않은 명령이나 운영 절차를 임의로 작성하지 않는다.
+Harness를 위해 기존 애플리케이션 구조나 소스를 이동 또는 교체하지 않는다.
+`main`의 코드와 기본 검증은 `mock-agent`에 의존하지 않아야 한다.
+현재 요청이 Harness, Mock 또는 branch 경계와 직접 관련되지 않는 한 해당 영역을 조사하거나 변경하지 않는다.
 
-### Development Validation Gate
+## 8. Completion
 
-상세 역할, 입력, 권한, gate와 업무 경계의 단일 기준은 [개발 에이전트 검증 workflow](docs/operations/development-agent-workflow.md)를 따른다.
+최종 응답은 간결하게 작성한다.
+무엇을 변경했는지, 어떤 검증을 수행했는지, 중요한 미검증 사항이나 남은 위험이 있는 경우 무엇인지만 보고한다.
+작업과 직접 관계없는 시스템 상태, 문서 상태 또는 개선 아이디어를 추가로 조사하지 않는다.
+설명과 작업 보고는 한국어로 비개발자도 쉽게 알아볼 수 있도록 작성하되 코드 식별자, API, 경로와 환경변수 이름은 원문을 유지한다.
 
-- 모든 코드 변경은 확정된 diff를 대상으로 build 전에 `pre-build-review`의 독립 정적 검토를 받아야 한다.
-- `BLOCKER`가 해결되지 않으면 build하거나 완료를 선언하지 않는다. 메인 에이전트가 수정한 뒤 diff를 다시 확정하고 영향받은 항목을 독립 재검토한다.
-- `SPECIALIST_REQUIRED`가 반환되거나 공유 API·Schema·집계·보안·운영 경계, cross-layer 공통 모듈, 실행 확인이 필요한 비동기·browser·성능 위험 또는 그 밖의 구체적 고위험 근거가 있으면 메인 에이전트가 정확히 한 프로필을 지정해 `specialist-validator`를 호출한다.
-- 메인 에이전트는 검증 결과를 근거 없이 무시하거나 통과를 위해 test·계약 기준을 완화하지 않는다.
-- 검증 서브에이전트는 어떤 파일도 수정하지 않으며 지정된 검증이나 실패 test를 skip·완화하지 않는다.
+## 9. Nested Instructions
 
-## 8. Documentation and Reporting
-
-- 설명 문서와 작업 보고는 한국어로 작성하되 코드 식별자, API, 경로와 환경변수는 원문을 유지한다.
-- 현재 상태와 목표 상태를 구분하고, 상세 정보를 복사하지 말고 적절한 단일 기준 문서로 연결한다.
-- 보고에는 변경 파일, 실행·미실행 검증, `Unknown`, `Mismatch`와 운영 자원 변경 여부를 포함한다.
-- 실행하지 않은 검증은 `Not Run`, 일부만 수행한 검증은 `Partial`로 표시한다.
-
-## 9. Nested AGENTS.md Policy
-
-프론트엔드, 백엔드, 메일링과 하네스 디렉터리에 범위별 하위 `AGENTS.md`를 둘 수 있다.
-하위 지침은 해당 디렉터리에서 우선하지만 상위 지침과 충돌하지 않아야 한다.
-운영 안전, 비밀정보 보호와 근거 상태 규칙은 어떤 하위 지침도 완화할 수 없다.
+하위 디렉터리의 `AGENTS.md`는 해당 범위에서 적용한다.
+하위 지침은 운영 안전, 비밀정보 보호 또는 사용자 변경사항 보호 규칙을 완화할 수 없다.
