@@ -6,6 +6,16 @@ import sys
 
 DB_INFO_PATH = os.environ.get("DB_INFO_PATH") or "/appdata/l0_spider/db_info.pkl"
 
+SAFE_DB_ERRORS = {
+    "NOTICE_DB_CONFIG_NOT_FOUND": "공지 DB 설정 파일을 찾을 수 없습니다.",
+    "NOTICE_DB_DRIVER_MISSING": "공지 DB 드라이버를 사용할 수 없습니다.",
+    "NOTICE_DB_TABLE_NOT_FOUND": "site_notices 테이블을 확인할 수 없습니다.",
+    "NOTICE_DB_SCHEMA_MISMATCH": "site_notices 테이블 구조를 확인해 주세요.",
+    "NOTICE_DB_ACCESS_DENIED": "공지 DB 계정 권한을 확인해 주세요.",
+    "NOTICE_DB_CONNECTION_FAILED": "공지 DB에 연결하지 못했습니다.",
+    "NOTICE_DB_OPERATION_FAILED": "공지사항 DB 작업에 실패했습니다.",
+}
+
 
 def write_json(payload):
     print(json.dumps(payload, ensure_ascii=False, default=str))
@@ -14,6 +24,24 @@ def write_json(payload):
 def read_payload():
     text = sys.stdin.read()
     return json.loads(text) if text.strip() else {}
+
+
+def classify_db_error(error):
+    if isinstance(error, FileNotFoundError):
+        return "NOTICE_DB_CONFIG_NOT_FOUND"
+    if isinstance(error, ModuleNotFoundError) and getattr(error, "name", "") == "pymysql":
+        return "NOTICE_DB_DRIVER_MISSING"
+
+    error_number = error.args[0] if getattr(error, "args", None) else None
+    if error_number == 1146:
+        return "NOTICE_DB_TABLE_NOT_FOUND"
+    if error_number in (1054, 1364):
+        return "NOTICE_DB_SCHEMA_MISMATCH"
+    if error_number in (1044, 1045, 1142, 1143):
+        return "NOTICE_DB_ACCESS_DENIED"
+    if error_number in (2002, 2003, 2005, 2006, 2013):
+        return "NOTICE_DB_CONNECTION_FAILED"
+    return "NOTICE_DB_OPERATION_FAILED"
 
 
 def load_db_info():
@@ -142,8 +170,9 @@ def main():
                 raise ValueError("unsupported notice action")
         write_json(result)
     except Exception as error:
+        error_code = classify_db_error(error)
         print(f"notice operation failed: {error}", file=sys.stderr)
-        write_json({"ok": False, "error": "공지사항 DB 작업에 실패했습니다."})
+        write_json({"ok": False, "code": error_code, "error": SAFE_DB_ERRORS[error_code]})
 
 
 if __name__ == "__main__":

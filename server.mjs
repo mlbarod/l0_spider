@@ -152,7 +152,7 @@ const server = createServer((req, res) => {
     return
   }
 
-  if (url.pathname === "/api/notices" || url.pathname === "/api/notices/manage") {
+  if (["/api/notices", "/api/notices/manage", "/api/notices/permissions"].includes(url.pathname)) {
     handleNoticesRequest(req, res, url).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })

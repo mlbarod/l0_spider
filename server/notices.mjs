@@ -8,6 +8,15 @@ const helperPath = fileURLToPath(new URL("../scripts/notices.py", import.meta.ur
 const MAX_BODY_BYTES = 64 * 1024
 const MAX_TITLE_LENGTH = 200
 const MAX_NOTICE_BODY_LENGTH = 10_000
+const SAFE_NOTICE_DB_ERRORS = new Map([
+  ["NOTICE_DB_CONFIG_NOT_FOUND", "공지 DB 설정 파일을 찾을 수 없습니다."],
+  ["NOTICE_DB_DRIVER_MISSING", "공지 DB 드라이버를 사용할 수 없습니다."],
+  ["NOTICE_DB_TABLE_NOT_FOUND", "site_notices 테이블을 확인할 수 없습니다."],
+  ["NOTICE_DB_SCHEMA_MISMATCH", "site_notices 테이블 구조를 확인해 주세요."],
+  ["NOTICE_DB_ACCESS_DENIED", "공지 DB 계정 권한을 확인해 주세요."],
+  ["NOTICE_DB_CONNECTION_FAILED", "공지 DB에 연결하지 못했습니다."],
+  ["NOTICE_DB_OPERATION_FAILED", "공지사항 DB 작업에 실패했습니다."],
+])
 
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
@@ -127,7 +136,9 @@ export function runNoticesHelper(payload) {
         return
       }
       if (!result.ok) {
-        reject(new Error(result.error || "공지사항 DB 작업을 처리하지 못했습니다."))
+        const error = new Error(result.error || "공지사항 DB 작업을 처리하지 못했습니다.")
+        error.code = result.code
+        reject(error)
         return
       }
       resolvePromise(result)
@@ -161,8 +172,9 @@ export async function handleNoticesRequest(req, res, url, dependencies = {}) {
     ?? process.env.NOTICE_ADMIN_KNOX_ID
   const pathname = url?.pathname ?? "/api/notices"
   const manageRequest = pathname === "/api/notices/manage"
+  const permissionRequest = pathname === "/api/notices/permissions"
 
-  if (manageRequest && req.method !== "GET") {
+  if ((manageRequest || permissionRequest) && req.method !== "GET") {
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
     return
   }
@@ -172,6 +184,17 @@ export async function handleNoticesRequest(req, res, url, dependencies = {}) {
   }
 
   try {
+    if (permissionRequest) {
+      const currentUser = await resolveRequestUser(req, { remoteIpReader, userResolver })
+      sendJson(res, 200, {
+        ok: true,
+        permissions: {
+          canManage: isNoticeAdmin(currentUser.knoxId, configuredAdminKnoxIds),
+        },
+      })
+      return
+    }
+
     if (req.method === "GET" && !manageRequest) {
       const [result, currentUser] = await Promise.all([
         helper({ action: "list-active" }),
@@ -240,6 +263,15 @@ export async function handleNoticesRequest(req, res, url, dependencies = {}) {
     ].includes(error.message)
     if (validationError) {
       sendJson(res, 400, { ok: false, code: "NOTICE_VALIDATION_FAILED", error: error.message })
+      return
+    }
+    const databaseErrorMessage = SAFE_NOTICE_DB_ERRORS.get(error?.code)
+    if (databaseErrorMessage) {
+      sendJson(res, 500, createSafeApiError({
+        code: error.code,
+        message: databaseErrorMessage,
+        scope: "notices",
+      }))
       return
     }
     sendJson(res, 500, createSafeApiError({

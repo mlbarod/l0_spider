@@ -23,6 +23,10 @@ export function fetchManagedNotices({ signal } = {}) {
   return requestNotices("/api/notices/manage", { signal })
 }
 
+export function fetchNoticePermissions({ signal } = {}) {
+  return requestNotices("/api/notices/permissions", { signal })
+}
+
 export function createNotice({ title, body }) {
   return requestNotices("/api/notices", {
     method: "POST",

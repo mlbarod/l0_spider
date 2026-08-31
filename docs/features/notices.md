@@ -14,6 +14,7 @@
 | Method | Path | 권한 | 설명 |
 |---|---|---|---|
 | `GET` | `/api/notices` | 전체 | `ACTIVE` 공지와 `permissions.canManage` 조회 |
+| `GET` | `/api/notices/permissions` | 전체 | DB 조회와 독립적으로 공지 관리 권한 조회 |
 | `GET` | `/api/notices/manage` | 관리자 | 완료 건을 포함한 최근 공지 조회 |
 | `POST` | `/api/notices` | 관리자 | 제목과 본문으로 `ACTIVE` 공지 등록 |
 | `PATCH` | `/api/notices` | 관리자 | `noticeId`에 해당하는 `ACTIVE` 공지 완료 처리 |

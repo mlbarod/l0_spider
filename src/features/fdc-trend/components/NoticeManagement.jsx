@@ -19,8 +19,8 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   completeNotice,
   createNotice,
-  fetchActiveNotices,
   fetchManagedNotices,
+  fetchNoticePermissions,
 } from "../api/noticesApi"
 
 function formatNoticeDate(value) {
@@ -35,13 +35,13 @@ export function NoticeManagement() {
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
   const [confirmingNoticeId, setConfirmingNoticeId] = useState(null)
-  const activeNoticesQuery = useQuery({
-    queryKey: ["site-notices"],
-    queryFn: ({ signal }) => fetchActiveNotices({ signal }),
+  const permissionQuery = useQuery({
+    queryKey: ["site-notice-permissions"],
+    queryFn: ({ signal }) => fetchNoticePermissions({ signal }),
     staleTime: 30 * 1000,
     retry: false,
   })
-  const canManage = activeNoticesQuery.data?.permissions?.canManage === true
+  const canManage = permissionQuery.data?.permissions?.canManage === true
   const managedNoticesQuery = useQuery({
     queryKey: ["site-notices", "manage"],
     queryFn: ({ signal }) => fetchManagedNotices({ signal }),

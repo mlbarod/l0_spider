@@ -93,6 +93,49 @@ test("일반 공지 조회는 진행중 목록과 관리 권한을 함께 반환
   assert.equal(payload.permissions.canManage, true)
 })
 
+test("관리 권한 조회는 공지 DB helper와 독립적으로 처리한다", async () => {
+  let helperCalled = false
+  const response = createResponse()
+  await handleNoticesRequest(
+    createRequest("GET"),
+    response,
+    new URL("http://localhost/api/notices/permissions"),
+    {
+      ...adminDependencies,
+      helper: async () => {
+        helperCalled = true
+        throw new Error("DB helper must not run")
+      },
+    },
+  )
+
+  assert.equal(response.statusCode, 200)
+  assert.equal(JSON.parse(response.body).permissions.canManage, true)
+  assert.equal(helperCalled, false)
+})
+
+test("공지 DB 오류는 원인을 구분할 수 있는 안전한 코드로 반환한다", async () => {
+  const response = createResponse()
+  const databaseError = new Error("internal database detail")
+  databaseError.code = "NOTICE_DB_TABLE_NOT_FOUND"
+
+  await handleNoticesRequest(
+    createRequest("GET"),
+    response,
+    new URL("http://localhost/api/notices"),
+    {
+      ...adminDependencies,
+      helper: async () => { throw databaseError },
+    },
+  )
+
+  const payload = JSON.parse(response.body)
+  assert.equal(response.statusCode, 500)
+  assert.equal(payload.code, "NOTICE_DB_TABLE_NOT_FOUND")
+  assert.match(payload.error, /site_notices/)
+  assert.doesNotMatch(response.body, /internal database detail/)
+})
+
 test("관리자가 아닌 사용자의 공지 등록은 DB 호출 전에 거부한다", async () => {
   let helperCalled = false
   const response = createResponse()
