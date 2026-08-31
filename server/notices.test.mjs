@@ -3,11 +3,13 @@ import { Readable } from "node:stream"
 import test from "node:test"
 
 import {
+  buildNoticePermissions,
   buildNoticeCompletePayload,
   buildNoticeCreatePayload,
   handleNoticesRequest,
   isNoticeAdmin,
   parseNoticeAdminKnoxIds,
+  resolveNoticeAdminKnoxIds,
 } from "./notices.mjs"
 
 function createRequest(method, body = "") {
@@ -44,6 +46,12 @@ test("공지 관리자 권한은 쉼표로 구분한 서버 환경변수 Knox ID
   assert.equal(isNoticeAdmin(" ADMIN.TWO ", "admin.one,admin.two"), true)
   assert.equal(isNoticeAdmin("other.user", "admin.one,admin.two"), false)
   assert.equal(isNoticeAdmin("notice.admin", ""), false)
+  assert.equal(resolveNoticeAdminKnoxIds("", "legacy.admin"), "legacy.admin")
+  assert.deepEqual(buildNoticePermissions("admin.two", "admin.one,admin.two"), {
+    canManage: true,
+    adminConfigured: true,
+    adminCount: 2,
+  })
 })
 
 test("공지 등록 및 완료 payload는 입력값과 서버 사용자 ID를 정규화한다", () => {
