@@ -25,9 +25,18 @@ export function normalizeKnoxId(value) {
   return normalizeText(value).toLowerCase()
 }
 
-export function isNoticeAdmin(knoxId, configuredKnoxId = process.env.NOTICE_ADMIN_KNOX_ID) {
-  const configured = normalizeKnoxId(configuredKnoxId)
-  return Boolean(configured) && normalizeKnoxId(knoxId) === configured
+export function parseNoticeAdminKnoxIds(value) {
+  return new Set(String(value ?? "")
+    .split(",")
+    .map(normalizeKnoxId)
+    .filter(Boolean))
+}
+
+export function isNoticeAdmin(
+  knoxId,
+  configuredKnoxIds = process.env.NOTICE_ADMIN_KNOX_IDS ?? process.env.NOTICE_ADMIN_KNOX_ID,
+) {
+  return parseNoticeAdminKnoxIds(configuredKnoxIds).has(normalizeKnoxId(knoxId))
 }
 
 export function buildNoticeCreatePayload(value, createdBy) {
@@ -146,7 +155,10 @@ export async function handleNoticesRequest(req, res, url, dependencies = {}) {
   const helper = dependencies.helper ?? runNoticesHelper
   const remoteIpReader = dependencies.remoteIpReader ?? getRemoteIp
   const userResolver = dependencies.userResolver ?? resolveCurrentUser
-  const configuredAdminKnoxId = dependencies.configuredAdminKnoxId ?? process.env.NOTICE_ADMIN_KNOX_ID
+  const configuredAdminKnoxIds = dependencies.configuredAdminKnoxIds
+    ?? dependencies.configuredAdminKnoxId
+    ?? process.env.NOTICE_ADMIN_KNOX_IDS
+    ?? process.env.NOTICE_ADMIN_KNOX_ID
   const pathname = url?.pathname ?? "/api/notices"
   const manageRequest = pathname === "/api/notices/manage"
 
@@ -169,14 +181,14 @@ export async function handleNoticesRequest(req, res, url, dependencies = {}) {
         ok: true,
         notices: (result.notices ?? []).map(normalizeNotice),
         permissions: {
-          canManage: isNoticeAdmin(currentUser?.knoxId, configuredAdminKnoxId),
+          canManage: isNoticeAdmin(currentUser?.knoxId, configuredAdminKnoxIds),
         },
       })
       return
     }
 
     const currentUser = await resolveRequestUser(req, { remoteIpReader, userResolver })
-    if (!isNoticeAdmin(currentUser.knoxId, configuredAdminKnoxId)) {
+    if (!isNoticeAdmin(currentUser.knoxId, configuredAdminKnoxIds)) {
       sendForbidden(res)
       return
     }

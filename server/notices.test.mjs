@@ -7,6 +7,7 @@ import {
   buildNoticeCreatePayload,
   handleNoticesRequest,
   isNoticeAdmin,
+  parseNoticeAdminKnoxIds,
 } from "./notices.mjs"
 
 function createRequest(method, body = "") {
@@ -34,10 +35,14 @@ const adminDependencies = {
   userResolver: async () => ({ ok: true, knoxId: "notice.admin" }),
 }
 
-test("공지 관리자 권한은 서버 환경변수 Knox ID와 비교한다", () => {
-  assert.equal(isNoticeAdmin("notice.admin", "notice.admin"), true)
-  assert.equal(isNoticeAdmin(" NOTICE.ADMIN ", "notice.admin"), true)
-  assert.equal(isNoticeAdmin("other.user", "notice.admin"), false)
+test("공지 관리자 권한은 쉼표로 구분한 서버 환경변수 Knox ID 목록과 비교한다", () => {
+  assert.deepEqual([...parseNoticeAdminKnoxIds(" admin.one, ADMIN.TWO ,admin.one ")], [
+    "admin.one",
+    "admin.two",
+  ])
+  assert.equal(isNoticeAdmin("admin.one", "admin.one,admin.two"), true)
+  assert.equal(isNoticeAdmin(" ADMIN.TWO ", "admin.one,admin.two"), true)
+  assert.equal(isNoticeAdmin("other.user", "admin.one,admin.two"), false)
   assert.equal(isNoticeAdmin("notice.admin", ""), false)
 })
 

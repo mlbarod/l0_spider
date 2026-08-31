@@ -72,7 +72,7 @@
 | 데이터 root 설정 | 아니오 | 예 | API 요청 처리 중 파일 탐색 위치를 결정한다. |
 | `SENSOR_EXCLUSION_CONFIG_PATH` | 아니오 | 예 | 기본 `config/sensor-exclusions.json` 대신 사용할 App별 sensor 제외 JSON 위치를 지정한다. |
 | `DB_INFO_PATH`, `REMOTE_ADDR` | 아니오 | 예 | Python DB helper가 credential 파일과 사용자 주소를 해석한다. |
-| `NOTICE_ADMIN_KNOX_ID` | 아니오 | 예 | 현재 `knoxId`와 비교해 공지 등록·완료 권한을 판정한다. |
+| `NOTICE_ADMIN_KNOX_IDS` | 아니오 | 예 | 쉼표로 구분한 `knoxId` 목록과 비교해 공지 등록·완료 권한을 판정한다. |
 | `dist/` | build 결과 | 정적 모드 입력 | build 결과가 없으면 정적 모드 시작이 실패할 수 있다. |
 | `public/` 자산 | build 입력 | 정적 URL | Vite가 template, 이미지 등 공개 자산을 다룬다. |
 
