@@ -72,6 +72,7 @@
 | 데이터 root 설정 | 아니오 | 예 | API 요청 처리 중 파일 탐색 위치를 결정한다. |
 | `SENSOR_EXCLUSION_CONFIG_PATH` | 아니오 | 예 | 기본 `config/sensor-exclusions.json` 대신 사용할 App별 sensor 제외 JSON 위치를 지정한다. |
 | `DB_INFO_PATH`, `REMOTE_ADDR` | 아니오 | 예 | Python DB helper가 credential 파일과 사용자 주소를 해석한다. |
+| `NOTICE_ADMIN_KNOX_ID` | 아니오 | 예 | 현재 `knoxId`와 비교해 공지 등록·완료 권한을 판정한다. |
 | `dist/` | build 결과 | 정적 모드 입력 | build 결과가 없으면 정적 모드 시작이 실패할 수 있다. |
 | `public/` 자산 | build 입력 | 정적 URL | Vite가 template, 이미지 등 공개 자산을 다룬다. |
 
@@ -83,10 +84,11 @@
 1. Node 프로세스에 주입된 환경변수가 해당 코드 기본값보다 우선한다.
 2. Node가 Python child process를 만들 때 기존 환경을 전달하고 `REMOTE_ADDR`를 요청 정보로 덮어쓴다.
 3. 환경변수가 없으면 각 모듈의 코드 기본값 또는 `SPIDER_DATA_PATH_TEMPLATES`가 사용된다.
-4. `DB_INFO_PATH`, `MAPPING_CONFIG_PATH`가 가리키는 파일 내용은 파일을 읽는 시점에 적용된다. `SENSOR_EXCLUSION_CONFIG_PATH`의 경로 값은 프로세스 시작 시, 동일 경로의 파일 내용은 API 요청 시 적용된다.
-5. 실제 서비스 관리자, shell 또는 배포 플랫폼이 환경변수를 주입하는 방식과 그 우선순위는 `Unknown`이다.
+4. 저장소 root의 `notices.env`가 있으면 서버 시작 시 로드하며, 이미 프로세스에 주입된 환경변수는 `notices.env`보다 우선한다.
+5. `DB_INFO_PATH`, `MAPPING_CONFIG_PATH`가 가리키는 파일 내용은 파일을 읽는 시점에 적용된다. `SENSOR_EXCLUSION_CONFIG_PATH`의 경로 값은 프로세스 시작 시, 동일 경로의 파일 내용은 API 요청 시 적용된다.
+6. 실제 서비스 관리자, shell 또는 배포 플랫폼이 환경변수를 주입하는 방식은 `Unknown`이다.
 
-- `.env` 계열은 `.gitignore`에 포함되지만 명시적인 `dotenv` 사용, `--env-file`, tracked 예제 파일은 확인되지 않았다.
+- 서버는 `server/loadEnv.mjs`에서 저장소 root의 `notices.env`를 로드한다. `notices.env`는 `.gitignore`에 포함되며 Git에 기록하지 않는다.
 - Vite 자체 환경 파일 로딩을 운영 설정 주입 방식으로 사용한다는 저장소 근거도 확인되지 않았다.
 - 설정 변경 후 hot reload, 프로세스 재시작 또는 재build 중 무엇이 필요한지는 항목별 표의 적용 시점을 따른다.
 

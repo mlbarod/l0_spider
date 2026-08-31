@@ -1,3 +1,5 @@
+import "./server/loadEnv.mjs"
+
 import { spawnSync } from "node:child_process"
 import { createReadStream, existsSync, statSync } from "node:fs"
 import { readFile } from "node:fs/promises"
@@ -28,6 +30,7 @@ import { handleMappingConfigRequest } from "./server/mappingConfig.mjs"
 import { handleMailingRegistrationRequest } from "./server/mailingRegistration.mjs"
 import { handleMyEqpReferenceRequest } from "./server/myEqpReference.mjs"
 import { handleMyEqpRegistrationRequest } from "./server/myEqpRegistration.mjs"
+import { handleNoticesRequest } from "./server/notices.mjs"
 import { handlePassHistoryRequest } from "./server/passHistory.mjs"
 import {
   handleErdFileRequest,
@@ -144,6 +147,13 @@ const server = createServer((req, res) => {
 
   if (url.pathname === "/api/current-user") {
     handleCurrentUserRequest(req, res).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message })
+    })
+    return
+  }
+
+  if (url.pathname === "/api/notices" || url.pathname === "/api/notices/manage") {
+    handleNoticesRequest(req, res, url).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
     return

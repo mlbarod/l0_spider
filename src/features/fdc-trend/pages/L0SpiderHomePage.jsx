@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 
 import { fetchDashboardSummary } from "../api/dashboardApi"
 import { LineAnomalyDashboard } from "../components/LineAnomalyDashboard"
+import { NoticeManagement } from "../components/NoticeManagement"
 
 const spiderApps = [
   {
@@ -233,6 +234,7 @@ export function L0SpiderHomePage() {
             </div>
           </div>
           <div className="mb-0.5 flex shrink-0 flex-col gap-2 lg:flex-row lg:items-stretch">
+            <NoticeManagement />
             <LatestDataCard />
             <aside
               className="flex items-center gap-3 rounded-xl border border-border/80 bg-muted/40 px-4 py-3 shadow-sm"
