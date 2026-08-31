@@ -68,7 +68,7 @@ export function SiteNotice() {
                 서비스 안내
               </Badge>
             </div>
-            <DialogTitle className="text-xl leading-snug sm:text-2xl">L0 Spider 공지사항</DialogTitle>
+            <DialogTitle className="text-xl leading-snug sm:text-2xl">ETCH Spider 공지사항</DialogTitle>
             <DialogDescription>
               {notices.length > 0
                 ? `현재 진행중인 공지 ${notices.length.toLocaleString()}건입니다.`
