@@ -122,6 +122,24 @@ test("관리 권한 조회는 공지 DB helper와 독립적으로 처리한다",
   assert.equal(helperCalled, false)
 })
 
+test("공지 API는 권한 판정 전에 환경 파일을 다시 로드한다", async () => {
+  let envLoaded = false
+  const response = createResponse()
+  await handleNoticesRequest(
+    createRequest("GET"),
+    response,
+    new URL("http://localhost/api/notices/permissions"),
+    {
+      ...adminDependencies,
+      envLoader: () => { envLoaded = true },
+    },
+  )
+
+  assert.equal(response.statusCode, 200)
+  assert.equal(envLoaded, true)
+  assert.equal(JSON.parse(response.body).permissions.canManage, true)
+})
+
 test("공지 DB 오류는 원인을 구분할 수 있는 안전한 코드로 반환한다", async () => {
   const response = createResponse()
   const databaseError = new Error("internal database detail")

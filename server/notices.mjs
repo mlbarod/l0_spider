@@ -2,6 +2,7 @@ import { spawn } from "node:child_process"
 import { fileURLToPath, URL } from "node:url"
 
 import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
+import { loadServerEnv } from "./loadEnv.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
 
 const helperPath = fileURLToPath(new URL("../scripts/notices.py", import.meta.url))
@@ -179,6 +180,9 @@ function sendForbidden(res) {
 }
 
 export async function handleNoticesRequest(req, res, url, dependencies = {}) {
+  const envLoader = dependencies.envLoader ?? loadServerEnv
+  envLoader()
+
   const helper = dependencies.helper ?? runNoticesHelper
   const remoteIpReader = dependencies.remoteIpReader ?? getRemoteIp
   const userResolver = dependencies.userResolver ?? resolveCurrentUser

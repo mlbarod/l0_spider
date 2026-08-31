@@ -84,7 +84,7 @@
 1. Node 프로세스에 주입된 환경변수가 해당 코드 기본값보다 우선한다.
 2. Node가 Python child process를 만들 때 기존 환경을 전달하고 `REMOTE_ADDR`를 요청 정보로 덮어쓴다.
 3. 환경변수가 없으면 각 모듈의 코드 기본값 또는 `SPIDER_DATA_PATH_TEMPLATES`가 사용된다.
-4. 저장소 root의 `notices.env`가 있으면 서버 시작 시 로드하며, 이미 프로세스에 주입된 환경변수는 `notices.env`보다 우선한다.
+4. 저장소 root의 `notices.env`가 있으면 서버 시작 시와 공지 API 요청 시 로드하며, 비어 있지 않은 프로세스 환경변수는 `notices.env`보다 우선한다.
 5. `DB_INFO_PATH`, `MAPPING_CONFIG_PATH`가 가리키는 파일 내용은 파일을 읽는 시점에 적용된다. `SENSOR_EXCLUSION_CONFIG_PATH`의 경로 값은 프로세스 시작 시, 동일 경로의 파일 내용은 API 요청 시 적용된다.
 6. 실제 서비스 관리자, shell 또는 배포 플랫폼이 환경변수를 주입하는 방식은 `Unknown`이다.
 
