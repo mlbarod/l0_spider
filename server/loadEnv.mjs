@@ -4,11 +4,20 @@ import { parseEnv } from "node:util"
 
 const defaultEnvPath = fileURLToPath(new URL("../notices.env", import.meta.url))
 
-export function loadServerEnv(envPath = defaultEnvPath) {
-  if (!existsSync(envPath)) return false
+export function readServerEnv(envPath = defaultEnvPath) {
+  if (!existsSync(envPath)) return { exists: false, values: {} }
 
-  const fileEnvironment = parseEnv(readFileSync(envPath, "utf8"))
-  Object.entries(fileEnvironment).forEach(([key, value]) => {
+  return {
+    exists: true,
+    values: parseEnv(readFileSync(envPath, "utf8")),
+  }
+}
+
+export function loadServerEnv(envPath = defaultEnvPath) {
+  const environment = readServerEnv(envPath)
+  if (!environment.exists) return false
+
+  Object.entries(environment.values).forEach(([key, value]) => {
     const existingValue = String(process.env[key] ?? "").trim()
     if (!existingValue) process.env[key] = value
   })

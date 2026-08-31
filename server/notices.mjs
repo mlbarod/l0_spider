@@ -2,7 +2,7 @@ import { spawn } from "node:child_process"
 import { fileURLToPath, URL } from "node:url"
 
 import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
-import { loadServerEnv } from "./loadEnv.mjs"
+import { loadServerEnv, readServerEnv } from "./loadEnv.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
 
 const helperPath = fileURLToPath(new URL("../scripts/notices.py", import.meta.url))
@@ -56,12 +56,13 @@ export function isNoticeAdmin(
   return parseNoticeAdminKnoxIds(configuredKnoxIds).has(normalizeKnoxId(knoxId))
 }
 
-export function buildNoticePermissions(knoxId, configuredKnoxIds) {
+export function buildNoticePermissions(knoxId, configuredKnoxIds, diagnostics = {}) {
   const adminKnoxIds = parseNoticeAdminKnoxIds(configuredKnoxIds)
   return {
     canManage: adminKnoxIds.has(normalizeKnoxId(knoxId)),
     adminConfigured: adminKnoxIds.size > 0,
     adminCount: adminKnoxIds.size,
+    ...diagnostics,
   }
 }
 
@@ -182,16 +183,36 @@ function sendForbidden(res) {
 export async function handleNoticesRequest(req, res, url, dependencies = {}) {
   const envLoader = dependencies.envLoader ?? loadServerEnv
   envLoader()
+  const envReader = dependencies.envReader ?? readServerEnv
+  const fileEnvironment = envReader()
 
   const helper = dependencies.helper ?? runNoticesHelper
   const remoteIpReader = dependencies.remoteIpReader ?? getRemoteIp
   const userResolver = dependencies.userResolver ?? resolveCurrentUser
-  const configuredAdminKnoxIds = resolveNoticeAdminKnoxIds(
+  const dependencyAdminKnoxIds = resolveNoticeAdminKnoxIds(
     dependencies.configuredAdminKnoxIds,
     dependencies.configuredAdminKnoxId,
+  )
+  const fileAdminKnoxIds = resolveNoticeAdminKnoxIds(
+    fileEnvironment.values?.NOTICE_ADMIN_KNOX_IDS,
+    fileEnvironment.values?.NOTICE_ADMIN_KNOX_ID,
+  )
+  const processAdminKnoxIds = resolveNoticeAdminKnoxIds(
     process.env.NOTICE_ADMIN_KNOX_IDS,
     process.env.NOTICE_ADMIN_KNOX_ID,
   )
+  const configuredAdminKnoxIds = resolveNoticeAdminKnoxIds(
+    dependencyAdminKnoxIds,
+    fileAdminKnoxIds,
+    processAdminKnoxIds,
+  )
+  const permissionDiagnostics = {
+    configurationSource: dependencyAdminKnoxIds
+      ? "dependency"
+      : fileAdminKnoxIds ? "notices.env" : processAdminKnoxIds ? "process" : "none",
+    envFileFound: fileEnvironment.exists === true,
+    envFileConfigured: Boolean(fileAdminKnoxIds),
+  }
   const pathname = url?.pathname ?? "/api/notices"
   const manageRequest = pathname === "/api/notices/manage"
   const permissionRequest = pathname === "/api/notices/permissions"
@@ -210,7 +231,11 @@ export async function handleNoticesRequest(req, res, url, dependencies = {}) {
       const currentUser = await resolveRequestUser(req, { remoteIpReader, userResolver })
       sendJson(res, 200, {
         ok: true,
-        permissions: buildNoticePermissions(currentUser.knoxId, configuredAdminKnoxIds),
+        permissions: buildNoticePermissions(
+          currentUser.knoxId,
+          configuredAdminKnoxIds,
+          permissionDiagnostics,
+        ),
       })
       return
     }
@@ -223,7 +248,11 @@ export async function handleNoticesRequest(req, res, url, dependencies = {}) {
       sendJson(res, 200, {
         ok: true,
         notices: (result.notices ?? []).map(normalizeNotice),
-        permissions: buildNoticePermissions(currentUser?.knoxId, configuredAdminKnoxIds),
+        permissions: buildNoticePermissions(
+          currentUser?.knoxId,
+          configuredAdminKnoxIds,
+          permissionDiagnostics,
+        ),
       })
       return
     }

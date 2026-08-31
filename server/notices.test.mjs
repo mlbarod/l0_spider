@@ -140,6 +140,32 @@ test("공지 API는 권한 판정 전에 환경 파일을 다시 로드한다", 
   assert.equal(JSON.parse(response.body).permissions.canManage, true)
 })
 
+test("관리 권한은 process.env를 거치지 않고 notices.env 값을 직접 사용한다", async () => {
+  const response = createResponse()
+  await handleNoticesRequest(
+    createRequest("GET"),
+    response,
+    new URL("http://localhost/api/notices/permissions"),
+    {
+      remoteIpReader: () => "127.0.0.1",
+      userResolver: async () => ({ ok: true, knoxId: "file.admin" }),
+      envLoader: () => true,
+      envReader: () => ({
+        exists: true,
+        values: { NOTICE_ADMIN_KNOX_IDS: "file.admin,other.admin" },
+      }),
+    },
+  )
+
+  const permissions = JSON.parse(response.body).permissions
+  assert.equal(response.statusCode, 200)
+  assert.equal(permissions.canManage, true)
+  assert.equal(permissions.adminCount, 2)
+  assert.equal(permissions.configurationSource, "notices.env")
+  assert.equal(permissions.envFileFound, true)
+  assert.equal(permissions.envFileConfigured, true)
+})
+
 test("공지 DB 오류는 원인을 구분할 수 있는 안전한 코드로 반환한다", async () => {
   const response = createResponse()
   const databaseError = new Error("internal database detail")

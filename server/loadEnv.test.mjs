@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
 
-import { loadServerEnv } from "./loadEnv.mjs"
+import { loadServerEnv, readServerEnv } from "./loadEnv.mjs"
 
 test("공지 환경 파일을 로드하되 기존 프로세스 환경변수를 우선한다", async () => {
   const directory = await mkdtemp(join(tmpdir(), "l0-spider-env-"))
@@ -24,6 +24,7 @@ test("공지 환경 파일을 로드하되 기존 프로세스 환경변수를 �
     ].join("\n"), "utf8")
 
     assert.equal(loadServerEnv(envPath), true)
+    assert.equal(readServerEnv(envPath).values.L0_SPIDER_ENV_FILE_TEST, "from-file")
     assert.equal(process.env.L0_SPIDER_ENV_FILE_TEST, "from-file")
     assert.equal(process.env.L0_SPIDER_ENV_PRIORITY_TEST, "from-process")
     assert.equal(process.env.L0_SPIDER_ENV_EMPTY_TEST, "from-file")
