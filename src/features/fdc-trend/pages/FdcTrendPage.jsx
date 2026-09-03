@@ -836,8 +836,8 @@ const ThreeDayIdentityChartCard = memo(function ThreeDayIdentityChartCard({ row,
   )
 
   return (
-    <article ref={cardRef} className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-primary/25 bg-card shadow-sm">
-      <header className="border-b border-primary/20 bg-primary/5 px-3 py-2">
+    <article ref={cardRef} className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-xl border border-primary/20 bg-card">
+      <header className="border-b border-primary/15 bg-primary/5 px-4 py-3">
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold">최근 3일 동일성 차트</h3>
@@ -1266,8 +1266,8 @@ const ErdScatterCard = memo(function ErdScatterCard({
   }
 
   return (
-    <article ref={cardRef} className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border bg-card shadow-sm">
-      <header className="border-b bg-muted/50 px-3 py-2">
+    <article ref={cardRef} className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-xl border bg-card">
+      <header className="border-b bg-muted/35 px-4 py-3">
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <h3 className="shrink-0 text-sm font-semibold">{eqp || "EQP 미지정"}</h3>
@@ -1390,7 +1390,7 @@ const ErdScatterCard = memo(function ErdScatterCard({
           </div>
         )}
       </div>
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/20 px-3 py-2.5">
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/20 px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
           <SkipChartDialog
             eqp={eqp}
@@ -2212,8 +2212,8 @@ export function FdcTrendPage() {
           </div>
         ) : null}
 
-        <section className="grid min-w-0 gap-3">
-          <div className="flex items-end justify-between gap-3">
+        <section className="min-w-0 overflow-hidden rounded-[18px] border bg-card">
+          <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/30 px-5 py-4">
             <div>
               <h2 className="text-base font-semibold">Scatter chart</h2>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -2226,71 +2226,72 @@ export function FdcTrendPage() {
                 <Badge variant="outline">{chartRows.length.toLocaleString()} charts</Badge>
               </div>
             ) : null}
-          </div>
-          {chStepIsSelected && chartPageCount > 1 ? (
-            <nav
-              className="flex flex-wrap items-center justify-center gap-1 rounded-lg border bg-card px-3 py-2"
-              aria-label="차트 페이지"
-            >
-              {Array.from({ length: chartPageCount }, (_, index) => {
-                const page = index + 1
-                return (
-                  <Button
-                    key={page}
-                    type="button"
-                    variant={activeChartPage === page ? "default" : "outline"}
-                    size="sm"
-                    className="size-8 p-0"
-                    aria-label={`${page}페이지`}
-                    aria-current={activeChartPage === page ? "page" : undefined}
-                    onClick={() => setChartPage(page)}
-                  >
-                    {page}
-                  </Button>
-                )
-              })}
-            </nav>
-          ) : null}
-          {!chStepIsSelected ? (
-            <div className="grid min-h-52 place-items-center rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
-              STEP, eqp_ch, sensor와 ch_step을 선택하면 scatter chart가 표시됩니다.
-            </div>
-          ) : chartGroups.length ? (
-            <div className="grid min-w-0 gap-5">
-              {pageChartGroups.map((group) => (
-                <section key={group.eqp} className="min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm">
-                  <header className="flex items-center justify-between gap-3 border-b bg-muted/60 px-4 py-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Badge>EQP</Badge>
-                      <h3 className="truncate text-sm font-semibold">{group.eqp}</h3>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-7 shrink-0 px-2.5 text-xs"
-                        aria-pressed={group.gathered}
-                        onClick={() => toggleGatheredChSteps(group.eqp)}
-                      >
-                        {group.gathered ? "ch_step 전체보기" : "ch_step 모아보기"}
-                      </Button>
-                    </div>
-                    <Badge variant="secondary">
-                      {group.visibleRows.length.toLocaleString()}
-                      {group.totalVisibleRows !== group.visibleRows.length
-                        ? ` / ${group.totalVisibleRows.toLocaleString()}`
-                        : group.gathered
-                        ? ` / ${group.rows.length.toLocaleString()}`
-                        : ""} charts
-                    </Badge>
-                  </header>
-                  <div
-                    className={cn(
-                      "grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2",
-                      !group.gathered && "xl:grid-cols-3",
-                      group.animate && (group.gathered ? "animate-ch-step-gather" : "animate-ch-step-expand"),
-                    )}
-                  >
-                    {group.visibleRows.map((row) => (
+          </header>
+          <div className="grid min-w-0 gap-4 p-4">
+            {chStepIsSelected && chartPageCount > 1 ? (
+              <nav
+                className="flex flex-wrap items-center justify-center gap-1 rounded-xl border bg-background px-3 py-2"
+                aria-label="차트 페이지"
+              >
+                {Array.from({ length: chartPageCount }, (_, index) => {
+                  const page = index + 1
+                  return (
+                    <Button
+                      key={page}
+                      type="button"
+                      variant={activeChartPage === page ? "default" : "outline"}
+                      size="sm"
+                      className="size-8 p-0"
+                      aria-label={`${page}페이지`}
+                      aria-current={activeChartPage === page ? "page" : undefined}
+                      onClick={() => setChartPage(page)}
+                    >
+                      {page}
+                    </Button>
+                  )
+                })}
+              </nav>
+            ) : null}
+            {!chStepIsSelected ? (
+              <div className="grid min-h-52 place-items-center rounded-xl border border-dashed bg-muted/15 p-8 text-center text-sm text-muted-foreground">
+                STEP, eqp_ch, sensor와 ch_step을 선택하면 scatter chart가 표시됩니다.
+              </div>
+            ) : chartGroups.length ? (
+              <div className="grid min-w-0 gap-4">
+                {pageChartGroups.map((group) => (
+                  <section key={group.eqp} className="min-w-0 overflow-hidden rounded-2xl border bg-background">
+                    <header className="flex items-center justify-between gap-3 border-b bg-muted/40 px-5 py-3.5">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Badge>EQP</Badge>
+                        <h3 className="truncate text-sm font-semibold">{group.eqp}</h3>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 shrink-0 px-2.5 text-xs"
+                          aria-pressed={group.gathered}
+                          onClick={() => toggleGatheredChSteps(group.eqp)}
+                        >
+                          {group.gathered ? "ch_step 전체보기" : "ch_step 모아보기"}
+                        </Button>
+                      </div>
+                      <Badge variant="secondary">
+                        {group.visibleRows.length.toLocaleString()}
+                        {group.totalVisibleRows !== group.visibleRows.length
+                          ? ` / ${group.totalVisibleRows.toLocaleString()}`
+                          : group.gathered
+                          ? ` / ${group.rows.length.toLocaleString()}`
+                          : ""} charts
+                      </Badge>
+                    </header>
+                    <div
+                      className={cn(
+                        "grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2",
+                        !group.gathered && "xl:grid-cols-3",
+                        group.animate && (group.gathered ? "animate-ch-step-gather" : "animate-ch-step-expand"),
+                      )}
+                    >
+                      {group.visibleRows.map((row) => (
                         <Fragment key={row.id}>
                           <div className="min-w-0">
                             <ErdScatterCard
@@ -2307,16 +2308,17 @@ export function FdcTrendPage() {
                             <ThreeDayIdentityChartCard row={row} eqp={group.eqp} />
                           ) : null}
                         </Fragment>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          ) : (
-            <div className="grid min-h-52 place-items-center rounded-lg border bg-card text-sm text-muted-foreground">
-              {dataQuery.isLoading ? "데이터를 불러오는 중입니다." : "표시할 file_path 데이터가 없습니다."}
-            </div>
-          )}
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <div className="grid min-h-52 place-items-center rounded-xl border border-dashed bg-muted/15 text-sm text-muted-foreground">
+                {dataQuery.isLoading ? "데이터를 불러오는 중입니다." : "표시할 file_path 데이터가 없습니다."}
+              </div>
+            )}
+          </div>
         </section>
       </main>
 
