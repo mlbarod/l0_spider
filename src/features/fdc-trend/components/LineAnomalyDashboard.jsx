@@ -118,7 +118,7 @@ function KpiCard({ label, value, unit, description, valueClassName }) {
     <article className="grid min-h-[132px] grid-rows-[auto_1fr_auto] rounded-[18px] border bg-card p-5">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <div className="flex min-w-0 items-end gap-1.5 py-1">
-        <strong className={cn("truncate text-2xl font-semibold tracking-tight tabular-nums", valueClassName)}>
+        <strong className={cn("truncate text-2xl font-semibold tracking-tight tabular-nums 2xl:text-[22px]", valueClassName)}>
           {value}
         </strong>
         {unit ? <span className="pb-0.5 text-xs font-medium text-muted-foreground">{unit}</span> : null}
@@ -484,7 +484,7 @@ export function LineAnomalyDashboard() {
         <KpiCard label="M Grade" value={formatCount(summary.mGradeCount)} unit="건" description="M Grade 고유건수" />
         <KpiCard
           label="전일 대비"
-          value={<ChangeText value={summary.changeFromPreviousDay} className="text-xl xl:text-2xl" />}
+          value={<ChangeText value={summary.changeFromPreviousDay} className="text-xl xl:text-2xl 2xl:text-[22px]" />}
           description={summary.previousDateTime
             ? `${formatDisplayDateTime(summary.previousDateTime)} 대비`
             : "동일 시각 비교 데이터 없음"}
