@@ -230,6 +230,113 @@
   }
 }
 
+/* DESIGN.md 기반 L0 SPIDER 홈 전용 디자인 토큰 */
+.spider-home {
+  --background: #ffffff;
+  --foreground: #1d1d1f;
+  --card: #ffffff;
+  --card-foreground: #1d1d1f;
+  --popover: #ffffff;
+  --popover-foreground: #1d1d1f;
+  --primary: #0066cc;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f7;
+  --secondary-foreground: #1d1d1f;
+  --muted: #f5f5f7;
+  --muted-foreground: #7a7a7a;
+  --accent: #f5f5f7;
+  --accent-foreground: #1d1d1f;
+  --border: #e0e0e0;
+  --input: #e0e0e0;
+  --ring: #0071e3;
+  --chart-1: #0066cc;
+  --chart-2: #2997ff;
+  --chart-3: #1d1d1f;
+  --chart-4: #7a7a7a;
+  --chart-5: #b2b2b7;
+  font-family: "SF Pro Text", "Pretendard Variable", Inter, system-ui, -apple-system, sans-serif;
+  scroll-behavior: smooth;
+}
+
+.spider-home [data-slot="button"] {
+  border-radius: 9999px;
+  box-shadow: none;
+  font-weight: 400;
+}
+
+.spider-home [data-slot="button"]:active {
+  transform: scale(0.95);
+}
+
+.spider-home input {
+  border-radius: 9999px;
+  font-size: 14px;
+}
+
+.spider-home .shadow-xs,
+.spider-home .shadow-sm,
+.spider-home .shadow-md,
+.spider-home .shadow-lg {
+  box-shadow: none;
+}
+
+/* DESIGN.md 기반 App 필터 영역 전용 디자인 토큰 */
+.spider-filter-area {
+  --background: #ffffff;
+  --foreground: #1d1d1f;
+  --card: #ffffff;
+  --card-foreground: #1d1d1f;
+  --popover: #ffffff;
+  --popover-foreground: #1d1d1f;
+  --primary: #0066cc;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f7;
+  --secondary-foreground: #1d1d1f;
+  --muted: #f5f5f7;
+  --muted-foreground: #7a7a7a;
+  --accent: #f5f5f7;
+  --accent-foreground: #1d1d1f;
+  --border: #e0e0e0;
+  --input: #e0e0e0;
+  --ring: #0071e3;
+  border-radius: 18px;
+  background-color: #f5f5f7;
+  color: #1d1d1f;
+  font-family: "SF Pro Text", "Pretendard Variable", Inter, system-ui, -apple-system, sans-serif;
+}
+
+.spider-filter-area [data-slot="card"],
+.spider-filter-area [data-slot="input"],
+.spider-filter-area [data-slot="select-trigger"],
+.spider-filter-area [data-slot="tabs-trigger"],
+.spider-filter-area [data-slot="button"] {
+  box-shadow: none;
+}
+
+.spider-filter-area [data-slot="input"],
+.spider-filter-area [data-slot="select-trigger"],
+.spider-filter-area [data-slot="button"] {
+  border-radius: 9999px;
+}
+
+.spider-filter-area [data-slot="button"]:active {
+  transform: scale(0.95);
+}
+
+.spider-filter-area [data-slot="tabs-list"] {
+  border-radius: 9999px;
+  background: #f5f5f7;
+}
+
+.spider-filter-area [data-slot="tabs-trigger"] {
+  border-radius: 9999px;
+  font-weight: 400;
+}
+
+.spider-filter-area [data-slot="tabs-trigger"][data-state="active"] {
+  color: #0066cc;
+}
+
 @theme inline {
   --animate-heartbeat: heartbeat 2s infinite ease-in-out;
 

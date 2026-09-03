@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { Bell, CalendarDays, CircleAlert, Inbox, Megaphone } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import { useLocation } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
 
 import { fetchActiveNotices } from "../api/noticesApi"
 
@@ -23,6 +25,7 @@ function formatNoticeDate(value) {
 }
 
 export function SiteNotice() {
+  const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
   const handledInitialResult = useRef(false)
   const noticesQuery = useQuery({
@@ -32,6 +35,7 @@ export function SiteNotice() {
     retry: false,
   })
   const notices = noticesQuery.data?.notices ?? []
+  const isHomePage = pathname === "/" || pathname === "/fdc_trend" || pathname === "/fdc_trend/"
 
   useEffect(() => {
     if (!noticesQuery.isSuccess || handledInitialResult.current) return
@@ -46,7 +50,12 @@ export function SiteNotice() {
           type="button"
           variant="outline"
           size="icon-lg"
-          className="fixed right-4 top-4 z-40 rounded-full border-primary/20 bg-background/95 text-primary shadow-lg backdrop-blur transition-transform hover:scale-105 hover:bg-primary/10 sm:right-6 sm:top-5"
+          className={cn(
+            "fixed right-4 z-40 rounded-full border-primary/20 bg-background/95 text-primary backdrop-blur transition-transform hover:scale-105 hover:bg-primary/10 sm:right-6",
+            isHomePage
+              ? "top-0.5 border-white/20 bg-white text-[#0066cc] shadow-none sm:right-8 sm:top-0.5"
+              : "top-4 shadow-lg sm:top-5",
+          )}
           aria-label="공지사항 열기"
           title="공지사항"
         >

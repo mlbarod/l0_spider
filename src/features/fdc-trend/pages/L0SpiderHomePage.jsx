@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { Activity, BookOpen, CalendarClock, ChartNoAxesCombined, Gauge, GitCompareArrows, Mail, Network, Radar, ScanSearch, Users } from "lucide-react"
+import { Activity, ArrowRight, BookOpen, CalendarClock, ChartNoAxesCombined, Gauge, GitCompareArrows, Mail, Network, Radar, ScanSearch, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
@@ -122,48 +122,53 @@ function SpiderAppCard({ app, animationIndex = 0 }) {
   const content = (
     <div
       className={cn(
-        "relative h-full min-h-[140px] rounded-2xl border p-4 shadow-sm transition-all duration-300",
-        "cursor-pointer hover:-translate-y-1 hover:shadow-lg",
+        "relative flex h-full min-h-[220px] flex-col rounded-[18px] border p-6 transition-all duration-300 active:scale-[0.98]",
+        "cursor-pointer hover:-translate-y-1",
         isOperating
-          ? "border-border/50 bg-card hover:border-primary/20"
-          : "border-muted bg-muted/50 hover:border-muted-foreground/20",
+          ? "border-[#e0e0e0] bg-white hover:border-[#0066cc]"
+          : "border-[#e0e0e0] bg-[#fafafc] hover:border-[#b8b8bd]",
       )}
     >
       <Badge className={cn(
-        "absolute -right-2 -top-2 z-10 px-2 py-1 text-xs font-medium",
+        "absolute right-5 top-5 z-10 border px-2.5 py-1 text-[11px] font-semibold",
         isOperating
-          ? "border border-primary/20 bg-primary/10 text-primary"
-          : "border border-muted-foreground/20 bg-muted text-muted-foreground",
+          ? "border-[#0066cc]/20 bg-[#0066cc]/8 text-[#0066cc]"
+          : "border-[#d2d2d7] bg-[#f5f5f7] text-[#7a7a7a]",
       )}>
         {app.status ?? "개발중"}
       </Badge>
 
       <div className={cn(
-        "mb-3 flex size-10 items-center justify-center rounded-2xl border transition-all duration-300",
+        "mb-8 flex size-11 items-center justify-center rounded-full transition-colors duration-300",
         isOperating
-          ? "border-primary/20 bg-primary/10 group-hover:border-primary/30 group-hover:bg-primary/15"
-          : "border-muted-foreground/15 bg-muted",
+          ? "bg-[#d2d2d7]/55 text-[#1d1d1f] group-hover:bg-[#0066cc] group-hover:text-white"
+          : "bg-[#e8e8ed] text-[#7a7a7a]",
       )}>
-        <app.icon className={cn("size-5", isOperating ? "text-primary" : "text-muted-foreground")} />
+        <app.icon className="size-5" />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col justify-between text-left">
+      <div className="flex min-h-0 flex-1 flex-col text-left">
         <div>
           <h3 className={cn(
-            "mb-2 whitespace-pre-line text-base font-semibold leading-tight transition-colors",
-            isOperating ? "text-foreground group-hover:text-primary" : "text-muted-foreground",
+            "mb-2 whitespace-pre-line text-[21px] font-semibold leading-tight tracking-[-0.23px] transition-colors",
+            isOperating ? "text-[#1d1d1f] group-hover:text-[#0066cc]" : "text-[#333333]",
           )}>
             {app.title}
           </h3>
           <p className={cn(
-            "mb-3 text-xs leading-5",
-            isOperating ? "text-muted-foreground" : "text-muted-foreground/70",
+            "text-sm leading-[1.5] tracking-[-0.22px]",
+            isOperating ? "text-[#55555a]" : "text-[#7a7a7a]",
           )}>{app.subtitle}</p>
         </div>
-        <div className={cn(
-          "text-xs font-medium",
-          isOperating ? "text-primary/70" : "text-muted-foreground/70",
-        )}>{app.category}</div>
+        <div className="mt-auto flex items-end justify-between gap-3 pt-7">
+          <span className={cn("text-xs", isOperating ? "text-[#0066cc]" : "text-[#7a7a7a]")}>{app.category}</span>
+          <span className={cn(
+            "grid size-8 place-items-center rounded-full transition-colors",
+            isOperating ? "bg-[#f5f5f7] text-[#0066cc] group-hover:bg-[#0066cc] group-hover:text-white" : "bg-[#e8e8ed] text-[#7a7a7a]",
+          )}>
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </span>
+        </div>
       </div>
     </div>
   )
@@ -189,6 +194,35 @@ function SpiderAppCard({ app, animationIndex = 0 }) {
   )
 }
 
+function SpiderSuiteCard({ app, animationIndex = 0 }) {
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <span className="grid size-11 place-items-center rounded-full bg-[#d2d2d7]/20 text-white"><app.icon className="size-5" /></span>
+        <Badge className="border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] text-[#cccccc]">{app.status}</Badge>
+      </div>
+      <h3 className="mt-8 text-[21px] font-semibold leading-tight tracking-[-0.23px]">{app.title}</h3>
+      <p className="mt-2 text-sm leading-[1.5] text-[#cccccc]">{app.subtitle}</p>
+      <div className="mt-auto flex items-end justify-between pt-7 text-xs text-[#2997ff]">
+        <span>{app.category}</span>
+        <span className="grid size-8 place-items-center rounded-full bg-white/8"><ArrowRight className="size-4" /></span>
+      </div>
+    </>
+  )
+  const className = "spider-app-enter group flex min-h-[220px] flex-col rounded-[18px] border border-white/12 bg-[#2a2a2c] p-6 transition-transform hover:-translate-y-1 active:scale-[0.98]"
+  const style = { "--spider-app-enter-delay": `${animationIndex * 55}ms` }
+
+  return app.external ? (
+    <a href={app.href} target="_blank" rel="noreferrer" className={className} style={style}>
+      {content}
+    </a>
+  ) : (
+    <Link to={app.href} className={className} style={style}>
+      {content}
+    </Link>
+  )
+}
+
 function LatestDataCard() {
   const dashboardQuery = useQuery({
     queryKey: ["spider-line-dashboard", ""],
@@ -203,15 +237,15 @@ function LatestDataCard() {
 
   return (
     <aside
-      className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 shadow-sm"
+      className="flex min-h-11 items-center gap-3 rounded-full bg-[#fafafc] px-4 py-2"
       aria-label="마지막 알고리즘 수행 시간"
     >
-      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-        <CalendarClock className="size-4.5" aria-hidden="true" />
+      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#d2d2d7]/55 text-[#0066cc]">
+        <CalendarClock className="size-4" aria-hidden="true" />
       </span>
       <div className="min-w-0">
-        <p className="text-[11px] font-semibold tracking-wide text-muted-foreground">마지막 알고리즘 수행 시간</p>
-        <p className="mt-0.5 whitespace-nowrap text-sm font-semibold tabular-nums text-foreground">
+        <p className="text-[10px] font-normal tracking-[-0.08px] text-[#7a7a7a]">마지막 알고리즘 수행 시간</p>
+        <p className="whitespace-nowrap text-xs font-semibold tabular-nums text-[#1d1d1f]">
           {displayDateTime}
         </p>
       </div>
@@ -221,78 +255,115 @@ function LatestDataCard() {
 
 export function L0SpiderHomePage() {
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto bg-background">
-      <section className="shrink-0 border-b bg-card px-4 pb-4 pt-7 sm:px-6 lg:px-8">
-        <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div className="min-w-0 space-y-3">
-            <Badge variant="outline">L0 Spider</Badge>
-            <div>
-              <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">ETCH SPIDER</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-                L0 공정 이상감지와 Hard Limit 추천 기능을 한 화면에서 시작합니다.
-              </p>
-            </div>
+    <div className="spider-home h-full min-h-0 min-w-0 overflow-y-auto bg-[#f5f5f7] text-[#1d1d1f]">
+      <nav className="sticky top-0 z-40 h-11 bg-black text-white" aria-label="전역 탐색">
+        <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between px-5 sm:px-8">
+          <Link to="/" className="text-xs font-semibold tracking-[0.08em]">SPIDER</Link>
+          <div className="mr-12 flex items-center gap-6 text-xs text-white/75">
+            <a href="#spider-apps" className="hidden transition-colors hover:text-white sm:inline">Applications</a>
+            <a href="#line-dashboard" className="hidden transition-colors hover:text-white sm:inline">Dashboard</a>
+            <Link to="/manual" className="transition-colors hover:text-white">사용자 메뉴얼</Link>
           </div>
-          <div className="mb-0.5 flex shrink-0 flex-col gap-2 lg:flex-row lg:items-stretch">
+        </div>
+      </nav>
+
+      <div className="sticky top-11 z-30 h-[52px] border-b border-black/8 bg-[#f5f5f7]/85 backdrop-blur-[20px] backdrop-saturate-[180%]">
+        <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between px-5 sm:px-8">
+          <strong className="text-[17px] font-semibold tracking-[-0.37px]">ETCH SPIDER</strong>
+          <a href="#spider-apps" className="rounded-full bg-[#0066cc] px-4 py-2 text-xs text-white transition-transform active:scale-95">
+            시작하기
+          </a>
+        </div>
+      </div>
+
+      <header className="flex min-h-[500px] items-center bg-white px-5 py-20 sm:px-8">
+        <div className="mx-auto flex w-full max-w-[980px] flex-col items-center text-center">
+          <p className="mb-5 text-sm font-semibold tracking-[-0.22px] text-[#0066cc]">L0 PROCESS INTELLIGENCE</p>
+          <h1 className="max-w-4xl text-[28px] font-semibold leading-[1.07] tracking-[-0.28px] text-[#1d1d1f] min-[420px]:text-[34px] min-[641px]:text-[40px] min-[1069px]:text-[56px]">
+            ETCH SPIDER
+          </h1>
+          <p className="mt-5 max-w-2xl text-[21px] font-normal leading-[1.4] tracking-[-0.23px] text-[#333333] sm:text-[24px]">
+            L0 공정 이상감지와 Hard Limit 추천 기능을 한 화면에서 시작합니다.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <a href="#spider-apps" className="rounded-full bg-[#0066cc] px-[22px] py-[11px] text-[17px] text-white transition-colors active:scale-95 hover:bg-[#0071e3]">
+              앱 둘러보기
+            </a>
+            <a href="#line-dashboard" className="rounded-full border border-[#0066cc] bg-white px-[22px] py-[10px] text-[17px] text-[#0066cc] transition-colors active:scale-95 hover:bg-[#f5f5f7]">
+              Dashboard 보기
+            </a>
+          </div>
+          <div className="mt-10 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-wrap">
             <NoticeManagement />
             <LatestDataCard />
             <aside
-              className="flex items-center gap-3 rounded-xl border border-border/80 bg-muted/40 px-4 py-3 shadow-sm"
+              className="flex min-h-11 items-center gap-3 rounded-full bg-[#fafafc] px-4 py-2"
               aria-label="개발 및 운영 담당자"
             >
-              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-                <Users className="size-4.5" aria-hidden="true" />
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#d2d2d7]/55 text-[#0066cc]">
+                <Users className="size-4" aria-hidden="true" />
               </span>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold tracking-wide text-muted-foreground">개발 · 운영</p>
-                <p className="mt-0.5 whitespace-nowrap text-sm font-medium text-foreground">
-                  담당자 : 최상현, 강태환
-                </p>
+              <div className="min-w-0 text-left">
+                <p className="text-[10px] font-normal tracking-[-0.08px] text-[#7a7a7a]">개발 · 운영</p>
+                <p className="whitespace-nowrap text-xs font-semibold text-[#1d1d1f]">담당자 : 최상현, 강태환</p>
               </div>
             </aside>
           </div>
         </div>
-      </section>
+      </header>
 
-      <main className="min-h-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mx-auto grid w-full max-w-[1680px] gap-5">
-          <section className="grid gap-3">
-            <div className="min-w-0">
-              <h2 className="text-base font-semibold">L0 Spider</h2>
-              <p className="mt-1 text-xs text-muted-foreground">L0 Spider 기반 이상감지와 Hard Limit 추천 기능입니다.</p>
+      <main>
+        <section id="spider-apps" className="scroll-mt-24 bg-[#f5f5f7] px-5 py-16 sm:px-8 sm:py-20">
+          <div className="mx-auto max-w-[1440px]">
+            <div className="mb-10 max-w-3xl">
+              <p className="mb-3 text-sm font-semibold text-[#0066cc]">L0 SPIDER</p>
+              <h2 className="text-[34px] font-semibold leading-[1.15] tracking-[-0.37px] sm:text-[40px]">이상 징후를 발견하는 모든 도구.</h2>
+              <p className="mt-4 text-[17px] leading-[1.47] tracking-[-0.37px] text-[#55555a]">
+                L0 Spider 기반 이상감지와 Hard Limit 추천 기능입니다.
+              </p>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {spiderApps.map((app, index) => (
                 app.empty
-                  ? (
-                    <div
-                      key={app.key}
-                      className="hidden min-h-[140px] 2xl:col-start-5 2xl:row-start-1 2xl:block"
-                      aria-hidden="true"
-                    />
-                  )
+                  ? null
                   : <SpiderAppCard key={app.title} app={app} animationIndex={index} />
               ))}
             </div>
-          </section>
-          <section className="grid gap-3">
-            <div className="min-w-0">
-              <h2 className="text-base font-semibold">L1,L3 이상감지 App</h2>
-              <p className="mt-1 text-xs text-muted-foreground">L1과 L3 데이터를 활용한 이상감지 App입니다.</p>
+          </div>
+        </section>
+
+        <section className="bg-[#272729] px-5 py-16 text-white sm:px-8 sm:py-20">
+          <div className="mx-auto max-w-[1440px]">
+            <div className="mb-10 max-w-3xl">
+              <p className="mb-3 text-sm font-semibold text-[#2997ff]">EXPAND THE VIEW</p>
+              <h2 className="text-[34px] font-semibold leading-[1.15] tracking-[-0.37px] sm:text-[40px]">더 넓은 공정으로 연결됩니다.</h2>
+              <p className="mt-4 text-[17px] leading-[1.47] tracking-[-0.37px] text-[#cccccc]">L1과 L3 데이터를 활용한 이상감지 App입니다.</p>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {spiderSuites.map((app, index) => (
-                <SpiderAppCard
+                <SpiderSuiteCard
                   key={app.title}
                   app={app}
                   animationIndex={spiderApps.length + index}
                 />
               ))}
             </div>
-          </section>
-          <LineAnomalyDashboard />
-        </div>
+          </div>
+        </section>
+
+        <section id="line-dashboard" className="scroll-mt-24 bg-white px-5 py-16 sm:px-8 sm:py-20">
+          <div className="mx-auto max-w-[1440px]">
+            <LineAnomalyDashboard />
+          </div>
+        </section>
       </main>
+
+      <footer className="bg-[#f5f5f7] px-5 py-12 text-xs text-[#7a7a7a] sm:px-8">
+        <div className="mx-auto flex max-w-[1440px] flex-col gap-3 border-t border-[#d2d2d7] pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <span>ETCH SPIDER</span>
+          <span>공정 이상감지 통합 서비스</span>
+        </div>
+      </footer>
     </div>
   )
 }
