@@ -60,9 +60,9 @@ const CHART_COLORS = [
   "var(--chart-3)",
   "var(--chart-4)",
   "var(--chart-5)",
-  "#2563eb",
-  "#0f766e",
-  "#7c3aed",
+  "#65a9e8",
+  "#525257",
+  "#9b9ba1",
 ]
 const MAX_TREND_LINES = 8
 const TABLE_PAGE_SIZE = 8
@@ -115,7 +115,7 @@ function ChangeText({ value, emptyText = "비교 데이터 없음", className })
 
 function KpiCard({ label, value, unit, description, valueClassName }) {
   return (
-    <article className="grid min-h-[108px] grid-rows-[auto_1fr_auto] rounded-xl border bg-card px-4 py-3 shadow-sm">
+    <article className="grid min-h-[132px] grid-rows-[auto_1fr_auto] rounded-[18px] border bg-card p-5">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <div className="flex min-w-0 items-end gap-1.5 py-1">
         <strong className={cn("truncate text-2xl font-semibold tracking-tight tabular-nums", valueClassName)}>
@@ -133,7 +133,7 @@ function DashboardTooltip({ active, payload, label, type }) {
   if (type === "bar") {
     const row = payload[0]?.payload
     return (
-      <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-lg">
+      <div className="rounded-lg border bg-background px-3 py-2 text-xs">
         <p className="font-semibold">{formatLineDisplayName(row?.lineId)}</p>
         <p className="mt-1 text-muted-foreground">이상 건수 <strong className="text-foreground">{formatCount(row?.totalCount)}건</strong></p>
       </div>
@@ -141,7 +141,7 @@ function DashboardTooltip({ active, payload, label, type }) {
   }
 
   return (
-    <div className="min-w-40 rounded-lg border bg-background px-3 py-2 text-xs shadow-lg">
+    <div className="min-w-40 rounded-lg border bg-background px-3 py-2 text-xs">
       <p className="mb-1.5 font-semibold">{formatDisplayDate(label)}</p>
       <div className="grid gap-1">
         {payload.map((entry) => (
@@ -253,7 +253,7 @@ function LineSummaryTable({ rows }) {
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+    <section className="overflow-hidden rounded-[18px] border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
         <div>
           <h3 className="text-sm font-semibold">라인별 상세 현황</h3>
@@ -395,7 +395,7 @@ export function LineAnomalyDashboard() {
 
   if (dashboardQuery.isPending && !dashboard) {
     return (
-      <section className="mt-6 grid min-h-[420px] place-items-center border-t-2 border-border/80 pt-9">
+      <section className="grid min-h-[420px] place-items-center">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-5 animate-spin" /> 라인별 대시보드를 불러오는 중입니다.
         </div>
@@ -405,8 +405,8 @@ export function LineAnomalyDashboard() {
 
   if (dashboardQuery.isError && !dashboard) {
     return (
-      <section className="mt-6 grid gap-4 border-t-2 border-border/80 pt-9">
-        <h2 className="text-xl font-semibold tracking-tight">라인별 이상 현황 Dashboard</h2>
+      <section className="grid gap-4">
+        <h2 className="text-[34px] font-semibold leading-tight tracking-[-0.37px] sm:text-[40px]">라인별 이상 현황 Dashboard</h2>
         <div className="grid justify-items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-5 text-sm text-destructive">
           <span>{dashboardQuery.error.message}</span>
           <div className="flex flex-wrap gap-2">
@@ -432,11 +432,12 @@ export function LineAnomalyDashboard() {
     ? `${formatDisplayDate(trendDashboard.filters.startDate)} ~ ${formatDisplayDate(trendDashboard.filters.endDate)}`
     : "추이 조회 중"
   return (
-    <section className="relative mt-6 grid gap-5 border-t-2 border-border/80 pt-9" aria-busy={dashboardQuery.isFetching}>
+    <section className="relative grid gap-6" aria-busy={dashboardQuery.isFetching}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">라인별 이상 현황 Dashboard</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mb-3 text-sm font-semibold text-primary">LIVE DATA</p>
+          <h2 className="text-[34px] font-semibold leading-tight tracking-[-0.37px] sm:text-[40px]">라인별 이상 현황 Dashboard</h2>
+          <p className="mt-4 text-[17px] leading-[1.47] tracking-[-0.37px] text-muted-foreground">
             SDWT 기준정보를 라인으로 매핑한 뒤 5개 식별값으로 중복 제거한 일자별 이상건수입니다.
           </p>
         </div>
@@ -446,7 +447,7 @@ export function LineAnomalyDashboard() {
       </div>
 
       <form
-        className="grid items-end gap-3 rounded-xl border bg-card p-4 shadow-sm lg:grid-cols-[minmax(260px,1fr)_auto_auto]"
+        className="grid items-end gap-3 rounded-[18px] border bg-card p-5 lg:grid-cols-[minmax(260px,1fr)_auto_auto]"
         onSubmit={(event) => {
           event.preventDefault()
           applyFilters()
@@ -491,7 +492,7 @@ export function LineAnomalyDashboard() {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)]">
-        <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+        <section className="overflow-hidden rounded-[18px] border bg-card">
           <div className="border-b px-4 py-3">
             <h3 className="text-sm font-semibold">라인별 이상 건수</h3>
             <p className="mt-0.5 text-xs text-muted-foreground">선택 기간 누적 · 라인명 내림차순 · 막대 끝 건수 표시</p>
@@ -529,7 +530,7 @@ export function LineAnomalyDashboard() {
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+        <section className="overflow-hidden rounded-[18px] border bg-card">
           <div className="flex items-start justify-between gap-3 border-b px-4 py-3">
             <div>
               <h3 className="text-sm font-semibold">라인별 일자별 이상 건수 추이</h3>
@@ -625,7 +626,7 @@ export function LineAnomalyDashboard() {
 
       {dashboardQuery.isFetching ? (
         <div className="pointer-events-none absolute inset-x-0 top-[82px] z-20 flex justify-center">
-          <div className="flex items-center gap-2 rounded-full border bg-background/95 px-4 py-2 text-xs font-medium shadow-md">
+          <div className="flex items-center gap-2 rounded-full border bg-background/95 px-4 py-2 text-xs font-medium">
             <Loader2 className="size-4 animate-spin" /> 기존 화면을 유지하면서 조회 중입니다.
           </div>
         </div>

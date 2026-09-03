@@ -79,12 +79,12 @@ function FilterPanel({
 
   return (
     <Card className={cn(
-      "h-full min-h-[300px] gap-0 overflow-hidden py-0 transition-shadow",
-      hasSelection && "border-primary/35 shadow-md shadow-primary/5",
+      "h-full min-h-[300px] gap-0 overflow-hidden rounded-[18px] border-[#e0e0e0] bg-white py-0",
+      hasSelection && "ring-2 ring-[#0071e3]",
     )}>
       <CardHeader className={cn(
-        "gap-1 border-b px-4 py-4",
-        hasSelection ? "bg-primary/5" : "bg-muted/30",
+        "gap-1 border-b border-[#e0e0e0] px-4 py-4",
+        hasSelection ? "bg-[#f5f5f7]" : "bg-[#fafafc]",
       )}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -106,20 +106,20 @@ function FilterPanel({
         </div>
         <CardDescription className="pl-8 text-xs leading-5">{description}</CardDescription>
       </CardHeader>
-      <div className="border-b px-3 py-2.5">
+      <div className="border-b border-[#e0e0e0] bg-white px-3 py-2.5">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
             placeholder={`${title} 검색`}
-            className="h-8 pl-8 text-xs"
+            className="h-8 rounded-full border-[#e0e0e0] bg-white pl-8 text-xs"
             disabled={disabled}
             aria-label={`${title} 검색`}
           />
         </div>
       </div>
-      <CardContent className="min-h-0 flex-1 overflow-y-auto bg-background/60 p-2.5">
+      <CardContent className="min-h-0 flex-1 overflow-y-auto bg-white p-2.5">
         {disabled || options.length === 0 ? (
           <div className="grid min-h-32 place-items-center px-5 text-center text-xs leading-5 text-muted-foreground">
             {isLoading ? "기준정보를 불러오는 중입니다." : emptyMessage}
@@ -138,9 +138,9 @@ function FilterPanel({
                   onClick={() => onSelect(option.value)}
                   disabled={optionDisabled}
                   className={cn(
-                    "flex min-h-9 w-full items-center gap-2 rounded-md border border-transparent px-3 py-2 text-left text-xs transition",
-                    "hover:border-border hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40",
-                    selected && "border-primary/30 bg-primary/10 text-primary",
+                    "flex min-h-9 w-full items-center gap-2 rounded-full border border-transparent px-3 py-2 text-left text-xs transition",
+                    "hover:border-[#d2d2d7] hover:bg-[#f5f5f7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071e3] disabled:cursor-not-allowed disabled:opacity-40",
+                    selected && "border-[#0071e3] bg-white text-[#0066cc] ring-1 ring-[#0071e3]",
                   )}
                 >
                   <span className="min-w-0 flex-1 truncate font-medium" title={option.label}>

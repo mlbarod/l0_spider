@@ -350,7 +350,7 @@ function MatchingPage({ common = false }) {
 function FilterBar({ line, sdwt, sdwtOptions = getSdwtOptionsByLine(line), onLineChange, onSdwtChange }) {
   return (
     <ResizableFilterArea defaultHeight={132} minHeight={104} maxHeight={480}>
-      <section className="grid h-full content-start gap-3 overflow-auto rounded-lg border bg-card p-4">
+      <section className="grid h-full content-start gap-3 overflow-auto rounded-[18px] border border-[#e0e0e0] bg-white p-4">
         <h2 className="text-sm font-semibold">조회조건 설정</h2>
         <div className="flex flex-wrap items-center gap-3">
           <div className="grid gap-1.5">
@@ -482,11 +482,11 @@ function HardSpecPage() {
   return (
     <>
       <ResizableFilterArea defaultHeight={172} minHeight={112} maxHeight={520}>
-        <section className="grid h-full content-start gap-4 overflow-auto rounded-lg border bg-card p-4">
+        <section className="grid h-full content-start gap-4 overflow-auto rounded-[18px] border border-[#e0e0e0] bg-white p-4">
           <div className="flex flex-wrap items-end gap-3">
           <Select value={line} onValueChange={handleLineChange}>
             <SelectTrigger className="w-[180px]"><SelectValue placeholder="라인ID 선택해주세요" /></SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-[18px] border-[#e0e0e0] bg-white text-[#1d1d1f] shadow-none">
               {(meta?.lineIds ?? [HARD_SPEC_DEFAULT_LINE]).map((lineId) => (
                 <SelectItem key={lineId} value={lineId}>{formatLineDisplayName(lineId)}</SelectItem>
               ))}
@@ -494,15 +494,15 @@ function HardSpecPage() {
           </Select>
           <Select value={stepSeq} onValueChange={handleStepChange}>
             <SelectTrigger className="w-[180px]"><SelectValue placeholder="step_seq 선택해주세요" /></SelectTrigger>
-            <SelectContent>{stepOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+            <SelectContent className="rounded-[18px] border-[#e0e0e0] bg-white text-[#1d1d1f] shadow-none">{stepOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={recipeId} onValueChange={handleRecipeChange}>
             <SelectTrigger className="w-[180px]"><SelectValue placeholder="RecipeID 선택해주세요" /></SelectTrigger>
-            <SelectContent>{recipeOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+            <SelectContent className="rounded-[18px] border-[#e0e0e0] bg-white text-[#1d1d1f] shadow-none">{recipeOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={fdcModel} onValueChange={setFdcModel}>
             <SelectTrigger className="w-[180px]"><SelectValue placeholder="FDC Model 선택해주세요" /></SelectTrigger>
-            <SelectContent>{fdcModelOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+            <SelectContent className="rounded-[18px] border-[#e0e0e0] bg-white text-[#1d1d1f] shadow-none">{fdcModelOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
           </Select>
           <Button type="button" onClick={searchRows} disabled={!line || !stepSeq || !recipeId || !fdcModel || recommendationQuery.isFetching}>
             <Search className="size-4" aria-hidden="true" />
@@ -575,15 +575,15 @@ function YieldSpecPage() {
   return (
     <>
       <ResizableFilterArea defaultHeight={142} minHeight={104} maxHeight={480}>
-        <section className="grid h-full content-start gap-4 overflow-auto rounded-lg border bg-card p-4">
+        <section className="grid h-full content-start gap-4 overflow-auto rounded-[18px] border border-[#e0e0e0] bg-white p-4">
           <div className="flex flex-wrap items-end gap-3">
           <Select value={stepSeq} onValueChange={setStepSeq}>
             <SelectTrigger className="w-[220px]"><SelectValue placeholder="Step seq 를 선택해주세요." /></SelectTrigger>
-            <SelectContent>{STEP_SEQ_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+            <SelectContent className="rounded-[18px] border-[#e0e0e0] bg-white text-[#1d1d1f] shadow-none">{STEP_SEQ_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
           </Select>
           <Select defaultValue={rows[0]?.recipe_id}>
             <SelectTrigger className="w-[180px]"><SelectValue placeholder="Recipe id" /></SelectTrigger>
-            <SelectContent>{rows.slice(0, 4).map((row) => <SelectItem key={row.recipe_id} value={row.recipe_id}>{row.recipe_id}</SelectItem>)}</SelectContent>
+            <SelectContent className="rounded-[18px] border-[#e0e0e0] bg-white text-[#1d1d1f] shadow-none">{rows.slice(0, 4).map((row) => <SelectItem key={row.recipe_id} value={row.recipe_id}>{row.recipe_id}</SelectItem>)}</SelectContent>
           </Select>
           <Button type="button">
             <Search className="size-4" aria-hidden="true" />
@@ -640,7 +640,7 @@ function RecipientsPage() {
   return (
     <>
       <ResizableFilterArea defaultHeight={176} minHeight={112} maxHeight={560}>
-        <section className="grid h-full content-start gap-4 overflow-auto rounded-lg border bg-card p-4">
+        <section className="grid h-full content-start gap-4 overflow-auto rounded-[18px] border border-[#e0e0e0] bg-white p-4">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)_minmax(0,1fr)_auto]">
           <div className="grid gap-1.5">
             <Label htmlFor="recipient-email">이메일</Label>

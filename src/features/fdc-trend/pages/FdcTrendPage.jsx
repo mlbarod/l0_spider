@@ -130,9 +130,9 @@ function SelectRow({ label, meta, selected, multiple = false, onClick }) {
       type="button"
       onClick={onClick}
       className={cn(
-        "flex h-9 w-full min-w-0 items-center gap-3 rounded-md border border-transparent px-3 text-left transition",
-        "hover:border-border hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        selected && "border-primary/30 bg-primary/10 text-primary shadow-sm",
+        "flex h-9 w-full min-w-0 items-center gap-3 rounded-full border border-transparent px-3 text-left transition",
+        "hover:border-[#d2d2d7] hover:bg-[#f5f5f7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071e3]",
+        selected && "border-[#0071e3] bg-white text-[#0066cc] ring-1 ring-[#0071e3]",
       )}
     >
       <span
@@ -191,14 +191,14 @@ function FilterCard({
   return (
     <Card
       className={cn(
-        "grid min-h-0 min-w-0 grid-rows-[48px_40px_minmax(0,1fr)] gap-0 overflow-hidden rounded-xl border bg-card py-0 shadow-sm transition-all",
-        isActive && "ring-2 ring-primary/50",
+        "grid min-h-0 min-w-0 grid-rows-[48px_44px_minmax(0,1fr)] gap-0 overflow-hidden rounded-[18px] border border-[#e0e0e0] bg-white py-0 transition-all",
+        isActive && "ring-2 ring-[#0071e3]",
       )}
     >
       <div
         className={cn(
-          "flex h-12 items-center border-b px-4",
-          isActive ? "bg-primary/10" : "bg-muted/40",
+          "flex h-12 items-center border-b border-[#e0e0e0] px-4",
+          isActive ? "bg-[#f5f5f7]" : "bg-[#fafafc]",
         )}
       >
         <div className="flex h-full min-w-0 flex-1 items-center justify-between gap-2">
@@ -220,18 +220,18 @@ function FilterCard({
           ) : null}
         </div>
       </div>
-      <div className="border-b px-2 py-1.5">
+      <div className="border-b border-[#e0e0e0] bg-white px-2 py-1.5">
         <Input
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder="검색…"
-          className="h-7 text-xs"
+          className="h-8 rounded-full border-[#e0e0e0] bg-white px-3 text-xs"
           disabled={disabled}
         />
       </div>
       <CardContent
         ref={contentRef}
-        className="min-h-0 overflow-y-auto overflow-x-hidden bg-background/60 p-2"
+        className="min-h-0 overflow-y-auto overflow-x-hidden bg-white p-2"
         onScroll={(event) => {
           if (!isRestoringScrollRef.current) {
             activeScrollPositionRef.current = event.currentTarget.scrollTop
@@ -2002,7 +2002,7 @@ export function FdcTrendPage() {
         </div>
       </section>
 
-      <section className="shrink-0 border-b bg-card">
+      <section className="shrink-0 border-b border-[#e0e0e0] bg-[#f5f5f7]">
         <ResizableFilterArea defaultHeight={332} minHeight={160} maxHeight={720}>
           <div className="h-full overflow-x-auto px-6 py-2">
             <div className="grid h-full min-w-[1640px] grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,.8fr)_minmax(0,1.45fr)_minmax(0,1.15fr)_minmax(0,1.2fr)_minmax(0,1.05fr)] gap-4">

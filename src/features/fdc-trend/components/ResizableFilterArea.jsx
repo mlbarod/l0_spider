@@ -29,7 +29,7 @@ export function ResizableFilterArea({
   }
 
   return (
-    <div className={cn("relative shrink-0", className)} style={{ height }}>
+    <div className={cn("spider-filter-area relative shrink-0", className)} style={{ height }}>
       <div className="h-full min-h-0 pb-3">{children}</div>
       <div
         role="separator"
@@ -41,7 +41,7 @@ export function ResizableFilterArea({
         tabIndex={0}
         className={cn(
           "group absolute inset-x-0 bottom-0 z-30 flex h-3 touch-none cursor-row-resize items-center justify-center",
-          "border-t border-transparent bg-gradient-to-b from-transparent to-muted/40",
+          "border-t border-[#d2d2d7] bg-[#f5f5f7]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         )}
         onPointerDown={(event) => {
@@ -75,7 +75,7 @@ export function ResizableFilterArea({
           }
         }}
       >
-        <span className="grid h-2.5 w-12 place-items-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors group-hover:border-primary/40 group-hover:text-primary">
+        <span className="grid h-2.5 w-12 place-items-center rounded-full border border-[#d2d2d7] bg-white text-[#7a7a7a] transition-colors group-hover:border-[#0066cc] group-hover:text-[#0066cc]">
           <GripHorizontal className="size-3" aria-hidden="true" />
         </span>
       </div>

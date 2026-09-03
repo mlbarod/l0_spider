@@ -101,14 +101,14 @@ export function NoticeManagement() {
         <Button
           type="button"
           variant="outline"
-          className="h-auto min-h-15 justify-start rounded-xl border-primary/20 bg-primary/5 px-4 py-3 text-left shadow-sm hover:bg-primary/10"
+          className="h-auto min-h-11 justify-start rounded-full border-0 bg-[#fafafc] px-4 py-2 text-left shadow-none hover:bg-[#f5f5f7]"
         >
-          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <Megaphone className="size-4.5" aria-hidden="true" />
+          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#d2d2d7]/55 text-[#0066cc]">
+            <Megaphone className="size-4" aria-hidden="true" />
           </span>
           <span>
-            <span className="block text-[11px] font-semibold tracking-wide text-muted-foreground">관리자 메뉴</span>
-            <span className="mt-0.5 block text-sm font-semibold text-foreground">공지 등록</span>
+            <span className="block text-[10px] font-normal tracking-[-0.08px] text-[#7a7a7a]">관리자 메뉴</span>
+            <span className="block text-xs font-semibold text-[#1d1d1f]">공지 등록</span>
           </span>
         </Button>
       </DialogTrigger>
