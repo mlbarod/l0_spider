@@ -265,14 +265,12 @@ sensor `ALL`이면 선택 EQP_MODEL의 모든 sensor row와 `chStep=ALL`만 허�
 | MY EQP 메일 LINK | template row | 같은 template | `sdwt=MY_EQP`, `step=ALL`, `eqpCh` | MY EQP URL | renderer 미확인 | template `Confirmed` | template anchor |
 | query 소비 | URL query | `readSelfEquipmentUrlFilters` | NFKC·trim·dedupe, Grade A/B 정규화 | requested filter | browser 입력 | `Confirmed` | URL utility |
 | 화면 초기화 | requested filter | `FdcTrendPage` | Line·team·Grade·`ALL` STEP·EQP state 적용 | Self API 조건 | browser→API | `Confirmed` | page initialization |
-| HMAC 생성 | 개별 STEP 후보 원문 | 구현 위치 미확인 | 알고리즘·key·정규화 미확인 | token 후보 | server secret 후보 | `Unknown` | 제한 검색 |
-| HMAC 검증·매핑 | 비-`ALL` `step` | 구현 위치 미확인 | 화면은 비-`ALL` 값을 STEP 선택에 사용하지 않음 | 검증 결과 없음 | browser→server | `Mismatch` | URL utility·page |
-| 변조·만료 | token 후보 | 처리 위치 미확인 | 오류·만료 정책 미확인 | `Unknown` | 신뢰 경계 미정 | `Unknown` | 구현 부재 |
 
 - `sdwt=MY_EQP`이면 `step` 누락 또는 다른 값도 `ALL`로 정규화되며 이는 별도 정상 분기다.
 - 현재 코드에서 HMAC을 암호문이나 복호화 가능한 값으로 표현할 근거가 없다.
 - `eqpCh`는 `eqp_ch` alias와 함께 읽혀 MY EQP의 초기 EQP channel과 서버 row filter까지 전달된다.
 - 실제 renderer가 template LINK를 메일로 전달하는 단계가 없어 `DF-STEP-01` 전체는 `Partial`이다.
+- 개별 STEP HMAC 경로는 미구현이다. 현재 query 동작·테스트는 [STEP 계약](../features/step-deeplink.md), 설계 후보는 [ADR-003](../decisions/ADR-003-step-hmac-token.md), 보호 요구는 [security](security.md#13-step-딥링크와-hmac)를 따른다.
 
 ## 12. 메일 생성 및 발송 데이터 흐름
 
@@ -393,12 +391,7 @@ sensor `ALL`이면 선택 EQP_MODEL의 모든 sensor row와 `chStep=ALL`만 허�
 
 ## 19. Core Harness와 mock-agent 경계
 
-- 이 문서는 `main`의 실제 코드와 Core Harness 데이터 흐름을 기준으로 한다.
-- `mock-agent`의 mock API·DB·Parquet·PNG와 mock 의존 E2E는 `Out of Scope`이다.
-- mock 자산은 운영 데이터 원천이 아니며 `main`의 흐름은 mock 구현에 의존하지 않는다.
-- `mock-agent`는 `main`의 API 계약·시스템 문서·기능 정의를 따라야 한다.
-- 기본 동기화 방향은 `main → mock-agent`이며 mock 구현 자체는 `main` 병합 대상이 아니다.
-- 현재 `main`의 mock 자산 부재는 데이터 흐름 `Mismatch`가 아니다.
+이 문서는 `main`의 실제 데이터 흐름을 기준으로 한다. mock 자산은 운영 데이터 원천이 아니며 현재 흐름은 mock 구현에 의존하지 않는다. 에이전트 작업과 branch 경계는 [AGENTS.md §7](../../AGENTS.md#7-harness-boundary)을 따른다.
 
 ## 20. Mismatch
 

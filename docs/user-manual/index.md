@@ -77,8 +77,9 @@
 | `MAN-M02` | `03`, `04` 이미지 | 현재 Self 화면에는 3일 동일성 toggle과 모아보기 pair가 있음 | 이미지에 없는 조작을 놓칠 수 있음 | `USER_MANUAL.md:71-108` 본문과 `self-equipment.md`를 우선 |
 | `MAN-M03` | `08-matching-anomaly.png`는 SDWT 다음에 Sensor를 표시 | 현재 동일성 filter는 SDWT 다음 STEP 선택을 요구 | STEP을 선택하지 않아 하위 option이 비어 보일 수 있음 | `USER_MANUAL.md:169-179` 본문을 우선 |
 | `MAN-M04` | `15-manual-status.png`의 과거 문서 기준일 | 현재 `USER_MANUAL.md` 기준일은 2026-08-20 | 캡처만 보고 최신 문서 상태를 오판할 수 있음 | Markdown 기준일과 Git 변경 이력을 확인 |
-| `MAN-M05` | 문제 해결 표는 “표시된 경로” 확인을 안내 | 현재 browser 오류는 파일 경로를 `[파일 경로 숨김]`으로 마스킹 | 사용자가 경로를 직접 확인할 수 없을 수 있음 | 메시지·시각·선택 조건만 기록하고 운영 담당자가 server 측을 확인 |
 | `MAN-M06` | 메일 절은 발송 메일 구성을 사용자 절차로 설명 | 저장소에는 sender·scheduler·renderer가 확인되지 않음 | 저장소 문서만으로 실제 발송 주기·성공을 보장한다고 오해할 수 있음 | 화면 등록은 `Confirmed`, 실제 발송은 `Unknown`으로 구분 |
+
+해결 이력: `MAN-M05`는 현재 [사용자 매뉴얼](USER_MANUAL.md)의 오류 안내가 발생 시각·선택 조건·문의 코드 기록으로 변경되어 미해결 목록에서 제외했다. 실제 브라우저 화면은 이번 문서 수정에서 재현하지 않았다.
 
 ## 7. 누락·오래된 안내와 Unknown
 

@@ -108,11 +108,11 @@ Proxy가 존재해도 신뢰 header 정책과 Node 직접 접근 차단이 확�
 | My EQP 조회 | current user ID와 `is_public=1` 조건 | Node·Python helper | 조회 오류 500 | 일부 `Implemented` | `myEqpRegistration.mjs:258-271`; Python query |
 | My EQP 등록 | current user 조회 실패 시 remote IP fallback; 복수 `knoxIds` 허용 | Node handler | helper 오류 500 | `Needs Validation` | `myEqpRegistration.mjs:179-185,290-300` |
 | Mailing 등록 | caller가 `knoxId`·`knoxIds`를 지정 | Node handler | 형식 오류도 catch에서 500 | `Needs Validation` | `mailingRegistration.mjs:53-75,160-217` |
-| 역할·관리자 권한 | role·permission check 미확인 | 해당 없음 | 미확인 | `Unknown` | code search |
+| 공지 관리자 권한 | 서버가 현재 사용자와 관리자 ID 목록 비교 | 공지 관리 목록·등록·완료 | 비관리자 `403`, `NOTICE_ADMIN_REQUIRED` | `Implemented` | `server/notices.mjs`의 `isNoticeAdmin`, `sendForbidden`; [공지 계약](../features/notices.md) |
 | 외부 gateway·SSO | repository에 연동 설정 없음 | 저장소 밖 후보 | 미확인 | `Unknown` / `Needs Validation` | architecture·environment docs |
 
-저장소에 인증 코드가 없다는 사실만으로 운영 서비스가 인터넷에 익명 노출되었다고 단정하지 않는다.
-다만 application 자체의 write API 권한 경계는 외부 proxy가 제공하는 접근 제한과 별개로 명시적 검증이 부족하다.
+전역 인증 middleware가 확인되지 않았다는 사실만으로 운영 서비스가 인터넷에 익명 노출되었다고 단정하지 않는다.
+공지의 서버 관리자 검사는 구현돼 있다. 다른 write API의 권한 경계와 외부 proxy의 접근 제한은 별도로 확인해야 하며, 공지 검사만으로 전역 인증 체계가 구현됐다고 판단하지 않는다.
 
 ## 8. 브라우저와 프론트엔드 보안
 
@@ -177,7 +177,7 @@ root prefix 검사는 구현되었지만 `realpath` 기반 symlink 탈출 방지
 | endpoint | `GET/HEAD /api/dashboard-data` | 집계 데이터 | application auth 없음 | `Confirmed` / 외부 경계 `Unknown` | `server.mjs:134-139` |
 | filter | strict date와 범위, repeated Line | resource selection | Line 개수·URL 길이 제한 없음 | 일부 `Implemented` | `dashboardData.mjs` |
 | response | 집계·Line·trend·mail summary·source paths | 업무·운영 정보 | browser가 쓰지 않는 path까지 반환 | `Risk` | `dashboardData.mjs:765-783` |
-| 오류 | 400·404·500, `{ok:false,error}` | 내부 구현 정보 | exception message 결합 | `Risk` | `dashboardData.mjs:813-825` |
+| 오류 | 보호 대상 400·404·500은 고정 메시지와 `{ok:false,code,error,requestId}` | 내부 구현 정보 | 원문 exception·내부 경로를 오류에 결합하지 않음; HEAD는 body 없음, 기존 405는 공통 Schema 밖 | `Implemented` | `handleDashboardDataRequest`; [Dashboard 오류 계약](../features/dashboard.md#18-오류-응답-계약) |
 | cache | JSON `no-store`; HEAD도 `no-store` | 조회 payload | proxy 정책 미확인 | application `Implemented` | `dashboardData.mjs:32-37,807-819` |
 | frontend | 상대 URL 호출, shape 일부 검사, 오류 마스킹 | consumer integrity | runtime schema 전체 검증 아님 | 일부 `Implemented` | `dashboardApi.js:3-31` |
 | JSON Schema | 성공 body 구조와 field type 검증 | contract compatibility | 인증·권한·기밀성은 검증하지 않음 | `Implemented` | `harness/contracts/dashboard-api.schema.json` |
@@ -202,24 +202,15 @@ Contract test의 green 결과를 접근 통제나 운영 데이터 보호 증거
 
 ## 13. STEP 딥링크와 HMAC
 
-| 보안 속성 | 현재 구현 | 보호되는 범위 | 보호되지 않는 범위 | 상태 | 근거 |
-|---|---|---|---|---|---|
-| HMAC 목적 | 개별 STEP link 무결성 후보로 문서화 | 요구가 확정되면 서명 대상 | 현재 runtime | `Documented` | `AGENTS.md:65-71` |
-| 생성 위치 | source 검색에서 확인 안 됨 | 없음 확인 | token 발급 | `Unknown` | STEP doc |
-| 검증·매핑 | source 검색에서 확인 안 됨 | 없음 확인 | 변조·unknown token 처리 | `Unknown` | STEP doc |
-| canonicalization | 형식·field 순서·구분자 미확인 | 없음 확인 | 동등 입력 정규화 | `Unknown` | STEP doc |
-| algorithm·digest | 확인 안 됨 | 없음 확인 | 강도·encoding | `Unknown` | STEP doc |
-| secret | 환경변수 이름·저장 위치 미확인 | 없음 확인 | key 보호·누락 처리 | `Unknown` | environment doc |
-| `step=ALL` | MY EQP에서 literal 예약값으로 강제 | 모든 STEP 선택 동작 | 개별 token 무결성 | `Implemented` | URL filter·template |
-| `eqpCh` | 별도 query로 server filter에 사용 | option matching | 서명 포함 여부와 변조 방지 | `Implemented` / `Unknown` | Self code |
-| 만료·replay | token 구현·시간 field 미확인 | 없음 확인 | 재사용 제한 | `Unknown` | STEP doc |
-| key rotation | key 자체 미확인 | 없음 확인 | 구·신 key 호환 | `Unknown` | STEP doc |
-| 기존 link | MY EQP `ALL` link만 구현 확인 | 현재 MY EQP 호환 | 개별 STEP token link | `Confirmed` / `Mismatch` | template·URL utility |
+현재 `step=ALL`은 MY EQP의 전체 STEP 예약값이고 `eqpCh`는 별도 조회 조건이다. 개별 STEP HMAC 생성·검증·키·만료는 구현되지 않았다. 현재 동작과 테스트 상태는 [STEP 계약](../features/step-deeplink.md), 도입 목적·설계 후보와 미결정 사항은 [ADR-003](../decisions/ADR-003-step-hmac-token.md)을 기준으로 한다.
 
-HMAC은 서명 대상의 무결성과 진위 확인을 위한 방식이며 STEP 내용을 암호화하거나 숨기지 않는다.
-일반 원칙상 token이 URL에 있으면 browser history, referrer, proxy·access log에 남을 수 있다.
-또한 서명 대상에 포함되지 않은 `eqpCh` 같은 parameter는 HMAC만으로 무결성이 보호되지 않는다.
-이 일반 원칙은 현재 HMAC 구현 확인 결과가 아니며 실제 서명 원문·algorithm·비교 방식은 모두 `Unknown`이다.
+HMAC 도입 시 보안 요구는 다음과 같다. 현재 구현 보장을 뜻하지 않는다.
+
+- HMAC은 서명 대상의 무결성과 진위를 확인하며 STEP 내용을 암호화하거나 숨기지 않는다.
+- 생성·검증은 서버 신뢰 경계 안에서 수행하고 비밀키를 브라우저·`VITE_*`·Git·로그에 노출하지 않는다.
+- `eqpCh` 등 서명되지 않은 파라미터의 무결성은 HMAC만으로 보장되지 않으므로 서명 범위를 결정해야 한다.
+- token은 browser history·referrer·proxy/access log에 남을 수 있다. 노출 제한과 변조·키 누락 시 거부 정책, 만료·재사용·rotation 정책을 도입 전에 결정해야 한다.
+- 기존 `step=ALL` 링크의 호환성을 유지한다.
 
 ## 14. Secret 및 환경변수 관리
 
@@ -247,7 +238,7 @@ Hard-coded 내부 host 후보는 위치와 유형만 `Risk`로 기록하며 실�
 | query parameterization | 대표 SELECT·INSERT·UPDATE·DELETE에 `%s` parameter 사용 | 동적 identifier 조립의 안전성 전수 검토 필요 | 대체로 `Implemented` | `scripts/*.py` |
 | dynamic SQL | 고정 column 목록·placeholder 수로 query 조립 | future input-derived identifier 금지 | 일부 `Implemented` | pass·My EQP helper |
 | read·write | user lookup·reference read, registration·history write·commit | 권한 범위 넓음 | `Confirmed` | Python helpers |
-| runtime DDL | `myeqp_regist.is_public` 부재 시 `ALTER TABLE` | application 계정 DDL 권한·동시성 | `Risk` | `my_eqp_registration.py:50-67` |
+| runtime DDL | MY EQP 목록 조회의 `list_registrations()`도 `ensure_public_column()` 호출; `myeqp_regist.is_public` 부재 시 `ALTER TABLE`·commit | application 계정 DDL 권한·동시성 | `Risk` | `my_eqp_registration.py:50-67` |
 | transaction | write 후 명시적 `commit()` | partial recipient batch는 Node loop 단위 | 일부 `Implemented` | helper write functions |
 | rollback | context manager 동작 외 명시 정책 미확인 | 실패 시 transaction 결과 | `Unknown` | Python code |
 | connection pool | 요청마다 child process와 connection | load·connection exhaustion | `Not Implemented` | Node spawn·helper connect |

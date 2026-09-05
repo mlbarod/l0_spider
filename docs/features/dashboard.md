@@ -17,7 +17,7 @@
 이 문서는 사용자의 대시보드 진입부터 `GET /api/dashboard-data`의 생산·소비와 현재 success JSON Schema까지의 계약 기준을 제공한다.
 현재 `main` 코드의 As-Is를 기준으로 요청 파라미터, 응답 구조, 타입·nullable, 집계, 빈 데이터, 오류와 호환성 규칙을 설명한다.
 화면의 상세 사용 순서는 `docs/user-manual/USER_MANUAL.md`, 시스템 전체 흐름은 `docs/system/data-flow.md`가 담당한다.
-success JSON Schema, fixture와 contract test는 현재 범위에 포함한다. 오류 응답 Schema, actual root producer 직접 validation, 실제 메일 발송 계약과 mock 응답은 포함하지 않거나 `Partial`·`Blocked`다.
+success JSON Schema, fixture·contract test와 보호 대상 오류의 공통 Schema는 현재 범위에 포함한다. 오류 범위는 §18·20을 따르며 기존 `405` 응답은 공통 오류 Schema 대상이 아니다. actual root producer 직접 validation은 `Partial`, 실제 메일 발송 계약과 mock 응답은 별도 범위다.
 실제 운영 파일의 내용·존재·신선도와 런타임 성공 여부는 정적 코드 조사만으로 확정하지 않는다.
 
 상태는 `Confirmed`, `Documented`, `Inferred`, `Unknown`, `Mismatch`를 사용한다.

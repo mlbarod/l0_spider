@@ -1,6 +1,6 @@
 # SPIDER 웹 서비스 구조
 
-> 현재 저장소의 실제 코드 연결을 기준으로 정리한 구조 문서입니다.  
+> 구조도와 코드 탐색을 위한 지도입니다. 구성요소는 [architecture](docs/system/architecture.md), 화면→API→저장소 연결은 [data-flow](docs/system/data-flow.md), 기능 동작은 `docs/features/`, 공통 데이터 의미는 [data-reference](docs/features/data-reference.md)를 기준으로 합니다.<br>
 > 기준일/브랜치: 2026-08-20 / `main`<br>
 > 기준 파일: `server.mjs`, `vite.config.mjs`, `src/`, `server/`, `scripts/`, `src/config/spiderDataPaths.mjs`
 
@@ -136,17 +136,7 @@ node server.mjs
   └─ LIVE_RELOAD = 0: npm run build 후 dist 정적 파일 제공
 ```
 
-| 환경변수 | 기본값 | 역할 |
-| --- | --- | --- |
-| `PORT` | `5173` | HTTP 포트 |
-| `HOST` | `0.0.0.0` | 바인딩 주소 |
-| `LIVE_RELOAD` | 활성 | 활성 시 Vite middleware/HMR, `0`이면 `dist` 정적 제공 |
-| `BUILD_ON_START` | 활성 | 정적 모드 시작 시 클라이언트 빌드, `0`이면 기존 `dist` 사용 |
-| `DB_INFO_PATH` | `/appdata/l0_spider/db_info.pkl` | Python helper의 DB 접속정보 |
-| `MAPPING_CONFIG_PATH` | `/appdata/l0_spider/mapping_config.json` | Line/SDWT 매핑 파일 override |
-| `COMMONALITY_ROOT_PATH` | `/appdata/abnormal_trend/pic/erd_commonality` | 동일성 데이터 루트 override |
-| `COMMON_COMMONALITY_ROOT_PATH` | 기존 데이터 root의 형제 `path_common_commonality` | 공통부 동일성 데이터 루트 override |
-| `SPIDER_DASHBOARD_PATH_ROOT` | `/appdata/abnormal_trend/pic/path` | 대시보드 일시별 상세파일 루트 override |
+환경변수 이름·기본값·적용 시점은 [환경 정의](docs/system/environment-definition.md#8-환경변수-레지스트리)를 따릅니다.
 
 `LIVE_RELOAD=0`에서는 존재하는 정적 파일을 `dist`에서 제공하고, 그 외 브라우저 경로는 `dist/index.html`로 돌려 SPA 라우팅을 유지합니다.
 
@@ -198,7 +188,7 @@ l0_spider/
 │  ├─ logo.png
 │  └─ mailing-report.html     # 외부 메일 발송기가 렌더링할 Jinja 호환 템플릿
 ├─ docs/user-manual/          # 웹 화면에서 읽어 표시하는 사용자 매뉴얼
-└─ README.md                  # 기능별 상세 규칙과 데이터 정의
+└─ README.md                  # 서비스 소개·최소 실행·문서 탐색
 ```
 
 ## 4. 프런트엔드 라우트 구조
@@ -556,21 +546,16 @@ flowchart LR
 - 처음 SKIP하는 동일 식별건은 INSERT합니다.
 - 동일한 앞 10개 식별 컬럼의 행이 이미 있으면 `knox_id`, `exec_date`, `comment`를 UPDATE하여 재활성화합니다.
 - EQP ALL SKIP은 최대 500개 record를 한 트랜잭션 흐름으로 처리합니다.
-- 일반 조회에서 `exec_date` 이후 72시간만 활성 SKIP으로 봅니다. 만료 행은 자동 DELETE하지 않습니다.
+- 활성 기간·만료·SKIP LIST 경로 복원은 [data-reference](docs/features/data-reference.md#활성-기간과-skip-list)를 따릅니다.
 - 공통부는 `ver = 'NA'`로 자설비와 구분합니다.
 
 #### `hit_history`
 
-- 버튼 클릭마다 새 행을 INSERT합니다.
-- 원본 `/appdata/...` 경로는 `/`를 `#`으로 치환해 `file_path`에 저장합니다.
+HIT 저장 규칙과 경로 변환은 [data-reference의 hit_history](docs/features/data-reference.md#hit_history)를 따릅니다.
 
 #### `clicked_category_history`
 
-- 자설비는 Line에 suffix가 없습니다.
-- 동일성은 Line에 `(g)`, 공통부는 `(c)`를 붙입니다.
-- 여러 Grade/Sensor는 중복 제거 후 리스트 문자열로 저장합니다.
-- 자설비 또는 동일성의 sensor 필터에서 `ALL`을 선택하면 실제 sensor 목록을 확장하지 않고 `sensor='ALL'`로 저장합니다.
-- MY EQP 진입은 실제 Drawing 경로 없이 `sdwt='MY EQP'`, 전체 Grade, `sensor='ALL'`로 저장합니다.
+App별 Line suffix, 실제 경로·`ALL`·MY EQP 저장값은 [data-reference의 clicked_category_history](docs/features/data-reference.md#clicked_category_history)를 따릅니다.
 
 #### `myeqp_regist`
 
@@ -628,13 +613,8 @@ sequenceDiagram
 
 ## 11. Mailing Report 템플릿의 위치
 
-[`public/mailing-report.html`](public/mailing-report.html)은 이 웹 서버가 DB를 조회해 즉시 메일을 발송하는 구현이 아닙니다.
-
-- Jinja 호환 placeholder를 가진 HTML 템플릿입니다.
-- 외부 발송기가 Dashboard 응답, `email`, 활성 `myeqp_regist`를 조합해 수신인별로 렌더링해야 합니다.
-- 수신인 집합은 `email.email`과 활성 `myeqp_regist.knox_id`의 합집합을 전제로 합니다.
-- 템플릿 내부 LINK는 `/self-equipment` 딥링크로 연결됩니다.
-- `public` 파일이므로 빌드 결과에는 `/mailing-report.html` 정적 자산으로 복사되지만, 브라우저에서 직접 열면 Jinja 변수가 평가되지 않습니다.
+[`public/mailing-report.html`](public/mailing-report.html)은 Jinja 호환 정적 템플릿입니다. `public` 자산으로 배포되지만 브라우저에서 직접 열면 변수가 평가되지 않습니다.
+수신자·집계·딥링크 계약과 외부 renderer/sender의 미확인 경계는 [Mailing 기능 문서](docs/features/mailing.md)를 따릅니다.
 
 ## 12. 변경 시 영향 범위 체크리스트
 
@@ -662,7 +642,7 @@ sequenceDiagram
 3. 경로를 파싱하는 `passHistory.mjs`, `hitHistory.mjs`, `clickedCategoryHistory.mjs`
 4. SKIP LIST 경로 복원 규칙
 5. Dashboard/Mailing 집계의 고유건 조합
-6. `README.md`, 본 문서, 사용자 매뉴얼
+6. 변경으로 실제 설명이 부정확해지는 기능·데이터 문서와 사용자 매뉴얼
 
 ### 필터의 `ALL` 규칙 또는 차트 페이지네이션을 바꿀 때
 
@@ -692,4 +672,4 @@ sequenceDiagram
 
 ---
 
-구조를 수정할 때는 이 문서와 [`src/config/spiderDataPaths.mjs`](src/config/spiderDataPaths.mjs), [`server.mjs`](server.mjs), DB helper SQL을 함께 갱신하는 것을 권장합니다.
+작업 범위는 [AGENTS.md](AGENTS.md)를 따릅니다. 위 목록은 영향 확인을 위한 탐색 경로이며 일괄 수정 의무가 아닙니다. 코드 변경으로 실제 부정확해지는 문서만 갱신합니다.

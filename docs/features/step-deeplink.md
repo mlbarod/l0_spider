@@ -31,7 +31,7 @@ HMAC은 복호화 가능한 암호문이 아니며 생성·검증 근거가 없�
 | 전체설비 메일 진입 | 메일의 일반 행에서 조건 적용 | Mailing template | `FdcTrendPage` | template `Confirmed` | `mailing-report.html:180-190` |
 | MY EQP 전체 STEP 진입 | 등록 EQP의 모든 STEP 범위 조회 | Mailing template·MY EQP URL helper | `FdcTrendPage`·MY EQP API | `Confirmed` | `mailing-report.html:229-241`; `dashboardLinks.mjs:15-28` |
 | 개별 STEP 직접 진입 | token이 가리키는 STEP 조회 후보 | 생성 주체 미확인 | 현재 소비 불가 | `Mismatch` | 제공된 후보 URL; parser·page 코드 |
-| STEP 원문 비노출 | MY EQP 메일에 STEP 이름 대신 `ALL` 사용 | Mailing template | Self Equipment | `Documented`/`Confirmed` | `README.md:281-288`; template comment |
+| STEP 원문 비노출 | MY EQP 메일에 STEP 이름 대신 `ALL` 사용 | Mailing template | Self Equipment | `Documented`/`Confirmed` | `public/mailing-report.html`의 MY EQP 링크·template comment |
 
 ## 3. 주요 용어
 
@@ -158,34 +158,12 @@ Node built-in crypto는 package dependency가 없어도 사용할 수 있으므�
 
 ## 10. HMAC 입력과 canonicalization
 
-| 항목 | 확인 결과 | 상태 | 근거 |
-|---|---|---|---|
-| STEP 원문만 사용 | 확인 불가 | `Unknown` | 생성 코드 부재 |
-| `line`, `sdwt`, `grade` 포함 | 확인 불가 | `Unknown` | 생성 코드 부재 |
-| `eqpCh` 포함 | 확인 불가 | `Unknown` | 생성 코드 부재 |
-| field 순서·구분자 | 확인 불가 | `Unknown` | 생성 코드 부재 |
-| prefix·version | 확인 불가 | `Unknown` | 생성 코드 부재 |
-| 공백·대소문자 | HMAC용 규칙 확인 불가 | `Unknown` | 생성 코드 부재 |
-| Unicode normalization | URL parser에는 NFKC가 있으나 HMAC 입력 적용 근거 없음 | `Unknown` | URL utility |
-| null·빈 문자열 | 확인 불가 | `Unknown` | 생성 코드 부재 |
-| URL encoding 전후 | 확인 불가 | `Unknown` | 생성 코드 부재 |
-| JSON·locale 변환 | 확인 불가 | `Unknown` | 생성 코드 부재 |
-
-URL parser의 NFKC·trim 규칙을 HMAC canonicalization으로 확대 해석하지 않는다.
-실제 순서와 구분자가 확인되지 않아 message placeholder 조합도 확정하지 않는다.
+현재 HMAC 생성 코드가 없어 입력 계약은 `Unknown`이다. 서명 field·순서·구분자·빈 값·encoding의 결정은 [ADR-003 §4.2](../decisions/ADR-003-step-hmac-token.md#42-hmac-입력)에서 관리한다.
+URL parser의 NFKC·trim 규칙을 HMAC canonicalization으로 확대 해석하지 않는다. JSON·locale 변환이나 URL encoding 전후의 message 조합도 확정하지 않는다.
 
 ## 11. 알고리즘과 token 표현
 
-| 항목 | 확인 결과 | 상태 | 근거 |
-|---|---|---|---|
-| HMAC algorithm | 미확인 | `Unknown` | crypto 구현 부재 |
-| key encoding | 미확인 | `Unknown` | key loader 부재 |
-| message encoding | 미확인 | `Unknown` | 생성 코드 부재 |
-| digest encoding | hex·Base64·Base64URL 여부 미확인 | `Unknown` | 생성 코드 부재 |
-| token 길이 | 미확인; algorithm으로 추정하지 않음 | `Unknown` | digest 미확인 |
-| 대소문자·URL-safe·padding | 미확인 | `Unknown` | token parser 부재 |
-| prefix·version | 미확인 | `Unknown` | token contract 부재 |
-| 비교 전 변환 | 미확인 | `Unknown` | validator 부재 |
+현재 algorithm·key/message encoding·digest·token 길이·대소문자·padding·prefix/version과 비교 전 변환은 정의되지 않았다. 상세 결정은 [ADR-003 §4.3](../decisions/ADR-003-step-hmac-token.md#43-알고리즘과-token-표현)을 따른다. 관례로 특정 알고리즘이나 token 형식을 추정하지 않는다.
 
 ## 12. URL encoding과 전달
 
@@ -218,22 +196,8 @@ Token에서 STEP을 복호화하는 흐름은 없다.
 
 ## 14. 비밀키 및 환경설정
 
-| 항목 | 확인 결과 | 민감도 | 누락 시 동작 | 상태 | 근거 |
-|---|---|---|---|---|---|
-| 환경변수 이름 | STEP/HMAC 관련 이름 없음 | secret 후보 | 전용 동작 없음 | `Unknown` | tracked env 참조 검색 |
-| 설정 loading | 구현 없음 | secret 후보 | 전용 동작 없음 | `Unknown` | application source |
-| runtime/build-time | 미확인 | 높음 | 미확인 | `Unknown` | loader 부재 |
-| 사용 process | 미확인 | 높음 | 미확인 | `Unknown` | 생성·검증 부재 |
-| browser 노출 | key 자체 미확인 | 높음 | 해당 없음 | `Unknown` | current code |
-| 기본값·fallback | 확인되지 않음 | 높음 | 미확인 | `Unknown` | 제한 검색 |
-| 시작 시 검증 | 없음 | 높음 | 전용 실패 없음 | `Unknown` | server startup |
-| 생성·검증 시 누락 | 진입점 없음 | 높음 | 전용 실패 없음 | `Unknown` | current code |
-| log 노출 | key log 코드 없음 | 높음 | 정책 미확인 | `Unknown` | log 검색 |
-| `.env.example` | tracked file 없음 | 해당 없음 | 환경 계약 부재 | `Unknown` | `git ls-files` |
-| 실제 `.env` | 열지 않음 | secret | 해당 없음 | `Not Inspected` | 안전 규칙 |
-| Git 보호·관리·rotation | 상위 원칙 외 구체 계약 없음 | 높음 | 미확인 | `Unknown` | 환경 문서 |
-
-향후 key는 browser-visible `VITE_*`로 노출하지 않는 원칙이 상위 architecture 문서에 `Documented`돼 있다.
+현재 STEP HMAC key loader와 생성·검증 진입점이 없어 환경변수·기본값·누락 시 동작은 정의되지 않았다. 실제 `.env`와 운영 secret은 확인하지 않았다.
+설정의 구현 여부는 [환경 정의 레지스트리](../system/environment-definition.md#8-환경변수-레지스트리), 도입 시 결정 사항은 [ADR-003 §4.4](../decisions/ADR-003-step-hmac-token.md#44-secret-경계), 키·로그 보호 요구는 [보안 문서 §13~14](../system/security.md#13-step-딥링크와-hmac)를 따른다.
 
 ## 15. `eqpCh`와 서명 범위
 
@@ -268,18 +232,8 @@ Token에서 STEP을 복호화하는 흐름은 없다.
 
 ## 17. Token 만료·재사용·회전
 
-| 항목 | 구현 여부 | 현재 동작·영향 | 상태 | 근거 |
-|---|---|---|---|---|
-| 발급 시각·만료 시각·TTL | token 구현 없음 | 판단 불가 | `Unknown` | 생성 코드 부재 |
-| nonce·일회성 | 없음/미확인 | replay 판정 없음 | `Unknown` | state 부재 |
-| 사용자·세션 결합 | 미확인 | 링크 소유자 판정 없음 | `Unknown` | validator 부재 |
-| 링크 재사용 | URL은 재사용 가능하나 token 정책 없음 | 현재 ALL 링크는 반복 사용 가능 | `Partial` | route 동작 |
-| replay 방지 | 미확인 | 보장 없음 | `Unknown` | 구현 부재 |
-| token·key version | 미확인 | 호환 분기 없음 | `Unknown` | token format 부재 |
-| 이전 key 동시 검증 | 미확인 | rotation 계약 없음 | `Unknown` | validator 부재 |
-| key 교체와 기존 링크 | 미확인 | 영향 산정 불가 | `Unknown` | key 부재 |
-
-`step=ALL` literal에는 현재 발급·만료 개념이 없다.
+현재 `step=ALL` literal에는 발급·만료 개념이 없으며 링크를 반복 사용할 수 있다. 개별 token은 미구현이므로 TTL·nonce·사용자/세션 결합·replay 방지·key version·이전 key 동시 검증과 교체 영향은 미정이다.
+이 항목들은 [ADR-003 운영 고려사항](../decisions/ADR-003-step-hmac-token.md#10-운영-고려사항)에서 결정하고 [보안 요구](../system/security.md#13-step-딥링크와-hmac)를 충족해야 한다.
 
 ## 18. 브라우저와 로그 노출 경계
 

@@ -49,13 +49,9 @@ ls -l server.mjs config/sensor-exclusions.json
 
 두 파일이 함께 확인되면 기본 설정 파일을 바로 사용할 수 있다.
 
-기존에 배포된 source라서 `config/sensor-exclusions.json`이 없고 예제 파일만 있다면 새 버전 배포 후 확인하는 것을 원칙으로 한다.
-임시로 형식만 준비해야 한다면 다음 두 파일의 내용이 동일해야 한다.
-
-```text
-config/sensor-exclusions.json
-config/sensor-exclusions.example.json
-```
+Git에서 배포하는 파일은 `config/sensor-exclusions.example.json`이다. 실제 runtime 파일 `config/sensor-exclusions.json`은 source 배포나 서버 실행으로 자동 생성되지 않는다.
+최초 준비는 대상 서버의 개발자·배포 담당자가 맡되, 실제 담당자와 배치 경로는 운영 환경에서 확인한다. 기존 설정 또는 `SENSOR_EXCLUSION_CONFIG_PATH` 사용 여부를 먼저 확인하고, runtime 파일이 없는 경우 예제를 임시본으로 복사해 필요한 규칙을 작성한다. §2.2의 validation을 임시본 경로로 실행한 뒤 정상 설정만 확정된 경로에 배치한다. 기존 운영 파일을 덮어쓰지 않는다.
+예제와 runtime 파일은 형식을 공유하지만 실제 제외 단어까지 동일할 필요는 없다. 파일을 읽을 수 없으면 같은 경로의 메모리상 마지막 정상 설정을 사용하고, 정상 설정이 없으면 제외 없이 동작한다(§9).
 
 ### 2.2 설정 파일 검증
 
@@ -271,7 +267,7 @@ runtime 쓰기 권한까지 분리해야 하는 환경에서는 Node 전용 실�
 ## 11. 반영 체크리스트
 
 - [ ] `server.mjs`와 `config/sensor-exclusions.json`의 application root를 확인했다.
-- [ ] 배포 commit 또는 artifact에 `config/sensor-exclusions.json`과 이 운영 가이드가 포함됐다.
+- [ ] release source의 예제·운영 가이드와 별도로 실제 runtime 설정을 준비하고, 선택한 경로의 읽기 권한을 확인했다.
 - [ ] 수정 전 정상 JSON을 복구할 수 있게 보존했다.
 - [ ] 임시본 validation 성공 후 활성 파일을 교체했다.
 - [ ] 교체 후 활성 파일의 owner와 mode가 유지됐다.

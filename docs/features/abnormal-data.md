@@ -318,9 +318,10 @@ Self·공통부는 모든 root를 최신순으로 탐색하지 않고 upstream i
 
 | ID | 코드 기준 | 다른 표현·구조 | 영향 |
 |---|---|---|---|
-| `ABN-M01` | path/UI는 PPID를 사용하지만 Self·Dashboard Parquet/API field는 `recipe_id` | 동일 개념처럼 표시되나 이름이 다름 | Schema·path migration 시 잘못된 field mapping 가능 |
 | `ABN-M02` | path template 중 일부는 runtime builder가 아니라 index `file_path` sibling 변환으로 조회 | 중앙 template만 보면 실제 선택 경로를 오해할 수 있음 | 경로 변경 시 registry만 수정해서는 동작하지 않음 |
 | `ABN-M03` | 통합 server에는 MY EQP·clicked history route가 있음 | Vite 단독 middleware에는 두 route가 없음 | 같은 화면이 실행 모드에 따라 일부 다르게 동작 |
+
+`ABN-M01`은 명칭 차이만으로 분류한 Mismatch에서 제외했다. 확인된 UI `PPID` ↔ Self·Dashboard 필드 `recipe_id` 대응은 [용어집](../system/glossary.md)을 따른다. 모든 경로의 `ppid`가 같은 업무 의미인지는 별도 확인이 필요하며 공식 정의는 `Unknown`이다.
 
 사용자 메뉴얼의 Dashboard, Self, 동일성·공통부 filter와 출력 설명은 이번 코드 조사에서 명확한 불일치가 확인되지 않았다.
 

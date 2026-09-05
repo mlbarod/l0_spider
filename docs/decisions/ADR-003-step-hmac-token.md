@@ -89,7 +89,7 @@ HMAC 도입 시 secret은 브라우저가 아닌 서버 신뢰 경계에 둔다.
 | 공백·대소문자·Unicode | URL parser의 NFKC를 HMAC 규칙으로 볼 근거 없음 | `Unknown` |
 | message encoding | 정의 없음 | `Unknown` |
 
-후속 결정은 producer와 verifier가 공유할 byte-level canonicalization을 명시해야 한다.
+후속 결정은 producer와 verifier가 공유할 byte-level canonicalization을 명시해야 한다. null·빈 문자열·prefix/version, URL encoding 전후, JSON·locale 변환 순서도 포함한다.
 
 ### 4.3 알고리즘과 token 표현
 
@@ -99,7 +99,7 @@ HMAC 도입 시 secret은 브라우저가 아닌 서버 신뢰 경계에 둔다.
 | token 길이·문자 집합·padding | 정의 없음 | `Unknown` |
 | URL encoding round trip | HMAC token용 계약 없음 | `Unknown` |
 
-algorithm이나 digest를 관례로 선택하지 않는다.
+key/message encoding, token 대소문자·URL-safe 표현·prefix/version과 비교 전 변환도 결정 대상이다. algorithm이나 digest를 관례로 선택하지 않는다.
 HMAC token은 암호문이 아니며 복호화 대상으로 정의하지 않는다.
 
 ### 4.4 Secret 경계
@@ -203,24 +203,16 @@ HMAC token만으로 사용자의 접근 권한을 보장하지 않는다.
 | rotation·환경별 key | `Unknown` / 정책만 존재 | 이전 key·version, 운영/mock 분리 필요 |
 | 장애 영향 | 비-`ALL` 흐름 미구현 | 도입 후 verifier 장애와 기존 링크 영향 정의 필요 |
 
+만료·rotation 결정에는 발급/만료 시각·TTL, nonce·일회성·사용자/세션 결합·replay 방지, token/key version과 이전 key 동시 검증, key 교체 시 기존 링크 영향을 포함한다.
+
 실제 운영 환경, `.env`, secret, 로그와 발송 시스템은 이번 조사에서 확인하지 않았다.
 
 ## 11. 검증 의무
 
-| Test ID 후보 | 검증 대상 | 계층 | 필수 여부 | 현재 상태 |
-|---|---|---|---|---|
-| `STEP-T01` | 동일 input의 결정적 token | unit | HMAC 채택 시 필수 | `Blocked` |
-| `STEP-T02` | 다른 STEP의 다른 token | unit | HMAC 채택 시 필수 | `Blocked` |
-| `STEP-T03` | 정상 token의 STEP 매핑 | unit·contract | HMAC 채택 시 필수 | `Blocked` |
-| `STEP-T04` | 변조·잘못된 형식 token 거부 | unit·contract | HMAC 채택 시 필수 | `Blocked` |
-| `STEP-T05` | secret 누락 동작 | unit | HMAC 채택 시 필수 | `Blocked` |
-| `STEP-T06` | MY EQP `step=ALL` 초기화 | unit | 필수 | 기존 test 존재, `Not Run` |
-| `STEP-T07` | `eqpCh`·`eqp_ch`와 server filter | unit·contract | 필수 | 일부 기존 test 존재, `Not Run` |
-| `STEP-T08` | token URL encoding round trip | unit | HMAC 채택 시 필수 | `Blocked` |
-| `STEP-T09` | 기존 일반·MY EQP 링크 호환 | unit·contract | 필수 | 일부 기존 test 존재, `Not Run` |
+테스트 ID·대상·준비도는 [STEP 계약 §21](../features/step-deeplink.md#21-테스트-시나리오-준비도)에서만 관리한다. 이 ADR에서는 같은 ID를 별도 의미로 정의하지 않는다.
+HMAC을 채택하면 해당 목록의 결정적 생성·정상 매핑·변조 거부·키 누락·만료와 rotation·encoding 검증을 충족해야 한다. 서로 다른 STEP의 token 구분과 기존 일반·MY EQP 링크 호환도 함께 확인해야 한다.
 
-기존 근거는 `dashboardLinks.test.mjs`와 `selfEquipmentUrlFilters.test.mjs`이며 HMAC test vector는 없다.
-이번 단계에서는 어떤 테스트도 생성하거나 실행하지 않았다.
+기존 URL 테스트와 HMAC 검증을 구분한다. HMAC generator·validator와 공통 synthetic vector는 없으며 관련 시나리오는 `Blocked`다. 이번 문서 수정에서 테스트를 실행하거나 HMAC 구현 완료로 판정하지 않았다.
 
 ## 12. 재검토 조건
 
@@ -263,7 +255,8 @@ README와 사용자 메뉴얼의 MY EQP `step=ALL` 설명은 현재 코드와 �
 
 ## 16. 근거 자료
 
-- `AGENTS.md:65-71` — STEP/HMAC 상태와 비밀정보 보호 기준
+- [STEP 계약](../features/step-deeplink.md) — 현재 STEP 동작과 구현 경계
+- [AGENTS.md §6](../../AGENTS.md#6-operational-safety) — 비밀정보 보호·운영 안전
 - `docs/features/step-deeplink.md` — URL, HMAC `Unknown`, `ALL`, `eqpCh` 기준
 - `docs/features/self-equipment.md`, `docs/system/data-flow.md:241-257` — browser·API filter와 `DF-STEP-01`
 - `docs/system/security.md:199-218`, `docs/system/environment-definition.md:183-187` — 보안 속성과 환경 계약 공백

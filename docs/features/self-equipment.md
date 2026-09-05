@@ -299,7 +299,9 @@ Self Equipment는 별도 최신 directory를 탐색하지 않고 index row의 `f
 | 3일 identity | viewport 근접, stale Infinity, gc 10분 | paired chart | 최근 window 결과 재사용 | `Confirmed` |
 | server Parquet cache | mtime·size 확인, LRU 최대 1 | team/scatter/history | 파일 변경 감지 후 재읽기 | `Confirmed` |
 | manual refresh | 전용 버튼 없음 | equipment | filter 변경·mutation invalidation 중심 | `Confirmed` |
-| window focus·일반 retry | 명시 설정 없음 | 일부 query | library 기본 동작은 정책 `Unknown` | `Unknown` |
+| 공통 QueryClient 기본값 | `staleTime: 60_000`, `retry: 1`, `refetchOnWindowFocus: false` | 개별 override가 없는 query | 60초 stale·실패 후 1회 재시도·focus 재조회 비활성 | `Confirmed` |
+
+공통값은 `src/lib/queryClient.js`의 `createQueryClient()`에서 정의하고 `AppProviders.jsx`가 적용한다. 위 표의 current-user·registration·PASS history·chart 설정처럼 개별 query가 선언한 값은 해당 기본값을 덮어쓴다.
 
 최신성은 index row가 가리키는 file과 mtime 기반 cache에 의존한다.
 데이터 생산 주기와 freshness SLA는 확인되지 않았다.
@@ -405,7 +407,6 @@ mock 구현을 이유로 `main`의 route·query·API 계약을 바꾸지 않는�
 | timezone 계약 | `Unknown` | 72시간 SKIP·chart 시각 | DB·producer·UI 기준 합의 | 높음 |
 | 부분 API 실패 정책 | `Partial` | chart/history 혼합 UX | 오류 계약·static test | 중간 |
 | URL state 재동기화 | `Unknown` | 뒤로가기·공유 UX | browser 검증 | 중간 |
-| React Query 기본 정책 | `Unknown` | focus retry·재조회 | QueryClient 설정 조사 | 중간 |
 | 공유 URL 노출 | `Risk` | query가 log/referrer에 남을 수 있음 | proxy·logging 정책 확인 | 높음 |
 | success path 노출 | `Risk` | API 성공 `sourcePath(s)`가 browser에 전달됨 | CORE-03B opaque resource 전환 | 높음 |
 | IP header 신뢰 | `Risk` | 현재 사용자·MY EQP 범위 | proxy trust 정책 확인 | 높음 |

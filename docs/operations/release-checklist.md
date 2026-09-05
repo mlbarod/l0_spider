@@ -100,14 +100,7 @@ git diff --check
 
 현재 `package.json`에서 확인된 명령만 사용한다.
 
-```bash
-# 실행하지 않은 릴리스 담당자용 명령
-npm run lint
-npm run test:unit
-npm run test:contract
-npm run test:integration
-npm run build
-```
+검증 순서와 운영 자원 제외 조건은 [deployment §6~7](../system/deployment.md#6-배포-전-확인)을 따른다. 아래 항목별 결과와 exit code를 기록한다.
 
 - [ ] `npm run lint` — 결과·exit code 기록
 - [ ] `npm run test:unit` — 결과·실행 test 수 기록
@@ -225,14 +218,16 @@ service·unit·port가 확인되지 않으면 실제 배포 단계로 진행하�
 
 ## 14. 배포 후 검증
 
+판정 기준은 [deployment §8](../system/deployment.md#8-배포-후-정상-판정), 실행 방법은 [runbook §4](runbook.md)를 따른다. 아래 항목에는 실행 여부·시각·증거를 기록한다.
+
 - [ ] service가 active이고 restart count가 증가하지 않는다.
 - [ ] 승인된 port에 예상 process 하나가 listen한다.
 - [ ] `/` liveness가 정상이다.
 - [ ] 전용 health endpoint가 없으므로 dependency readiness를 별도로 확인했다.
 - [ ] Dashboard가 계약된 성공·빈 상태를 반환하고 latest 시각을 확인했다.
-- [ ] Self Equipment와 MY EQP의 filter·chart·등록 read 흐름을 확인했다.
+- [ ] Self Equipment의 filter·chart를 확인하고 MY EQP는 [runbook §4.4](runbook.md#44-dependency-readiness)에 따라 기존 운영 증거를 확인했다.
 - [ ] 동일성·공통부 image·scatter의 정상·부분 결과를 확인했다.
-- [ ] DB current-user·등록 read가 timeout·permission 오류 없이 동작한다.
+- [ ] [runbook §4.4](runbook.md#44-dependency-readiness)의 DB 조회 결과·시각을 기록했다. 조건부 DDL이 있는 MY EQP 조회를 읽기 전용 점검으로 실행하지 않았다.
 - [ ] `step=ALL`, `eqpCh` 기존 link가 정상이다.
 - [ ] Mailing 등록·template asset을 확인하고 실제 sender 상태는 외부 owner가 판정했다.
 - [ ] journal·log에 새 fatal·반복 `500`, secret·개인정보·내부 path 노출이 없다.
@@ -271,10 +266,8 @@ service·unit·port가 확인되지 않으면 실제 배포 단계로 진행하�
 
 Rollback 전 확인:
 
-- [ ] 이전 artifact와 source가 동일하고 현재 환경과 호환된다.
-- [ ] DB·data·mail side effect를 code rollback과 분리했다.
-- [ ] traffic·service 제어와 의사결정자가 확인됐다.
-- [ ] rollback 후 검증 항목과 escalation owner를 지정했다.
+- [ ] [deployment §9의 rollback 경계](../system/deployment.md#9-rollback-경계)를 확인하고 이전 artifact·환경 호환성·DB/data/mail 부작용의 근거를 기록했다.
+- [ ] traffic·service 제어와 의사결정자, rollback 후 검증 항목·escalation owner를 지정했다.
 
 ## 17. 검증 증거와 승인
 

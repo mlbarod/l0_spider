@@ -82,7 +82,7 @@ flowchart LR
 | 서버 상태 | `src/lib/queryClient.js`, page `useQuery` | TanStack React Query, 기본 cache·retry 정책 | Confirmed | manifest와 import |
 | API 호출 | `src/features/fdc-trend/api/` | Fetch API, `URLSearchParams`, 오류 정규화 | Confirmed | API 모듈 |
 | UI·스타일 | `src/components/ui/`, `src/styles/` | Radix UI, Tailwind CSS, shadcn 설정 | Confirmed | manifest, import와 설정 |
-| 시각화 | Dashboard·chart 컴포넌트 | Recharts, Plotly 관련 컴포넌트 | Confirmed | manifest와 실제 import |
+| 시각화 | Dashboard·chart 컴포넌트 | Recharts 실제 import; Plotly는 dependency 선언만 확인 | Recharts 사용 `Confirmed`; Plotly 사용 미확인 | `src/` import·`package.json`; [ADR-001](../decisions/ADR-001-frontend-stack.md) |
 | 정적 문서 | `UserManualPage.jsx` | Markdown raw import와 image glob | Confirmed | 사용자 메뉴얼 page |
 
 URL query는 page 또는 utility에서 정규화하며 화면은 loading·빈 결과·오류 UI를, API 계층은 일부 응답 shape 검사를 제공한다.
@@ -164,7 +164,7 @@ Python helper는 요청 시 생성되는 자식 프로세스이며 미확인 STE
 계약 생산자는 `server/dashboardData.mjs`의 `handleDashboardDataRequest`와 payload builder다.
 소비자는 `dashboardApi.js`와 `LineAnomalyDashboard.jsx`이며 응답 배열과 대표 summary 필드를 사용한다.
 `GET /api/dashboard-data`의 응답 구조·nullable·오류 body가 계약 검증 대상이고 변경 시 Dashboard, Mailing template 계약과 후속 JSON Schema를 함께 검토한다.
-현재 산출물은 [dashboard.md](../features/dashboard.md), `harness/contracts/dashboard-api.schema.json`, Dashboard fixture와 `tests/contract/dashboard-api.contract.test.mjs`다. 오류 응답과 root producer 직접 계약은 `Partial`이다.
+현재 산출물은 [dashboard.md](../features/dashboard.md), `harness/contracts/dashboard-api.schema.json`, Dashboard fixture와 `tests/contract/dashboard-api.contract.test.mjs`다. 보호 대상 오류는 [Dashboard 오류 계약](../features/dashboard.md#18-오류-응답-계약)의 공통 Schema를 따른다. root producer 직접 계약은 `Partial`이다.
 
 ### 9.3 STEP 딥링크와 HMAC 경계
 
@@ -209,12 +209,7 @@ Python helper는 요청 시 생성되는 자식 프로세스이며 미확인 STE
 
 ## 12. Core Harness와 mock-agent 경계
 
-이 절은 런타임 구현이 아니라 저장소 소유자가 확정한 프로젝트 운영 정책이다.
-`main`은 실제 L0 Spider와 Core Harness의 기준이며 시스템 문서, API·데이터 계약과 운영 자원 비의존 검증을 관리한다.
-mock 서버·API·DB·데이터·실행 script, mock 의존 integration·E2E와 Browser QA는 `mock-agent`에서만 관리한다.
-`main`의 런타임·빌드·검증은 `mock-agent`에 의존하지 않고 기본 동기화 방향은 `main → mock-agent`다.
-mock 구현은 `main`으로 병합하지 않으며 `mock-agent`가 `main`의 계약과 기능 정의를 따라야 한다.
-이번 작업에서는 `mock-agent`를 checkout하거나 조사하지 않았다.
+이 문서는 `main`의 실행 구조를 설명한다. 런타임·기본 검증은 `mock-agent`에 의존하지 않으며, 에이전트 작업과 branch 경계는 [AGENTS.md §7](../../AGENTS.md#7-harness-boundary)을 따른다.
 
 ## 13. 아키텍처 제약과 보존 원칙
 

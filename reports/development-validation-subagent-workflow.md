@@ -1,5 +1,7 @@
 # L0 Spider 개발 검증 서브에이전트 도입 리포트
 
+> **Historical / Superseded**: 아래 의무 호출·`SPECIALIST_REQUIRED`·수정 후 재검수·구현 상태는 2026-08-02 도입 당시 기록이다. 현재 호출 기준은 [AGENTS.md §5](../AGENTS.md#5-independent-review), 상세 절차는 [현행 workflow](../docs/operations/development-agent-workflow.md)를 따른다. 과거 실행 횟수와 판정은 보존하며 현재 의무로 적용하지 않는다.
+
 > 문서 목적: 메인 개발과 독립 검증의 책임을 분리하는 To-Be 업무 흐름과 운영 원칙 정의<br>
 > 문서 상태: `Implemented / Stage 4 Complete`<br>
 > 기준 branch: `main`<br>
@@ -267,7 +269,7 @@ To-Be 방향은 모든 코드 변경에 가벼운 **상시 프리 빌드 리뷰*
 - [사용자 메뉴얼](../docs/user-manual/USER_MANUAL.md) — 현재 사용자 기능과 기존 동작 보존 범위
 - [P0/P1 종합 조치 계획](audit/2026-08-01-p0-p1-remediation-plan.md) — QA·Audit·Performance 결과의 현재 main 재검증과 통합 기준
 
-초기 제안 리포트 작성 작업은 이 문서만 추가했으며 당시 application, API, Schema, fixture, test, agent 설정과 지침 기반 의무 호출은 변경하지 않았다. 현재 구현 상태는 8절과 단일 기준 문서에서 관리한다.
+초기 제안 리포트 작성 작업은 이 문서만 추가했으며 당시 application, API, Schema, fixture, test, agent 설정과 지침 기반 의무 호출은 변경하지 않았다. 도입 당시 구현 상태는 8절에 보존한다. 현행 호출 기준은 문서 상단의 AGENTS·운영 workflow 링크를 따른다.
 
 ## 10. 실제 도입 시 변경 대상
 

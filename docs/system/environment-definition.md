@@ -8,7 +8,7 @@
 - 주요 근거 문서는 `reports/audit/system-inventory.md`, `docs/system/overview.md`, `docs/system/architecture.md`이다.
 - 실제 `.env`, 운영 DB, `/appdata` 파일, 서비스 관리자와 외부 브랜치는 확인하지 않았다.
 - 실제 비밀번호, 토큰, 이메일 주소, 내부 IP와 내부 host 값은 이 문서에 기록하지 않는다.
-- 배포 절차와 장애 대응 절차는 각각 향후 `docs/system/deployment.md`, `docs/operations/`에서 관리한다.
+- 배포 절차와 장애 대응 절차는 각각 [배포 기준](deployment.md), [운영 runbook](../operations/runbook.md)에서 관리한다.
 
 ## 2. 환경 정의 원칙
 
@@ -69,7 +69,7 @@
 | `VITE_SITE_URL` | 예 | Vite 시작 시 | `vite.config.mjs`가 host 허용과 HMR 조건을 계산한다. |
 | `PORT`, `HOST` | 아니오 | 예 | `server.mjs` listen 주소를 결정한다. |
 | `LIVE_RELOAD`, `BUILD_ON_START` | 아니오 | 예 | 통합 서버의 Vite 사용과 시작 build 여부를 결정한다. |
-| 데이터 root 설정 | 아니오 | 예 | API 요청 처리 중 파일 탐색 위치를 결정한다. |
+| 데이터 root 설정 | 아니오 | 예 | 경로값은 프로세스 시작의 모듈 로드 시 고정되고, 파일 내용은 요청·캐시 정책에 따라 조회한다. |
 | `SENSOR_EXCLUSION_CONFIG_PATH` | 아니오 | 예 | 기본 `config/sensor-exclusions.json` 대신 사용할 App별 sensor 제외 JSON 위치를 지정한다. |
 | `DB_INFO_PATH`, `REMOTE_ADDR` | 아니오 | 예 | Python DB helper가 credential 파일과 사용자 주소를 해석한다. |
 | `NOTICE_ADMIN_KNOX_IDS` | 아니오 | 예 | 쉼표로 구분한 `knoxId` 목록과 비교해 공지 등록·완료 권한을 판정한다. |
@@ -85,7 +85,7 @@
 2. Node가 Python child process를 만들 때 기존 환경을 전달하고 `REMOTE_ADDR`를 요청 정보로 덮어쓴다.
 3. 환경변수가 없으면 각 모듈의 코드 기본값 또는 `SPIDER_DATA_PATH_TEMPLATES`가 사용된다.
 4. 저장소 root의 `notices.env`가 있으면 서버 시작 시와 공지 API 요청 시 읽는다. 공지 관리자 ID는 `notices.env` 값을 직접 우선 사용하고, 파일 설정이 없을 때만 프로세스 환경변수를 사용한다.
-5. `DB_INFO_PATH`, `MAPPING_CONFIG_PATH`가 가리키는 파일 내용은 파일을 읽는 시점에 적용된다. `SENSOR_EXCLUSION_CONFIG_PATH`의 경로 값은 프로세스 시작 시, 동일 경로의 파일 내용은 API 요청 시 적용된다.
+5. `MAPPING_CONFIG_PATH`, `COMMONALITY_ROOT_PATH`, `SPIDER_DASHBOARD_PATH_ROOT`와 `SENSOR_EXCLUSION_CONFIG_PATH`의 경로값은 프로세스 시작의 모듈 로드 시 고정되므로 변경 시 재시작이 필요하다. 파일 내용은 각 요청·캐시 정책에 따라 읽는다. Sensor 제외 설정은 같은 경로의 mtime·size 변경을 다음 관련 API 요청에서 확인한다. `DB_INFO_PATH`는 Python helper 실행 시 해석하고 credential 내용은 파일을 읽을 때 적용한다.
 6. 실제 서비스 관리자, shell 또는 배포 플랫폼이 환경변수를 주입하는 방식은 `Unknown`이다.
 
 - 서버는 `server/loadEnv.mjs`에서 저장소 root의 `notices.env`를 로드한다. `notices.env`는 `.gitignore`에 포함되며 Git에 기록하지 않는다.
@@ -101,17 +101,20 @@
 | 서버 | `LIVE_RELOAD` | Vite middleware 사용 | `"0"` 외 활성 | 선택 | 프로세스 시작 | `server.mjs:40` | 아니오 | 활성 | `Confirmed` |
 | 서버 | `BUILD_ON_START` | 정적 모드 시작 build | `"0"` 외 활성 | 조건부 | 프로세스 시작 | `server.mjs:39,65-75` | 아니오 | 활성 | `Confirmed` |
 | Vite | `VITE_SITE_URL` | 허용 host와 HMR 조건 | 빈 값 | 선택 | Vite 시작/build | `vite.config.mjs:29-30,129-140` | 아니오 | 조건부 설정 미적용 | `Confirmed` |
-| 데이터 | `MAPPING_CONFIG_PATH` | mapping 설정 파일 override | `SPIDER_DATA_PATH_TEMPLATES.mappingConfig` | 선택 | API 요청 | `server/mappingConfig.mjs:5-7` | 경로 주의 | 코드 경로 사용 | `Confirmed` |
-| 데이터 | `COMMONALITY_ROOT_PATH` | commonality root override | 코드 경로 template | 선택 | API 요청 | `server/latestCommonalityPath.mjs:9-11` | 경로 주의 | 코드 root 사용 | `Confirmed` |
+| 데이터 | `MAPPING_CONFIG_PATH` | mapping 설정 파일 override | `SPIDER_DATA_PATH_TEMPLATES.mappingConfig` | 선택 | 프로세스 시작의 모듈 로드 | `server/mappingConfig.mjs:5-7` | 경로 주의 | 코드 경로 사용 | `Confirmed` |
+| 데이터 | `COMMONALITY_ROOT_PATH` | commonality root override | 코드 경로 template | 선택 | 프로세스 시작의 모듈 로드 | `server/latestCommonalityPath.mjs:9-11` | 경로 주의 | 코드 root 사용 | `Confirmed` |
 | 데이터 | `COMMON_COMMONALITY_ROOT_PATH` | 공통부 동일성 root override | 기존 commonality/dashboard root의 형제 `path_common_commonality`, 이후 코드 template | 선택 | 프로세스 시작 | `server/latestCommonCommonalityPath.mjs` | 경로 주의 | 기존 데이터 mount의 형제 경로 사용 | `Confirmed` |
-| 데이터 | `SPIDER_DASHBOARD_PATH_ROOT` | dashboard 통계 root override | dashboard template의 상위 경로 | 선택 | API 요청 | `server/dashboardData.mjs:20-22` | 경로 주의 | 코드 root 사용 | `Confirmed` |
+| 데이터 | `SPIDER_DASHBOARD_PATH_ROOT` | dashboard 통계 root override | dashboard template의 상위 경로 | 선택 | 프로세스 시작의 모듈 로드 | `server/dashboardData.mjs:20-22` | 경로 주의 | 코드 root 사용 | `Confirmed` |
 | 데이터 | `SENSOR_EXCLUSION_CONFIG_PATH` | 기본 sensor 제외 JSON 경로 override | `config/sensor-exclusions.json` | 선택 | 경로는 프로세스 시작; 내용은 API 요청 | `server/sensorExclusionConfig.mjs` | 경로 주의 | 기본 파일 사용 | `Confirmed` |
 | DB | `DB_INFO_PATH` | DB credential pickle 위치 | `/appdata/l0_spider/db_info.pkl` | DB 기능에 조건부 | helper 실행 | `scripts/*.py` | 값 자체는 아니나 민감 경로 | 코드 경로 사용 | `Confirmed` |
 | DB | `REMOTE_ADDR` | 현재 사용자 식별용 주소 | 없음 | 현재 사용자 조회에 조건부 | 요청별 helper 실행 | `server/currentUser.mjs:42`, `scripts/current_user.py:15` | 개인정보 주의 | helper 오류 | `Confirmed` |
 | 메뉴얼 | `MANUAL_BASE_URL` | 기존 UI 서버 사용 여부 | 코드 기본 loopback URL, port `4173` | 선택 | 도구 시작 | `scripts/generate-user-manual-screenshots.mjs:11-12` | 아니오 | 자체 Vite 시작 | `Confirmed` |
 | 메뉴얼 | `PLAYWRIGHT_LD_LIBRARY_PATH` | Playwright 동적 library 경로 보완 | 없음 | 환경별 선택 | 도구 시작 | `scripts/generate-user-manual-screenshots.mjs:19-20` | 경로 주의 | 변경 없음 | `Confirmed` |
 | 메뉴얼 | `LD_LIBRARY_PATH` | 기존 동적 library 검색 경로 | 실행 환경 상속 | 환경별 선택 | 도구 시작 | `scripts/generate-user-manual-screenshots.mjs:20` | 경로 주의 | 시스템 기본 사용 | `Confirmed` |
+| 공지 | `NOTICE_ADMIN_KNOX_IDS` | 쉼표로 구분한 관리자 `knoxId` 목록 | 단수 별칭 또는 빈 값 | 관리 기능에 조건부 | 서버 시작 및 공지 API 요청 시 파일 조회 | `server/notices.mjs`, `server/loadEnv.mjs` | 사용자 식별정보 주의 | 유효 목록이 없으면 관리 권한 없음 | `Confirmed` |
+| 공지 | `NOTICE_ADMIN_KNOX_ID` | 관리자 설정의 단수 별칭 | 빈 값 | 선택 | 위와 동일 | `server/notices.mjs` | 사용자 식별정보 주의 | 복수 이름도 없으면 관리 권한 없음 | `Confirmed` |
 
+- 공지 설정은 주입된 dependency(검증용) → `notices.env` → 프로세스 환경 순으로 첫 비어 있지 않은 값을 사용한다. 각 출처 안에서는 `NOTICE_ADMIN_KNOX_IDS` → `NOTICE_ADMIN_KNOX_ID` 순이며 목록을 합치지 않는다. 파일의 단수 별칭도 프로세스의 복수 이름보다 우선한다. 실제 ID는 문서·Git에 기록하지 않는다.
 - `REMOTE_ADDR`는 운영자가 직접 설정하는 일반 환경변수가 아니라 Node가 요청별로 Python helper에 전달하는 내부 계약이다.
 - HMAC 비밀키와 SMTP 관련 환경변수 이름은 코드에서 확인되지 않았으므로 레지스트리에 가상의 이름을 추가하지 않았다.
 
@@ -328,16 +331,16 @@
 - timezone과 locale이 명시되지 않은 parsing·표시 위치는 환경별 결과 차이를 만들 수 있다.
 - 실제 메일 발송 차단 장치가 확인되지 않아 sender가 추가될 때 안전한 기본값이 필요하다.
 
-## 24. 후속 문서와 책임 분리
+## 24. 관련 문서와 책임 분리
 
 | 주제 | 기준 문서 또는 산출물 | 이 문서와의 관계 |
 |---|---|---|
-| 시스템 구성과 경계 | `docs/system/architecture.md` | process·component 관계의 기준 |
-| 화면부터 데이터까지 | 향후 `docs/system/data-flow.md` | 환경별 경로 해석을 상세 연결 |
-| 배포 절차 | 향후 `docs/system/deployment.md` | service manager, build, rollout, rollback 정의 |
-| 보안 | 향후 `docs/system/security.md` | secret, proxy trust, 권한과 masking 정의 |
-| 기능별 환경 의존성 | 향후 `docs/features/*.md` | dashboard, STEP/HMAC, mailing 계약 상세화 |
-| 운영 절차 | 향후 `docs/operations/` | startup, 점검, 장애·backup·restore 절차 |
+| 시스템 구성과 경계 | [architecture](architecture.md) | process·component 관계의 기준 |
+| 화면부터 데이터까지 | [data-flow](data-flow.md) | 환경별 경로 해석을 상세 연결 |
+| 배포 절차 | [deployment](deployment.md) | service manager, build, rollout, rollback 정의 |
+| 보안 | [security](security.md) | secret, proxy trust, 권한과 masking 정의 |
+| 기능별 환경 의존성 | [Dashboard](../features/dashboard.md)·[STEP](../features/step-deeplink.md)·[Mailing](../features/mailing.md) | dashboard, STEP/HMAC, mailing 계약 상세화 |
+| 운영 절차 | [runbook](../operations/runbook.md)·[backup-restore](../operations/backup-restore.md) | startup, 점검, 장애·backup·restore 절차 |
 | 환경 예제 | 향후 별도 승인 범위 | 비밀값 없는 이름과 안전한 placeholder 제공 |
 
 - 후속 문서는 이 문서의 `Unknown`을 근거 없이 확정하지 않고 재현 가능한 검증 또는 운영자 확인으로 갱신한다.

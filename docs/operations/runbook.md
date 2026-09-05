@@ -99,32 +99,20 @@ curl --fail --silent --show-error --head <base-url>/
 |---|---|---|---|
 | Dashboard file | 승인된 read-only Dashboard 조회 | 계약된 payload 또는 설명 가능한 빈 상태 | `/appdata` 순회·수정 |
 | mapping | 주요 화면의 Line·SDWT option | API 오류 없이 option 표시 | 실제 file 원문 공유 |
-| DB | current-user 또는 등록 목록 read 흐름 | timeout·credential 오류 없음 | test row·DDL·직접 DB 접속 |
+| DB | 승인된 `GET /api/current-user` 조회 | timeout·credential 오류 없음; 사용자 캐시 응답만으로 DB 연결 정상 확정 불가 | test row·DDL·직접 DB 접속 |
 | Self/common | 승인된 기존 조회 조건 | filter·chart의 정상/계약된 빈 상태 | 운영 path를 임의 query로 입력 |
-| STEP | MY EQP `step=ALL` | 전체 STEP 예약 분기 유지 | HMAC secret 추정·출력 |
-| Mailing | 등록 화면과 template 존재 | 등록 read·자산 제공 | test mail 발송 |
+| STEP | 기존 운영 증거로 MY EQP `step=ALL` 확인 | 전체 STEP 예약 분기 유지 | 점검용 MY EQP 조회·HMAC secret 추정·출력 |
+| Mailing | 기존 등록 조회 증거와 template 자산 확인 | 등록 조회 결과·자산 제공 | 통합 등록 화면의 MY EQP 자동 조회·test mail 발송 |
+
+`GET /api/my-eqp-registration`과 이를 내부에서 사용하는 MY EQP 설비 조회는 읽기 전용 점검 대상에서 제외한다. `scripts/my_eqp_registration.py`의 `list_registrations()`는 `ensure_public_column()`을 호출하며, `is_public`이 없으면 `ALTER TABLE`과 commit을 수행한다. 해당 기능의 정상 여부는 담당자가 확인한 기존 운영 증거로 판정하고 점검 목적으로 DDL을 유발하지 않는다.
 
 실제 HMAC과 mail sender는 저장소에서 확인되지 않아 readiness 대상으로 확정하지 않는다.
 
 ### 4.5 Sensor 제외 설정
 
-기본 설정 파일은 application root의 `config/sensor-exclusions.json`이며 웹 UI가 아닌 개발자·배포 담당자가 관리한다.
-`PORT=<port> node server.mjs` 실행 시 별도 환경변수 없이 이 파일을 자동으로 읽는다.
-source 밖의 파일이 필요한 환경에서만 `SENSOR_EXCLUSION_CONFIG_PATH`로 경로를 override한다.
-형식은 기본 파일, `config/sensor-exclusions.example.json`과 `harness/contracts/sensor-exclusions.schema.json`을 기준으로 한다.
-별도 서버의 파일 작성, 환경변수 주입, 검증, 반영 확인, 복구와 `ALL`·Mailing 경계는
-[Sensor 제외 설정 운영 가이드](sensor-exclusion-config.md)를 단일 절차로 사용한다.
-
-```bash
-# 실행하지 않은 운영자용 명령
-cd <application-root>
-npm run sensor-exclusions:validate -- config/sensor-exclusions.next.json
-```
-
-활성 파일을 직접 편집하지 않고 같은 directory의 임시본을 검증한 뒤 기본 파일로 교체한다. 자세한 명령과 owner·mode 보존 절차는 전용 운영 가이드를 따른다.
-검증된 기본 파일로 교체하면 프로세스 재build·재시작은 필요하지 않으며 다음 관련 API 요청에서 mtime·size 변경을 확인해 새 규칙을 읽는다.
-최초 설정 읽기에 실패하면 server log에 고정 오류를 한 번 남기고 제외 없음으로 계속 동작한다. 정상 설정을 한 번 읽은 뒤 잘못된 JSON으로 바뀌면 마지막 정상 설정을 유지하며, 같은 파일 상태의 반복 오류 log는 억제한다.
-실제 경로, 제외 단어와 내부 sensor 이름을 ticket·journal 원문으로 공유하지 않는다.
+일상 점검에서는 선택한 runtime JSON의 준비·읽기 권한과 설정 적용 결과를 확인한다. source 배포만으로 실제 설정 파일이 생성되지는 않는다.
+파일 준비·임시본 검증·반영·fallback·복구는 [Sensor 제외 설정 운영 가이드](sensor-exclusion-config.md), 경로값의 적용 시점은 [환경 정의](../system/environment-definition.md#8-환경변수-레지스트리)를 따른다.
+확인한 설정 경로의 구분(기본/override), 검증 결과와 시각을 기록하되 실제 경로·제외 단어·내부 sensor 이름을 ticket·journal 원문으로 공유하지 않는다.
 
 ## 5. 시작·중지·재시작
 

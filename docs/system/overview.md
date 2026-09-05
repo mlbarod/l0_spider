@@ -112,20 +112,7 @@ React SPA가 화면을 제공하고 Node 서버가 API, 파일 검증·집계와
 
 ## 11. Core Harness와 mock 브랜치 경계
 
-이 절은 소스 구현 사실이 아니라 저장소 소유자가 확정한 프로젝트 운영 정책이다.
-
-### Core Harness
-
-`main`은 실제 시스템과 Core Harness의 기준이다.
-Core Harness는 시스템·기능·운영·사용자 문서, API·데이터 계약, 운영 자원 비의존 unit·contract 검증과 감사·변경 영향 기록을 관리한다.
-개인정보와 운영 데이터가 없는 최소 synthetic 계약 샘플만 `main`에 둘 수 있다.
-
-### Mock Validation Extension
-
-mock 서버·데이터·Parquet·이미지, 실행 script, mock 의존 integration·E2E, Playwright Browser QA와 성능 검증은 `mock-agent`에서 관리한다.
-이번 작업에서는 해당 브랜치를 checkout하거나 구현과 테스트 결과를 조사하지 않았다.
-`main`은 `mock-agent`에 의존하지 않으며 기본 동기화 방향은 `main → mock-agent`다.
-mock 구현은 `main`으로 병합하지 않고, 검수에서 발견된 실제 코드 수정이나 보고서만 필요할 때 별도로 선별한다.
+`main`은 실제 시스템과 Core 문서·계약·운영 자원 비의존 검증의 기준이다. 이 문서는 mock 구현을 다루지 않는다. 에이전트 작업과 branch 경계는 [AGENTS.md §7](../../AGENTS.md#7-harness-boundary)을 따른다.
 
 ## 12. 하네스 필수 영역 개요
 
@@ -138,7 +125,7 @@ mock 구현은 `main`으로 병합하지 않고, 검수에서 발견된 실제 �
 
 `GET /api/dashboard-data`는 대시보드와 Mailing 요약이 공유하는 주요 데이터 경계다.
 대표적으로 `lineDashboard.summary.monitoringSensorTotal`, `changeFromPreviousDay`, `previousDateTime`과 `lineDashboard.mailingSummary`가 확인됐다.
-성공 응답 기준은 [dashboard.md](../features/dashboard.md), `harness/contracts/dashboard-api.schema.json`, Dashboard success·empty fixture와 `tests/contract/dashboard-api.contract.test.mjs`에서 관리한다. 오류 응답 Schema와 실제 root producer 직접 검증은 `Partial`이다.
+성공 응답 기준은 [dashboard.md](../features/dashboard.md), `harness/contracts/dashboard-api.schema.json`, Dashboard success·empty fixture와 `tests/contract/dashboard-api.contract.test.mjs`에서 관리한다. 보호 대상 오류는 공통 safe-api-error Schema를 따르며, 구체적 범위는 [Dashboard 오류 계약](../features/dashboard.md#18-오류-응답-계약)을 참조한다. 실제 root producer 직접 검증은 `Partial`이다.
 
 ### 12.3 STEP 딥링크와 HMAC
 

@@ -52,7 +52,7 @@ Vite 단독 개발 mode는 통합 server보다 API route가 적으므로 운영 
 | server source | `server.mjs`, `server/` | HTTP·API·파일 조회 | runtime 배포 단위 |
 | DB helper | `scripts/*.py`, `scripts/requirements.txt` | DB 조회·등록·이력 | runtime 배포 단위 |
 | config source | `src/config/`와 환경변수 | path·mapping 기본 계약 | 코드와 환경을 분리 |
-| sensor 제외 설정 | `config/sensor-exclusions.json` | 네 이상감지 App과 Mailing의 기본 runtime 설정 | runtime 배포 필수; application user 읽기 가능 여부 확인 |
+| sensor 제외 설정 | `config/sensor-exclusions.example.json` / 별도 runtime JSON | 예제는 Git 관리, runtime 기본 경로는 `config/sensor-exclusions.json` | source 배포로 자동 생성되지 않음; [Sensor 운영 가이드](../operations/sensor-exclusion-config.md)에 따라 별도 준비·검증 |
 | static artifact | `dist/` | 정적 mode의 SPA | build 결과; Git 기준 여부 미확인 |
 | 문서·계약 | `docs/`, `harness/contracts/` | 운영·API 기준 | 코드 변경과 함께 검토 |
 
@@ -61,21 +61,10 @@ Vite 단독 개발 mode는 통합 server보다 API route가 적으므로 운영 
 
 ## 4. 환경설정 주입 경계
 
-| 설정 | 적용 | 확인된 fallback | 배포 주의 |
-|---|---|---|---|
-| `HOST` | server 시작 | `0.0.0.0` | 실제 bind·proxy 경계 `Unknown` |
-| `PORT` | server 시작 | `5173` | 운영 값은 `Unknown`; `32640` 근거 없음 |
-| `LIVE_RELOAD` | server 시작 | `0` 외 live reload | 운영 mode를 명시적으로 결정 |
-| `BUILD_ON_START` | 정적 server 시작 | `0` 외 build | 운영 시작과 build를 결합하는 `Risk` |
-| `VITE_SITE_URL` | Vite 시작·build | 빈 값 | client-visible 설정에 secret 금지 |
-| `MAPPING_CONFIG_PATH` | API 요청 | 코드 기본 path | 실제 file 접근 사전 확인 |
-| `COMMONALITY_ROOT_PATH` | API 요청 | 코드 기본 root | 운영 root 변경 영향 검토 |
-| `COMMON_COMMONALITY_ROOT_PATH` | 프로세스 시작 | 기존 commonality/dashboard root의 형제 `path_common_commonality` 또는 코드 기본 root | 별도 mount면 명시적으로 설정하고 프로세스를 재시작 |
-| `SPIDER_DASHBOARD_PATH_ROOT` | API 요청 | 코드 기본 root | Dashboard detail·stats 범위 확인 |
-| `SENSOR_EXCLUSION_CONFIG_PATH` | 경로는 프로세스 시작; 동일 경로의 내용은 API 요청 | `config/sensor-exclusions.json` | 기본 파일 또는 override JSON은 application read-only, 개발자·배포 계정만 수정; 반영 전 validation |
-| `DB_INFO_PATH` | Python helper | 코드 기본 path | 값이 아니라 credential file 위치; 노출 금지 |
+환경변수의 이름·기본값·우선순위·적용 시점은 [환경 정의 §6~8](environment-definition.md#6-build-time과-runtime-구분)을 기준으로 한다.
+배포 시에는 경로값 변경에 필요한 프로세스 재시작과 동일 경로의 파일 내용 갱신을 구분한다. Sensor 제외 설정의 준비·검증은 [전용 운영 가이드](../operations/sensor-exclusion-config.md)를 따른다.
 
-tracked `.env.example`, `EnvironmentFile`, secret manager와 실제 주입 우선순위는 `Unknown`이다.
+실제 `EnvironmentFile`, secret manager와 배포 플랫폼의 주입 방식은 `Unknown`이다.
 실제 값은 배포 기록, 명령행, journal과 문서에 복사하지 않는다.
 
 ## 5. 배포 단위와 외부 의존성
@@ -100,8 +89,6 @@ Dockerfile, Compose, tracked systemd unit, CI workflow와 artifact registry는 �
 git branch --show-current
 git rev-parse --short HEAD
 git status --short
-test -r config/sensor-exclusions.json
-npm run sensor-exclusions:validate -- config/sensor-exclusions.json
 npm run lint
 npm run test:unit
 npm run test:contract
@@ -113,11 +100,11 @@ npm run build
 
 사전 확인 항목:
 
-1. release commit과 변경 파일·계약·문서를 식별하고 `config/sensor-exclusions.json`과 전용 운영 가이드가 release source에 포함됐는지 확인한다.
+1. release commit과 변경 파일·계약·문서를 식별하고 Sensor 제외 예제와 전용 운영 가이드가 release source에 포함됐는지 확인한다. 실제 runtime JSON은 [Sensor 운영 가이드 §2](../operations/sensor-exclusion-config.md#2-별도-서버에서-처음-확인하기)에 따라 선택한 경로에 별도 준비·검증한다.
 2. Node·Python 실제 버전과 지원 기준을 운영자에게 확인한다. 저장소에는 version 선언이 없다.
 3. 정적 mode이면 `dist/index.html`과 asset 생성 성공을 확인한다.
 4. runtime 환경변수 이름만 대조하고 실제 값은 출력하지 않는다.
-5. 대상 application user의 source·dist·Python script·credential·운영 file과 `config/sensor-exclusions.json` 읽기 권한을 확인한다. 실행 계정과 배포 계정을 분리하는 환경에서는 실행 계정의 설정 파일 쓰기 불가도 확인한다.
+5. 대상 application user의 source·dist·Python script·credential·운영 file과 선택한 Sensor runtime JSON 읽기 권한을 확인한다. 실행 계정과 배포 계정을 분리하는 환경에서는 실행 계정의 설정 파일 쓰기 불가도 확인한다.
 6. 사용할 port와 service manager를 확인하고 기존 process 중복을 방지한다.
 7. DB schema·권한, `/appdata` mount와 데이터 freshness를 담당 owner에게 확인한다.
 8. 실제 mail sender는 이 저장소와 분리해 발송 영향과 중복 방지 여부를 확인한다.
@@ -128,12 +115,12 @@ npm run build
 
 1. 변경 동결: 대상 commit, 영향 API와 rollback 기준을 기록한다.
 2. 사전 검증: 운영 자원 비의존 lint·unit·contract와 build 결과를 확인한다.
-3. artifact 준비: source와 `dist/`의 동일 commit 관계를 유지하고 기본 sensor 제외 JSON과 운영 가이드 누락 여부를 확인한다.
+3. artifact 준비: source와 `dist/`의 동일 commit 관계를 유지하고 Sensor 예제·운영 가이드와 별도 runtime JSON 준비 여부를 확인한다.
 4. 환경 대조: service manager가 주입할 이름과 파일 read 권한만 확인한다.
 5. traffic 처리: proxy·무중단 전환 방식은 `Unknown`이므로 운영 승인 없이 변경하지 않는다.
 6. service 반영: 확인된 manager 절차로 한 instance씩 반영한다. 실제 instance 수는 `Unknown`이다.
 7. liveness 확인: `/`가 정상 HTTP 응답을 반환하는지 확인한다.
-8. read-only 기능 확인: Dashboard와 주요 화면 API를 승인된 방식으로 확인한다.
+8. read-only 기능 확인: [runbook §4.4](../operations/runbook.md#44-dependency-readiness)의 조회 경로로 확인한다. 조건부 DDL이 있는 MY EQP 조회는 제외한다.
 9. DB write·mail 기능은 실제 데이터를 생성하지 않고 담당자 확인과 기존 운영 증거로 판정한다.
 10. log·오류·resource 상태를 확인한 뒤 release를 종료한다.
 
@@ -149,7 +136,7 @@ npm run build
 | UI | `/`와 주요 route의 static asset 응답 | `dist`, Vite mode, proxy 확인 |
 | Dashboard | read-only 조회가 정상 또는 계약된 빈 상태 | data root·latest file 확인 |
 | Self·abnormal | mapping·index·image/scatter read 경계 정상 | `/appdata`와 path 권한 확인 |
-| DB 연계 | current-user·등록 조회의 기존 read 흐름 정상 | credential·network·helper log 확인 |
+| DB 연계 | `GET /api/current-user`의 기존 조회 정상; MY EQP 등록·설비 조회는 조건부 DDL 때문에 읽기 전용 점검에서 제외 | [runbook §4.4](../operations/runbook.md#44-dependency-readiness) |
 | STEP | `step=ALL` MY EQP 호환 유지 | 비-ALL HMAC은 현재 구현 `Unknown` |
 | Mailing | 등록 기능과 template 자산만 현재 범위 | 실제 sender는 별도 owner로 escalation |
 | log | 새 반복 오류·비밀·절대 path 노출 없음 | 즉시 영향 격리·보안 escalation |
