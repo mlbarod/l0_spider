@@ -57,6 +57,37 @@ test("공통부 PASS 이력은 자설비 SKIP LIST 필터에서 제외한다", (
   assert.deepEqual(payload.rows, [])
 })
 
+test("자설비 SKIP LIST에서 eqp_ch와 sensor ALL을 함께 조회한다", () => {
+  const baseRecord = {
+    line_id: "P1L",
+    ver: "V1",
+    sdwt: "SDWT-1",
+    desc: "ETCH",
+    recipe_id: "PPID-1",
+    update_date: "2026-07-17",
+    priority: "A",
+    step: "10",
+    exec_date: "2026-07-17 12:00:00",
+  }
+  const payload = buildPassHistoryFilterPayload([
+    { ...baseRecord, sensor: "TEMP", eqp: "EQP-1" },
+    { ...baseRecord, sensor: "PRESSURE", eqp: "EQP-2" },
+  ], {
+    lineId: "P1L",
+    priorities: ["A"],
+    desc: "ETCH",
+    eqpCh: "ALL",
+    sensor: "ALL",
+    chStep: "ALL",
+  }, NOW)
+
+  assert.equal(payload.filters.eqpCh, "ALL")
+  assert.equal(payload.filters.sensor, "ALL")
+  assert.equal(payload.filters.chStep, "ALL")
+  assert.equal(payload.counts.chartRows, 2)
+  assert.deepEqual(payload.rows.map((row) => row.sensor).sort(), ["PRESSURE", "TEMP"])
+})
+
 test("공통부 PASS 이력을 공통부 SKIP LIST 이미지 행으로 복원한다", () => {
   const commonRecord = {
     line_id: "P1L",

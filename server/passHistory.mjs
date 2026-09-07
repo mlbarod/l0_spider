@@ -166,7 +166,6 @@ export function buildPassHistoryFilterPayload(records, filters, nowMs = Date.now
     rowCount: sensorRecords.length,
   })), "sensor")
   const selectedSensor = filters.sensor === ALL_VALUES
-    && selectedEqpCh !== ALL_VALUES
     && sensors.length
     ? ALL_VALUES
     : sensors.some((item) => item.sensor === filters.sensor)
