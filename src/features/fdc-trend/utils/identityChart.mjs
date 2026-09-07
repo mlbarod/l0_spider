@@ -9,6 +9,18 @@ export const ERD_SCATTER_SERIES_DATA_KEYS = Object.freeze({
 })
 const RECENT_WINDOW_MS = 26 * 60 * 60 * 1000
 
+export function getZoomDragAction(start, end, minimumDistance = 4) {
+  if (!start || !end) return "none"
+
+  const deltaX = end.pixelX - start.pixelX
+  const deltaY = end.pixelY - start.pixelY
+  if (Math.abs(deltaX) <= minimumDistance || Math.abs(deltaY) <= minimumDistance) {
+    return "none"
+  }
+
+  return deltaX < 0 && deltaY < 0 ? "reset" : "zoom"
+}
+
 export function samplePoints(points, limit = MAX_RENDERED_POINTS_PER_SERIES) {
   if (points.length <= limit) return points
 

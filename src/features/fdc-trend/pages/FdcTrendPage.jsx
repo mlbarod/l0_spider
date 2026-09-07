@@ -74,6 +74,7 @@ import {
   buildRenderedScatterSeries,
   buildIdentityChartPoints,
   ERD_SCATTER_SERIES_DATA_KEYS,
+  getZoomDragAction,
   selectRenderedIdentityPoints,
 } from "../utils/identityChart.mjs"
 
@@ -597,7 +598,10 @@ export function IdentityChartDialog({
     const start = zoomSelectionRef.current
     if (!start) return
     const point = getZoomPoint(event)
-    if (point && Math.abs(point.pixelX - start.pixelX) > 4 && Math.abs(point.pixelY - start.pixelY) > 4) {
+    const dragAction = getZoomDragAction(start, point)
+    if (dragAction === "reset") {
+      setZoomDomain(null)
+    } else if (dragAction === "zoom") {
       setZoomDomain({
         x: [Math.min(start.x, point.x), Math.max(start.x, point.x)],
         y: [Math.min(start.y, point.y), Math.max(start.y, point.y)],
@@ -666,7 +670,8 @@ export function IdentityChartDialog({
             </span>
           </DialogDescription>
           <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
-            마우스 오버: 상세정보 · 좌클릭 드래그: 영역 확대 · 더블클릭: 확대 초기화 ·
+            마우스 오버: 상세정보 · 좌측 상단→우측 하단 드래그: 영역 확대 ·
+            우측 하단→좌측 상단 드래그 또는 더블클릭: 확대 초기화 ·
             기준선 긋기 후 좌클릭 2회: 기준 구간 표시 · 우클릭: 기준선 삭제
           </p>
         </DialogHeader>
@@ -1251,7 +1256,10 @@ const ErdScatterCard = memo(function ErdScatterCard({
     if (!start) return
 
     const point = getZoomPoint(event)
-    if (point && Math.abs(point.pixelX - start.pixelX) > 4 && Math.abs(point.pixelY - start.pixelY) > 4) {
+    const dragAction = getZoomDragAction(start, point)
+    if (dragAction === "reset") {
+      setZoomDomain(null)
+    } else if (dragAction === "zoom") {
       setZoomDomain({
         x: [Math.min(start.x, point.x), Math.max(start.x, point.x)],
         y: [Math.min(start.y, point.y), Math.max(start.y, point.y)],
@@ -1293,7 +1301,7 @@ const ErdScatterCard = memo(function ErdScatterCard({
           <span className="flex items-center gap-1.5">
             <span className="w-4 border-t border-dashed border-green-600" /> 변경점 이력
           </span>
-          <span>드래그 확대 · 더블클릭 원복</span>
+          <span>↘ 드래그 확대 · ↖ 드래그/더블클릭 원복</span>
         </div>
       </header>
       <div

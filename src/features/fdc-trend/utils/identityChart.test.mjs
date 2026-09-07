@@ -5,6 +5,7 @@ import {
   buildRenderedScatterSeries,
   buildIdentityChartPoints,
   ERD_SCATTER_SERIES_DATA_KEYS,
+  getZoomDragAction,
   selectRenderedIdentityPoints,
 } from "./identityChart.mjs"
 
@@ -14,6 +15,21 @@ function createPoint(index, value = index) {
     value,
   }
 }
+
+test("우측 하단에서 좌측 상단으로 드래그하면 chart 확대를 초기화한다", () => {
+  assert.equal(
+    getZoomDragAction({ pixelX: 200, pixelY: 180 }, { pixelX: 80, pixelY: 40 }),
+    "reset",
+  )
+  assert.equal(
+    getZoomDragAction({ pixelX: 80, pixelY: 40 }, { pixelX: 200, pixelY: 180 }),
+    "zoom",
+  )
+  assert.equal(
+    getZoomDragAction({ pixelX: 80, pixelY: 40 }, { pixelX: 82, pixelY: 42 }),
+    "none",
+  )
+})
 
 test("단일 scatter의 이전·최근 series는 tooltip이 구분할 수 있는 dataKey를 사용한다", () => {
   const previousPoint = {
