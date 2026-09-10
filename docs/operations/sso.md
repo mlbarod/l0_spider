@@ -6,14 +6,14 @@
 
 | 파일 | 변경 이유 |
 |---|---|
-| `server/oidcService.mjs` | 템플릿에서 설정·로그인 요청·RS256 검증 부분을 이식. issuer 탐색/claim 출력 모드와 새 역할 체계는 제외 |
+| `server/oidcService.mjs` | 템플릿에서 설정·로그인 요청·RS256 검증 부분을 이식. issuer 탐색과 새 역할 체계는 제외. 검증된 claim의 키/자료형 진단 지원 |
 | `server/ssoAuth.mjs` | 전체 HTTP 인증 관문, 로그인 transaction·세션, 프록시/출처 검사, 로그인·콜백·로그아웃 |
 | `server.mjs` | API와 React 제공 전 인증 실행, 세션 상태 API, SSO에서는 정적 React 제공 |
 | `server/currentUser.mjs` | `{ ok: true, knoxId }` 응답 유지, SSO 세션 사용자 우선 |
 | `server/notices.mjs` | 기존 공지 관리자 목록/작성자에 SSO Knox ID 연결 |
 | `server/hitHistory.mjs`, `server/clickedCategoryHistory.mjs`, `server/passHistory.mjs` | HIT·클릭·SKIP 이력의 실행자를 SSO 사용자로 연결 |
 | `server/myEqpRegistration.mjs`, `server/selfEquipmentData.mjs` | My EQP 조회·소유 여부·기본 등록 사용자 연결 |
-| `src/components/common/SsoSession.jsx`, `src/features/fdc-trend/components/FdcTrendShell.jsx` | 로그아웃 버튼, 초기/60초/창 복귀 시 세션 확인 및 만료 로그인 이동 |
+| `src/components/common/SsoSession.jsx`, `src/features/fdc-trend/components/FdcTrendShell.jsx` | 우측 상단 이름·사용자 정보 메뉴, 로그아웃, 초기/60초/창 복귀 시 세션 확인 및 만료 로그인 이동 |
 | `vite.config.mjs` | SSO 활성화 시 인증 없는 Vite 단독 개발 서버 시작 차단 |
 | `server/ssoAuth.test.mjs`, `server/ssoServer.test.mjs` | 합성 RSA 토큰을 이용한 인증·권한·만료·위조 방어 검증 |
 | `.env.sso.example`, 이 문서, `README.md`, `docs/operations/runbook.md` | 설정 예시, 운영자가 실행할 배포·복구 절차 |
@@ -29,7 +29,7 @@
 3. 로그인에서 무작위 state·nonce·correlation을 만든다. 서버에는 state/correlation의 HMAC을 저장한다. IdP에 `response_type=code id_token`, `response_mode=form_post`, `scope=openid profile`을 요청한다.
 4. IdP가 `POST /auth/callback`으로 응답한다. 일회성 state·correlation, RS256 서명, issuer, audience/azp, exp/nbf/iat, nonce, c_hash를 검증한다.
 5. `SSO_USER_ID_CLAIM`에 설정한 claim의 값을 기존 Knox ID로 사용한다. 앞뒤 공백만 제거하며 대소문자는 보존한다. 이메일의 앞부분·subject·IP에서 ID를 추정하지 않는다. 관리자는 기존 DB의 Knox ID와 **정확히 같은 값**을 발급하도록 claim을 설정해야 한다.
-6. 무작위 세션 쿠키를 발급하고 원래 서비스 내부 경로로 돌아간다. 서버에는 토큰 HMAC·Knox ID·만료만 보관하며 ID Token/code는 저장하지 않는다. 재로그인 시 이전 세션을 폐기한다.
+6. 무작위 세션 쿠키를 발급하고 원래 서비스 내부 경로로 돌아간다. 서버에는 토큰 HMAC·Knox ID·이름·부서·만료를 보관하며 ID Token/code는 저장하지 않는다. 재로그인 시 이전 세션을 폐기한다.
 7. 이후 React/static과 모든 API에서 서버 세션을 검사한다. 공지 권한은 기존 `NOTICE_ADMIN_KNOX_IDS`/`NOTICE_ADMIN_KNOX_ID`를 그대로 사용한다. My EQP와 Mailing의 타 사용자 수신인 지정 기능은 기존 계약을 유지한다. 새 DB 사용자/권한을 자동 생성하지 않는다. 기존 IP 승인 조회를 SSO 신원으로 대체하므로 서비스 이용 대상은 SSO 관리자 측 앱 할당 정책도 확인해야 한다.
 8. 로그아웃 버튼은 동일 출처 `POST /auth/logout`을 보낸다. 로컬 세션 폐기 후 설정한 IdP 로그아웃 URL로 이동한다. `/auth/logged-out`은 재로그인을 자동 시작하지 않는 완료 화면이다. 단순 완료 화면 GET은 세션을 폐기하지 않는다.
 
@@ -45,7 +45,10 @@
 | `SSO_AUTHORIZE_URL` | 필수 | 관리자 제공 HTTPS 인증 엔드포인트 |
 | `SSO_SIGNOUT_URL` | 필수 | 관리자 제공 HTTPS 로그아웃 URL 전체. 복귀 주소 query도 관리자가 확인한 방식으로 포함 |
 | `SSO_EXPECTED_ISSUER` | 필수 | 실제 ID Token의 issuer와 정확히 일치하는 문자열 |
-| `SSO_USER_ID_CLAIM` | 필수 | 기존 Knox ID를 담은 claim의 정확한 이름 |
+| `SSO_USER_ID_CLAIM` | 일반 로그인 필수 | 기존 Knox ID를 담은 claim의 정확한 이름. 진단 모드에서는 비워 둘 수 있음 |
+| `SSO_DISPLAY_NAME_CLAIM` | 이름 표시에 필요 | 사용자 이름을 담은 claim 키 |
+| `SSO_DEPARTMENT_CLAIM` | 부서 표시에 필요 | 소속부서를 담은 claim 키 |
+| `SSO_SAFE_CLAIM_TRACE` | 기본 false | true이면 검증 후 claim 키/자료형만 서버 로그에 출력, 세션 생성 없이 503 반환 |
 | `SSO_CERTIFICATE_PATH` | 필수 | IdP Token Signing X.509 공개 인증서 파일. Nginx TLS 인증서가 아님 |
 | `SSO_SESSION_SECRET` | 필수 | 최소 32바이트, 암호학적으로 무작위 생성. Git/브라우저/로그에 출력 금지 |
 | `SSO_TRUSTED_PROXY_IPS` | 필수 | Node socket에서 보이는 Nginx의 정확한 IP를 쉼표로 지정. 같은 호스트일 때만 `127.0.0.1,::1` |
@@ -68,6 +71,28 @@ proxy_set_header X-Forwarded-Proto $scheme;
 ```
 
 Nginx가 React 파일을 직접 제공하거나 proxy cache에서 제공하면 Node 인증을 거치지 않으므로 배포 전 조정이 필요하다. callback POST 본문을 access/error 로그에 기록하지 않는다. IdP 공개 인증서는 실제 발급 출처를 확인하고 서버가 읽을 수 있게 배치한다. 인증서 교체 때 경로의 새 인증서를 반영 후 Node를 재시작한다.
+
+### 사용자 이름·부서 표시와 claim 키 확인
+
+[Quality-Hub의 사용자 프로필 구조](https://github.com/mlbarod/Quality-Hub/tree/d1220c527229402fae271376db2d854135e49abb)를 참고했다. 해당 저장소도 실제 운영 claim 키는 환경설정으로 받으며 예시 파일의 키는 비어 있다. `USER ID`, `USER NAME`, `DEP NAME`은 **화면 라벨**이며 실제 token의 키 이름이라고 가정하면 안 된다.
+
+| 화면 항목 | 환경변수로 지정하는 claim 키 | 서버 세션 | `/api/auth/session` 응답 |
+|---|---|---|---|
+| USER ID | `SSO_USER_ID_CLAIM` | `knoxId` | `user.userId` |
+| USER NAME | `SSO_DISPLAY_NAME_CLAIM` | `displayName` | `user.displayName` |
+| DEP NAME | `SSO_DEPARTMENT_CLAIM` | `department` | `user.department` |
+
+SSO 인증 후 기존 경로로 복귀하면 우측 상단에 이름이 표시되고, 클릭하면 세 항목과 로그아웃 메뉴가 열린다. 외부 SSO 세션이 유효할 때 추가 로그인 화면을 생략하는지는 IdP 정책에 달려 있다. 이름이 없으면 Knox ID를 버튼에 표시한다. 이름·부서의 claim 미설정/누락/잘못된 자료형/최대길이 초과는 빈값으로 처리하고 메뉴에 `미제공`을 표시한다. 이름 최대 100자, 부서 최대 200자이며 앞뒤 공백만 제거한다. 이 두 필드는 표시용이므로 기존 인증/권한 판정을 바꾸지 않는다. `/api/current-user`의 `{ ok: true, knoxId }` 계약도 유지한다.
+
+실제 키를 모르면 관리자에게 확인하거나 별도 검증 환경에서 다음 절차를 수행한다.
+
+1. 기존 issuer·client·인증서·HTTPS proxy 설정을 준비한다. `SSO_ENABLED=true`, `SSO_SAFE_CLAIM_TRACE=true`로 실행한다. **issuer 검증은 그대로 필수**이므로 issuer까지 모르면 먼저 관리자에게 확인한다.
+2. 검증 계정으로 로그인한다. 검증된 callback은 `SSO_CLAIM_TRACE` 503 안내를 반환하며 세션을 생성하지 않는다. 서버 로그의 `SSO safe claim trace`에서 `claimTypes`의 키/자료형만 확인한다. 원본 token, code, claim 값, issuer 값은 출력하지 않는다.
+3. 출력된 키 중 어떤 것이 Knox ID·이름·부서인지는 관리자와 확인하여 세 환경변수에 각각 입력한다. `name`이나 `department`를 실제 키로 추정하여 넣지 않는다. claim 키가 URI 형태라면 전체 URI를 그대로 넣는다.
+4. `SSO_SAFE_CLAIM_TRACE=false`로 바꾸고 Node를 재시작한 뒤 다시 로그인한다. 진단 모드를 true로 유지하면 서비스를 사용할 수 없다.
+5. 우측 상단 이름과 펼친 세 항목을 확인한다. 실제 SSO claim과 화면 표시의 일치는 **수동 확인 필요**다. 실제 개인정보나 token을 공유하지 않는다.
+
+`SSO_ENABLED=false`이면 진단과 SSO 사용자 메뉴 모두 비활성화된다. 설정 변경은 재시작 및 재로그인 후 반영된다. 사용자 프로필 API 응답은 `no-store`이며 token·전체 claim은 브라우저로 보내지 않는다.
 
 ## 4. SSO 관리자 등록 항목
 
@@ -144,6 +169,8 @@ curl --silent --show-error --output /dev/null --write-out '%{http_code}\n' 'http
 - 변경 대상 ESLint 및 `git diff --check` 통과. `npm run build` 통과(큰 bundle 경고 있음).
 - 독립 인증 검수 1회 PASS. 검수 도구 제약으로 전달한 인증 코드·연결부·검증 결과를 기준으로 검토했으며, 검수자가 실제 파일의 최종 diff를 대조하지는 못했다.
 - 실제 SSO/운영 DB, 실제 HTTPS 브라우저 로그인·로그아웃은 미검증이다.
+
+사용자 프로필 추가 검증: 합성 claim 매핑·세션 응답·진단 모드의 개인정보 미출력/세션 미생성 테스트와 실제 Node 세션 API 연동 테스트 통과. 브라우저에서 이름·세 항목 표시, 공지 버튼과 겹침 없음, Escape/초점 복원, 키보드 POST 로그아웃, 모바일, 누락 정보·HTML 문자 처리, SSO false 메뉴 숨김을 확인했다. 실제 IdP claim 매핑과 추가 입력 없는 자동 로그인 여부는 별도 수동 확인이 필요하다.
 
 **수동 확인 필요:**
 

@@ -67,7 +67,10 @@ export function loadOidcConfig(environment = process.env) {
   }
 
   const expectedIssuer = text(environment, "SSO_EXPECTED_ISSUER", { required: true })
-  const userIdClaim = text(environment, "SSO_USER_ID_CLAIM", { required: true })
+  const safeClaimTrace = boolean(environment, "SSO_SAFE_CLAIM_TRACE", false)
+  const userIdClaim = text(environment, "SSO_USER_ID_CLAIM", { required: !safeClaimTrace })
+  const displayNameClaim = text(environment, "SSO_DISPLAY_NAME_CLAIM")
+  const departmentClaim = text(environment, "SSO_DEPARTMENT_CLAIM")
   const callback = new URL(redirectUri)
   if (callback.pathname !== "/auth/callback" || callback.search) {
     throw new Error("SSO_REDIRECT_URI 경로는 /auth/callback이어야 합니다.")
@@ -91,6 +94,9 @@ export function loadOidcConfig(environment = process.env) {
     sessionSecret,
     expectedIssuer,
     userIdClaim,
+    displayNameClaim,
+    departmentClaim,
+    safeClaimTrace,
     trustedProxies,
     loginTransactionSeconds: positiveInteger(environment, "SSO_LOGIN_TRANSACTION_SECONDS", DEFAULT_LOGIN_TRANSACTION_SECONDS, { max: 900 }),
     idleSeconds: positiveInteger(environment, "SSO_SESSION_IDLE_SECONDS", DEFAULT_IDLE_SECONDS),
@@ -207,7 +213,21 @@ export function mapIdentityClaims(claims, config) {
   if (typeof value !== "string" || !/^[A-Za-z0-9._-]{1,128}$/.test(value.trim())) {
     throw new Error("SSO_USER_ID_CLAIM은 기존 Knox ID여야 합니다.")
   }
-  return { knoxId: value.trim() }
+  const profileClaim = (name, maxLength) => {
+    const text = name ? claims[name] : undefined
+    return typeof text === "string" && text.trim().length <= maxLength ? text.trim() : ""
+  }
+  return {
+    knoxId: value.trim(),
+    displayName: profileClaim(config.displayNameClaim, 100),
+    department: profileClaim(config.departmentClaim, 200),
+  }
+}
+
+export function describeClaimsSafely(claims) {
+  return Object.fromEntries(Object.entries(claims).map(([key, value]) => [
+    key, Array.isArray(value) ? "array" : value === null ? "null" : typeof value,
+  ]))
 }
 
 export function normalizeReturnTo(value) {

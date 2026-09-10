@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { createHash, generateKeyPairSync, sign } from "node:crypto"
 import { Readable } from "node:stream"
 import test from "node:test"
-import { createSsoAuth } from "./ssoAuth.mjs"
+import { createSsoAuth, handleSsoSessionRequest } from "./ssoAuth.mjs"
 import { loadOidcConfig, mapIdentityClaims, normalizeReturnTo, verifyIdToken } from "./oidcService.mjs"
 import { getSsoCurrentUser, handleCurrentUserRequest, resolveRequestCurrentUser } from "./currentUser.mjs"
 import { handleNoticesRequest } from "./notices.mjs"
@@ -38,9 +38,9 @@ function response() {
     end(body = "") { this.body = body },
   }
 }
-function harness(overrides = {}) {
+function harness(overrides = {}, logger) {
   let time = initialTime
-  const auth = createSsoAuth({ config: { ...config, ...overrides }, publicKey, now: () => time })
+  const auth = createSsoAuth({ config: { ...config, ...overrides }, publicKey, now: () => time, logger })
   async function request(path, { method = "GET", cookie, body = "", headers = {}, peer = "127.0.0.1" } = {}) {
     const req = Readable.from(body ? [Buffer.from(body)] : [])
     Object.assign(req, { url: path, method, headers: { "x-forwarded-proto": "https", ...(cookie ? { cookie } : {}), ...headers }, socket: { remoteAddress: peer } })
@@ -98,7 +98,7 @@ test("서명, issuer/audience/azp, expiry/nbf/iat, nonce와 code hash 위조를 
 })
 
 test("Knox ID는 명시한 claim만 사용하며 이메일/subject fallback과 외부 returnTo를 거부한다", () => {
-  assert.deepEqual(mapIdentityClaims({ knox_id: " User.One " }, config), { knoxId: "User.One" })
+  assert.deepEqual(mapIdentityClaims({ knox_id: " User.One " }, config), { knoxId: "User.One", displayName: "", department: "" })
   for (const value of [undefined, "", "user@example.com", "DOMAIN\\user", ["user01"]]) {
     assert.throws(() => mapIdentityClaims({ sub: "user01", knox_id: value }, config))
   }
@@ -213,4 +213,46 @@ test("SSO 신원은 공지 관리자·작성자에 연결되며 IP 기반 관리
 test("SSO 비활성화는 기존 요청을 그대로 통과시킨다", async () => {
   const auth = createSsoAuth({ config: { enabled: false } })
   assert.equal(await auth.handle({}, response()), false)
+})
+
+
+test("프로필은 설정한 claim 키로 매핑하며 미설정/누락/잘못된 자료형은 빈 표시값이다", () => {
+  const profileConfig = { ...config, displayNameClaim: "full_name", departmentClaim: "org_name" }
+  const profile = mapIdentityClaims({ knox_id: "user01", full_name: " 홍길동 ", org_name: " 품질관리 ", role: "admin" }, profileConfig)
+  assert.deepEqual(profile, { knoxId: "user01", displayName: "홍길동", department: "품질관리" })
+  for (const invalid of [null, [], {}, 123, "x".repeat(201)]) {
+    assert.deepEqual(mapIdentityClaims({ knox_id: "user01", full_name: invalid, org_name: invalid }, profileConfig), { knoxId: "user01", displayName: "", department: "" })
+  }
+  const req = { method: "GET", auth: { ...profile, secret: "must-not-leak", role: "admin" } }
+  const res = response()
+  handleSsoSessionRequest(req, res, true)
+  assert.deepEqual(JSON.parse(res.body), { ok: true, enabled: true, user: { userId: "user01", displayName: "홍길동", department: "품질관리" } })
+  assert.equal(res.headers["cache-control"], "no-store")
+  const disabled = response()
+  handleSsoSessionRequest(req, disabled, false)
+  assert.deepEqual(JSON.parse(disabled.body), { ok: true, enabled: false })
+  const unauthenticated = response()
+  handleSsoSessionRequest({ method: "GET" }, unauthenticated, true)
+  assert.equal(unauthenticated.statusCode, 401)
+})
+
+test("claim 진단은 서명/issuer 검증 후 키와 자료형만 출력하고 세션을 만들지 않는다", async () => {
+  const traceConfig = loadOidcConfig({ ...environment, SSO_USER_ID_CLAIM: "", SSO_SAFE_CLAIM_TRACE: "true" })
+  assert.equal(traceConfig.safeClaimTrace, true)
+  assert.throws(() => loadOidcConfig({ ...environment, SSO_EXPECTED_ISSUER: "", SSO_SAFE_CLAIM_TRACE: "true" }))
+  const logged = []
+  const h = harness(traceConfig, { info: (...args) => logged.push(args) })
+  const start = await h.begin()
+  const { res } = await h.finish(start)
+  assert.equal(res.statusCode, 503)
+  assert.equal(JSON.parse(res.body).code, "SSO_CLAIM_TRACE")
+  assert.equal(logged.length, 1)
+  assert.equal(logged[0][1].claimTypes.knox_id, "string")
+  assert.doesNotMatch(JSON.stringify(logged), /user01|synthetic-subject|synthetic-code|https:\/\/idp/)
+  assert.doesNotMatch(JSON.stringify(res.headers), /__Host-l0_spider_session=/)
+  assert.equal((await h.request("/api/auth/session")).res.statusCode, 401)
+  const invalid = await h.begin()
+  invalid.form.set("id_token", "broken")
+  assert.equal((await h.finish(invalid)).res.statusCode, 401)
+  assert.equal(logged.length, 1)
 })

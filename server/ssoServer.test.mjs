@@ -24,7 +24,8 @@ test("실제 Node 진입점의 전체 API/React 보호, 로그인, 사용자, �
     SSO_ENABLED: "true", SSO_CLIENT_ID: "synthetic-client", SSO_REDIRECT_URI: "https://spider.example/auth/callback",
     SSO_AUTHORIZE_URL: "https://idp.example/authorize", SSO_SIGNOUT_URL: "https://idp.example/logout",
     SSO_CERTIFICATE_PATH: certificate, SSO_SESSION_SECRET: "synthetic-not-a-real-secret-value-32-bytes",
-    SSO_EXPECTED_ISSUER: "https://idp.example", SSO_USER_ID_CLAIM: "knox_id", SSO_TRUSTED_PROXY_IPS: "127.0.0.1",
+    SSO_EXPECTED_ISSUER: "https://idp.example", SSO_USER_ID_CLAIM: "knox_id",
+    SSO_SAFE_CLAIM_TRACE: "false", SSO_DISPLAY_NAME_CLAIM: "full_name", SSO_DEPARTMENT_CLAIM: "org_name", SSO_TRUSTED_PROXY_IPS: "127.0.0.1",
   }
   async function start(overrides = {}) {
     const child = spawn(process.execPath, ["server.mjs"], { env: { ...environment, ...overrides }, stdio: ["ignore", "pipe", "pipe"] })
@@ -66,7 +67,7 @@ test("실제 Node 진입점의 전체 API/React 보호, 로그인, 사용자, �
   const correlation = login.headers.getSetCookie()[0].split(";")[0]
   const current = Math.floor(Date.now() / 1000)
   const code = "synthetic-code"
-  const claims = { iss: "https://idp.example", sub: "synthetic-user", aud: "synthetic-client", iat: current, exp: current + 3600, nonce, knox_id: "user01", c_hash: createHash("sha256").update(code).digest().subarray(0, 16).toString("base64url") }
+  const claims = { iss: "https://idp.example", sub: "synthetic-user", aud: "synthetic-client", iat: current, exp: current + 3600, nonce, knox_id: "user01", full_name: "홍길동", org_name: "품질관리", c_hash: createHash("sha256").update(code).digest().subarray(0, 16).toString("base64url") }
   const signingInput = [{ alg: "RS256" }, claims].map(value => Buffer.from(JSON.stringify(value)).toString("base64url")).join(".")
   const idToken = `${signingInput}.${sign("RSA-SHA256", Buffer.from(signingInput), privateKey).toString("base64url")}`
   const callback = await request("/auth/callback", { method: "POST", headers: { cookie: correlation, "content-type": "application/x-www-form-urlencoded", origin: "https://idp.example" }, body: new URLSearchParams({ state: authorize.searchParams.get("state"), code, id_token: idToken }) })
@@ -76,6 +77,7 @@ test("실제 Node 진입점의 전체 API/React 보호, 로그인, 사용자, �
   const user = await request("/api/current-user", { headers: { cookie } })
   assert.equal(user.status, 200)
   assert.deepEqual(await user.json(), { ok: true, knoxId: "user01" })
+  assert.deepEqual(await (await request("/api/auth/session", { headers: { cookie } })).json(), { ok: true, enabled: true, user: { userId: "user01", displayName: "홍길동", department: "품질관리" } })
   const html = await request("/", { headers: { cookie } })
   assert.equal(html.status, 200)
   assert.equal(html.headers.get("cache-control"), "private, no-store")

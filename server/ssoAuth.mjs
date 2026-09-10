@@ -1,4 +1,4 @@
-import { createOidcLoginRequest, hashOpaqueToken, loadCertificatePublicKey, loadOidcConfig, mapIdentityClaims, normalizeReturnTo, verifyIdToken, randomOpaqueToken } from "./oidcService.mjs"
+import { describeClaimsSafely, createOidcLoginRequest, hashOpaqueToken, loadCertificatePublicKey, loadOidcConfig, mapIdentityClaims, normalizeReturnTo, verifyIdToken, randomOpaqueToken } from "./oidcService.mjs"
 
 const SESSION_COOKIE = "__Host-l0_spider_session"
 const CORRELATION_COOKIE = "__Secure-l0_spider_oidc"
@@ -60,7 +60,7 @@ async function readForm(req) {
 
 // Single-process, bounded server-side storage. A restart revokes all sessions.
 // No application DB/schema changes or browser-stored identity/token are needed.
-export function createSsoAuth({ config = loadOidcConfig(), publicKey, now = Date.now } = {}) {
+export function createSsoAuth({ config = loadOidcConfig(), publicKey, now = Date.now, logger = console } = {}) {
   if (!config.enabled) return { enabled: false, async handle() { return false } }
   const key = publicKey ?? loadCertificatePublicKey(config.certificatePath)
   if (key.asymmetricKeyType !== "rsa" || key.asymmetricKeyDetails?.modulusLength < 2048) {
@@ -149,6 +149,10 @@ export function createSsoAuth({ config = loadOidcConfig(), publicKey, now = Date
             clockToleranceSeconds: config.clockToleranceSeconds,
             nowSeconds: Math.floor(callbackTime / 1000),
           })
+          if (config.safeClaimTrace) {
+            logger.info("SSO safe claim trace", { claimTypes: describeClaimsSafely(claims) })
+            return json(res, 503, "SSO_CLAIM_TRACE", "Claim 확인 모드입니다. 서버 로그의 키와 자료형을 확인한 뒤 매핑을 설정하고 SSO_SAFE_CLAIM_TRACE=false로 재시작하세요.")
+          }
           const identity = Object.freeze(mapIdentityClaims(claims, config))
           const expiresAt = Math.min(claims.exp * 1000, callbackTime + config.absoluteSeconds * 1000)
           if (expiresAt <= callbackTime) throw new Error("Expired token")
@@ -196,6 +200,15 @@ export function createSsoAuth({ config = loadOidcConfig(), publicKey, now = Date
 
 export function handleSsoSessionRequest(req, res, enabled) {
   if (req.method !== "GET") return json(res, 405, "METHOD_NOT_ALLOWED", "GET 요청만 허용됩니다.")
+  if (enabled && !req.auth?.knoxId) return json(res, 401, "SSO_AUTHENTICATION_REQUIRED", "SSO 로그인이 필요합니다.")
   res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" })
-  res.end(JSON.stringify({ ok: true, enabled }))
+  res.end(JSON.stringify({
+    ok: true,
+    enabled,
+    ...(enabled ? { user: {
+      userId: req.auth.knoxId,
+      displayName: req.auth.displayName ?? "",
+      department: req.auth.department ?? "",
+    } } : {}),
+  }))
 }
