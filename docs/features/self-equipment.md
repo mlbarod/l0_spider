@@ -450,3 +450,11 @@ mock 구현을 이유로 `main`의 route·query·API 계약을 바꾸지 않는�
 
 이 문서는 검증 기준 코드 commit `99c4361`의 Self Equipment As-Is 기능을 설명하며 실제 운영 데이터 내용은 조사하지 않았다.
 route, query parameter, API 또는 데이터 경로가 바뀌면 관련 링크와 사용자 메뉴얼을 함께 검토하고 [step-deeplink.md](step-deeplink.md)의 STEP 딥링크·HMAC 상세 기준을 함께 갱신한다.
+
+### 이상감지 심각도 필터
+
+ch_step까지 선택하면 Scatter chart 제목 오른쪽에 CRITICAL·WARNING 버튼이 표시됩니다.
+CRITICAL은 경로 데이터의 `status=ALARM`, WARNING은 `status=WARN` 차트만 표시합니다.
+초기에는 전체를 표시하며 선택한 버튼을 다시 누르면 전체 보기로 돌아갑니다.
+필터는 EQP별 묶음·대표 ch_step·페이지 계산 전에 적용되고, 전환 시 첫 페이지로 이동합니다.
+My EQP에도 적용하며, 상태 컬럼이 없는 SKIP LIST에는 버튼을 표시하지 않습니다.

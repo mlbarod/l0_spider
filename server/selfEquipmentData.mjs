@@ -27,6 +27,7 @@ export const TEAM_ERD_COLUMNS = Object.freeze([
   "eqp",
   "file_path",
   "line_rev",
+  "status",
 ])
 
 const ERD_FILE_ROOT = "/appdata/abnormal_trend/pic/erd"
