@@ -2,7 +2,7 @@ import { spawn } from "node:child_process"
 import { relative, resolve, sep } from "node:path"
 import { fileURLToPath, URL } from "node:url"
 
-import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
+import { getRemoteIp, resolveRequestCurrentUser } from "./currentUser.mjs"
 import { commonCommonalityRootPath } from "./latestCommonCommonalityPath.mjs"
 import { parsePassHistoryPath } from "./passHistory.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
@@ -186,11 +186,11 @@ export async function handleClickedCategoryHistoryRequest(req, res) {
   }
   try {
     const remoteIp = getRemoteIp(req)
-    if (!remoteIp) {
+    if (!req.ssoRequired && !remoteIp) {
       sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
       return
     }
-    const [body, currentUser] = await Promise.all([readJsonBody(req), resolveCurrentUser(remoteIp)])
+    const [body, currentUser] = await Promise.all([readJsonBody(req), resolveRequestCurrentUser(req)])
     const record = buildClickedCategoryHistoryRecord({ ...body, knoxId: currentUser.knoxId })
     const result = await runHelper(record)
     if (Number(result.affectedRows) < 1) {

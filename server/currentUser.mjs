@@ -30,6 +30,19 @@ export function getRemoteIp(req) {
   )
 }
 
+// req.auth is assigned only by the server-side SSO guard, never from headers/body.
+export function getSsoCurrentUser(req) {
+  if (!req.ssoRequired) return null
+  if (!req.auth?.knoxId) throw new Error("SSO 로그인이 필요합니다.")
+  return { ok: true, knoxId: req.auth.knoxId }
+}
+
+export function resolveRequestCurrentUser(req) {
+  const authenticated = getSsoCurrentUser(req)
+  if (authenticated) return Promise.resolve(authenticated)
+  return resolveCurrentUser(getRemoteIp(req))
+}
+
 export function resolveCurrentUser(remoteIp) {
   const now = Date.now()
   userCache.forEach((entry, ip) => {
@@ -105,13 +118,13 @@ export async function handleCurrentUserRequest(req, res) {
   }
 
   const remoteIp = getRemoteIp(req)
-  if (!remoteIp) {
+  if (!req.ssoRequired && !remoteIp) {
     sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
     return
   }
 
   try {
-    const payload = await resolveCurrentUser(remoteIp)
+    const payload = await resolveRequestCurrentUser(req)
     sendJson(res, 200, payload)
   } catch (error) {
     const userNotFound = error.code === "USER_NOT_FOUND"
