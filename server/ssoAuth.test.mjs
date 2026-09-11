@@ -207,7 +207,7 @@ test("SSO 신원은 공지 관리자·작성자에 연결되며 IP 기반 관리
   }
   assert.throws(() => getSsoCurrentUser({ ssoRequired: true, headers: { "x-knox-id": "admin" } }))
   assert.throws(() => resolveRequestCurrentUser({ ssoRequired: true }))
-  assert.equal(getSsoCurrentUser({ auth: { knoxId: "forged" } }), null)
+  assert.throws(() => getSsoCurrentUser({ auth: { knoxId: "forged" } }))
 })
 
 test("SSO 비활성화는 기존 요청을 그대로 통과시킨다", async () => {

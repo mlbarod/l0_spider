@@ -116,7 +116,7 @@ flowchart LR
 | `DS-ABN-01` | directory·PNG | `erd_commonality/{latest_date}/.../{sensor}_{ch_step}/img.png` | Node | directory 읽기·stream | `Unknown` | `DF-ABN-01` | `Confirmed` | `commonalityData.mjs` — `collectCommonalityRows` |
 | `DS-ABN-02` | Parquet·PNG | `path_common/{line}/{sdwt}/df_path.parquet` → `common/.../data.parquet`, PNG | Node | 읽기·stream | `Unknown` | `DF-ABN-02` | `Confirmed` | `commonAnomalyData.mjs` |
 | `DS-ABN-03` | directory·PNG | `path_common_commonality/{latest_date}/{sdwt}/{eqp_model}/{grade}/{sensor}@{ch_step}/img.png` | Node | directory 읽기·stream | `Unknown` | `DF-ABN-03` | `Confirmed` | `commonCommonalityData.mjs` |
-| `DS-DB-USER` | DB | `v_ipms_ip_info`, `user_info` | Python | 읽기 | DB 관리 주체 `Unknown` | Self·등록·이력 | `Confirmed` | `scripts/current_user.py` |
+| `DS-DB-USER` (레거시) | DB | `v_ipms_ip_info`, `user_info` | Python | 읽기 | DB 관리 주체 `Unknown` | 현재 웹 요청은 SSO 세션으로 대체 | `Confirmed` | `scripts/current_user.py` |
 | `DS-DB-REF` | DB | `erdtsum_info` | Python | 읽기 | DB 관리 주체 `Unknown` | `DF-MAIL-01` MY EQP 기준 | `Confirmed` | `scripts/my_eqp_reference.py` |
 | `DS-DB-REG` | DB | `myeqp_regist`, `email` | Python | 읽기·쓰기; 일부 DDL | L0 Spider 쓰기, schema 책임 `Unknown` | `DF-SELF-03`, `DF-MAIL-01/02` | `Confirmed` | registration helper |
 | `DS-DB-HIST` | DB | `pass_history`, `hit_history`, `clicked_category_history` | Python | 읽기·쓰기 | L0 Spider 쓰기 | `DF-SELF-01/02`, `DF-ABN-01~03`, `DF-COMMON-01/02` | `Confirmed` | history helper |

@@ -111,7 +111,8 @@ Node는 파일에 직접 접근하고 DB는 `python3 -B` helper를 실행하며,
 | Dashboard detail·stats | Node | hyparquet 집계와 metadata cache | `dashboardData.mjs` | Unknown | Confirmed |
 | Self Equipment Parquet | Node | 허용 경로 변환, hyparquet와 LRU | `selfEquipmentData.mjs` | Unknown | Confirmed |
 | 동일성·공통부 데이터 | Node | 디렉터리 index, Parquet 조회와 PNG stream | `commonalityData.mjs`, `commonAnomalyData.mjs` | Unknown | Confirmed |
-| 사용자·기준정보 | Python helper | SELECT | `current_user.py`, `my_eqp_reference.py` | DB 관리 주체 Unknown | Confirmed |
+| 사용자 식별 | SSO 세션 | userid 조회 | `server/currentUser.mjs` | 검증된 SSO 세션 | Confirmed |
+| 기준정보 | Python helper | SELECT | `my_eqp_reference.py` | DB 관리 주체 Unknown | Confirmed |
 | 등록·이력 | Python helper | SELECT·INSERT·UPDATE·DELETE, 일부 runtime DDL | registration·history helper | L0 Spider 쓰기 | Confirmed |
 | 사용자 메뉴얼 | Vite·브라우저 | build resource import | `UserManualPage.jsx` | 저장소 문서 | Confirmed |
 

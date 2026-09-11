@@ -122,7 +122,7 @@ flowchart LR
 - 브라우저는 `/appdata/...` 파일을 직접 읽지 않고 반드시 Node API를 통합니다.
 - Node는 Parquet·JSON·이미지를 직접 읽지만, 업무 DB에는 직접 접속하지 않습니다.
 - Python helper만 `db_info.pkl`을 읽고 PyMySQL로 DB에 접속합니다.
-- `knox_id`가 필요한 이력 기능은 대부분 접속 IP를 DB 사용자 정보로 변환하여 사용합니다.
+- `knox_id`가 필요한 이력 기능은 검증된 SSO 세션의 userid를 사용합니다.
 
 ## 2. 실행 구조
 
@@ -313,14 +313,14 @@ flowchart LR
     PAGE["FdcTrendPage<br/>MY EQP 선택"]
     API["GET /api/my-eqp-equipment-data"]
     NODE["selfEquipmentData.mjs"]
-    IP["접속 IP → current_user.py"]
+    SSO["SSO 세션 userid"]
     REG[("myeqp_regist")]
     MAP["mapping_config.json"]
     PATHS["각 SDWT의 df_path.parquet"]
     SKIP[("pass_history")]
 
     PAGE --> API --> NODE
-    NODE --> IP
+    NODE --> SSO
     NODE --> REG
     NODE --> MAP
     NODE --> PATHS
@@ -332,7 +332,7 @@ flowchart LR
 - 연결된 여러 `df_path.parquet`를 읽고 등록 EQP만 남깁니다.
 - `pass_history`를 적용한 후 일반 자설비와 같은 필터 payload를 만듭니다.
 - MY EQP의 `EQP ALL SKIP` 대상 재조회도 이 전용 API를 사용합니다.
-- 현재 사용자 DB 조회가 실패하면 My EQP 등록 모듈은 예외적으로 정규화된 접속 IP를 사용자 식별값 fallback으로 사용합니다.
+- SSO 인증 정보가 없으면 My EQP 사용자 조회·저장은 401로 중단됩니다.
 
 ### 5.4 동일성 이상감지
 
@@ -440,7 +440,7 @@ flowchart LR
 | Endpoint | Method | 프런트 API / 사용 화면 | Node handler | 최종 데이터 |
 | --- | --- | --- | --- | --- |
 | `/api/dashboard-data` | GET, HEAD | `dashboardApi.js` / 메인 대시보드 | `dashboardData.mjs` | `path/{date time}`, `stats`, mapping JSON |
-| `/api/current-user` | GET | `currentUserApi.js` / 자설비·공통부·등록 | `currentUser.mjs` | `current_user.py` → `v_ipms_ip_info`, `user_info` |
+| `/api/current-user` | GET | `currentUserApi.js` / 자설비·공통부·등록 | `currentUser.mjs` | 검증된 SSO 세션 → userid |
 | `/api/mapping-config` | GET, HEAD | `mappingConfigApi.js` / 대부분의 필터 화면 | `mappingConfig.mjs` | `mapping_config.json` |
 | `/api/self-equipment-data` | GET | `selfEquipmentApi.js` / 일반 자설비 | `selfEquipmentData.mjs` | 자설비 `df_path.parquet` + `pass_history` |
 | `/api/my-eqp-equipment-data` | GET | `selfEquipmentApi.js` / MY EQP | `selfEquipmentData.mjs` | `myeqp_regist` + mapping + 여러 `df_path` + `pass_history` |
@@ -529,8 +529,8 @@ flowchart LR
 
 | 테이블 | 읽기/쓰기 | Python helper | API | 화면 및 목적 |
 | --- | --- | --- | --- | --- |
-| `v_ipms_ip_info` | SELECT | `current_user.py` | `/api/current-user` 및 내부 사용자 확인 | 접속 IP가 `STATUS='승인'`인지 확인 |
-| `user_info` | SELECT | `current_user.py` | 동일 | `SUB_USER_ID = knox_id` 조인 후 현재 `knox_id` 결정 |
+| `v_ipms_ip_info` | SELECT | `current_user.py` | 현재 웹 요청에서 사용하지 않는 레거시 helper | 접속 IP가 `STATUS='승인'`인지 확인 |
+| `user_info` | SELECT | `current_user.py` | 현재 웹 요청에서 사용하지 않는 레거시 helper | `SUB_USER_ID = knox_id` 조인 후 현재 `knox_id` 결정 |
 | `erdtsum_info` | SELECT DISTINCT | `my_eqp_reference.py` | `/api/my-eqp-reference` | My EQP 등록 후보: `main`, `disp_name`, `sdwt_prod`, `prc_group` |
 | `myeqp_regist` | SELECT, INSERT, DELETE, 조건부 ALTER | `my_eqp_registration.py` | `/api/my-eqp-registration`, 내부 MY EQP 조회 | 사용자별 EQP·기간·수신/열람 조건 |
 | `email` | SELECT, INSERT, UPDATE, DELETE | `mailing_registration.py` | `/api/mailing-registration` | Mailing 수신인의 SDWT·Grade 조건 |
@@ -578,32 +578,29 @@ App별 Line suffix, 실제 경로·`ALL`·MY EQP 저장값은 [data-reference의
 ```mermaid
 sequenceDiagram
     participant B as Browser
-    participant N as Node currentUser.mjs
-    participant P as current_user.py
-    participant D as DB
-
-    B->>N: API 요청
-    N->>N: x-forwarded-for → x-real-ip → socket IP
-    N->>P: REMOTE_ADDR 환경변수
-    P->>D: 승인 IP + user_info 조인
-    D-->>P: knox_id
-    P-->>N: JSON
-    N-->>B: 사용자 응답 또는 이력 작업 수행
+    participant S as Node SSO guard
+    participant N as currentUser.mjs
+    participant P as 업무 DB helper
+    B->>S: 세션 쿠키와 API 요청
+    S->>S: SSO 세션 및 접근 권한 검증
+    S->>N: req.auth.knoxId
+    N->>P: SSO userid로 조회·이력 저장
+    N-->>B: 사용자 응답 또는 작업 결과
 ```
 
-- 현재 사용자 성공 결과는 Node 메모리에 IP별 5분 캐시됩니다.
-- 프록시가 `x-forwarded-for`/`x-real-ip`를 신뢰 가능한 값으로 덮어쓰는 운영 구성이 필요합니다.
-- PASS, HIT, 클릭이력의 `knox_id`는 브라우저 요청값을 사용하지 않고 서버가 다시 결정합니다.
-- My EQP 등록은 접속 사용자를 기본값으로 쓰지만, UI가 전달한 복수 `knoxIds`도 등록 대상으로 허용합니다.
+- 현재 사용자 식별에는 IP 조회·캐시·IP 대체 저장을 사용하지 않습니다.
+- 인증 정보가 없으면 사용자 식별이 필요한 요청은 `401 SSO_AUTHENTICATION_REQUIRED`로 거부합니다.
+- PASS, HIT, 클릭이력의 `knox_id`는 브라우저 요청값 대신 검증된 SSO 세션에서 결정합니다.
+- My EQP 등록은 SSO 사용자를 기본값으로 쓰고, 기존 복수 `knoxIds` 수신인 지정도 허용합니다.
 - Mailing 등록은 요청으로 받은 `knoxId/knoxIds`를 형식 검증 후 사용합니다.
-- 일반 로그인 세션이나 JWT 기반 인증 계층은 현재 코드에 없습니다.
+- SSO 설정과 세션 정책은 [SSO 운영 문서](docs/operations/sso.md)를 따릅니다.
 
 ## 10. 캐시와 갱신
 
 | 위치 | 캐시 방식 | 만료/무효화 |
 | --- | --- | --- |
 | 프런트 `QueryClient` | 기본 `staleTime=60초`, window focus 재조회 비활성 | mutation 성공 시 관련 query key invalidate |
-| 현재 사용자 | IP별 메모리 cache + 동시 요청 Promise 공유 | 5분 |
+| 현재 사용자 | 검증된 SSO 세션 | SSO 세션 만료 정책 |
 | My EQP 기준정보 `erdtsum_info` | 서버 메모리 | 5분 |
 | 동일성 디렉터리 index | 최신경로+SDWT별 cache + 동시 탐색 공유 | 5분, 최신 폴더 변경 시 key 변경 |
 | 자설비/공통부 경로 Parquet | LRU 1개 | 파일 `mtimeMs`/size가 바뀌면 재조회 |
@@ -664,7 +661,7 @@ sequenceDiagram
 
 1. `server.mjs`와 `vite.config.mjs`가 API route를 각각 수동 등록하여 이미 기능 범위가 다릅니다.
 2. DB 비밀번호가 포함된 `db_info.pkl`은 저장소에 포함하거나 웹 정적 경로 아래에 두면 안 됩니다.
-3. IP 기반 사용자 확인은 프록시 헤더 신뢰 설정과 IP-사용자 일대일 매핑에 의존합니다.
+3. 사용자 식별 기능은 유효한 SSO 세션이 필요하며 SSO를 꺼도 IP 조회로 전환되지 않습니다.
 4. `myeqp_regist` helper가 런타임에 `ALTER TABLE`을 수행하므로 운영 DB 계정 권한과 배포 migration 정책을 확인해야 합니다.
 5. `pass_history`의 72시간 만료는 DB 정리가 아니라 조회 시 제외 규칙입니다. 테이블은 계속 증가할 수 있습니다.
 6. `SpiderFeaturePage.jsx`와 `fdcTrendMockData.js`에는 현재 운영 route에서 직접 쓰지 않는 prototype/mock 기능이 남아 있습니다.

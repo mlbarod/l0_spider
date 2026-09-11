@@ -2,7 +2,7 @@ import { spawn } from "node:child_process"
 import { isAbsolute, relative, resolve, sep } from "node:path"
 import { fileURLToPath, URL } from "node:url"
 
-import { getRemoteIp, resolveRequestCurrentUser } from "./currentUser.mjs"
+import { resolveRequestCurrentUser, sendSsoAuthenticationError } from "./currentUser.mjs"
 import { commonCommonalityRootPath } from "./latestCommonCommonalityPath.mjs"
 import { commonalityRootPath } from "./latestCommonalityPath.mjs"
 import { parsePassHistoryPath } from "./passHistory.mjs"
@@ -212,29 +212,23 @@ export function buildHitHistoryRecord({
   }
 }
 
-export async function handleHitHistoryRequest(req, res) {
+export async function handleHitHistoryRequest(req, res, { helper = runHitHistoryHelper } = {}) {
   if (req.method !== "POST") {
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
     return
   }
 
   try {
-    const remoteIp = getRemoteIp(req)
-    if (!req.ssoRequired && !remoteIp) {
-      sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
-      return
-    }
-    const [body, currentUser] = await Promise.all([
-      readJsonBody(req),
-      resolveRequestCurrentUser(req),
-    ])
+    const currentUser = await resolveRequestCurrentUser(req)
+    const body = await readJsonBody(req)
     const record = buildHitHistoryRecord({
       ...body,
       knoxId: currentUser.knoxId,
     })
-    const result = await runHitHistoryHelper(record)
+    const result = await helper(record)
     sendJson(res, 200, result)
-  } catch {
+  } catch (error) {
+    if (sendSsoAuthenticationError(error, res)) return
     sendJson(res, 500, createSafeApiError({
       code: "HIT_HISTORY_REQUEST_FAILED",
       message: "HIT 이력 요청을 처리하지 못했습니다.",

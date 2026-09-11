@@ -10,7 +10,7 @@
 | `server/ssoAuth.mjs` | 전체 HTTP 인증 관문, 로그인 transaction·세션, 프록시/출처 검사, 로그인·콜백·로그아웃 |
 | `server/accessControl.mjs`, `src/components/common/AccessManagement.jsx` | SSO 이후 접근 허용 검사, 최초 마스터 설정, 마스터·일반 접근 규칙 관리 |
 | `server.mjs` | API와 React 제공 전 인증 실행, 세션 상태 API, SSO에서는 정적 React 제공 |
-| `server/currentUser.mjs` | `{ ok: true, knoxId }` 응답 유지, SSO 세션 사용자 우선 |
+| `server/currentUser.mjs` | `{ ok: true, knoxId }` 응답 유지, SSO 세션 사용자만 사용 |
 | `server/notices.mjs` | 기존 공지 관리자 목록/작성자에 SSO Knox ID 연결 |
 | `server/hitHistory.mjs`, `server/clickedCategoryHistory.mjs`, `server/passHistory.mjs` | HIT·클릭·SKIP 이력의 실행자를 SSO 사용자로 연결 |
 | `server/myEqpRegistration.mjs`, `server/selfEquipmentData.mjs` | My EQP 조회·소유 여부·기본 등록 사용자 연결 |
@@ -19,7 +19,7 @@
 | `server/ssoAuth.test.mjs`, `server/ssoServer.test.mjs` | 합성 RSA 토큰을 이용한 인증·권한·만료·위조 방어 검증 |
 | `.env.sso.example`, 이 문서, `README.md`, `docs/operations/runbook.md` | 설정 예시, 운영자가 실행할 배포·복구 절차 |
 
-기존 Nginx/TLS 설정, 업무 DB/schema, Python 업무 처리, 공지 관리자 목록과 수신인 지정 계약은 유지한다. `SSO_ENABLED` 미설정/false이면 기존 IP 기반 동작이다. true에서 설정 오류는 시작 실패이며, 인증 실패를 IP 조회로 우회하지 않는다.
+기존 Nginx/TLS 설정, 업무 DB/schema, Python 업무 처리, 공지 관리자 목록과 수신인 지정 계약은 유지한다. `SSO_ENABLED` 미설정/false이면 SSO 보호는 비활성화되지만 사용자 식별이 필요한 기능은 401로 중단된다. IP 기반 사용자 조회 및 My EQP의 IP 대체 저장은 제거했다. true에서 설정 오류는 시작 실패이며, 인증 실패를 IP 조회로 우회하지 않는다.
 
 **배포 전 확인:** 이 구현은 단일 Node 프로세스용이다. 템플릿의 MySQL 세션 저장소 대신 크기가 제한된 서버 메모리를 사용한다. 프로세스 재시작·Secret 교체 후 재시작 시 모든 사용자가 재로그인한다. PM2 cluster, 여러 컨테이너, 여러 Node 인스턴스에는 현재 버전을 활성화하지 않는다. 해당 환경이면 공유 세션 저장소 구현이 선행되어야 한다. 운영 프로세스 수는 아직 확인되지 않았다.
 
@@ -40,7 +40,7 @@
 
 | 변수 | 필수/기본값 | 설정 내용 |
 |---|---|---|
-| `SSO_ENABLED` | 기본 false | 준비 완료 후 true, 복구 시 false |
+| `SSO_ENABLED` | 기본 false | 사용자 식별 기능 이용 시 true 필수 |
 | `SSO_CLIENT_ID` | true일 때 필수 | SSO 등록 앱 ID |
 | `SSO_REDIRECT_URI` | 필수 | 실제 공개 HTTPS origin + `/auth/callback`, query/fragment 금지 |
 | `SSO_AUTHORIZE_URL` | 필수 | 관리자 제공 HTTPS 인증 엔드포인트 |
@@ -59,7 +59,7 @@
 | `SSO_CLOCK_TOLERANCE_SECONDS` | 60초 | token 시간 검증 허용 오차, 최대 300초. 만료된 token으로 세션 생성은 불가 |
 | `SSO_MAX_SESSIONS` | 10000 | 세션/대기 로그인 각각의 저장 한도. 초과 시 신규 로그인 503 |
 | `LIVE_RELOAD` | SSO에서 0 | 1이면 시작 거부. 미설정이어도 SSO는 정적 모드 |
-| `BUILD_ON_START` | 운영 권장 0 | 사전 `npm run build` 필요 |
+| `BUILD_ON_START` | 기본 1 | 서버 시작 전 `npm run build` 자동 실행. 0이면 사전 빌드 필요 |
 | `SSO_BOOTSTRAP_MASTER_USER_IDS` | 최초 권한 파일 생성 시 필수 | 쉼표로 구분한 Knox 유저ID. 파일 생성 후에는 재적용하지 않음 |
 | `SSO_ACCESS_CONTROL_FILE` | 기본 `프로젝트/.local/sso-access.json` | 권한 영속 파일. 배포 폴더 밖의 쓰기 가능한 절대 경로 권장 |
 
@@ -135,7 +135,7 @@ node --test server/ssoAuth.test.mjs server/accessControl.test.mjs
 # node --test server/ssoServer.test.mjs
 ```
 
-5. 환경파일의 `SSO_ENABLED=true`, `LIVE_RELOAD=0`, `BUILD_ON_START=0`을 설정한다. 최초 배포에는 `SSO_BOOTSTRAP_MASTER_USER_IDS`에 실제 최초 마스터 ID를 지정하고, `SSO_ACCESS_CONTROL_FILE`에는 실행 계정이 읽고 쓸 수 있는 영속 파일 경로를 지정한다. 초기에는 마스터만 접근할 수 있으므로 마스터 로그인 후 일반 접근 규칙을 등록한다. 파일은 실행 계정만 읽게 한다. systemd 사용이 확인된 경우 기존 unit drop-in의 `[Service]`에 `EnvironmentFile=<secret-env-file>`을 추가한다. 기존 `WorkingDirectory`, `ExecStart`, HOST/PORT, Python/DB 설정은 유지한다. 실제 SSO 설정을 출력하지 않는 사전 검사(아래 명령은 권한 파일을 생성하지 않으며, 권한 파일 검사는 실제 서버 시작 시 수행):
+5. 환경파일의 `SSO_ENABLED=true`, `LIVE_RELOAD=0`, `BUILD_ON_START=1`을 설정한다. 최초 배포에는 `SSO_BOOTSTRAP_MASTER_USER_IDS`에 실제 최초 마스터 ID를 지정하고, `SSO_ACCESS_CONTROL_FILE`에는 실행 계정이 읽고 쓸 수 있는 영속 파일 경로를 지정한다. 초기에는 마스터만 접근할 수 있으므로 마스터 로그인 후 일반 접근 규칙을 등록한다. 파일은 실행 계정만 읽게 한다. systemd 사용이 확인된 경우 기존 unit drop-in의 `[Service]`에 `EnvironmentFile=<secret-env-file>`을 추가한다. 기존 `WorkingDirectory`, `ExecStart`, HOST/PORT, Python/DB 설정은 유지한다. 실제 SSO 설정을 출력하지 않는 사전 검사(아래 명령은 권한 파일을 생성하지 않으며, 권한 파일 검사는 실제 서버 시작 시 수행):
 
 ```bash
 cd <deployment-checkout>
@@ -152,6 +152,12 @@ systemctl is-active <unit-name>
 ```
 
 systemd가 아니면 기존 manager의 환경 주입/재시작 절차를 사용한다. 기존 서비스와 별도 `npm start`를 중복 실행하지 않는다. 수동 실행 방식인 경우 기존 프로세스를 기존 절차로 정지한 후 `node --env-file='<secret-env-file>' server.mjs`로 실행한다.
+
+수동 실행에서 `.env.sso`의 `BUILD_ON_START=1`을 설정하면 아래 명령만으로 빌드 후 서버가 시작된다. 이전 설정 파일에 `BUILD_ON_START=0`이 남아 있다면 1로 변경한다. 빌드 실패 시 서버는 시작하지 않는다. `LIVE_RELOAD=0`은 유지하며, 소스 수정 후에는 같은 명령으로 재시작한다.
+
+```bash
+PORT=<운영포트> node --env-file=.env.sso server.mjs
+```
 
 6. 비로그인 점검은 쿠키 없이 HTTP 상태만 확인한다. 정상 기대값은 화면 303, API 401이다.
 
@@ -189,16 +195,7 @@ curl --silent --show-error --output /dev/null --write-out '%{http_code}\n' 'http
 
 ## 7. Rollback
 
-빠른 복구는 활성 환경 주입 위치에서 **`SSO_ENABLED=false`**로 바꾼 뒤 기존 Node 서비스를 재시작한다. true 값을 다른 process 환경에 남겨 두지 않는다. 이때 기존 IP 사용자 조회가 복원되고 SSO 보호는 해제되지만 HTTPS는 계속 Nginx에서 처리한다. 유지 중인 `LIVE_RELOAD=0`과 `dist`로 기존 기능을 제공할 수 있다.
-
-```bash
-# 환경파일/Secret을 편집하여 SSO_ENABLED=false 설정 후
-sudo systemctl restart <unit-name>
-systemctl is-active <unit-name>
-curl --silent --show-error --output /dev/null --write-out '%{http_code}\n' 'https://<public-host>/'
-```
-
-정상 기대는 기존 화면 응답과 기존 IP 기반 `/api/current-user` 동작이다. 후자는 기존 사용자 조회 DB 접근이 필요하다. 비정상일 때 반복 restart하지 말고 활성 환경과 이전 release로 확인한다.
+`SSO_ENABLED=false`만으로 IP 기반 사용자 기능을 복원할 수 없다. 현재 버전에서는 `/api/current-user`, SKIP 등록·해제, HIT·클릭 이력 저장, My EQP와 공지 관리가 SSO userid를 요구한다. SSO를 끄면 이 기능은 401로 중단된다. IP 기반 동작으로 복구해야 한다면 아래의 이전 release 재배포 절차를 사용한다.
 
 소스 자체 복구가 필요하면 보관한 **SSO 적용 전 release + 그 release의 dist/환경**을 기존 배포 절차로 재배포하고 재시작한다. 사용자 변경을 지우는 `git reset --hard`/강제 push는 사용하지 않는다. 이전 `LIVE_RELOAD`/`BUILD_ON_START` 값 복원이 필요하면 기록한 값으로 되돌린다. DB 변경이 없어 migration rollback은 없다. Nginx/TLS는 그대로 유지하며, 이번 배포에서 별도 프록시 조정을 했다면 HTTPS가 완료된 직전 구성으로만 복구한다.
 
@@ -210,4 +207,4 @@ curl --silent --show-error --output /dev/null --write-out '%{http_code}\n' 'http
 - 권한 파일은 단일 Node 프로세스에서 읽고 원자적으로 교체하며 재시작 후 유지된다. 실행 계정만 읽고 쓸 수 있게 생성한다. 파일과 상위 디렉터리의 쓰기 권한을 유지하고, 운영자는 파일을 백업·복구 대상에 포함한다. 재배포 시 파일을 삭제하거나 초기화하지 않는다. 저장소가 손상되면 시작을 거부하며, 실행 중 읽기 오류는 `503 ACCESS_STORE_UNAVAILABLE`로 차단한다. 복구는 보관한 정상 권한 파일을 기존 운영 절차로 복원한다.
 - `GET /api/access-control`은 마스터에게만 `{ok, masters, rules}`를 제공한다. 같은 경로의 `POST`/`DELETE`는 `{target:"master", userId}`로 계정을 추가·회수한다. `POST`/`PATCH`는 `{target:"rule", field:"user_id"|"department", matchType:"exact"|"contains", matchValue, ruleId?}`로 규칙을 저장한다. 수정에는 `ruleId`가 필수이며 `DELETE`는 `{target:"rule", ruleId}`다. 변경 응답은 `{ok:true}`이며 출처 검사와 변경 직전 마스터 재검사를 수행한다.
 - `GET /api/auth/session`은 접근 허용 사용자에게 기존 응답과 함께 `role`을 제공한다. 권한이 없으면 모든 업무 API는 `403 ACCESS_DENIED`, 화면은 접근 거부 안내를 제공한다. 일반 유저의 관리 API 요청은 `403 MASTER_REQUIRED`다. 이미 로그인한 사용자의 권한도 요청마다 확인하므로 회수 후 다음 요청부터 반영된다. 이미 브라우저에 전달된 데이터까지 회수하지는 않는다. 열린 화면은 60초 주기·창 복귀 시 세션 확인으로 접근 거부 안내로 이동한다. 차단된 사용자도 로그아웃할 수 있다.
-- `SSO_ENABLED=false`일 때는 기존 동작을 유지하며 권한 파일을 생성하지 않고 관리 API는 `404`로 닫힌다. SSO를 끄면 이 접근 제한도 비활성화되므로 운영에서 권한 회수 수단으로 사용하지 않는다.
+- `SSO_ENABLED=false`일 때는 사용자 식별 기능이 401로 중단되며 권한 파일을 생성하지 않고 관리 API는 `404`로 닫힌다. SSO를 끄면 이 접근 제한도 비활성화되므로 운영에서 권한 회수 수단으로 사용하지 않는다.

@@ -1,13 +1,3 @@
-import { spawn } from "node:child_process"
-import { fileURLToPath, URL } from "node:url"
-
-import { createSafeApiError } from "./safeApiError.mjs"
-
-const lookupScriptPath = fileURLToPath(new URL("../scripts/current_user.py", import.meta.url))
-const CACHE_TTL_MS = 5 * 60 * 1000
-const userCache = new Map()
-const pendingLookups = new Map()
-
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
@@ -16,99 +6,24 @@ function sendJson(res, statusCode, payload) {
   res.end(JSON.stringify(payload))
 }
 
-export function normalizeRemoteIp(value) {
-  const ip = String(value ?? "").split(",")[0].trim()
-  return ip.startsWith("::ffff:") ? ip.slice(7) : ip
-}
-
-export function getRemoteIp(req) {
-  return normalizeRemoteIp(
-    req.headers["x-forwarded-for"]
-    ?? req.headers["x-real-ip"]
-    ?? req.socket?.remoteAddress
-    ?? "",
-  )
-}
-
-// req.auth is assigned only by the server-side SSO guard, never from headers/body.
+// Only the server-side SSO guard may assign req.auth and req.ssoRequired.
 export function getSsoCurrentUser(req) {
-  if (!req.ssoRequired) return null
-  if (!req.auth?.knoxId) throw new Error("SSO 로그인이 필요합니다.")
+  if (!req.ssoRequired || typeof req.auth?.knoxId !== "string" || !req.auth.knoxId.trim()) {
+    const error = new Error("SSO 로그인이 필요합니다.")
+    error.code = "SSO_AUTHENTICATION_REQUIRED"
+    throw error
+  }
   return { ok: true, knoxId: req.auth.knoxId }
 }
 
 export function resolveRequestCurrentUser(req) {
-  const authenticated = getSsoCurrentUser(req)
-  if (authenticated) return Promise.resolve(authenticated)
-  return resolveCurrentUser(getRemoteIp(req))
+  return Promise.resolve(getSsoCurrentUser(req))
 }
 
-export function resolveCurrentUser(remoteIp) {
-  const now = Date.now()
-  userCache.forEach((entry, ip) => {
-    if (entry.expiresAt <= now) userCache.delete(ip)
-  })
-  const cached = userCache.get(remoteIp)
-  if (cached) return Promise.resolve(cached.payload)
-  if (pendingLookups.has(remoteIp)) return pendingLookups.get(remoteIp)
-
-  const lookup = new Promise((resolve, reject) => {
-    const child = spawn("python3", ["-B", lookupScriptPath], {
-      env: { ...process.env, REMOTE_ADDR: remoteIp },
-      stdio: ["ignore", "pipe", "ignore"],
-    })
-    let stdout = ""
-    let timedOut = false
-    const timeout = setTimeout(() => {
-      timedOut = true
-      child.kill("SIGTERM")
-    }, 10_000)
-
-    child.stdout.on("data", (chunk) => { stdout += chunk })
-    child.on("error", (error) => {
-      clearTimeout(timeout)
-      reject(error)
-    })
-    child.on("close", () => {
-      clearTimeout(timeout)
-      if (timedOut) {
-        reject(new Error("접속자 조회 시간이 초과되었습니다."))
-        return
-      }
-
-      let payload
-      try {
-        payload = JSON.parse(stdout.trim())
-      } catch {
-        reject(new Error("접속자 조회 응답을 해석하지 못했습니다."))
-        return
-      }
-
-      if (!payload.ok) {
-        const error = new Error(payload.error || "접속자 정보를 확인하지 못했습니다.")
-        error.code = payload.code
-        reject(error)
-        return
-      }
-
-      const normalizedPayload = {
-        ok: true,
-        knoxId: String(payload.knoxId ?? "").trim(),
-      }
-      if (!normalizedPayload.knoxId) {
-        reject(new Error("접속자 knox_id를 확인하지 못했습니다."))
-        return
-      }
-      userCache.set(remoteIp, {
-        payload: normalizedPayload,
-        expiresAt: Date.now() + CACHE_TTL_MS,
-      })
-      resolve(normalizedPayload)
-    })
-  }).finally(() => pendingLookups.delete(remoteIp))
-
-  pendingLookups.set(remoteIp, lookup)
-  return lookup
+export function sendSsoAuthenticationError(error, res) {
+  if (error?.code !== "SSO_AUTHENTICATION_REQUIRED") return false
+  sendJson(res, 401, { ok: false, code: error.code, error: "SSO 로그인이 필요합니다." })
+  return true
 }
 
 export async function handleCurrentUserRequest(req, res) {
@@ -116,24 +31,9 @@ export async function handleCurrentUserRequest(req, res) {
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
     return
   }
-
-  const remoteIp = getRemoteIp(req)
-  if (!req.ssoRequired && !remoteIp) {
-    sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
-    return
-  }
-
   try {
-    const payload = await resolveRequestCurrentUser(req)
-    sendJson(res, 200, payload)
+    sendJson(res, 200, await resolveRequestCurrentUser(req))
   } catch (error) {
-    const userNotFound = error.code === "USER_NOT_FOUND"
-    sendJson(res, userNotFound ? 404 : 500, createSafeApiError({
-      code: userNotFound ? "CURRENT_USER_NOT_FOUND" : "CURRENT_USER_LOOKUP_FAILED",
-      message: userNotFound
-        ? "접속자 정보를 확인하지 못했습니다."
-        : "접속자 조회를 처리하지 못했습니다.",
-      scope: "current-user",
-    }))
+    if (!sendSsoAuthenticationError(error, res)) throw error
   }
 }

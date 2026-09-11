@@ -6,14 +6,11 @@ import { compressors } from "hyparquet-compressors"
 
 import { buildTeamErdPath } from "../src/config/spiderDataPaths.mjs"
 import { getLruEntry, setLruEntry } from "./boundedCache.mjs"
-import { getSsoCurrentUser, getRemoteIp } from "./currentUser.mjs"
+import { resolveRequestCurrentUser, sendSsoAuthenticationError } from "./currentUser.mjs"
 import { readLineMapping } from "./mappingConfig.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
 import { excludeSensorRows, readSensorExclusionConfig } from "./sensorExclusionConfig.mjs"
-import {
-  listMyEqpRegistrationRecords,
-  resolveRegistrationUserId,
-} from "./myEqpRegistration.mjs"
+import { listMyEqpRegistrationRecords } from "./myEqpRegistration.mjs"
 import { listPassHistoryRecords } from "./passHistory.mjs"
 
 export const TEAM_ERD_COLUMNS = Object.freeze([
@@ -376,13 +373,8 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
       sendJson(res, 400, { ok: false, error: "line 조건이 필요합니다." })
       return
     }
-    const remoteIp = getRemoteIp(req)
-    if (!req.ssoRequired && !remoteIp) {
-      sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
-      return
-    }
 
-    const userId = getSsoCurrentUser(req)?.knoxId ?? await resolveRegistrationUserId(remoteIp)
+    const userId = (await resolveRequestCurrentUser(req)).knoxId
     const [registrationRecords, mapping, sensorExclusionConfig] = await Promise.all([
       listMyEqpRegistrationRecords({ line: filters.line, knoxId: userId, activeOnly: true }),
       readLineMapping(),
@@ -463,7 +455,8 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
       availablePriorities,
       sourcePaths: dataSources.map((source) => source.filePath),
     })
-  } catch {
+  } catch (error) {
+    if (sendSsoAuthenticationError(error, res)) return
     sendJson(res, 500, createSafeApiError({
       code: "MY_EQP_DATA_LOAD_FAILED",
       message: "My EQP 이상감지 데이터를 불러오지 못했습니다.",

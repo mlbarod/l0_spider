@@ -2,7 +2,7 @@ import { spawn } from "node:child_process"
 import { relative, resolve, sep } from "node:path"
 import { fileURLToPath, URL } from "node:url"
 
-import { getRemoteIp, resolveRequestCurrentUser } from "./currentUser.mjs"
+import { resolveRequestCurrentUser, sendSsoAuthenticationError } from "./currentUser.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
 
 const ERD_FILE_ROOT = "/appdata/abnormal_trend/pic/erd"
@@ -455,7 +455,7 @@ function buildRecord({
   }
 }
 
-export async function handlePassHistoryRequest(req, res, url) {
+export async function handlePassHistoryRequest(req, res, url, { helper = runPassHistoryHelper } = {}) {
   try {
     if (req.method === "GET") {
       const lineId = normalizeText(url.searchParams.get("lineId"))
@@ -500,11 +500,6 @@ export async function handlePassHistoryRequest(req, res, url) {
     }
 
     if (req.method === "POST" || req.method === "DELETE") {
-      const remoteIp = getRemoteIp(req)
-      if (!req.ssoRequired && !remoteIp) {
-        sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
-        return
-      }
       const currentUser = await resolveRequestCurrentUser(req)
       const body = await readJsonBody(req)
       if (req.method === "POST" && Array.isArray(body.records)) {
@@ -518,18 +513,19 @@ export async function handlePassHistoryRequest(req, res, url) {
           execDate: body.execDate,
           knoxId: currentUser.knoxId,
         }))
-        const result = await runPassHistoryHelper("insert-many", { records })
+        const result = await helper("insert-many", { records })
         sendJson(res, 200, result)
         return
       }
       const record = buildRecord({ ...body, knoxId: currentUser.knoxId })
-      const result = await runPassHistoryHelper(req.method === "POST" ? "insert" : "delete", record)
+      const result = await helper(req.method === "POST" ? "insert" : "delete", record)
       sendJson(res, 200, result)
       return
     }
 
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
-  } catch {
+  } catch (error) {
+    if (sendSsoAuthenticationError(error, res)) return
     sendJson(res, 500, createSafeApiError({
       code: "PASS_HISTORY_REQUEST_FAILED",
       message: "PASS 이력 요청을 처리하지 못했습니다.",

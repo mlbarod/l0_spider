@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process"
 import { fileURLToPath, URL } from "node:url"
 
-import { getSsoCurrentUser, getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
+import { resolveRequestCurrentUser, sendSsoAuthenticationError } from "./currentUser.mjs"
 import {
   MAPPING_CONFIG_UNAVAILABLE_CODE,
   MAPPING_SCOPE_MISMATCH_CODE,
@@ -170,15 +170,6 @@ export function groupMyEqpRegistrationRecords(records, nowMs = Date.now()) {
   }).sort((left, right) => right.execDate.localeCompare(left.execDate))
 }
 
-export async function resolveRegistrationUserId(remoteIp, resolver = resolveCurrentUser) {
-  try {
-    const currentUser = await resolver(remoteIp)
-    return normalizeText(currentUser?.knoxId) || remoteIp
-  } catch {
-    return remoteIp
-  }
-}
-
 function runRegistrationHelper(action, payload) {
   return new Promise((resolvePromise, reject) => {
     const child = spawn("python3", ["-B", helperPath, action], {
@@ -236,7 +227,6 @@ export async function handleMyEqpRegistrationRequest(
   url,
   {
     mappingReader = readLineMapping,
-    registrationUserResolver = resolveRegistrationUserId,
   } = {},
 ) {
   if (!new Set(["GET", "POST", "DELETE"]).has(req.method)) {
@@ -246,13 +236,8 @@ export async function handleMyEqpRegistrationRequest(
 
   try {
     const mapping = await requireLineMapping(mappingReader)
-    const remoteIp = getRemoteIp(req)
-    if (!req.ssoRequired && !remoteIp) {
-      sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
-      return
-    }
 
-    const userId = getSsoCurrentUser(req)?.knoxId ?? await registrationUserResolver(remoteIp)
+    const userId = (await resolveRequestCurrentUser(req)).knoxId
 
     if (req.method === "GET") {
       const line = normalizeText(url.searchParams.get("line"))
@@ -293,6 +278,7 @@ export async function handleMyEqpRegistrationRequest(
     const result = await runRegistrationHelper("insert", payload)
     sendJson(res, 200, { ...result, knoxId: userId, knoxIds: payload.knoxIds })
   } catch (error) {
+    if (sendSsoAuthenticationError(error, res)) return
     const mappingUnavailable = error.code === MAPPING_CONFIG_UNAVAILABLE_CODE
     const mappingMismatch = error.code === MAPPING_SCOPE_MISMATCH_CODE
     sendJson(res, mappingUnavailable ? 503 : mappingMismatch ? 400 : 500, createSafeApiError({

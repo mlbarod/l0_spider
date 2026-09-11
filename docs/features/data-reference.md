@@ -58,9 +58,9 @@ DB 접속정보는 `DB_INFO_PATH`가 가리키는 credential 파일에서 읽으
 않습니다.
 
 DB 이력을 기록할 때 `knox_id`는 요청 본문의 값을 신뢰하지 않습니다. Node 서버가
-`x-forwarded-for`, `x-real-ip`, socket 주소 순으로 접속 IP를 구하고 Python helper가
-승인된 사용자 정보를 조회하여 결정합니다. proxy가 전달하는 IP header의 신뢰 정책은
-운영 환경에서 별도로 보장해야 합니다.
+검증된 SSO 세션의 userid(`req.auth.knoxId`)로 결정합니다. IP 기반 사용자 조회와
+IP 대체 저장은 사용하지 않으며, 인증 정보가 없으면 사용자 식별이 필요한 요청은
+`401 SSO_AUTHENTICATION_REQUIRED`로 거부합니다. 기존 DB 컬럼은 `knox_id`를 유지합니다.
 
 ## `pass_history`
 
