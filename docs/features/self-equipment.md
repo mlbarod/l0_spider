@@ -50,7 +50,7 @@ Self Equipment는 Line·SDWT·Grade와 종속 조건을 좁혀 ERD 이상감지 
 | alias path | `fdc_trend` children에도 같은 route 등록 | `Confirmed` | `src/features/fdc-trend/routes.jsx:58-67` |
 | 페이지 | `FdcTrendPage` | `Confirmed` | `src/features/fdc-trend/routes.jsx:5,17-18` |
 | route guard | route 정의에서 별도 인증·guard 없음 | `Confirmed` | `src/features/fdc-trend/routes.jsx:11-68` |
-| 사용자 식별 | 화면과 일부 DB 작업은 `/api/current-user` 또는 요청 IP를 별도 사용 | `Confirmed` | `FdcTrendPage.jsx:1445-1449`; `selfEquipmentData.mjs:368-377` |
+| 사용자 식별 | 화면과 DB 작업은 검증된 SSO userid 사용 (`/api/current-user`) | `Confirmed` | `FdcTrendPage.jsx:1445-1449`; `selfEquipmentData.mjs:368-377` |
 | 새로고침 | unified server는 미존재 static path에 `dist/index.html` 반환 | 코드 `Confirmed` | `server.mjs:89-128` |
 | 잘못된 client route | 명시적 wildcard 처리 결과 미확인 | `Unknown` | 제한적 route 조사 |
 ## 5. URL query parameter 계약
@@ -338,7 +338,7 @@ Self Equipment는 별도 최신 directory를 탐색하지 않고 index row의 `f
 |---|---|---|---|---|---|
 | 공유 URL→browser | Line·SDWT·Grade·STEP·eqpCh | client parser | history·referrer·로그 노출 | `Risk` | STEP·security 문서 |
 | browser→API | filter·`file_path`·EQP | server validation·root 제한 | 임의 입력·경로 정보 | `Confirmed`/`Risk` | security 문서 |
-| proxy→현재 사용자 | forwarding header·remote address | IP 기반 사용자 조회 | proxy 신뢰 정책 미확인 | `Risk` | environment·security 문서 |
+| SSO→현재 사용자 | 검증된 서버 세션 | SSO userid 사용 | 인증 없으면 401, IP fallback 없음 | `Implemented` | `server/currentUser.mjs` |
 | server→DB | 사용자·등록·history 조건 | Python helper | 권한·개인정보 범위 | `Risk` | operations·security 문서 |
 | server→운영 file | mapping·Parquet·image path | root·segment 검사 | 운영 경로 의존 | `Confirmed`/`Risk` | data-flow·operations |
 | API→browser | payload·error | JSON | 성공 `sourcePath` 노출; 실패 원문은 CORE-03A에서 차단 | `Risk` / 일부 `Implemented` | error contract |

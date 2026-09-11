@@ -12,8 +12,10 @@ import {
   resolveNoticeAdminKnoxIds,
 } from "./notices.mjs"
 
-function createRequest(method, body = "") {
+function createRequest(method, body = "", knoxId = "notice.admin") {
   const request = Readable.from(body ? [JSON.stringify(body)] : [])
+  request.ssoRequired = true
+  request.auth = { knoxId }
   request.method = method
   return request
 }
@@ -33,8 +35,6 @@ function createResponse() {
 
 const adminDependencies = {
   configuredAdminKnoxId: "notice.admin",
-  remoteIpReader: () => "127.0.0.1",
-  userResolver: async () => ({ ok: true, knoxId: "notice.admin" }),
 }
 
 test("공지 관리자 권한은 쉼표로 구분한 서버 환경변수 Knox ID 목록과 비교한다", () => {
@@ -143,12 +143,10 @@ test("공지 API는 권한 판정 전에 환경 파일을 다시 로드한다", 
 test("관리 권한은 process.env를 거치지 않고 notices.env 값을 직접 사용한다", async () => {
   const response = createResponse()
   await handleNoticesRequest(
-    createRequest("GET"),
+    createRequest("GET", "", "file.admin"),
     response,
     new URL("http://localhost/api/notices/permissions"),
     {
-      remoteIpReader: () => "127.0.0.1",
-      userResolver: async () => ({ ok: true, knoxId: "file.admin" }),
       envLoader: () => true,
       envReader: () => ({
         exists: true,
@@ -192,12 +190,11 @@ test("관리자가 아닌 사용자의 공지 등록은 DB 호출 전에 거부�
   let helperCalled = false
   const response = createResponse()
   await handleNoticesRequest(
-    createRequest("POST", { title: "제목", body: "본문" }),
+    createRequest("POST", { title: "제목", body: "본문" }, "other.user"),
     response,
     new URL("http://localhost/api/notices"),
     {
       ...adminDependencies,
-      userResolver: async () => ({ ok: true, knoxId: "other.user" }),
       helper: async () => {
         helperCalled = true
         return { ok: true }

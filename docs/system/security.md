@@ -103,7 +103,7 @@ Proxy가 존재해도 신뢰 header 정책과 Node 직접 접근 차단이 확�
 | session·인증 cookie | 인증 session 없음; sidebar 상태 cookie만 있음 | browser UI | 인증에 사용하지 않음 | `Confirmed` | `src/components/ui/sidebar.jsx:27-70` |
 | route guard | 사용자 route에 guard component 없음 | React Router | 직접 route rendering | `Not Implemented` | `src/features/fdc-trend/routes.jsx:11-68` |
 | API auth middleware | global middleware·Bearer/JWT 확인 안 됨 | `server.mjs` direct dispatch | handler별 처리 | `Not Implemented` in application | `server.mjs:131-273` |
-| current user | forwarded/socket IP를 DB 승인 사용자와 매핑 | `getRemoteIp`, `resolveCurrentUser` | 400·403·500 또는 일부 fallback | 일부 `Implemented` | `server/currentUser.mjs:17-119` |
+| current user | 검증된 SSO 세션 userid | `resolveRequestCurrentUser` | 인증 누락 시 401, IP fallback 없음 | `Implemented` | `server/currentUser.mjs` |
 | history write identity | body `knoxId` 대신 server 조회 결과 사용 | hit·click·pass handlers | 사용자 조회 실패 시 write 실패 | `Implemented` | `hitHistory.mjs:215-236`; `passHistory.mjs:505-530` |
 | My EQP 조회 | current user ID와 `is_public=1` 조건 | Node·Python helper | 조회 오류 500 | 일부 `Implemented` | `myEqpRegistration.mjs:258-271`; Python query |
 | My EQP 등록 | current user 조회 실패 시 remote IP fallback; 복수 `knoxIds` 허용 | Node handler | helper 오류 500 | `Needs Validation` | `myEqpRegistration.mjs:179-185,290-300` |
@@ -195,7 +195,7 @@ Contract test의 green 결과를 접근 통제나 운영 데이터 보호 증거
 | `sdwt`·`grade` | 중복 제거·option matching | team·grade filter | 유효하지 않으면 미선택·빈 결과 | `Implemented` | URL filter·payload builder |
 | `step` | MY EQP는 `ALL`; 일반은 비-`ALL` token을 선택에 사용하지 않음 | STEP filter | HMAC 후보와 Mismatch | `Mismatch` | STEP doc |
 | `eqpCh` | alias parsing, row EQP와 matching | 장비 범위 | HMAC 서명 포함 여부 미확인 | 처리 `Confirmed`, 보호 `Unknown` | URL filter·Self server |
-| MY EQP | IP 기반 user ID로 active registration 조회 | 개인·public 등록 범위 | user lookup fallback·proxy trust | `Risk` | `selfEquipmentData.mjs:356-445` |
+| MY EQP | SSO userid로 active registration 조회 | 개인·public 등록 범위 | 인증 없으면 401, IP fallback 없음 | `Implemented` | `selfEquipmentData.mjs` |
 | chart path | API payload의 absolute path를 다음 API에 전달 | Parquet·history | URL·response path 노출 | `Risk` | Self API·server |
 | image | 허용 root image stream endpoint | 운영 image | page 소비 위치와 접근 분류 미확인 | endpoint `Confirmed` | `handleErdFileRequest` |
 | 데이터 없음 | 빈 filter 또는 file error | 화면 empty/error | file 존재·path detail 구분 | 일부 `Implemented` | Self docs·handlers |

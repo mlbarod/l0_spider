@@ -6,7 +6,6 @@ import {
   buildMyEqpRegistrationPayload,
   groupMyEqpRegistrationRecords,
   handleMyEqpRegistrationRequest,
-  resolveRegistrationUserId,
 } from "./myEqpRegistration.mjs"
 
 const syntheticMapping = {
@@ -105,13 +104,6 @@ test("동일 저장 조건의 EQP 행을 하나의 등록 조건으로 묶고 �
   assert.equal(expiredGroups[0].active, false)
 })
 
-test("knox_id 조회에 실패하면 접속 IP를 사용한다", async () => {
-  const userId = await resolveRegistrationUserId("10.20.30.40", async () => {
-    throw new Error("사용자 없음")
-  })
-
-  assert.equal(userId, "10.20.30.40")
-})
 
 test("잘못된 모니터링 기간은 거부한다", () => {
   assert.throws(() => buildMyEqpRegistrationPayload({
@@ -166,6 +158,8 @@ test("mapping 범위 밖 Line과 SDWT의 My EQP write를 DB 요청 전에 거부
     eqps: ["EQP_A"],
     periode: 7,
   })])
+  request.ssoRequired = true
+  request.auth = { knoxId: "user01" }
   request.method = "POST"
   request.headers = {}
   request.socket = { remoteAddress: "127.0.0.1" }
@@ -173,7 +167,6 @@ test("mapping 범위 밖 Line과 SDWT의 My EQP write를 DB 요청 전에 거부
 
   await handleMyEqpRegistrationRequest(request, response, undefined, {
     mappingReader: async () => syntheticMapping,
-    registrationUserResolver: async () => "user01",
   })
 
   const payload = JSON.parse(response.body)

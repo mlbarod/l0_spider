@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process"
 import { fileURLToPath, URL } from "node:url"
 
-import { getRemoteIp, getSsoCurrentUser, resolveCurrentUser } from "./currentUser.mjs"
+import { resolveRequestCurrentUser, sendSsoAuthenticationError } from "./currentUser.mjs"
 import { loadServerEnv, readServerEnv } from "./loadEnv.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
 
@@ -166,14 +166,6 @@ export function runNoticesHelper(payload) {
   })
 }
 
-async function resolveRequestUser(req, { remoteIpReader, userResolver }) {
-  const authenticated = getSsoCurrentUser(req)
-  if (authenticated) return authenticated
-  const remoteIp = remoteIpReader(req)
-  if (!remoteIp) throw new Error("접속자 IP를 확인하지 못했습니다.")
-  return userResolver(remoteIp)
-}
-
 function sendForbidden(res) {
   sendJson(res, 403, {
     ok: false,
@@ -189,8 +181,6 @@ export async function handleNoticesRequest(req, res, url, dependencies = {}) {
   const fileEnvironment = envReader()
 
   const helper = dependencies.helper ?? runNoticesHelper
-  const remoteIpReader = dependencies.remoteIpReader ?? getRemoteIp
-  const userResolver = dependencies.userResolver ?? resolveCurrentUser
   const dependencyAdminKnoxIds = resolveNoticeAdminKnoxIds(
     dependencies.configuredAdminKnoxIds,
     dependencies.configuredAdminKnoxId,
@@ -230,7 +220,7 @@ export async function handleNoticesRequest(req, res, url, dependencies = {}) {
 
   try {
     if (permissionRequest) {
-      const currentUser = await resolveRequestUser(req, { remoteIpReader, userResolver })
+      const currentUser = await resolveRequestCurrentUser(req)
       sendJson(res, 200, {
         ok: true,
         permissions: buildNoticePermissions(
@@ -245,7 +235,7 @@ export async function handleNoticesRequest(req, res, url, dependencies = {}) {
     if (req.method === "GET" && !manageRequest) {
       const [result, currentUser] = await Promise.all([
         helper({ action: "list-active" }),
-        resolveRequestUser(req, { remoteIpReader, userResolver }).catch(() => null),
+        Promise.resolve().then(() => resolveRequestCurrentUser(req)).catch(() => null),
       ])
       sendJson(res, 200, {
         ok: true,
@@ -259,7 +249,7 @@ export async function handleNoticesRequest(req, res, url, dependencies = {}) {
       return
     }
 
-    const currentUser = await resolveRequestUser(req, { remoteIpReader, userResolver })
+    const currentUser = await resolveRequestCurrentUser(req)
     if (!isNoticeAdmin(currentUser.knoxId, configuredAdminKnoxIds)) {
       sendForbidden(res)
       return
@@ -301,6 +291,7 @@ export async function handleNoticesRequest(req, res, url, dependencies = {}) {
     }
     sendJson(res, 200, { ok: true, affectedRows: 1 })
   } catch (error) {
+    if (sendSsoAuthenticationError(error, res)) return
     const validationError = error instanceof Error && [
       "공지 제목을 입력해 주세요.",
       `공지 제목은 ${MAX_TITLE_LENGTH}자 이하여야 합니다.`,
