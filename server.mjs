@@ -8,6 +8,9 @@ import { extname, join, normalize } from "node:path"
 import { fileURLToPath, URL } from "node:url"
 import { createServer as createViteServer } from "vite"
 
+import { createSsoAuth, handleSsoSessionRequest } from "./server/ssoAuth.mjs"
+import { createAccessControl } from "./server/accessControl.mjs"
+
 import { handleDashboardDataRequest } from "./server/dashboardData.mjs"
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
 import { handleClickedCategoryHistoryRequest } from "./server/clickedCategoryHistory.mjs"
@@ -44,7 +47,12 @@ const distDir = join(rootDir, "dist")
 const port = Number(process.env.PORT ?? 5173)
 const host = process.env.HOST ?? "0.0.0.0"
 const buildOnStart = process.env.BUILD_ON_START !== "0"
-const liveReload = process.env.LIVE_RELOAD !== "0"
+const ssoAuth = createSsoAuth()
+const accessControl = createAccessControl({ enabled: ssoAuth.enabled })
+if (ssoAuth.enabled && process.env.LIVE_RELOAD === "1") {
+  throw new Error("SSO 운영에서는 LIVE_RELOAD=0을 사용하세요.")
+}
+const liveReload = !ssoAuth.enabled && process.env.LIVE_RELOAD !== "0"
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -126,7 +134,7 @@ async function serveStatic(req, res) {
 
   const extension = extname(filePath)
   const contentType = mimeTypes[extension] ?? "application/octet-stream"
-  const cacheControl = extension === ".html" ? "no-cache" : "public, max-age=31536000, immutable"
+  const cacheControl = ssoAuth.enabled ? "private, no-store" : extension === ".html" ? "no-cache" : "public, max-age=31536000, immutable"
 
   res.writeHead(200, {
     "Content-Type": contentType,
@@ -135,8 +143,13 @@ async function serveStatic(req, res) {
   createReadStream(filePath).pipe(res)
 }
 
-const server = createServer((req, res) => {
+function handleApplicationRequest(req, res) {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`)
+
+  if (url.pathname === "/api/auth/session") {
+    handleSsoSessionRequest(req, res, ssoAuth.enabled)
+    return
+  }
 
   if (url.pathname === "/api/dashboard-data") {
     handleDashboardDataRequest(req, res).catch((error) => {
@@ -298,7 +311,23 @@ const server = createServer((req, res) => {
   serveStatic(req, res).catch((error) => {
     sendJson(res, 500, { ok: false, error: error.message })
   })
+}
+
+const server = createServer(async (req, res) => {
+  try {
+    if (await ssoAuth.handle(req, res)) return
+    if (await accessControl.handle(req, res)) return
+    handleApplicationRequest(req, res)
+  } catch {
+    if (!res.headersSent) sendJson(res, 500, { ok: false, error: "요청을 처리하지 못했습니다." })
+    else res.destroy()
+  }
 })
+
+if (ssoAuth.enabled) {
+  server.headersTimeout = 15_000
+  server.requestTimeout = 30_000
+}
 
 let viteServer
 

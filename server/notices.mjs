@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process"
 import { fileURLToPath, URL } from "node:url"
 
-import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
+import { getRemoteIp, getSsoCurrentUser, resolveCurrentUser } from "./currentUser.mjs"
 import { loadServerEnv, readServerEnv } from "./loadEnv.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
 
@@ -167,6 +167,8 @@ export function runNoticesHelper(payload) {
 }
 
 async function resolveRequestUser(req, { remoteIpReader, userResolver }) {
+  const authenticated = getSsoCurrentUser(req)
+  if (authenticated) return authenticated
   const remoteIp = remoteIpReader(req)
   if (!remoteIp) throw new Error("접속자 IP를 확인하지 못했습니다.")
   return userResolver(remoteIp)

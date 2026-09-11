@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process"
 import { fileURLToPath, URL } from "node:url"
 
-import { getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
+import { getSsoCurrentUser, getRemoteIp, resolveCurrentUser } from "./currentUser.mjs"
 import {
   MAPPING_CONFIG_UNAVAILABLE_CODE,
   MAPPING_SCOPE_MISMATCH_CODE,
@@ -247,12 +247,12 @@ export async function handleMyEqpRegistrationRequest(
   try {
     const mapping = await requireLineMapping(mappingReader)
     const remoteIp = getRemoteIp(req)
-    if (!remoteIp) {
+    if (!req.ssoRequired && !remoteIp) {
       sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
       return
     }
 
-    const userId = await registrationUserResolver(remoteIp)
+    const userId = getSsoCurrentUser(req)?.knoxId ?? await registrationUserResolver(remoteIp)
 
     if (req.method === "GET") {
       const line = normalizeText(url.searchParams.get("line"))

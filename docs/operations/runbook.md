@@ -9,6 +9,10 @@
 명령의 `<...>` placeholder를 운영자가 확인하기 전에는 실행하지 않는다.
 모든 명령 블록은 **이번 작업에서 실행하지 않은 운영자용 명령**이다.
 
+SSO 활성화 배포는 [SSO 운영 가이드](sso.md)를 함께 따른다. 비로그인 `/`는 303,
+`/api/*`는 401이 정상이며 `/api/current-user` 성공은 세션 확인만 나타내므로 DB 연결
+점검 근거로 사용하지 않는다. SSO 비활성화 시에는 아래의 기존 IP 사용자 조회가 적용된다.
+
 운영 DB 쓰기, 실제 mail 발송, `/appdata` 변경, secret 출력과 임의 service 재시작은 점검 절차에 포함하지 않는다.
 `mock-agent`, mock server·데이터와 Playwright는 운영 runbook 범위가 아니다.
 

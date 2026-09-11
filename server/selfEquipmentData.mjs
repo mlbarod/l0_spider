@@ -6,7 +6,7 @@ import { compressors } from "hyparquet-compressors"
 
 import { buildTeamErdPath } from "../src/config/spiderDataPaths.mjs"
 import { getLruEntry, setLruEntry } from "./boundedCache.mjs"
-import { getRemoteIp } from "./currentUser.mjs"
+import { getSsoCurrentUser, getRemoteIp } from "./currentUser.mjs"
 import { readLineMapping } from "./mappingConfig.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
 import { excludeSensorRows, readSensorExclusionConfig } from "./sensorExclusionConfig.mjs"
@@ -377,12 +377,12 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
       return
     }
     const remoteIp = getRemoteIp(req)
-    if (!remoteIp) {
+    if (!req.ssoRequired && !remoteIp) {
       sendJson(res, 400, { ok: false, error: "접속자 IP를 확인하지 못했습니다." })
       return
     }
 
-    const userId = await resolveRegistrationUserId(remoteIp)
+    const userId = getSsoCurrentUser(req)?.knoxId ?? await resolveRegistrationUserId(remoteIp)
     const [registrationRecords, mapping, sensorExclusionConfig] = await Promise.all([
       listMyEqpRegistrationRecords({ line: filters.line, knoxId: userId, activeOnly: true }),
       readLineMapping(),

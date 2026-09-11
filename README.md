@@ -77,6 +77,9 @@ python3 -m pip install -r scripts/requirements.txt
 통합 서버의 주소는 `HOST`와 `PORT`로 변경할 수 있습니다. `npm run preview`도 Vite
 preview가 아니라 `node server.mjs`를 실행합니다.
 
+SSO 운영은 `SSO_ENABLED=true`와 정적 제공 모드를 사용합니다. 인증 설정, 관리자
+등록 URI와 복구 절차는 [SSO 운영 가이드](docs/operations/sso.md)를 따릅니다.
+
 ## 데이터 및 환경 설정
 
 서비스의 주요 화면은 `/appdata` 아래의 mapping, Parquet와 이미지 파일을 읽습니다.
@@ -85,7 +88,8 @@ preview가 아니라 `node server.mjs`를 실행합니다.
 
 DB 기능은 `DB_INFO_PATH`가 가리키는 credential 파일을 사용하며 기본 경로는
 `/appdata/l0_spider/db_info.pkl`입니다. 현재 사용자는 proxy 또는 socket에서 얻은 접속
-IP를 승인된 사용자 정보와 연결하여 확인합니다.
+IP를 승인된 사용자 정보와 연결하여 확인합니다. SSO 활성화 시에는 검증된 세션의
+Knox ID를 사용하며 IP 조회로 대신 처리하지 않습니다.
 
 주요 runtime 설정은 다음과 같습니다.
 

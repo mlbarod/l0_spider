@@ -1,3 +1,6 @@
+import "./server/loadEnv.mjs"
+import { loadOidcConfig } from "./server/oidcService.mjs"
+
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
 import path from "node:path"
@@ -41,6 +44,7 @@ function mappingConfigApi() {
   return {
     name: "l0-spider-mapping-config-api",
     configureServer(server) {
+      if (loadOidcConfig().enabled) throw new Error("SSO는 LIVE_RELOAD=0 npm start로 실행하세요.")
       server.middlewares.use((req, res, next) => {
         const url = new URL(req.url ?? "/", "http://localhost")
         if (url.pathname === "/api/dashboard-data") {
