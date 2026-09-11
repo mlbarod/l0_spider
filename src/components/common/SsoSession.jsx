@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react"
 import { ChevronDown, UserRound } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { AccessManagement } from "./AccessManagement"
 
 export function SsoSession() {
   const [enabled, setEnabled] = useState(false)
   const [user, setUser] = useState(null)
+  const [role, setRole] = useState(null)
+  const [revision, setRevision] = useState(0)
 
   useEffect(() => {
     let stopped = false
@@ -21,9 +24,13 @@ export function SsoSession() {
           redirecting = true
           const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`
           window.location.assign(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`)
+        } else if (response.status === 403 && payload.code === "ACCESS_DENIED") {
+          redirecting = true
+          window.location.assign("/")
         } else if (response.ok) {
           setEnabled(payload.enabled === true)
           setUser(payload.enabled === true ? payload.user ?? null : null)
+          setRole(payload.role ?? null)
         }
       } catch {
         // A transient network error is not proof that the login expired.
@@ -41,11 +48,12 @@ export function SsoSession() {
       window.removeEventListener("focus", check)
       window.removeEventListener("pageshow", check)
     }
-  }, [])
+  }, [revision])
 
   if (!enabled) return null
   return (
-    <div className="flex shrink-0 items-center justify-end border-b bg-card py-1 pl-4 pr-16 sm:pl-6 sm:pr-20">
+    <div className="flex shrink-0 items-center justify-end gap-2 border-b bg-card py-1 pl-4 pr-16 sm:pl-6 sm:pr-20">
+      {role === "master" && <AccessManagement userId={user?.userId} onRoleChange={() => { setRole(null); setRevision(value => value + 1) }} />}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button type="button" aria-label="로그인 사용자 정보" className="flex max-w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted focus-visible:outline focus-visible:outline-2">
@@ -61,6 +69,7 @@ export function SsoSession() {
               ["USER ID", user?.userId],
               ["USER NAME", user?.displayName],
               ["DEP NAME", user?.department],
+              ["권한", role === "master" ? "마스터 유저" : "일반 유저"],
             ].map(([label, value]) => (
               <div key={label}>
                 <dt className="text-xs text-muted-foreground">{label}</dt>

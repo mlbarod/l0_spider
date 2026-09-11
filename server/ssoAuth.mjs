@@ -205,6 +205,7 @@ export function handleSsoSessionRequest(req, res, enabled) {
   res.end(JSON.stringify({
     ok: true,
     enabled,
+    ...(enabled && req.accessRole ? { role: req.accessRole } : {}),
     ...(enabled ? { user: {
       userId: req.auth.knoxId,
       displayName: req.auth.displayName ?? "",

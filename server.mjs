@@ -9,6 +9,7 @@ import { fileURLToPath, URL } from "node:url"
 import { createServer as createViteServer } from "vite"
 
 import { createSsoAuth, handleSsoSessionRequest } from "./server/ssoAuth.mjs"
+import { createAccessControl } from "./server/accessControl.mjs"
 
 import { handleDashboardDataRequest } from "./server/dashboardData.mjs"
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
@@ -47,6 +48,7 @@ const port = Number(process.env.PORT ?? 5173)
 const host = process.env.HOST ?? "0.0.0.0"
 const buildOnStart = process.env.BUILD_ON_START !== "0"
 const ssoAuth = createSsoAuth()
+const accessControl = createAccessControl({ enabled: ssoAuth.enabled })
 if (ssoAuth.enabled && process.env.LIVE_RELOAD === "1") {
   throw new Error("SSO 운영에서는 LIVE_RELOAD=0을 사용하세요.")
 }
@@ -314,6 +316,7 @@ function handleApplicationRequest(req, res) {
 const server = createServer(async (req, res) => {
   try {
     if (await ssoAuth.handle(req, res)) return
+    if (await accessControl.handle(req, res)) return
     handleApplicationRequest(req, res)
   } catch {
     if (!res.headersSent) sendJson(res, 500, { ok: false, error: "요청을 처리하지 못했습니다." })

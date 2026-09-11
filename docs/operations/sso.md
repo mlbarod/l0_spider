@@ -8,6 +8,7 @@
 |---|---|
 | `server/oidcService.mjs` | 템플릿에서 설정·로그인 요청·RS256 검증 부분을 이식. issuer 탐색과 새 역할 체계는 제외. 검증된 claim의 키/자료형 진단 지원 |
 | `server/ssoAuth.mjs` | 전체 HTTP 인증 관문, 로그인 transaction·세션, 프록시/출처 검사, 로그인·콜백·로그아웃 |
+| `server/accessControl.mjs`, `src/components/common/AccessManagement.jsx` | SSO 이후 접근 허용 검사, 최초 마스터 설정, 마스터·일반 접근 규칙 관리 |
 | `server.mjs` | API와 React 제공 전 인증 실행, 세션 상태 API, SSO에서는 정적 React 제공 |
 | `server/currentUser.mjs` | `{ ok: true, knoxId }` 응답 유지, SSO 세션 사용자 우선 |
 | `server/notices.mjs` | 기존 공지 관리자 목록/작성자에 SSO Knox ID 연결 |
@@ -30,7 +31,7 @@
 4. IdP가 `POST /auth/callback`으로 응답한다. 일회성 state·correlation, RS256 서명, issuer, audience/azp, exp/nbf/iat, nonce, c_hash를 검증한다.
 5. `SSO_USER_ID_CLAIM`에 설정한 claim의 값을 기존 Knox ID로 사용한다. 앞뒤 공백만 제거하며 대소문자는 보존한다. 이메일의 앞부분·subject·IP에서 ID를 추정하지 않는다. 관리자는 기존 DB의 Knox ID와 **정확히 같은 값**을 발급하도록 claim을 설정해야 한다.
 6. 무작위 세션 쿠키를 발급하고 원래 서비스 내부 경로로 돌아간다. 서버에는 토큰 HMAC·Knox ID·이름·부서·만료를 보관하며 ID Token/code는 저장하지 않는다. 재로그인 시 이전 세션을 폐기한다.
-7. 이후 React/static과 모든 API에서 서버 세션을 검사한다. 공지 권한은 기존 `NOTICE_ADMIN_KNOX_IDS`/`NOTICE_ADMIN_KNOX_ID`를 그대로 사용한다. My EQP와 Mailing의 타 사용자 수신인 지정 기능은 기존 계약을 유지한다. 새 DB 사용자/권한을 자동 생성하지 않는다. 기존 IP 승인 조회를 SSO 신원으로 대체하므로 서비스 이용 대상은 SSO 관리자 측 앱 할당 정책도 확인해야 한다.
+7. 이후 React/static과 모든 API에서 서버 세션과 접근 권한을 검사한다. 마스터 계정이거나 일반 접근 규칙에 일치해야 이용할 수 있다. 공지 권한은 기존 `NOTICE_ADMIN_KNOX_IDS`/`NOTICE_ADMIN_KNOX_ID`를 그대로 사용한다. My EQP와 Mailing의 타 사용자 수신인 지정 기능은 기존 계약을 유지한다. 새 DB 사용자/권한을 자동 생성하지 않는다. 서비스 이용 대상은 SSO 관리자 측 앱 할당 정책도 확인해야 한다.
 8. 로그아웃 버튼은 동일 출처 `POST /auth/logout`을 보낸다. 로컬 세션 폐기 후 설정한 IdP 로그아웃 URL로 이동한다. `/auth/logged-out`은 재로그인을 자동 시작하지 않는 완료 화면이다. 단순 완료 화면 GET은 세션을 폐기하지 않는다.
 
 템플릿처럼 code를 토큰 엔드포인트에서 교환하지 않는다. 따라서 **Client Secret은 사용하지 않는다**. 관리자 정책이 authorization-code + PKCE/Client Secret 교환을 요구하면 이 흐름과 다르므로 운영 활성화 전에 구현 변경이 필요하다. 지원하지 않는 Client Secret을 임의로 추가해 해결하지 않는다. 검증 기준: [OpenID Connect Hybrid ID Token](https://openid.net/specs/openid-connect-core-1_0.html#HybridIDToken).
@@ -59,6 +60,8 @@
 | `SSO_MAX_SESSIONS` | 10000 | 세션/대기 로그인 각각의 저장 한도. 초과 시 신규 로그인 503 |
 | `LIVE_RELOAD` | SSO에서 0 | 1이면 시작 거부. 미설정이어도 SSO는 정적 모드 |
 | `BUILD_ON_START` | 운영 권장 0 | 사전 `npm run build` 필요 |
+| `SSO_BOOTSTRAP_MASTER_USER_IDS` | 최초 권한 파일 생성 시 필수 | 쉼표로 구분한 Knox 유저ID. 파일 생성 후에는 재적용하지 않음 |
+| `SSO_ACCESS_CONTROL_FILE` | 기본 `프로젝트/.local/sso-access.json` | 권한 영속 파일. 배포 폴더 밖의 쓰기 가능한 절대 경로 권장 |
 
 `SSO_SECURE_COOKIES=false`는 거부한다. 세션 쿠키는 `__Host-l0_spider_session`, `Path=/`, `Secure`, `HttpOnly`, `SameSite=Lax`, Domain 없음이다. cross-site POST callback용 correlation 쿠키는 `__Secure-l0_spider_oidc`, `Path=/auth/callback`, `SameSite=None; Secure; HttpOnly`이다. [쿠키 속성 기준](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie).
 
@@ -127,12 +130,12 @@ node --input-type=module -e 'import {writeFileSync} from "node:fs"; import {rand
 cd <deployment-checkout>
 npm ci
 npm run build
-node --test server/ssoAuth.test.mjs
+node --test server/ssoAuth.test.mjs server/accessControl.test.mjs
 # 별도 개발/검증 환경에서만 실제 Node를 띄우는 합성 통합 테스트(openssl 필요)
 # node --test server/ssoServer.test.mjs
 ```
 
-5. 환경파일의 `SSO_ENABLED=true`, `LIVE_RELOAD=0`, `BUILD_ON_START=0`을 설정한다. 파일은 실행 계정만 읽게 한다. systemd 사용이 확인된 경우 기존 unit drop-in의 `[Service]`에 `EnvironmentFile=<secret-env-file>`을 추가한다. 기존 `WorkingDirectory`, `ExecStart`, HOST/PORT, Python/DB 설정은 유지한다. 실제 SSO 설정을 출력하지 않는 사전 검사:
+5. 환경파일의 `SSO_ENABLED=true`, `LIVE_RELOAD=0`, `BUILD_ON_START=0`을 설정한다. 최초 배포에는 `SSO_BOOTSTRAP_MASTER_USER_IDS`에 실제 최초 마스터 ID를 지정하고, `SSO_ACCESS_CONTROL_FILE`에는 실행 계정이 읽고 쓸 수 있는 영속 파일 경로를 지정한다. 초기에는 마스터만 접근할 수 있으므로 마스터 로그인 후 일반 접근 규칙을 등록한다. 파일은 실행 계정만 읽게 한다. systemd 사용이 확인된 경우 기존 unit drop-in의 `[Service]`에 `EnvironmentFile=<secret-env-file>`을 추가한다. 기존 `WorkingDirectory`, `ExecStart`, HOST/PORT, Python/DB 설정은 유지한다. 실제 SSO 설정을 출력하지 않는 사전 검사(아래 명령은 권한 파일을 생성하지 않으며, 권한 파일 검사는 실제 서버 시작 시 수행):
 
 ```bash
 cd <deployment-checkout>
@@ -198,3 +201,13 @@ curl --silent --show-error --output /dev/null --write-out '%{http_code}\n' 'http
 정상 기대는 기존 화면 응답과 기존 IP 기반 `/api/current-user` 동작이다. 후자는 기존 사용자 조회 DB 접근이 필요하다. 비정상일 때 반복 restart하지 말고 활성 환경과 이전 release로 확인한다.
 
 소스 자체 복구가 필요하면 보관한 **SSO 적용 전 release + 그 release의 dist/환경**을 기존 배포 절차로 재배포하고 재시작한다. 사용자 변경을 지우는 `git reset --hard`/강제 push는 사용하지 않는다. 이전 `LIVE_RELOAD`/`BUILD_ON_START` 값 복원이 필요하면 기록한 값으로 되돌린다. DB 변경이 없어 migration rollback은 없다. Nginx/TLS는 그대로 유지하며, 이번 배포에서 별도 프록시 조정을 했다면 HTTPS가 완료된 직전 구성으로만 복구한다.
+
+## 8. 접근 권한 관리
+
+- SSO 사용 시 역할은 `master`(마스터 유저), `general`(일반 유저) 두 가지다. 마스터만 우측 상단 프로필 왼쪽의 **권한 관리** 버튼에서 마스터 계정과 일반 접근 규칙을 추가·수정·삭제할 수 있다. 그 외 업무 기능의 기존 권한은 변경하지 않는다.
+- 마스터는 유저ID 직접 일치로만 지정한다. 일반 접근 규칙은 유저ID 직접 일치 또는 소속부서 직접 일치·텍스트 포함이다. 하나 이상의 규칙에 맞으면 일반 접근을 허용하고, 마스터 계정 일치가 우선한다. quality-hub와 같이 권한 비교용 유저ID는 앞뒤 공백 제거·소문자 변환하며 기존 SSO Knox ID와 업무 데이터의 대소문자는 바꾸지 않는다. 부서 조건은 앞뒤 공백을 제거해 저장하고 SSO 부서 값과 대소문자를 구분해 비교한다. 빈 조건이나 유저ID 텍스트 포함은 거부한다.
+- 최초 설정 예: `SSO_BOOTSTRAP_MASTER_USER_IDS=master.one,master.two` (예시 ID를 실제 ID로 교체). 권한 파일이 없을 때만 초기화한다. 기존 파일이 있으면 환경변수에 ID를 추가해도 마스터가 추가되지 않으며, 관리 화면을 이용해야 한다. 마지막 마스터는 회수할 수 없다. 부서 규칙을 쓰려면 `SSO_DEPARTMENT_CLAIM`도 실제 claim 키로 설정해야 한다.
+- 권한 파일은 단일 Node 프로세스에서 읽고 원자적으로 교체하며 재시작 후 유지된다. 실행 계정만 읽고 쓸 수 있게 생성한다. 파일과 상위 디렉터리의 쓰기 권한을 유지하고, 운영자는 파일을 백업·복구 대상에 포함한다. 재배포 시 파일을 삭제하거나 초기화하지 않는다. 저장소가 손상되면 시작을 거부하며, 실행 중 읽기 오류는 `503 ACCESS_STORE_UNAVAILABLE`로 차단한다. 복구는 보관한 정상 권한 파일을 기존 운영 절차로 복원한다.
+- `GET /api/access-control`은 마스터에게만 `{ok, masters, rules}`를 제공한다. 같은 경로의 `POST`/`DELETE`는 `{target:"master", userId}`로 계정을 추가·회수한다. `POST`/`PATCH`는 `{target:"rule", field:"user_id"|"department", matchType:"exact"|"contains", matchValue, ruleId?}`로 규칙을 저장한다. 수정에는 `ruleId`가 필수이며 `DELETE`는 `{target:"rule", ruleId}`다. 변경 응답은 `{ok:true}`이며 출처 검사와 변경 직전 마스터 재검사를 수행한다.
+- `GET /api/auth/session`은 접근 허용 사용자에게 기존 응답과 함께 `role`을 제공한다. 권한이 없으면 모든 업무 API는 `403 ACCESS_DENIED`, 화면은 접근 거부 안내를 제공한다. 일반 유저의 관리 API 요청은 `403 MASTER_REQUIRED`다. 이미 로그인한 사용자의 권한도 요청마다 확인하므로 회수 후 다음 요청부터 반영된다. 이미 브라우저에 전달된 데이터까지 회수하지는 않는다. 열린 화면은 60초 주기·창 복귀 시 세션 확인으로 접근 거부 안내로 이동한다. 차단된 사용자도 로그아웃할 수 있다.
+- `SSO_ENABLED=false`일 때는 기존 동작을 유지하며 권한 파일을 생성하지 않고 관리 API는 `404`로 닫힌다. SSO를 끄면 이 접근 제한도 비활성화되므로 운영에서 권한 회수 수단으로 사용하지 않는다.

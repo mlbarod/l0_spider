@@ -26,6 +26,7 @@ test("실제 Node 진입점의 전체 API/React 보호, 로그인, 사용자, �
     SSO_CERTIFICATE_PATH: certificate, SSO_SESSION_SECRET: "synthetic-not-a-real-secret-value-32-bytes",
     SSO_EXPECTED_ISSUER: "https://idp.example", SSO_USER_ID_CLAIM: "knox_id",
     SSO_SAFE_CLAIM_TRACE: "false", SSO_DISPLAY_NAME_CLAIM: "full_name", SSO_DEPARTMENT_CLAIM: "org_name", SSO_TRUSTED_PROXY_IPS: "127.0.0.1",
+    SSO_ACCESS_CONTROL_FILE: join(directory, "access.json"), SSO_BOOTSTRAP_MASTER_USER_IDS: "user01",
   }
   async function start(overrides = {}) {
     const child = spawn(process.execPath, ["server.mjs"], { env: { ...environment, ...overrides }, stdio: ["ignore", "pipe", "pipe"] })
@@ -77,7 +78,7 @@ test("실제 Node 진입점의 전체 API/React 보호, 로그인, 사용자, �
   const user = await request("/api/current-user", { headers: { cookie } })
   assert.equal(user.status, 200)
   assert.deepEqual(await user.json(), { ok: true, knoxId: "user01" })
-  assert.deepEqual(await (await request("/api/auth/session", { headers: { cookie } })).json(), { ok: true, enabled: true, user: { userId: "user01", displayName: "홍길동", department: "품질관리" } })
+  assert.deepEqual(await (await request("/api/auth/session", { headers: { cookie } })).json(), { ok: true, enabled: true, role: "master", user: { userId: "user01", displayName: "홍길동", department: "품질관리" } })
   const html = await request("/", { headers: { cookie } })
   assert.equal(html.status, 200)
   assert.equal(html.headers.get("cache-control"), "private, no-store")
@@ -87,6 +88,33 @@ test("실제 Node 진입점의 전체 API/React 보호, 로그인, 사용자, �
   assert.ok(asset)
   assert.equal((await request(asset)).status, 303)
   assert.equal((await request(asset, { headers: { cookie } })).status, 200)
+  const permissions = await request("/api/access-control", { headers: { cookie } })
+  assert.equal(permissions.status, 200)
+  assert.deepEqual((await permissions.json()).masters.map(master => master.userId), ["user01"])
+  const mutation = { method: "POST", headers: { cookie, "content-type": "application/json", origin: "https://spider.example" }, body: JSON.stringify({ target: "rule", field: "department", matchType: "contains", matchValue: "품질" }) }
+  assert.equal((await request("/api/access-control", { ...mutation, headers: { ...mutation.headers, origin: "https://evil.example" } })).status, 403)
+  assert.equal((await request("/api/access-control", mutation)).status, 200)
+  // A second, genuinely signed SSO login exercises the complete authorization chain.
+  async function loginAs(userId, department) {
+    const begin = await request("/auth/login")
+    const target = new URL(begin.headers.get("location"))
+    const input = [{ alg: "RS256" }, { ...claims, knox_id: userId, org_name: department, nonce: target.searchParams.get("nonce") }].map(value => Buffer.from(JSON.stringify(value)).toString("base64url")).join(".")
+    const token = `${input}.${sign("RSA-SHA256", Buffer.from(input), privateKey).toString("base64url")}`
+    const finish = await request("/auth/callback", { method: "POST", headers: { cookie: begin.headers.getSetCookie()[0].split(";")[0], "content-type": "application/x-www-form-urlencoded", origin: "https://idp.example" }, body: new URLSearchParams({ state: target.searchParams.get("state"), code, id_token: token }) })
+    assert.equal(finish.status, 303)
+    return finish.headers.getSetCookie().find(value => value.startsWith("__Host-")).split(";")[0]
+  }
+  const generalCookie = await loginAs("user02", "품질관리")
+  assert.equal((await request("/", { headers: { cookie: generalCookie } })).status, 200)
+  assert.equal((await (await request("/api/auth/session", { headers: { cookie: generalCookie } })).json()).role, "general")
+  assert.equal((await request("/api/access-control", { headers: { cookie: generalCookie } })).status, 403)
+  assert.equal((await request("/api/access-control", { ...mutation, headers: { ...mutation.headers, cookie: generalCookie } })).status, 403)
+  const savedRule = (await (await request("/api/access-control", { headers: { cookie } })).json()).rules[0]
+  assert.equal((await request("/api/access-control", { ...mutation, method: "DELETE", body: JSON.stringify({ target: "rule", ruleId: savedRule.ruleId }) })).status, 200)
+  for (const path of ["/", asset, "/api/auth/session", "/api/current-user", "/api/dashboard-data", "/deep/link"]) {
+    assert.equal((await request(path, { headers: { cookie: generalCookie, "x-knox-id": "user01" } })).status, 403, path)
+  }
+  assert.equal((await request("/auth/logout", { method: "POST", headers: { cookie: generalCookie, origin: "https://spider.example" } })).status, 303)
   assert.equal((await request("/api/hit-history", { method: "POST", headers: { cookie, origin: "https://evil.example" }, body: "{}" })).status, 403)
   assert.equal((await request("/auth/logout", { method: "POST", headers: { cookie, origin: "https://spider.example" } })).status, 303)
   assert.equal((await request("/api/current-user", { headers: { cookie } })).status, 401)
@@ -94,4 +122,5 @@ test("실제 Node 진입점의 전체 API/React 보호, 로그인, 사용자, �
   await start({ SSO_ENABLED: "false" })
   assert.equal((await request("/")).status, 200)
   assert.deepEqual(await (await request("/api/auth/session")).json(), { ok: true, enabled: false })
+  assert.equal((await request("/api/access-control")).status, 404)
 })
