@@ -1305,10 +1305,10 @@ const ErdScatterCard = memo(function ErdScatterCard({
             <span className="w-4 border-t border-dashed border-green-600" /> 변경점 이력
           </span>
           <span>↘ 드래그 확대 · ↖ 드래그/더블클릭 원복</span>
+          {reasonLabel ? (
+            <span className="text-xs text-foreground">이상감지 사유: {reasonLabel}</span>
+          ) : null}
         </div>
-        {reasonLabel ? (
-          <p className="mt-2 text-xs text-foreground">이상감지 사유: {reasonLabel}</p>
-        ) : null}
       </header>
       <div
         className="grid min-h-[320px] place-items-center bg-background p-3"
