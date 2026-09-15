@@ -27,8 +27,8 @@
 | 동일성 기준 이상 감지 그래프 | `img.png` | `/appdata/abnormal_trend/pic/erd_commonality/{latest_date}/{sdwt}/{grade}/{step_seq}/{step_desc}/{ppid}/{ppid}/{sensor}_{ch_step}/img.png` | 미정 (개발하면서 순차 정의) |
 | 공통부 동일성 기준 이상 감지 그래프 | `img.png` | `/appdata/abnormal_trend/pic/path_common_commonality/{latest_date}/{sdwt}/{eqp_model}/{grade}/{sensor}@{ch_step}/img.png` | 해당 없음 (이미지 파일) |
 | 이상감지 이력 이미지 | `#appdata#abnormal_trend#pic#erd#{latest_date}#{sdwt}#{step_desc}#{ver}#{ppid}#{grade}#{sensor}#{ch_step}#{eqp}.png` | `/appdata/abnormal_trend/pic/backup/#appdata#abnormal_trend#pic#erd#{latest_date}#{sdwt}#{step_desc}#{ver}#{ppid}#{grade}#{sensor}#{ch_step}#{eqp}.png` | 해당 없음 (이미지 파일) |
-| `latest_date` 결정 및 대시보드 세부 파일 | `{latest_date}` | `/appdata/abnormal_trend/pic/path/{latest_date}` | `sdwt`, `desc`, `recipe_id`, `priority`, `sensor`, `eqp`, `status` |
-| 분임조별 ERD 이상감지 경로 데이터 | `df_path.parquet` | `/appdata/abnormal_trend/pic/path/{line}/{sdwt}/df_path.parquet` | `sdwt`, `desc`, `ver`, `recipe_id`, `priority`, `sensor`, `step`, `eqp`, `file_path`, `line_rev`, `status` |
+| `latest_date` 결정 및 대시보드 세부 파일 | `{latest_date}` | `/appdata/abnormal_trend/pic/path/{latest_date}` | `sdwt`, `desc`, `recipe_id`, `priority`, `sensor`, `eqp`, `status`, `reason` |
+| 분임조별 ERD 이상감지 경로 데이터 | `df_path.parquet` | `/appdata/abnormal_trend/pic/path/{line}/{sdwt}/df_path.parquet` | `sdwt`, `desc`, `ver`, `recipe_id`, `priority`, `sensor`, `step`, `eqp`, `file_path`, `line_rev`, `status`, `reason` |
 | 공통부 이상감지 경로 테이블 | `df_path.parquet` | `/appdata/abnormal_trend/pic/path_common/{line}/{sdwt}/df_path.parquet` | `file_path`, `sdwt`, `prc_group`, `date`, `priority`, `sensor`, `step`, `eqp`, `line_rev` |
 | 공통부 이상감지 데이터 | `data.parquet` | `/appdata/abnormal_trend/pic/common/{latest_date}/{sdwt}/{step_desc}/{grade}/{sensor}/{ch_step}/data.parquet` | `eqp_id`, `disp_name`, `lotid`, `wafer_id`, `act_time` (x축), `{sensor}_{ch_step}` (y축), `eqp_cb` (차트별 EQP 필터) |
 | 공통부 이상감지 이미지 | `{eqp_cb}.png` | `/appdata/abnormal_trend/pic/common/{latest_date}/{sdwt}/{step_desc}/{grade}/{sensor}/{ch_step}/{eqp_cb}.png` | 해당 없음 (메인 카드 이미지 출력) |
@@ -39,6 +39,17 @@
 
 `status`는 `WARN`(Warning), `ALARM`(Critical) 중 하나입니다. 대시보드 세부 파일과
 분임조별 ERD 경로 데이터에서 함께 읽으며, 자설비 차트는 경로 데이터의 `status`로 구분합니다.
+
+`reason`은 위 두 경로 파일에서 선택적으로 읽는 이상감지 사유 코드입니다.
+자설비 Scatter chart 상단에는 해당 행의 `reason`에 따라 아래 문구를 표시합니다.
+컬럼이 없거나 값이 비어 있거나 아래 코드와 일치하지 않으면 사유를 표시하지 않습니다.
+`latest_date` 결정과 대시보드 건수 집계 기준은 그대로 유지합니다.
+
+| `reason` | 표시 문구 |
+| --- | --- |
+| `AVG_OUTSIDE_IDENTITY_RANGE` | 동종설비와 비교하여 진행영역 벗어남 |
+| `IDENTITY_DATA_INSUFFICIENT_FALLBACK` | 동종설비 모수 부족으로 자설비 기준으로 이상감지 |
+| `STD_SPEC_OUT` | 자살비 산포 이상감지 |
 
 ### 화면별 최신 데이터 판단
 

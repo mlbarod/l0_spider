@@ -16,7 +16,7 @@ import { formatLineDisplayName } from "../src/features/fdc-trend/utils/lineDispl
 
 test("대시보드 참조 컬럼 계약을 유지한다", () => {
   assert.deepEqual(DASHBOARD_STATS_COLUMNS, ["exec_date", "recipe_id", "priority", "ng", "total"])
-  assert.deepEqual(DASHBOARD_DETAIL_COLUMNS, ["sdwt", "desc", "recipe_id", "priority", "sensor", "eqp", "status"])
+  assert.deepEqual(DASHBOARD_DETAIL_COLUMNS, ["sdwt", "desc", "recipe_id", "priority", "sensor", "eqp", "status", "reason"])
   assert.deepEqual(LINE_ANOMALY_ID_COLUMNS, ["desc", "recipe_id", "priority", "sensor", "eqp"])
 })
 
@@ -31,8 +31,8 @@ test("TL total 합계와 세부 파일의 컬럼 조합 고유건수로 대시�
     { recipe_id: "TL-2", priority: "tl", ng: 999, total: "50" },
   ]
   const detailRows = [
-    { sdwt: "S1", desc: "ETCH", recipe_id: "R1", priority: "A", sensor: "TEMP", eqp: "EQ1" },
-    { sdwt: "S1", desc: "ETCH", recipe_id: "R1", priority: "A", sensor: "TEMP", eqp: "EQ1" },
+    { sdwt: "S1", desc: "ETCH", recipe_id: "R1", priority: "A", sensor: "TEMP", eqp: "EQ1", reason: "AVG_OUTSIDE_IDENTITY_RANGE" },
+    { sdwt: "S1", desc: "ETCH", recipe_id: "R1", priority: "A", sensor: "TEMP", eqp: "EQ1", reason: "STD_SPEC_OUT" },
     { sdwt: "S1", desc: "ETCH", recipe_id: "R1", priority: "B", sensor: "TEMP", eqp: "EQ1" },
     { sdwt: "S2", desc: "ASH", recipe_id: "R2", priority: "D", sensor: "TEMP", eqp: "EQ2" },
     { sdwt: "S2", desc: "ASH", recipe_id: "R2", priority: "D", sensor: "TEMP", eqp: "EQ2" },

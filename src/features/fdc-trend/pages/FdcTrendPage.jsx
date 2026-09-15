@@ -62,6 +62,7 @@ import {
 import { SENSOR_GRADES } from "../utils/fdcTrendMockData"
 import { getLowestChStepRowsByPpid } from "../utils/chStepGrouping.mjs"
 import { ANOMALY_STATUSES, filterChartsByStatus } from "../utils/anomalyStatus.mjs"
+import { getAnomalyReasonLabel } from "../utils/anomalyReason.mjs"
 import { paginateChartGroups } from "../utils/chartPagination.mjs"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 import {
@@ -1123,6 +1124,7 @@ const ErdScatterCard = memo(function ErdScatterCard({
   dataQueryKeyPrefix,
 }) {
   const eqp = stripPngExtension(row.eqp)
+  const reasonLabel = getAnomalyReasonLabel(row.reason)
   const queryClient = useQueryClient()
   const cardRef = useRef(null)
   const chartContainerRef = useRef(null)
@@ -1304,6 +1306,9 @@ const ErdScatterCard = memo(function ErdScatterCard({
           </span>
           <span>↘ 드래그 확대 · ↖ 드래그/더블클릭 원복</span>
         </div>
+        {reasonLabel ? (
+          <p className="mt-2 text-xs text-foreground">이상감지 사유: {reasonLabel}</p>
+        ) : null}
       </header>
       <div
         className="grid min-h-[320px] place-items-center bg-background p-3"
