@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { ChartMailDialog } from "../components/ChartMailDialog"
+import { loadChartPng } from "../utils/chartMailImage"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -268,6 +270,12 @@ const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({
           ) : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <ChartMailDialog
+            title={`[SPIDER] 공통부 이상감지 · ${eqp}`}
+            details={`Line: ${lineId} · EQP: ${eqp} · PRC Group: ${row.prc_group || "-"} · Sensor: ${row.sensor || "-"} · Step: ${row.step || "-"} · Grade: ${row.priority || "-"}`}
+            prepareImage={() => loadChartPng(imageUrl)}
+            disabled={imageFailed}
+          />
           <IdentityChartDialog
             row={identityRow}
             eqp={eqp}
