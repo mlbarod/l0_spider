@@ -1,6 +1,14 @@
 # Chart Mailing 수신인 그룹 DB 구성안
 
-상태: 테이블 생성용 제안. 현재 파일 저장 코드를 DB로 전환하지 않았으며 실제 DB에 DDL을 실행하지 않았다.
+상태: 2026-09-17 DB 저장 연동 구현. 사용자가 두 테이블을 생성했다고 확인했다. 개발 과정에서 운영 DB의 DDL·테스트 쓰기·데이터 이전은 실행하지 않았다.
+
+## 현재 저장 동작
+
+`/api/mail-recipient-groups`는 `server/mailRecipientGroupsDb.mjs` → `scripts/mail_recipient_groups.py`를 통해 두 테이블을 조회·추가·수정·삭제한다. 기존 Mailing 등록 기능의 `load_db_info()`를 재사용하므로 `DB_INFO_PATH`(기본 `/appdata/l0_spider/db_info.pkl`)의 동일 DB에 연결한다. 별도 접속 정보는 필요하지 않으며 기존 `python3`/PyMySQL 실행 환경을 사용한다.
+
+사용자 요청에 따라 **앞으로 저장하는 그룹만 DB를 사용한다.** 기존 `.local/mail-recipient-groups.json` 또는 `MAIL_RECIPIENT_GROUPS_PATH` 파일은 변경·이전하지 않으며, 화면의 목록은 DB 데이터만 보여 준다. `MAIL_RECIPIENT_GROUPS_PATH`는 더 이상 API 저장 위치에 영향을 주지 않는다. DB 실패 시 파일 저장으로 대체하지 않고 오류를 반환한다.
+
+배포 시 Node 서버 파일과 `scripts/mail_recipient_groups.py`를 함께 반영한다. 이미 생성한 테이블에 아래 생성 SQL을 다시 실행할 필요는 없다. 실제 운영 DB 접속과 테이블 구조·권한은 개발 환경에서 검증하지 않았다.
 
 ## 대상과 생성 SQL
 
@@ -291,14 +299,14 @@ SHOW CREATE TABLE chart_mail_recipient_group_member;
 
 현재 작성창에는 여러 그룹과 직접 입력을 합친 **최종 수신인도 최대 100명**으로 제한하는 동작이 있다. 이번 그룹당 100명 요구사항으로 이 기존 발송 요청 제한을 바꾸지는 않는다.
 
-## DB 연결 시 구현할 사항
+## DB 연결 구현
 
 1. PyMySQL 연결은 `charset="utf8mb4"`와 UTC 세션 시각을 사용한다. 두 테이블의 생성·수정 시각도 UTC로 저장한다.
 2. 그룹 조회·수정·삭제는 로그인 사용자의 `owner_knox_id`를 항상 조건에 포함한다. 테이블 구조만으로 개인별 접근 권한이 자동 적용되지는 않는다.
 3. 수정 시 `group_id`와 `owner_knox_id` 조건으로 부모 행을 `SELECT ... FOR UPDATE`하여 소유권을 확인하고 잠근다. 같은 트랜잭션에서 이름 변경, 기존 수신인 교체, 새 순번 1~N 삽입을 처리한다. 실패하면 전체 rollback한다.
 4. 수신인만 변경해도 부모 `updated_at`을 명시적으로 갱신한다. 자식 변경만으로 부모의 자동 수정 시각이 바뀌지는 않는다.
 5. 그룹 삭제는 소유권 조건으로 부모를 삭제한다. `ON DELETE CASCADE`가 자식 수신인 행을 함께 삭제한다. [MySQL 공식 외래키 문서](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-keys.html)
-6. 현재 사용자당 그룹 최대 50개 제한도 저장 코드에서 유지한다. 이 DDL 자체는 사용자당 그룹 수를 제한하지 않는다. 다중 연결에서 동시에 새 그룹을 생성하는 경우 소유자별 생성 처리를 직렬화하는 방식을 DB 연결 구현 시 정한다.
-7. 기존 파일 그룹을 이전할 때 UUID·소유자·이름·수신인 순서·수정 시각을 보존한다. 파일에는 생성 시각이 없으므로 이전한 그룹의 `created_at`은 이전 시각으로 기록한다. 파일 삭제나 자동 이전은 이번 구성안에 포함하지 않는다.
+6. 현재 사용자당 그룹 최대 50개 제한도 저장 코드에서 유지한다. 이 DDL 자체는 사용자당 그룹 수를 제한하지 않는다. DB 이름과 소유자에서 계산한 키로 `GET_LOCK`을 획득한 뒤 트랜잭션을 시작하여 같은 사용자의 저장·삭제를 직렬화한다. 잠금은 commit/rollback 이후 전용 연결을 닫을 때 해제한다. [MySQL 잠금 함수 문서](https://dev.mysql.com/doc/refman/8.4/en/locking-functions.html)
+7. 기존 파일 그룹은 사용자 요청에 따라 이전하지 않는다. 원본 파일은 그대로 보존한다.
 
-현재 UI와 API 응답 형태는 유지할 수 있다. 다만 **테이블 생성만으로 저장 대상이 DB로 바뀌지 않으며**, `server/mailRecipientGroups.mjs`의 파일 저장 부분을 DB 구현으로 연결하는 작업이 남는다.
+현재 UI와 API 응답 형태는 유지한다. 서버는 DB 작업이 완료된 뒤 성공을 반환하며, 그룹 정보와 수신인 목록은 같은 트랜잭션에서 처리한다. 개발 검증은 API 비동기 처리·입력 검증·오류 보호 테스트와 임시 SQLite 기반 SQL/rollback 검증을 사용했다. SQLite 검증은 실제 MySQL 잠금·동시성·DDL 호환성 검증을 대신하지 않는다.

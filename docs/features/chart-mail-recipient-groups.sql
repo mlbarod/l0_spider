@@ -1,4 +1,4 @@
--- Chart Mailing 개인별 수신인 그룹: 제안 DDL, 애플리케이션 DB 연동 전
+-- Chart Mailing 개인별 수신인 그룹: DB 저장 연동용 스키마 (기존 테이블에 재실행하지 않음)
 -- 대상: MySQL 8.0.16 이상 / InnoDB / utf8mb4
 -- 실행 전에 SELECT VERSION(); 으로 DB 종류와 버전을 확인하고 대상 DB를 선택한다.
 -- MySQL 8.0.16 미만에서는 CHECK가 무시되므로 이 SQL로 100명 제한을 보장할 수 없다.

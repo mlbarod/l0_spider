@@ -11,8 +11,8 @@
 
 - `MailRecipientGroups`와 `/api/mail-recipient-groups`: 로그인 사용자 개인 그룹의 조회·추가·수정·삭제. 그룹 이름은 1~80자, 그룹당 수신인은 1~100명, 사용자당 그룹은 최대 50개다. Knox ID와 `@samsung.com` 주소를 받아 중복을 제거한다. 동일 사용자의 그룹 이름 중복은 허용하지 않는다.
 - 소유자는 서버의 SSO 정보로 결정한다. 클라이언트가 전달한 소유자는 사용하지 않으며 다른 사용자의 그룹은 조회·수정·삭제할 수 없다. 기존 서버의 SSO·요청 출처 검사 아래에서 동작한다.
-- 그룹은 기존 접근 권한 저장소와 같은 단일 Node 프로세스용 파일 방식으로 저장한다. 기본 경로는 Git에서 제외되는 `.local/mail-recipient-groups.json`이며 `MAIL_RECIPIENT_GROUPS_PATH`로 변경할 수 있다. 최초 그룹 저장 시 생성하고 서버 재시작 후에도 유지한다. 배포 시 이 파일이 보존되는 저장 경로를 사용해야 한다. 여러 서버 프로세스가 같은 파일에 동시에 쓰는 구성은 지원하지 않는다. 별도 DB 연동은 아직 구현하지 않았다.
-- 사용자 요청에 따라 그룹당 수신인 최대 100명을 유지하는 [DB 테이블 구성안](./chart-mail-recipient-groups-db.md)과 [MySQL 생성 SQL](./chart-mail-recipient-groups.sql)을 준비했다. 사용자가 테이블을 구성한 뒤 DB 저장 코드를 연결한다. 실제 DB 제품·버전은 미확인이다.
+- 그룹은 기존 Mailing 등록과 동일한 `DB_INFO_PATH`의 DB에 저장한다. `server/mailRecipientGroupsDb.mjs`와 `scripts/mail_recipient_groups.py`가 두 테이블의 조회·추가·수정·삭제를 처리한다. 사용자별 쓰기 잠금과 트랜잭션으로 그룹·수신인 목록을 함께 반영하고, DB 실패 시 파일로 대체 저장하지 않는다.
+- 사용자가 수신인 그룹 테이블 생성을 확인하여 [DB 연동 명세](./chart-mail-recipient-groups-db.md)와 [MySQL 생성 SQL](./chart-mail-recipient-groups.sql)에 맞춰 연결했다. 사용자 요청에 따라 앞으로 저장하는 그룹만 DB를 사용하며 기존 `.local/mail-recipient-groups.json` 또는 `MAIL_RECIPIENT_GROUPS_PATH`의 파일은 이전·변경하지 않는다. 화면은 DB 그룹만 조회한다. 실제 운영 DB의 제품·버전·테이블 호환성은 미검증이다.
 - `ChartMailDialog`: 자설비·동일성·공통부 이상감지 차트 하단에서 작성창을 연다. 그룹 복수 선택과 Knox ID 직접 입력을 함께 사용할 수 있으며 최종 수신인을 표시한다. 정형 코멘트는 코드에 정의한 3개 문구 중 선택한다.
 - 자설비 차트는 현재 확대 상태를 변경하지 않고 전체 범위로 별도 렌더링하여 PNG를 만든다. 기존 화면과 같은 점 표시 규칙을 사용한다. 동일성·공통부는 기존 PNG 원본을 가져온다. 작성창에 준비한 이미지를 그대로 발송 요청에 사용하도록 연결했다. 현재 클라이언트 이미지 제한 5MB는 Knox의 확인된 제한이 아니다.
 - `/api/chart-mail`은 로그인과 메일 설정을 확인한다. `KNOX_MAIL_ENABLED=true`이고 토큰·System-ID·발신자가 유효하면 GET에 `ready: true`를 반환하여 보내기 버튼을 활성화한다. 비활성·잘못된 설정이면 GET은 `ready: false`, POST는 `503 / MAIL_TRANSPORT_NOT_CONFIGURED`를 반환한다. POST는 서버가 검증한 차트 PNG를 HTML의 Base64 data URL로 넣어 Knox API에 전송한다. **Base64 지원은 사용자 요청에 따른 구현 가정이며 실제 사내 수신은 미검증이다.**
@@ -188,7 +188,10 @@ Spider의 기존 이미지 URL을 그대로 본문에 넣는 방식은 로그인
 | HTTP 429 | API 호출 제한 |
 | `ENOTFOUND`, `EAI_AGAIN` | Spider 서버의 사내 API DNS 조회 |
 | 인증서 관련 `networkCode` | 서버의 TLS 인증서 신뢰·인증서 만료 |
-| `TIMEOUT`, `ETIMEDOUT` 등 | API 접속·응답 시간과 `KNOX_MAIL_TIMEOUT_MS` |
+| `TIMEOUT` | 애플리케이션의 전체 요청 제한 시간 `KNOX_MAIL_TIMEOUT_MS` |
+| `UND_ERR_CONNECT_TIMEOUT` | HTTP 클라이언트의 별도 연결 제한. API 연결 경로·프록시·방화벽 등을 확인 |
+| `UND_ERR_HEADERS_TIMEOUT`, `UND_ERR_BODY_TIMEOUT` | HTTP 클라이언트의 응답 헤더·본문 대기 제한 |
+| `ETIMEDOUT` | 하위 네트워크 계층의 시간 초과 |
 | `apiReportedFailure: true` | 응답 JSON에서 명시적인 실패 표시 감지. Knox 고유 규격에 따른 최종 판정은 별도 확인 |
 | `http_response_unverified` | HTTP 응답을 받았으나 실제 발송·수신은 미확인 |
 | `request_storage_failed`, `result_storage_failed` | 로컬 요청 기록의 읽기·쓰기 상태. 후자는 이미 API 요청을 보낸 뒤 기록에 실패했으므로 수신 확인 필요 |
@@ -201,6 +204,20 @@ KNOX_MAIL_TIMEOUT_MS=30000
 ```
 
 TIMEOUT 화면의 제한 시간과 로그의 `timeoutMs`로 적용 여부를 확인한다. `durationMs`는 요청 검증 등을 포함한 전체 처리 시간이므로 정확히 제한 시간과 일치하지 않을 수 있다. `upstreamStatus`가 없으면 HTTP 응답 헤더를 받기 전에 중단된 것이며, DNS·TCP·TLS 연결, 업로드 또는 API 처리 대기 중 어느 단계인지는 이 정보만으로 구분할 수 없다. `upstreamStatus`가 있으면 응답 헤더를 받은 뒤 본문을 읽는 중에 중단된 것이다. 30초에서도 계속 발생하면 Spider 실행 서버의 사내 API 연결 경로와 API 응답 시간을 확인해야 한다. 제한 시간 변경은 원인 확정이나 발송 성공 확인을 의미하지 않는다.
+
+**전체 30초 전에 `UND_ERR_CONNECT_TIMEOUT`이 발생하는 경우**: `KNOX_MAIL_TIMEOUT_MS`는 `AbortSignal.timeout()`에 적용하는 전체 요청 상한이다. 현재 코드는 Node.js의 기본 `fetch`를 사용하며 별도 dispatcher나 연결 제한을 지정하지 않는다. Undici에는 별도의 연결 제한이 있고 공식 Connector 문서는 기본값을 10초로 안내한다. 따라서 전체 상한인 30초 전에 연결 시도가 종료될 수 있으며, 전체 시간만 늘려도 이 제한이나 접속 문제는 해결되지 않는다. 실제 기본값은 실행 서버의 Node.js·내장 Undici 버전 및 시작 설정에 따라 확인한다. [Undici Connector 공식 문서](https://github.com/nodejs/undici/blob/main/docs/docs/api/Connector.md)
+
+이 오류는 연결 단계가 완료되지 않았다는 근거다. 토큰 오류나 Base64 거절로 먼저 단정하지 않는다. 같은 서버·컨테이너에서 정상 동작하는 Quality-Hub 또는 Python 호출이 있는지 비교하고, 사내 API로 나가는 경로·프록시 적용·DNS/주소 선택·TLS 연결을 확인한다. 다른 PC에서 성공하는 것은 Spider 실행 서버의 접속 가능성을 증명하지 않는다.
+
+연결 확인용으로 Spider 실행 서버에서 아래 명령을 사용할 수 있다. HEAD 요청만 사용하며 메일·토큰·본문은 보내지 않는다. 사내 API에 대한 이 확인 명령은 개발 환경에서 실제 실행하지 않았다.
+
+```bash
+curl -q -sS -I -o /dev/null --connect-timeout 10 --max-time 15 -w 'HTTP %{http_code}\n' https://openapi.samsung.net/mail/api/v2.0/mails/send
+```
+
+HTTP 401·403·405 등이라도 반환되면 curl이 사용한 경로에서 HTTP 응답을 받은 것이다. 발송 권한·메일 전달 성공을 의미하지 않으며 프록시가 응답했을 수도 있다. curl도 시간 초과라면 서버의 접속 경로부터 확인한다. curl이나 Python만 성공하면 Node.js 실행 환경의 프록시·인증서·주소 선택 차이를 확인한다. 프록시 주소나 인증정보를 로그·채팅에 공유하지 않는다.
+
+Node.js의 환경변수 프록시 지원은 버전·시작 옵션에 따라 달라진다. 지원 버전에서 `--use-env-proxy` 또는 `NODE_USE_ENV_PROXY=1`은 시작 시 `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`를 읽는다. 애플리케이션이 시작된 뒤 `.env.mail`에서 읽는 것과 같지 않다. 실제 배포에서 승인된 프록시 사용 여부와 Node.js 버전을 확인한 뒤 적용하며, 진단만으로 프록시·방화벽 설정이나 TLS 검증을 임의 변경하지 않는다. [Node.js 공식 문서](https://nodejs.org/api/cli.html#--use-env-proxy)
 
 이미 TIMEOUT으로 기록된 요청은 같은 요청 ID로 다시 보내지 않는다. 제한 시간을 바꾸더라도 자동 재시도하거나 기록을 지우지 않으며, 추가 발송 전에는 먼저 수신 여부를 확인한다.
 

@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { getSsoCurrentUser, sendSsoAuthenticationError } from "./currentUser.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
+import { createMailRecipientGroupDbStore } from "./mailRecipientGroupsDb.mjs"
 import { parseMailRecipients } from "../src/features/fdc-trend/utils/chartMail.mjs"
 
 const defaultPath = fileURLToPath(new URL("../.local/mail-recipient-groups.json", import.meta.url))
@@ -17,8 +18,8 @@ function inputGroup(input) {
   return { name: input.name.trim(), recipients }
 }
 
-// Same single-process, atomic-file storage model as accessControl.mjs.
-// No file is created until a user explicitly saves a group.
+// Legacy file store retained for existing files/tests. HTTP requests use the DB
+// store below; they never import, overwrite or fall back to this file.
 export function createMailRecipientGroupStore({ filePath = process.env.MAIL_RECIPIENT_GROUPS_PATH || defaultPath } = {}) {
   const path = resolve(filePath)
   function read() {
@@ -91,16 +92,21 @@ async function readBody(req) {
   return body
 }
 
-export function createMailRecipientGroupsHandler({ store = createMailRecipientGroupStore(), logger } = {}) {
+export function createMailRecipientGroupsHandler({ store = createMailRecipientGroupDbStore(), logger } = {}) {
   return async function handle(req, res) {
     try {
       const owner = getSsoCurrentUser(req).knoxId.trim().toLowerCase()
-      if (req.method === "GET") return json(res, 200, { ok: true, groups: store.list(owner) })
+      if (req.method === "GET") return json(res, 200, { ok: true, groups: await store.list(owner) })
       if (!["POST", "DELETE"].includes(req.method)) return json(res, 405, { ok: false, error: "지원하지 않는 요청입니다." })
       const input = await readBody(req)
-      if (req.method === "POST") return json(res, 200, { ok: true, group: store.save(owner, input) })
+      if (req.method === "POST") {
+        const normalized = inputGroup(input)
+        if (input.id && (typeof input.id !== "string" || !idPattern.test(input.id))) throw new TypeError("그룹 ID를 확인해 주세요.")
+        const group = await store.save(owner, { ...normalized, ...(input.id ? { id: input.id } : {}) })
+        return json(res, 200, { ok: true, group })
+      }
       if (typeof input.id !== "string" || !idPattern.test(input.id)) throw new TypeError("그룹 ID를 확인해 주세요.")
-      store.remove(owner, input.id)
+      await store.remove(owner, input.id)
       return json(res, 200, { ok: true })
     } catch (error) {
       if (sendSsoAuthenticationError(error, res)) return

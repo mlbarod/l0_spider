@@ -283,3 +283,28 @@ test("기본 30초와 명시한 제한 시간을 적용하고 TIMEOUT 화면·�
     assert.equal(log.requestId, result.body.requestId)
   }
 })
+
+test("Undici 연결·헤더·본문 제한은 전체 30초 제한 초과와 구분한다", async (t) => {
+  for (const [code, phrase] of [
+    ["UND_ERR_CONNECT_TIMEOUT", "연결을 제한 시간 안에 맺지 못했습니다"],
+    ["UND_ERR_HEADERS_TIMEOUT", "HTTP 응답 헤더"],
+    ["UND_ERR_BODY_TIMEOUT", "응답 본문을 읽다가"],
+  ]) {
+    const f = fixture(t, {
+      env: { ...env, KNOX_MAIL_TIMEOUT_MS: "30000" },
+      fetchImpl: async (_, { signal }) => {
+        assert.equal(signal.aborted, false)
+        throw Object.assign(new TypeError("private connection detail"), { cause: { code } })
+      },
+    })
+    const body = draft()
+    const result = await call(f.handler, { body })
+    assert.equal(result.body.code, "MAIL_RESULT_UNKNOWN")
+    assert.equal(result.body.diagnostics.networkCode, code)
+    assert.equal(result.body.diagnostics.timeoutMs, 30000)
+    assert.ok(result.body.error.includes(phrase))
+    assert.doesNotMatch(result.body.error, /설정된 전체 제한 시간은 30초|private/)
+    assert.equal(result.body.diagnostics.upstreamStatus, undefined)
+    assert.equal((await call(f.handler, { body })).body.diagnostics.networkCode, code)
+  }
+})

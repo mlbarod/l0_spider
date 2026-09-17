@@ -5,6 +5,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Readable } from "node:stream"
 import { createMailRecipientGroupStore, createMailRecipientGroupsHandler } from "./mailRecipientGroups.mjs"
+import { createMailRecipientGroupDbStore, runMailRecipientGroupsHelper } from "./mailRecipientGroupsDb.mjs"
+import { EventEmitter } from "node:events"
 import { createChartMailHandler } from "./chartMail.mjs"
 import { parseMailRecipients } from "../src/features/fdc-trend/utils/chartMail.mjs"
 
@@ -98,4 +100,67 @@ test("disabled mail transport stays unavailable and cannot report send success",
   assert.equal(response.status, 503)
   assert.equal(response.body.ok, false)
   assert.equal(response.body.code, "MAIL_TRANSPORT_NOT_CONFIGURED")
+})
+
+test("DB API awaits each operation and passes only normalized fields and the SSO owner", async () => {
+  const calls = []
+  const group = { id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", name: "담당자", recipients: ["test.user"], updatedAt: "2026-09-17T00:00:00.000Z" }
+  const store = createMailRecipientGroupDbStore({ run: async (action, payload) => {
+    await new Promise((resolve) => setImmediate(resolve))
+    calls.push([action, payload])
+    return { ok: true, group, groups: [group] }
+  } })
+  const handler = createMailRecipientGroupsHandler({ store })
+  const saved = await call(handler, { user: " TEST.OWNER ", method: "POST", body: {
+    name: " 担当者 ", recipients: ["TEST.USER@samsung.com", "test.user"], owner: "other", nameKey: "spoof",
+  } })
+  assert.equal(saved.status, 200)
+  assert.deepEqual(saved.body.group, group)
+  assert.deepEqual(calls[0], ["save", { owner: "test.owner", name: "担当者", nameKey: "担当者", recipients: ["test.user"] }])
+  assert.deepEqual((await call(handler)).body.groups, [group])
+  assert.equal((await call(handler, { method: "DELETE", body: { id: group.id } })).status, 200)
+  assert.deepEqual(calls.slice(1), [["list", { owner: "test.owner" }], ["delete", { owner: "test.owner", id: group.id }]])
+  assert.equal((await call(handler, { method: "POST", body: { name: "bad", recipients: ["bad@external.test"] } })).status, 400)
+  assert.equal(calls.length, 3)
+})
+
+test("asynchronous DB failures cannot return success or expose database details", async () => {
+  for (const method of ["GET", "POST", "DELETE"]) {
+    const logs = []
+    const store = createMailRecipientGroupDbStore({ run: async () => { throw new Error("DB_PASSWORD private-recipient") } })
+    const handler = createMailRecipientGroupsHandler({ store, logger: (line) => logs.push(line) })
+    const result = await call(handler, { method, body: { id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", name: "test", recipients: ["test.user"] } })
+    assert.equal(result.status, 500)
+    assert.equal(result.body.code, "MAIL_GROUP_STORAGE_ERROR")
+    assert.doesNotMatch(JSON.stringify([result, logs]), /DB_PASSWORD|private-recipient/)
+  }
+})
+
+test("Python bridge bounds execution and maps only allowlisted input errors", async () => {
+  function executor(result, processError = null) {
+    return (command, args, options, callback) => {
+      assert.equal(command, "python3")
+      assert.equal(args[2], "save")
+      assert.equal(options.timeout, 15_000)
+      const stdin = new EventEmitter()
+      stdin.end = (body) => {
+        assert.deepEqual(JSON.parse(body), { owner: "test.owner" })
+        callback(processError, result)
+      }
+      return { stdin }
+    }
+  }
+  const payload = { owner: "test.owner" }
+  assert.deepEqual(await runMailRecipientGroupsHelper("save", payload, { execute: executor('{"ok":true,"group":{}}') }), { ok: true, group: {} })
+  await assert.rejects(runMailRecipientGroupsHelper("save", payload, { execute: executor('{"ok":false,"code":"DUPLICATE_GROUP"}') }), { name: "TypeError", message: "같은 이름의 그룹이 있습니다." })
+  for (const result of ['{"ok":false,"code":"secret-host","error":"password"}', "not json", "null"]) {
+    await assert.rejects(runMailRecipientGroupsHelper("save", payload, { execute: executor(result) }), { name: "Error", message: "수신인 그룹 DB 요청을 처리하지 못했습니다." })
+  }
+  await assert.rejects(runMailRecipientGroupsHelper("save", payload, { execute: executor("", new Error("secret stderr")) }), { message: "수신인 그룹 DB 요청을 처리하지 못했습니다." })
+})
+
+test("real Python helper rejects invalid input before loading any DB credentials", async () => {
+  await assert.rejects(runMailRecipientGroupsHelper("list", { owner: "" }), {
+    name: "TypeError", message: "그룹 내용을 확인해 주세요.",
+  })
 })

@@ -76,6 +76,11 @@ export function mailFailureHint(value) {
   if (hints[status]) return `HTTP ${status}: ${hints[status]}`
   if (diagnostics.networkCode) {
     const code = diagnostics.networkCode
+    if (code === "UND_ERR_CONNECT_TIMEOUT") {
+      return "메일 API와의 연결을 제한 시간 안에 맺지 못했습니다 (UND_ERR_CONNECT_TIMEOUT). 전체 요청 제한 시간과 별도로 연결 단계에서 먼저 중단될 수 있습니다. 서버의 사내 API 연결 경로·프록시·방화벽을 확인해 주세요."
+    }
+    if (code === "UND_ERR_HEADERS_TIMEOUT") return "메일 API의 HTTP 응답 헤더를 기다리다 제한 시간을 초과했습니다 (UND_ERR_HEADERS_TIMEOUT). 전체 요청 제한과 별도의 대기 제한입니다."
+    if (code === "UND_ERR_BODY_TIMEOUT") return "메일 API의 응답 본문을 읽다가 제한 시간을 초과했습니다 (UND_ERR_BODY_TIMEOUT). 전체 요청 제한과 별도의 대기 제한입니다."
     if (code.includes("TIMEOUT") || code === "ETIMEDOUT") {
       const limit = diagnostics.timeoutMs ? ` 설정된 전체 제한 시간은 ${diagnostics.timeoutMs / 1000}초입니다.` : ""
       return `메일 API 연결 또는 응답 대기 중 시간이 초과되었습니다 (${code}).${limit}`
