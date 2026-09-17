@@ -8,6 +8,7 @@
 # env
 .env
 .env.sso
+.env.mail
 /.local/
 .env.local
 .env.development.local

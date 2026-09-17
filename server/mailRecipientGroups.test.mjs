@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Readable } from "node:stream"
 import { createMailRecipientGroupStore, createMailRecipientGroupsHandler } from "./mailRecipientGroups.mjs"
-import { handleChartMailRequest } from "./chartMail.mjs"
+import { createChartMailHandler } from "./chartMail.mjs"
 import { parseMailRecipients } from "../src/features/fdc-trend/utils/chartMail.mjs"
 
 function fixture(t) {
@@ -89,7 +89,8 @@ test("storage errors expose no file details or recipients", async () => {
   assert.doesNotMatch(JSON.stringify([response, logs]), /private|secret|recipient"/)
 })
 
-test("unconfirmed mail transport stays unavailable and cannot report send success", async () => {
+test("disabled mail transport stays unavailable and cannot report send success", async () => {
+  const handleChartMailRequest = createChartMailHandler({ env: {} })
   assert.equal((await call(handleChartMailRequest, { authenticated: false })).status, 401)
   const status = await call(handleChartMailRequest)
   assert.equal(status.body.ready, false)

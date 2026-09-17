@@ -74,7 +74,7 @@ export function ChartMailDialog({ title, details, prepareImage, disabled = false
       } else setResult(response)
     } catch (error) {
       setSendError(error.message)
-      if (["NETWORK_ERROR", "UNKNOWN_RESPONSE", "MAIL_RESULT_UNKNOWN", "MAIL_IN_PROGRESS"].includes(error.code)) setUncertain(true)
+      if (["NETWORK_ERROR", "UNKNOWN_RESPONSE", "MAIL_RESULT_UNKNOWN", "MAIL_IN_PROGRESS", "MAIL_REJECTED", "MAIL_REQUEST_CONFLICT"].includes(error.code)) setUncertain(true)
     } finally {
       setSending(false)
       sendLock.current = false

@@ -17,6 +17,107 @@
 
 소유자가 다른 사용자는 같은 그룹 이름을 사용할 수 있다. 한 사용자의 그룹 이름은 대소문자만 다른 중복을 허용하지 않는다. 같은 수신인은 여러 그룹에 속할 수 있지만 한 그룹 안에서는 중복 등록할 수 없다. 별도의 전사 사용자·메일 주소록 테이블은 현재 기능에 필요하지 않다.
 
+## Python에서 생성 SQL 실행하기
+
+DB 관리 도구 대신 Python 또는 Jupyter Notebook에서 [생성 SQL](./chart-mail-recipient-groups.sql)을 실행할 수 있다. 아래 예제는 **사용자가 실행하면 입력한 DB에 실제 테이블을 생성하는 코드**다. 문서 작성 과정에서 실제 DB에 접속하거나 실행하지 않았다.
+
+### 1. 실행 환경 준비
+
+DB에 접속 가능한 Python 환경과 대상 DB의 테이블 생성·외래키 참조에 필요한 권한이 있는 계정을 사용한다. 사내 DB 접속에 별도의 TLS 설정 등이 필요하면 기존 접속 설정을 함께 적용한다.
+
+PyMySQL이 설치되어 있지 않으면 터미널에서 실행한다.
+
+```bash
+python -m pip install pymysql
+```
+
+Jupyter Notebook에서는 셀에서 다음 명령을 실행한다.
+
+```python
+%pip install pymysql
+```
+
+### 2. SQL 파일 위치 지정
+
+`chart-mail-recipient-groups.sql`을 Python의 **현재 작업 폴더**에 복사한다. 아래 예제의 상대 경로는 Python 파일이 있는 위치가 아니라 현재 작업 폴더를 기준으로 한다. Notebook에서도 같은 기준이다.
+
+다른 위치에 두었다면 코드의 `Path(...)`를 실제 SQL 파일 경로로 바꾼다. 저장소 루트에서 실행하는 경우에는 `Path("docs/features/chart-mail-recipient-groups.sql")`을 사용하면 된다.
+
+### 3. Python 코드 실행
+
+아래 코드를 Notebook 셀에서 실행하거나 `create_chart_mail_tables.py`라는 파일로 저장해 `python create_chart_mail_tables.py`로 실행한다. DB 주소·포트·계정·비밀번호·DB 이름은 실행 시 입력한다. 비밀번호를 코드에 직접 적거나 Git에 저장하지 않는다.
+
+코드는 버전을 확인한 다음 부모·자식 테이블 순서로 생성하고, 생성된 두 테이블의 정의를 출력한다. MariaDB 또는 MySQL 8.0.16 미만이면 생성 전에 중단한다. 기존 테이블을 삭제하거나 테스트 데이터를 넣는 작업은 포함하지 않는다.
+
+```python
+from pathlib import Path
+from getpass import getpass
+import re
+import pymysql
+
+# SQL 파일을 다른 위치에 두었다면 경로를 수정하세요.
+sql = Path("chart-mail-recipient-groups.sql").read_text(encoding="utf-8")
+# 파일 상단 주석의 SELECT VERSION(); 등이 실행 문장으로 분리되지 않게 합니다.
+sql = "\n".join(
+    line for line in sql.splitlines()
+    if not line.lstrip().startswith("--")
+)
+
+conn = pymysql.connect(
+    host=input("DB 서버 주소: ").strip(),
+    port=int(input("DB 포트 [3306]: ").strip() or "3306"),
+    user=input("DB 계정: ").strip(),
+    password=getpass("DB 비밀번호: "),
+    database=input("테이블을 생성할 DB 이름: ").strip(),
+    charset="utf8mb4",
+    connect_timeout=10,
+    autocommit=True,
+)
+
+try:
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT VERSION(), DATABASE()")
+        version, database = cursor.fetchone()
+        print(f"DB 버전: {version}, 대상 DB: {database}")
+
+        match = re.match(r"^(\d+)\.(\d+)\.(\d+)", version)
+        if (
+            "mariadb" in version.lower()
+            or not match
+            or tuple(map(int, match.groups())) < (8, 0, 16)
+        ):
+            raise RuntimeError("이 SQL은 MySQL 8.0.16 이상 기준입니다.")
+
+        # 제공한 SQL 파일의 CREATE TABLE 두 문장을 순서대로 실행합니다.
+        for statement in sql.split(";"):
+            if statement.strip():
+                cursor.execute(statement)
+
+        for table in (
+            "chart_mail_recipient_group",
+            "chart_mail_recipient_group_member",
+        ):
+            cursor.execute(f"SHOW CREATE TABLE `{table}`")
+            print(cursor.fetchone()[1])
+            print()
+
+        print("테이블 2개 생성 완료")
+finally:
+    conn.close()
+```
+
+이 예제는 먼저 `--`로 시작하는 주석 줄을 제거한다. 파일 상단 주석에 있는 `SELECT VERSION();`의 세미콜론이 문장 분리를 방해하지 않게 하기 위해서다. 이후의 `sql.split(";")`는 현재 제공한 SQL 파일의 단순한 두 `CREATE TABLE` 문장에 맞춘 것이다. 문자열 안에 세미콜론이 들어가거나 프로시저·트리거 등이 포함된 다른 SQL 파일을 실행하는 범용 도구로 사용하지 않는다. 연결과 SQL 실행 방식은 [PyMySQL 공식 예제](https://pymysql.readthedocs.io/en/latest/user/examples.html)를 참고한다.
+
+### 4. 실행 결과와 오류 처리
+
+`테이블 2개 생성 완료`가 출력되면 아래의 **생성 후 확인** 기준과 출력된 테이블 정의를 비교한다. 이후 DB 연결 구현을 위해 DB 종류·버전, DB 이름, 기존 Spider와 동일한 접속 설정을 사용하는지, 두 테이블의 `SHOW CREATE TABLE` 결과를 전달한다. 비밀번호는 전달하지 않는다.
+
+실행 중 오류가 나면 테이블을 삭제하거나 전체 코드를 반복 실행하지 말고 오류 내용을 확인한다. 특히 `Table already exists`는 기존 테이블이 있거나 이전 실행에서 일부 생성됐다는 뜻이다. 조회용 `SHOW CREATE TABLE`로 현재 상태를 확인한 뒤 필요한 조치를 정한다.
+
+MySQL의 `CREATE TABLE`은 일반 데이터 변경처럼 전체를 `rollback()`으로 되돌릴 수 없다. 첫 번째 테이블 생성 후 두 번째에서 오류가 나면 첫 번째 테이블은 남을 수 있다. [MySQL 공식 설명](https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html)
+
+테이블 생성만으로 애플리케이션의 저장 대상이 DB로 바뀌지는 않는다. 현재 개인별 수신인 그룹의 파일 저장 부분을 DB에 연결하는 구현은 별도로 진행한다.
+
 ## DB 관리 화면에서 직접 만드는 순서
 
 아래 명세는 [생성 SQL](./chart-mail-recipient-groups.sql)과 같은 구조다. SQL 실행 대신 관리 화면에서 테이블과 컬럼을 하나씩 생성할 때 사용한다.
