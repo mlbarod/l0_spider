@@ -15,9 +15,13 @@ async function request(path, { method = "GET", body } = {}) {
     error.code = "NETWORK_ERROR"
     throw error
   }
-  const payload = await response.json().catch(() => ({}))
+  const parsed = await response.json().catch(() => null)
+  const payload = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {}
   if (!response.ok || payload.ok !== true) {
-    const error = new Error(getApiErrorMessage(payload, "요청 결과를 확인하지 못했습니다."))
+    const fallback = method === "POST" && path === "/api/chart-mail"
+      ? `발송 결과를 확인하지 못했습니다 (HTTP ${response.status}). 서버·프록시 응답을 확인하고, 재발송 전 수신 여부를 확인해 주세요.`
+      : `요청 결과를 확인하지 못했습니다 (HTTP ${response.status}).`
+    const error = new Error(getApiErrorMessage(payload, fallback))
     error.code = payload.code ?? "UNKNOWN_RESPONSE"
     throw error
   }

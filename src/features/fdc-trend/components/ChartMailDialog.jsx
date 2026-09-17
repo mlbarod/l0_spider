@@ -103,10 +103,10 @@ export function ChartMailDialog({ title, details, prepareImage, disabled = false
           {imageBusy ? <p className="flex items-center gap-2 text-sm"><Loader2 className="size-4 animate-spin" />전체 범위 이미지를 준비 중입니다.</p> : imageError ? <div role="alert" className="text-sm text-destructive">{imageError} <Button variant="outline" size="sm" onClick={prepare}>다시 준비</Button></div> : draft?.image ? <img src={draft.image} alt="메일 본문에 포함할 전체 범위 차트" className="h-auto w-full" /> : null}
         </section>
         {status.isError && <p role="alert" className="text-sm text-destructive">{status.error.message}</p>}
-        {status.data && !status.data.ready && <p role="status" className="text-sm text-amber-700">{status.data.reason}</p>}
+        {status.data && !status.data.ready && <p role="status" className="text-sm text-amber-700">{status.data.reason}{status.data.requestId && ` [문의 코드: ${status.data.requestId}]`}</p>}
         {sendError && <p role="alert" className="text-sm text-destructive">{sendError}</p>}
-        {result && <p role="status" className="text-sm text-green-700">메일 시스템에서 발송 요청을 접수했습니다. 실제 도착 여부는 수신함에서 확인해 주세요.</p>}
-        <DialogFooter><Button variant="outline" disabled={sending} onClick={() => { generation.current += 1; setOpen(false) }}>닫기</Button><Button disabled={locked || imageBusy || !draft?.image || !knoxId || Boolean(recipientError) || !status.data?.ready} onClick={send}>{sending ? "발송 중…" : result ? "접수 완료" : "보내기"}</Button></DialogFooter>
+        {result && <p role="status" className="text-sm text-amber-700">메일 API의 응답을 받았습니다{result.diagnostics?.upstreamStatus && ` (HTTP ${result.diagnostics.upstreamStatus})`}. 실제 발송·수신 여부는 아직 확인되지 않았습니다. 수신함을 확인해 주세요.{result.requestId && ` [문의 코드: ${result.requestId}]`}</p>}
+        <DialogFooter><Button variant="outline" disabled={sending} onClick={() => { generation.current += 1; setOpen(false) }}>닫기</Button><Button disabled={locked || imageBusy || !draft?.image || !knoxId || Boolean(recipientError) || !status.data?.ready} onClick={send}>{sending ? "발송 중…" : result ? "응답 확인" : "보내기"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   </>

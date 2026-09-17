@@ -156,3 +156,107 @@ test("기록 저장 실패·손상 시 발송하지 않고 전송 후 저장 실
   assert.equal(saved.calls.length, 0)
   assert.doesNotMatch(JSON.stringify([response, f.logs]), /broken-private|private-store/)
 })
+
+test("HTTP 인증·권한·용량 오류의 상태와 문의 코드를 화면·로그·기록에 함께 남긴다", async (t) => {
+  for (const status of [401, 403, 413]) {
+    const f = fixture(t, { fetchImpl: async () => new Response("synthetic-token private recipient.test@samsung.com", { status }) })
+    const body = draft()
+    const result = await call(f.handler, { body })
+    assert.equal(result.body.code, "MAIL_REJECTED")
+    assert.match(result.body.error, new RegExp(`HTTP ${status}`))
+    assert.equal(result.body.diagnostics.upstreamStatus, status)
+    assert.match(result.body.requestId, /^[a-f0-9-]{36}$/)
+    const log = f.logs.map((line) => JSON.parse(line.slice("[chart-mail] ".length))).find((row) => row.event === "rejected")
+    assert.equal(log.requestId, result.body.requestId)
+    assert.equal(log.upstreamStatus, status)
+    const record = JSON.parse(readFileSync(f.filePath, "utf8")).requests[0]
+    assert.deepEqual(record.diagnostics, result.body.diagnostics)
+    const duplicate = await call(f.handler, { body })
+    assert.equal(duplicate.body.requestId, result.body.requestId)
+    assert.deepEqual(duplicate.body.diagnostics, result.body.diagnostics)
+    assert.doesNotMatch(JSON.stringify([result, f.logs, record]), /synthetic-token|private|recipient.test|samsung.com/)
+  }
+})
+
+test("HTTP 200의 명시적 실패·HTML 오류페이지·과대 응답을 성공으로 표시하지 않는다", async (t) => {
+  for (const text of [
+    JSON.stringify({ success: false, message: "synthetic-token private sender.test@samsung.com" }),
+    JSON.stringify({ data: { ok: false } }),
+    JSON.stringify({ error: { secret: "synthetic-token" } }),
+    JSON.stringify({ result: { status: "FAILED" } }),
+    "<html>private error page</html>",
+    "x".repeat(16385),
+  ]) {
+    let calls = 0
+    const f = fixture(t, { fetchImpl: async () => { calls++; return new Response(text, { status: 200 }) } })
+    const body = draft()
+    const result = await call(f.handler, { body })
+    assert.equal(result.body.code, "MAIL_RESULT_UNKNOWN")
+    assert.equal(result.body.diagnostics.upstreamStatus, 200)
+    assert.equal((await call(f.handler, { body })).body.code, "MAIL_RESULT_UNKNOWN")
+    assert.equal(calls, 1)
+    assert.doesNotMatch(JSON.stringify([result, f.logs]) + readFileSync(f.filePath, "utf8"), /synthetic-token|sender.test|private/)
+  }
+})
+
+test("2xx HTTP 응답은 실제 전달 성공과 구분하고 알 수 없는 업무코드를 추측하지 않는다", async (t) => {
+  const f = fixture(t, { fetchImpl: async () => new Response(JSON.stringify({ code: "undocumented-code", message: "private response" }), { status: 200 }) })
+  const result = await call(f.handler)
+  assert.equal(result.body.status, "accepted")
+  assert.equal(result.body.deliveryVerified, false)
+  assert.equal(result.body.diagnostics.responseKind, "json")
+  assert.ok(f.logs.some((line) => line.includes('"event":"http_response_unverified"')))
+  assert.doesNotMatch(JSON.stringify([result, f.logs]), /undocumented-code|private response/)
+})
+
+test("DNS·TLS·시간초과 진단에 원격 오류 메시지나 주소가 노출되지 않는다", async (t) => {
+  for (const code of ["ENOTFOUND", "CERT_HAS_EXPIRED", "ETIMEDOUT", "private-error-code"]) {
+    const f = fixture(t, { fetchImpl: async () => {
+      throw Object.assign(new Error("synthetic-token https://private.example recipient.test@samsung.com"), { cause: { code } })
+    } })
+    const result = await call(f.handler)
+    assert.equal(result.body.code, "MAIL_RESULT_UNKNOWN")
+    assert.equal(result.body.diagnostics.networkCode, code === "private-error-code" ? "NETWORK_ERROR" : code)
+    assert.ok(result.body.error.includes(result.body.diagnostics.networkCode))
+    assert.doesNotMatch(JSON.stringify([result, f.logs]), /synthetic-token|private|recipient.test|samsung.com/)
+  }
+})
+
+test("설정 오류는 필드 이름만 안내하고 로그 실패가 발송 상태를 변경하지 않는다", async (t) => {
+  const f = fixture(t, { env: { ...env, KNOX_MAIL_TOKEN: "bad\nsynthetic-secret" } })
+  const result = await call(f.handler, { method: "GET" })
+  assert.equal(result.body.ready, false)
+  assert.match(result.body.reason, /KNOX_MAIL_TOKEN/)
+  assert.match(result.body.requestId, /^[a-f0-9-]{36}$/)
+  assert.doesNotMatch(JSON.stringify([result, f.logs]), /synthetic-secret/)
+  const logFailure = fixture(t, { logger() { throw new Error("private logging failure") } })
+  assert.equal((await call(logFailure.handler)).body.status, "accepted")
+  assert.equal(logFailure.calls.length, 1)
+})
+
+test("응답 스트림 오류는 HTTP 상태를 보존하고 결과 불명으로 기록한다", async (t) => {
+  const f = fixture(t, { fetchImpl: async () => new Response(new ReadableStream({
+    start(controller) { controller.error(new Error("private stream error")) },
+  }), { status: 200 }) })
+  const result = await call(f.handler)
+  assert.equal(result.body.code, "MAIL_RESULT_UNKNOWN")
+  assert.equal(result.body.diagnostics.upstreamStatus, 200)
+  assert.equal(result.body.diagnostics.responseKind, "unreadable")
+  assert.doesNotMatch(JSON.stringify([result, f.logs]), /private stream/)
+})
+
+test("이전 기록과 진단 필드가 섞인 기록을 읽어도 허용된 진단만 반환한다", async (t) => {
+  const f = fixture(t)
+  const body = draft()
+  await call(f.handler, { body })
+  const saved = JSON.parse(readFileSync(f.filePath, "utf8"))
+  delete saved.requests[0].diagnostics
+  writeFileSync(f.filePath, JSON.stringify(saved))
+  assert.equal((await call(f.handler, { body })).body.status, "accepted")
+  saved.requests[0].diagnostics = { requestId: "private", upstreamStatus: "private", networkCode: "private", message: "synthetic-token", token: "synthetic-token" }
+  writeFileSync(f.filePath, JSON.stringify(saved))
+  const replay = await call(f.handler, { body })
+  assert.equal(replay.body.status, "accepted")
+  assert.doesNotMatch(JSON.stringify([replay, f.logs]), /private|synthetic-token/)
+  assert.equal(f.calls.length, 1)
+})

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto"
 import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { safeMailDiagnostics } from "./chartMailDiagnostics.mjs"
 
 const defaultPath = fileURLToPath(new URL("../.local/chart-mail-requests.json", import.meta.url))
 const retentionMs = 7 * 24 * 60 * 60 * 1000
@@ -33,19 +34,20 @@ export function createChartMailStore({ filePath = process.env.CHART_MAIL_REQUEST
     }
   }
   return {
-    claim(key, fingerprint) {
+    claim(key, fingerprint, diagnostics) {
       const rows = read()
       const existing = rows.find((row) => row.key === key)
       if (existing) return existing
       if (rows.length >= 10000) throw new Error("메일 요청 기록의 용량을 확인해 주세요.")
-      write([...rows, { key, fingerprint, state: "pending", createdAt: now() }])
+      write([...rows, { key, fingerprint, state: "pending", createdAt: now(), diagnostics: safeMailDiagnostics(diagnostics) }])
       return null
     },
-    finish(key, state) {
+    finish(key, state, diagnostics) {
       const rows = read()
       const row = rows.find((item) => item.key === key)
       if (!row) throw new Error("메일 요청 기록을 찾지 못했습니다.")
       row.state = state
+      row.diagnostics = safeMailDiagnostics(diagnostics)
       write(rows)
     },
   }

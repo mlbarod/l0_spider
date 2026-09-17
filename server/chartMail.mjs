@@ -1,8 +1,8 @@
-import { createHash } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { getSsoCurrentUser, sendSsoAuthenticationError } from "./currentUser.mjs"
 import { prepareKnoxMailRequest } from "./knoxMailConfig.mjs"
 import { createChartMailStore } from "./chartMailStore.mjs"
-import { createSafeApiError } from "./safeApiError.mjs"
+import { inspectMailResponse, mailFailureHint, mailNetworkCode, safeMailDiagnostics } from "./chartMailDiagnostics.mjs"
 import { CHART_MAIL_COMMENTS, MAX_CHART_IMAGE_BYTES, parseMailRecipients } from "../src/features/fdc-trend/utils/chartMail.mjs"
 
 const maxBase64Length = 4 * Math.ceil(MAX_CHART_IMAGE_BYTES / 3)
@@ -64,53 +64,99 @@ function json(res, status, payload) {
   res.end(JSON.stringify(payload))
 }
 
-function sendOutcome(res, state) {
-  if (state === "accepted") return json(res, 200, { ok: true, status: "accepted" })
-  if (state === "pending") return json(res, 409, { ok: false, code: "MAIL_IN_PROGRESS", error: "이미 처리 중이거나 결과 확인이 필요한 요청입니다. 수신 여부를 먼저 확인해 주세요." })
-  if (state === "rejected") return json(res, 502, { ok: false, code: "MAIL_REJECTED", error: "메일 API가 요청을 거절했습니다. 설정을 확인한 뒤 작성창을 새로 열어 주세요." })
-  return json(res, 502, { ok: false, code: "MAIL_RESULT_UNKNOWN", error: "발송 결과를 확인하지 못했습니다. 중복 발송을 피하려면 수신 여부를 먼저 확인해 주세요." })
+function sendOutcome(res, state, details) {
+  const diagnostics = safeMailDiagnostics(details)
+  const metadata = { requestId: diagnostics.requestId, diagnostics }
+  if (state === "accepted") return json(res, 200, { ok: true, status: "accepted", deliveryVerified: false, ...metadata })
+  if (state === "pending") return json(res, 409, { ok: false, code: "MAIL_IN_PROGRESS", error: "이미 처리 중이거나 결과 확인이 필요한 요청입니다. 수신 여부를 먼저 확인해 주세요.", ...metadata })
+  const hint = mailFailureHint(diagnostics)
+  if (state === "rejected") return json(res, 502, { ok: false, code: "MAIL_REJECTED", error: `${hint} 설정 확인 후 작성창을 새로 열어 주세요.`, ...metadata })
+  return json(res, 502, { ok: false, code: "MAIL_RESULT_UNKNOWN", error: `${hint} 중복 발송을 피하려면 수신 여부를 먼저 확인해 주세요.`, ...metadata })
 }
 
-export function createChartMailHandler({ env = process.env, fetchImpl = globalThis.fetch, store = createChartMailStore(), logger } = {}) {
+export function createChartMailHandler({ env = process.env, fetchImpl = globalThis.fetch, store = createChartMailStore(), logger = console.info } = {}) {
   return async function handle(req, res) {
+    const startedAt = Date.now()
+    const diagnostics = { requestId: randomUUID() }
+    const log = (event, details = diagnostics) => {
+      try { logger(`[chart-mail] ${JSON.stringify({ at: new Date().toISOString(), event, ...safeMailDiagnostics(details) })}`) } catch { /* 로그 출력 실패로 발송 상태를 바꾸지 않는다. */ }
+    }
+    let stage = "request"
     try {
       getSsoCurrentUser(req)
       if (!["GET", "POST"].includes(req.method)) return json(res, 405, { ok: false, error: "지원하지 않는 요청입니다." })
+      if (req.method === "POST") log("request_received")
+      stage = "configuration"
       let prepared
-      try { prepared = prepareKnoxMailRequest(req, env) } catch {
-        const reason = "메일 인증 설정 또는 발신자 Knox ID를 확인해 주세요."
+      try { prepared = prepareKnoxMailRequest(req, env) } catch (error) {
+        Object.assign(diagnostics, safeMailDiagnostics({ configField: error?.mailField }))
+        log("configuration_invalid")
+        const reason = diagnostics.configField ? `메일 환경변수 ${diagnostics.configField} 설정을 확인해 주세요.` : "메일 발신자 Knox ID를 확인해 주세요."
         return json(res, req.method === "GET" ? 200 : 503, req.method === "GET"
-          ? { ok: true, ready: false, reason }
-          : { ok: false, code: "MAIL_TRANSPORT_NOT_CONFIGURED", error: reason })
+          ? { ok: true, ready: false, reason, requestId: diagnostics.requestId }
+          : { ok: false, code: "MAIL_TRANSPORT_NOT_CONFIGURED", error: reason, requestId: diagnostics.requestId })
       }
-      if (req.method === "GET") return json(res, 200, { ok: true, ready: Boolean(prepared), ...(!prepared ? { reason: "메일 발송이 비활성화되어 있습니다." } : {}) })
-      if (!prepared) return json(res, 503, { ok: false, code: "MAIL_TRANSPORT_NOT_CONFIGURED", error: "메일 발송이 비활성화되어 있습니다." })
+      if (!prepared) {
+        log("disabled")
+        const reason = "메일 발송이 비활성화되어 있습니다. 서버의 KNOX_MAIL_ENABLED 설정을 확인해 주세요."
+        return json(res, req.method === "GET" ? 200 : 503, req.method === "GET"
+          ? { ok: true, ready: false, reason, requestId: diagnostics.requestId }
+          : { ok: false, code: "MAIL_TRANSPORT_NOT_CONFIGURED", error: reason, requestId: diagnostics.requestId })
+      }
+      if (req.method === "GET") return json(res, 200, { ok: true, ready: true })
+      stage = "validation"
       const input = await readBody(req)
       const payload = buildChartMail(input, prepared.sender)
       const body = JSON.stringify(payload)
       const fingerprint = hash(body)
       const key = hash(`${prepared.sender.emailAddress}\0${input.requestId.toLowerCase()}`)
-      const previous = store.claim(key, fingerprint)
+      stage = "storage"
+      const previous = store.claim(key, fingerprint, diagnostics)
       if (previous) {
-        if (previous.fingerprint !== fingerprint) return json(res, 409, { ok: false, code: "MAIL_REQUEST_CONFLICT", error: "이미 사용한 요청 ID입니다. 작성창을 새로 열어 주세요." })
-        return sendOutcome(res, previous.state)
+        if (previous.fingerprint !== fingerprint) {
+          log("request_conflict")
+          return json(res, 409, { ok: false, code: "MAIL_REQUEST_CONFLICT", error: "이미 사용한 요청 ID입니다. 작성창을 새로 열어 주세요.", requestId: diagnostics.requestId })
+        }
+        const previousDiagnostics = { ...diagnostics, ...safeMailDiagnostics(previous.diagnostics) }
+        log("duplicate_suppressed", previousDiagnostics)
+        return sendOutcome(res, previous.state, previousDiagnostics)
       }
+      stage = "transport"
       let state = "unknown"
+      const signal = AbortSignal.timeout(prepared.timeoutMs)
+      log("sending")
       try {
         const response = await fetchImpl(prepared.url, { method: prepared.method, headers: prepared.headers,
-          redirect: prepared.redirect, signal: AbortSignal.timeout(prepared.timeoutMs), body })
-        // 응답 본문 계약은 미확인. HTTP 접수와 실제 메일 도착을 구분한다.
+          redirect: prepared.redirect, signal, body })
+        diagnostics.upstreamStatus = response.status
+        diagnostics.responseKind = "unreadable"
+        // 2xx는 HTTP 응답 확인일 뿐이다. Knox 고유 응답 코드의 성공값은 추측하지 않는다.
         state = response.ok ? "accepted" : response.status >= 400 && response.status < 500 && response.status !== 408 ? "rejected" : "unknown"
-        try { await response.body?.cancel() } catch { /* 응답 본문과 원격 오류는 기록하지 않는다. */ }
-      } catch { /* 타임아웃·연결 유실은 결과 불명으로 보관하며 자동 재시도하지 않는다. */ }
-      try { store.finish(key, state) } catch {
-        return sendOutcome(res, "unknown")
+        Object.assign(diagnostics, await inspectMailResponse(response))
+        if (response.ok && (diagnostics.apiReportedFailure || ["non_json", "too_large"].includes(diagnostics.responseKind))) state = "unknown"
+      } catch (error) {
+        diagnostics.networkCode = mailNetworkCode(error, signal)
+        if (state !== "rejected") state = "unknown"
       }
-      return sendOutcome(res, state)
+      diagnostics.durationMs = Date.now() - startedAt
+      log(state === "accepted" ? "http_response_unverified" : state === "rejected" ? "rejected" : "result_unknown")
+      try { store.finish(key, state, diagnostics) } catch {
+        log("result_storage_failed")
+        return sendOutcome(res, "unknown", diagnostics)
+      }
+      return sendOutcome(res, state, diagnostics)
     } catch (error) {
       if (sendSsoAuthenticationError(error, res)) return
-      if (error instanceof TypeError) return json(res, 400, { ok: false, code: "INVALID_CHART_MAIL", error: error.message })
-      return json(res, 500, createSafeApiError({ code: "MAIL_REQUEST_STORAGE_ERROR", message: "메일 요청 기록을 저장하거나 읽지 못했습니다. 발송하지 않았습니다.", scope: "chart-mail", logger }))
+      if (stage === "validation" && error instanceof TypeError) {
+        log("validation_failed")
+        return json(res, 400, { ok: false, code: "INVALID_CHART_MAIL", error: error.message, requestId: diagnostics.requestId })
+      }
+      if (stage === "transport") {
+        log("unexpected_transport_error")
+        return sendOutcome(res, "unknown", diagnostics)
+      }
+      log("request_storage_failed")
+      return json(res, 500, { ok: false, code: "MAIL_REQUEST_STORAGE_ERROR", error: "메일 요청을 준비하거나 기록하지 못했습니다. 발송하지 않았습니다.", requestId: diagnostics.requestId })
     }
   }
 }
