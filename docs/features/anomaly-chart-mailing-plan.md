@@ -138,7 +138,7 @@
 | `KNOX_MAIL_ENABLED` | 기본 `false`. 유효한 인증 설정과 함께 `true`로 지정하면 실제 발송을 활성화한다. |
 | `KNOX_MAIL_TOKEN` | Bearer 접두사를 제외한 토큰. 활성화 설정 검증 시 필수다. |
 | `KNOX_MAIL_SYSTEM_ID` | `System-ID` 헤더 값. `SESSION_ID`와 다르며 활성화 설정 검증 시 필수다. |
-| `KNOX_MAIL_TIMEOUT_MS` | 기본 `5000`ms, 정수 `100`~`30000`. 외부 메일 API 요청 제한 시간이다. |
+| `KNOX_MAIL_TIMEOUT_MS` | 기본 `30000`ms(30초), 정수 `100`~`30000`. 연결·Base64 차트 업로드·응답 읽기를 포함한 외부 메일 API 요청 전체 제한 시간이다. |
 
 API 주소는 `https://openapi.samsung.net/mail/api/v2.0/mails/send`로 서버 코드에 고정하고, `userId`와 `sender.emailAddress`는 서버의 SSO 사용자로 구성한다. 요청 준비 함수는 HTTP `POST`, JSON 본문용 헤더, Bearer 인증과 `System-ID`, 리다이렉트 차단 설정을 제공한다. 본문·이미지 생성과 외부 요청을 연결했으며, HTTP 접수·거절·결과 불명을 구분한다. 자동 재시도는 하지 않는다. Quality-Hub의 `KNOX_MAIL_PORTAL_URL`은 게시글 링크용이므로 현재 Spider 차트 발송 준비 설정에는 포함하지 않았다.
 
@@ -175,7 +175,7 @@ Spider의 기존 이미지 URL을 그대로 본문에 넣는 방식은 로그인
 3. **요청 기록 파일**: 기본 `.local/chart-mail-requests.json` 또는 `CHART_MAIL_REQUESTS_PATH`가 가리키는 파일의 `diagnostics`에 같은 문의 코드와 허용된 진단 정보가 남는다. 기존 버전 기록에는 이 정보가 없을 수 있다. 파일은 읽기 전용으로 확인한다.
 4. **브라우저 개발자 도구**: Network의 `/api/chart-mail` 요청에서 Response를 확인한다. 브라우저가 받은 Spider HTTP 상태와 `diagnostics.upstreamStatus`(사내 메일 API HTTP 상태)는 다를 수 있다. 예를 들어 브라우저 HTTP 502와 본문 `upstreamStatus: 401`은 메일 API 인증 거절이다. 서버·프록시가 HTML 오류 페이지를 반환하면 화면은 브라우저가 받은 HTTP 상태를 안내한다.
 
-진단 정보는 `requestId`, `upstreamStatus`, `networkCode`, `responseKind`, `apiReportedFailure`, `configField`, `durationMs` 중 허용된 값만 사용한다. 제목·이미지·수신인·발신자·토큰·System-ID 값과 API 응답 원문·자유 형식 오류 메시지는 로그에 남기지 않는다.
+진단 정보는 `requestId`, `upstreamStatus`, `networkCode`, `responseKind`, `apiReportedFailure`, `configField`, `durationMs`, `timeoutMs` 중 허용된 값만 사용한다. 제목·이미지·수신인·발신자·토큰·System-ID 값과 API 응답 원문·자유 형식 오류 메시지는 로그에 남기지 않는다.
 
 | 표시 또는 로그 | 확인할 부분 |
 |---|---|
@@ -193,6 +193,16 @@ Spider의 기존 이미지 URL을 그대로 본문에 넣는 방식은 로그인
 | `http_response_unverified` | HTTP 응답을 받았으나 실제 발송·수신은 미확인 |
 | `request_storage_failed`, `result_storage_failed` | 로컬 요청 기록의 읽기·쓰기 상태. 후자는 이미 API 요청을 보낸 뒤 기록에 실패했으므로 수신 확인 필요 |
 | `duplicate_suppressed` | 같은 요청 ID를 다시 보내지 않고 이전 결과를 반환함 |
+
+TIMEOUT이 발생한 경우 서버의 `.env.mail`에 다음 값을 설정하고 서버를 재시작한다. 이미지 업로드·응답 대기 시간을 확보하기 위해 기본값을 기존 5초에서 30초로 조정했다. **기존 파일이나 프로세스 환경변수에 `5000`이 남아 있으면 코드의 기본값보다 우선한다.** 프로세스 환경변수도 별도로 설정했다면 함께 확인한다.
+
+```dotenv
+KNOX_MAIL_TIMEOUT_MS=30000
+```
+
+TIMEOUT 화면의 제한 시간과 로그의 `timeoutMs`로 적용 여부를 확인한다. `durationMs`는 요청 검증 등을 포함한 전체 처리 시간이므로 정확히 제한 시간과 일치하지 않을 수 있다. `upstreamStatus`가 없으면 HTTP 응답 헤더를 받기 전에 중단된 것이며, DNS·TCP·TLS 연결, 업로드 또는 API 처리 대기 중 어느 단계인지는 이 정보만으로 구분할 수 없다. `upstreamStatus`가 있으면 응답 헤더를 받은 뒤 본문을 읽는 중에 중단된 것이다. 30초에서도 계속 발생하면 Spider 실행 서버의 사내 API 연결 경로와 API 응답 시간을 확인해야 한다. 제한 시간 변경은 원인 확정이나 발송 성공 확인을 의미하지 않는다.
+
+이미 TIMEOUT으로 기록된 요청은 같은 요청 ID로 다시 보내지 않는다. 제한 시간을 바꾸더라도 자동 재시도하거나 기록을 지우지 않으며, 추가 발송 전에는 먼저 수신 여부를 확인한다.
 
 `success: false`, `ok: false`, 실패 상태 문자열 또는 비어 있지 않은 `error` 등은 일반적인 실패 신호로만 사용한다. 고유 업무 코드가 실패를 뜻하는지 모르는데 임의로 성공·실패로 확정하지 않는다. 실제 미수신 원인은 당시 화면 문구·문의 코드·HTTP 상태·안전한 로그 정보와 사내 API의 응답 규격을 함께 확인해야 한다. Base64 이미지 미지원이라고 먼저 단정하지 않는다.
 

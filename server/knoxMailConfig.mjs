@@ -15,7 +15,7 @@ export function loadKnoxMailConfig(env = process.env) {
   }
   const token = required("KNOX_MAIL_TOKEN")
   const systemId = required("KNOX_MAIL_SYSTEM_ID")
-  const timeoutMs = Number(env.KNOX_MAIL_TIMEOUT_MS || 5000)
+  const timeoutMs = Number(env.KNOX_MAIL_TIMEOUT_MS || 30000)
   if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 30000) {
     throw configError("KNOX_MAIL_TIMEOUT_MS")
   }

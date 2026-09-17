@@ -123,6 +123,7 @@ export function createChartMailHandler({ env = process.env, fetchImpl = globalTh
       }
       stage = "transport"
       let state = "unknown"
+      diagnostics.timeoutMs = prepared.timeoutMs
       const signal = AbortSignal.timeout(prepared.timeoutMs)
       log("sending")
       try {

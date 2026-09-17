@@ -260,3 +260,26 @@ test("이전 기록과 진단 필드가 섞인 기록을 읽어도 허용된 진
   assert.doesNotMatch(JSON.stringify([replay, f.logs]), /private|synthetic-token/)
   assert.equal(f.calls.length, 1)
 })
+
+test("기본 30초와 명시한 제한 시간을 적용하고 TIMEOUT 화면·로그에 같은 값을 남긴다", async (t) => {
+  const applied = []
+  t.mock.method(AbortSignal, "timeout", (milliseconds) => {
+    applied.push(milliseconds)
+    return new AbortController().signal
+  })
+  const defaultEnv = { ...env }
+  delete defaultEnv.KNOX_MAIL_TIMEOUT_MS
+  for (const settings of [defaultEnv, { ...env, KNOX_MAIL_TIMEOUT_MS: "5000" }]) {
+    const expected = settings.KNOX_MAIL_TIMEOUT_MS ? 5000 : 30000
+    const f = fixture(t, { env: settings, fetchImpl: async () => { throw new DOMException("synthetic timeout", "TimeoutError") } })
+    const result = await call(f.handler)
+    assert.equal(applied.at(-1), expected)
+    assert.equal(result.body.code, "MAIL_RESULT_UNKNOWN")
+    assert.equal(result.body.diagnostics.networkCode, "TIMEOUT")
+    assert.equal(result.body.diagnostics.timeoutMs, expected)
+    assert.ok(result.body.error.includes(`${expected / 1000}초`))
+    const log = f.logs.map((line) => JSON.parse(line.slice("[chart-mail] ".length))).find((row) => row.event === "result_unknown")
+    assert.equal(log.timeoutMs, expected)
+    assert.equal(log.requestId, result.body.requestId)
+  }
+})

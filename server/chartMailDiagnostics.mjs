@@ -19,6 +19,7 @@ export function safeMailDiagnostics(value = {}) {
   if (value?.apiReportedFailure === true) result.apiReportedFailure = true
   if (configFields.has(value?.configField)) result.configField = value.configField
   if (Number.isInteger(value?.durationMs) && value.durationMs >= 0) result.durationMs = value.durationMs
+  if (Number.isInteger(value?.timeoutMs) && value.timeoutMs >= 100 && value.timeoutMs <= 30000) result.timeoutMs = value.timeoutMs
   return result
 }
 
@@ -75,7 +76,10 @@ export function mailFailureHint(value) {
   if (hints[status]) return `HTTP ${status}: ${hints[status]}`
   if (diagnostics.networkCode) {
     const code = diagnostics.networkCode
-    if (code.includes("TIMEOUT") || code === "ETIMEDOUT") return `메일 API 응답 제한 시간을 초과했습니다 (${code}).`
+    if (code.includes("TIMEOUT") || code === "ETIMEDOUT") {
+      const limit = diagnostics.timeoutMs ? ` 설정된 전체 제한 시간은 ${diagnostics.timeoutMs / 1000}초입니다.` : ""
+      return `메일 API 연결 또는 응답 대기 중 시간이 초과되었습니다 (${code}).${limit}`
+    }
     if (["ENOTFOUND", "EAI_AGAIN"].includes(code)) return `서버에서 메일 API 주소를 찾지 못했습니다 (${code}).`
     if (/CERT|SELF_SIGNED|ISSUER|VERIFY/.test(code)) return `메일 API의 TLS 인증서 확인에 실패했습니다 (${code}).`
     return `서버와 메일 API 사이의 연결에 실패했습니다 (${code}).`

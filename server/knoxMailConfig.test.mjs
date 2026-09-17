@@ -24,7 +24,8 @@ test("비활성 설정과 잘못된 인증정보를 구분하며 오류에 실�
   for (const value of ["-1", "99", "30001", "100.5", "invalid"]) {
     assert.throws(() => loadKnoxMailConfig({ ...env, KNOX_MAIL_TIMEOUT_MS: value }), { mailField: "KNOX_MAIL_TIMEOUT_MS" })
   }
-  assert.equal(loadKnoxMailConfig(env).timeoutMs, 5000)
+  assert.equal(loadKnoxMailConfig(env).timeoutMs, 30000)
+  assert.equal(loadKnoxMailConfig({ ...env, KNOX_MAIL_TIMEOUT_MS: "5000" }).timeoutMs, 5000)
   assert.equal(loadKnoxMailConfig({ ...env, KNOX_MAIL_TIMEOUT_MS: "1000" }).timeoutMs, 1000)
 })
 
@@ -37,8 +38,7 @@ test("Quality-Hub API와 인증 헤더를 사용하고 발신자·userId를 SSO 
   assert.equal(prepared.headers.Authorization, "Bearer synthetic-token")
   assert.equal(prepared.headers["System-ID"], "synthetic-system")
   assert.equal(prepared.headers["Content-Type"], "application/json")
-  assert.equal(prepared.timeoutMs, 5000)
+  assert.equal(prepared.timeoutMs, 30000)
   assert.throws(() => prepareKnoxMailRequest({ ...request, ssoRequired: false }, env), { code: "SSO_AUTHENTICATION_REQUIRED" })
   assert.throws(() => prepareKnoxMailRequest({ ...request, auth: { knoxId: "bad?userId=other" } }, env), /Knox ID/)
 })
-
