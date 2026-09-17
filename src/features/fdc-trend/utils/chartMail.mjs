@@ -4,6 +4,7 @@ export const CHART_MAIL_COMMENTS = Object.freeze([
   "원인 분석 및 조치 후 결과를 공유해 주세요.",
 ])
 export const MAX_CHART_IMAGE_BYTES = 5 * 1024 * 1024
+export const MAX_CHART_MAIL_COMMENT_LENGTH = 2000
 
 export function parseMailRecipients(value) {
   const items = Array.isArray(value) ? value : String(value ?? "").split(/[\s,;]+/).filter(Boolean)

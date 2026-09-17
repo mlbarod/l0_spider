@@ -271,7 +271,7 @@ const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <ChartMailDialog
-            title={`[SPIDER] 공통부 이상감지 · ${eqp}`}
+            title={`[SPIDER] 공통부 이상감지 / ${eqp || "EQPID 미지정"} / ${row.sensor || "-"} 확인 부탁드립니다.`}
             details={`Line: ${lineId} · EQP: ${eqp} · PRC Group: ${row.prc_group || "-"} · Sensor: ${row.sensor || "-"} · Step: ${row.step || "-"} · Grade: ${row.priority || "-"}`}
             prepareImage={() => loadChartPng(imageUrl)}
             disabled={imageFailed}

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { fetchChartMailStatus, fetchMailRecipientGroups, sendChartMail } from "../api/chartMailApi"
-import { CHART_MAIL_COMMENTS, parseMailRecipients } from "../utils/chartMail.mjs"
+import { CHART_MAIL_COMMENTS, MAX_CHART_MAIL_COMMENT_LENGTH, parseMailRecipients } from "../utils/chartMail.mjs"
 
 export function ChartMailDialog({ title, details, prepareImage, disabled = false }) {
   const [open, setOpen] = useState(false)
@@ -15,7 +15,9 @@ export function ChartMailDialog({ title, details, prepareImage, disabled = false
   const [imageError, setImageError] = useState("")
   const [direct, setDirect] = useState("")
   const [selectedGroups, setSelectedGroups] = useState([])
-  const [comment, setComment] = useState(CHART_MAIL_COMMENTS[0])
+  const [commentChoice, setCommentChoice] = useState(CHART_MAIL_COMMENTS[0])
+  const [customComment, setCustomComment] = useState("")
+  const comment = commentChoice === "custom" ? customComment : commentChoice
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState(null)
   const [sendError, setSendError] = useState("")
@@ -35,6 +37,7 @@ export function ChartMailDialog({ title, details, prepareImage, disabled = false
     recipients = parseMailRecipients([...selected, ...direct.split(/[\s,;]+/).filter(Boolean)])
   } catch (error) { recipientError = error.message }
   const locked = sending || Boolean(result) || uncertain
+  const contentValid = Boolean(draft?.title.trim()) && Boolean(comment.trim())
   async function prepare() {
     const token = ++generation.current
     setImageBusy(true)
@@ -53,7 +56,8 @@ export function ChartMailDialog({ title, details, prepareImage, disabled = false
     setDraft({ title, details, image: null })
     setDirect("")
     setSelectedGroups([])
-    setComment(CHART_MAIL_COMMENTS[0])
+    setCommentChoice(CHART_MAIL_COMMENTS[0])
+    setCustomComment("")
     setResult(null)
     setSendError("")
     setUncertain(false)
@@ -62,7 +66,7 @@ export function ChartMailDialog({ title, details, prepareImage, disabled = false
     prepare()
   }
   async function send() {
-    if (sendLock.current || locked || !draft?.image || recipientError || !status.data?.ready) return
+    if (sendLock.current || locked || !contentValid || !draft?.image || recipientError || !status.data?.ready) return
     sendLock.current = true
     setSending(true)
     setSendError("")
@@ -93,12 +97,14 @@ export function ChartMailDialog({ title, details, prepareImage, disabled = false
           {groups.isError && <p role="alert" className="text-sm text-destructive">{groups.error.message} Knox ID를 직접 입력할 수 있습니다.</p>}
           <label className="grid gap-1 text-sm">Knox ID 직접 입력<Input value={direct} onChange={(event) => setDirect(event.target.value)} maxLength={15000} placeholder="쉼표 또는 공백으로 구분" /></label>
           <p className="break-words text-xs text-muted-foreground">{recipients.length ? `최종 수신인 ${recipients.length}명: ${recipients.join(", ")}` : recipientError}</p>
-          <label className="grid gap-1 text-sm">코멘트<select className="h-10 rounded-md border bg-background px-3" value={comment} onChange={(event) => setComment(event.target.value)}>{CHART_MAIL_COMMENTS.map((text) => <option key={text}>{text}</option>)}</select></label>
+          <label className="grid gap-1 text-sm">메일 제목<Input value={draft?.title ?? ""} onChange={(event) => setDraft((previous) => ({ ...previous, title: event.target.value }))} maxLength={300} /></label>
+          <label className="grid gap-1 text-sm">코멘트<select className="h-10 rounded-md border bg-background px-3" value={commentChoice} onChange={(event) => setCommentChoice(event.target.value)}>{CHART_MAIL_COMMENTS.map((text) => <option key={text}>{text}</option>)}<option value="custom">직접 입력</option></select></label>
+          {commentChoice === "custom" && <label className="grid gap-1 text-sm">코멘트 직접 입력<textarea className="min-h-28 rounded-md border bg-background px-3 py-2" value={customComment} onChange={(event) => setCustomComment(event.target.value)} maxLength={MAX_CHART_MAIL_COMMENT_LENGTH} rows={4} placeholder="메일에 포함할 코멘트를 입력해 주세요." /><span className="text-xs text-muted-foreground">{customComment.length} / {MAX_CHART_MAIL_COMMENT_LENGTH}자</span></label>}
         </fieldset>
         <section aria-label="메일 본문" className="grid gap-3 rounded-lg border bg-white p-5 text-slate-900">
           <h3 className="font-semibold">{draft?.title}</h3>
           <p className="whitespace-pre-wrap break-words text-sm">{draft?.details}</p>
-          <p className="text-sm">{comment}</p>
+          <p className="whitespace-pre-wrap break-words py-[60px] text-sm leading-5">{comment}</p>
           <p className="text-xs text-slate-500">차트 전체 범위</p>
           {imageBusy ? <p className="flex items-center gap-2 text-sm"><Loader2 className="size-4 animate-spin" />전체 범위 이미지를 준비 중입니다.</p> : imageError ? <div role="alert" className="text-sm text-destructive">{imageError} <Button variant="outline" size="sm" onClick={prepare}>다시 준비</Button></div> : draft?.image ? <img src={draft.image} alt="메일 본문에 포함할 전체 범위 차트" className="h-auto w-full" /> : null}
         </section>
@@ -106,7 +112,7 @@ export function ChartMailDialog({ title, details, prepareImage, disabled = false
         {status.data && !status.data.ready && <p role="status" className="text-sm text-amber-700">{status.data.reason}{status.data.requestId && ` [문의 코드: ${status.data.requestId}]`}</p>}
         {sendError && <p role="alert" className="text-sm text-destructive">{sendError}</p>}
         {result && <p role="status" className="text-sm text-amber-700">메일 API의 응답을 받았습니다{result.diagnostics?.upstreamStatus && ` (HTTP ${result.diagnostics.upstreamStatus})`}. 실제 발송·수신 여부는 아직 확인되지 않았습니다. 수신함을 확인해 주세요.{result.requestId && ` [문의 코드: ${result.requestId}]`}</p>}
-        <DialogFooter><Button variant="outline" disabled={sending} onClick={() => { generation.current += 1; setOpen(false) }}>닫기</Button><Button disabled={locked || imageBusy || !draft?.image || !knoxId || Boolean(recipientError) || !status.data?.ready} onClick={send}>{sending ? "발송 중…" : result ? "응답 확인" : "보내기"}</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" disabled={sending} onClick={() => { generation.current += 1; setOpen(false) }}>닫기</Button><Button disabled={locked || !contentValid || imageBusy || !draft?.image || !knoxId || Boolean(recipientError) || !status.data?.ready} onClick={send}>{sending ? "발송 중…" : result ? "응답 확인" : "보내기"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   </>

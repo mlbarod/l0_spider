@@ -7,7 +7,7 @@ import { Readable } from "node:stream"
 import { randomUUID } from "node:crypto"
 import { buildChartMail, createChartMailHandler } from "./chartMail.mjs"
 import { createChartMailStore } from "./chartMailStore.mjs"
-import { CHART_MAIL_COMMENTS, MAX_CHART_IMAGE_BYTES } from "../src/features/fdc-trend/utils/chartMail.mjs"
+import { CHART_MAIL_COMMENTS, MAX_CHART_MAIL_COMMENT_LENGTH, MAX_CHART_IMAGE_BYTES } from "../src/features/fdc-trend/utils/chartMail.mjs"
 
 const env = { KNOX_MAIL_ENABLED: "true", KNOX_MAIL_TOKEN: "synthetic-token", KNOX_MAIL_SYSTEM_ID: "synthetic-system", KNOX_MAIL_TIMEOUT_MS: "100" }
 const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aC6sAAAAASUVORK5CYII="
@@ -56,6 +56,21 @@ test("HTML 본문 PNG와 수신인 중복 제거, SSO 발신자 및 인증 헤�
   assert.doesNotMatch(readFileSync(f.filePath, "utf8") + JSON.stringify([response, f.logs]), /synthetic-token|synthetic-system|sender.test|recipient.test|iVBOR/)
 })
 
+test("수정한 제목과 직접 입력 코멘트를 안전하게 전달하고 줄바꿈과 위아래 여백을 유지한다", async (t) => {
+  const f = fixture(t)
+  const input = { ...draft(), title: "사용자 수정 제목 <확인>", comment: "설비 상태 <img src=x onerror=alert(1)>\r\nA&B 확인\n조치 결과 공유" }
+  assert.equal((await call(f.handler, { body: input })).body.status, "accepted")
+  const payload = JSON.parse(f.calls[0][1].body)
+  assert.equal(payload.subject, input.title)
+  assert.match(payload.contents, /<h2>사용자 수정 제목 &lt;확인&gt;<\/h2>/)
+  assert.match(payload.contents, /설비 상태 &lt;img src=x onerror=alert\(1\)&gt;<br>A&amp;B 확인<br>조치 결과 공유/)
+  assert.doesNotMatch(payload.contents, /<img src=x/)
+  assert.match(payload.contents, /<td style="padding:60px 0;font-size:14px;line-height:20px;/)
+  for (const comment of [...CHART_MAIL_COMMENTS, "가".repeat(MAX_CHART_MAIL_COMMENT_LENGTH)]) {
+    assert.doesNotThrow(() => buildChartMail({ ...draft(), comment }, {}))
+  }
+})
+
 test("로그인·설정·HTTP 메서드 실패는 외부 호출을 하지 않는다", async (t) => {
   const f = fixture(t)
   for (const method of ["GET", "POST"]) assert.equal((await call(f.handler, { method, authenticated: false })).status, 401)
@@ -71,7 +86,7 @@ test("로그인·설정·HTTP 메서드 실패는 외부 호출을 하지 않는
 
 test("이미지·수신인·본문 검증과 요청 크기 제한은 발송 전에 적용한다", async (t) => {
   const f = fixture(t)
-  const invalid = [null, [], { requestId: "bad" }, { title: "Header\r\nInjected" }, { details: "x".repeat(10001) }, { comment: "custom" }, { recipients: [] }, { recipients: ["bad@external.test"] }, { recipients: Array.from({ length: 101 }, (_, i) => `r${i}`) }, { image: "https://external.test/image.png" }, { image: "data:image/svg+xml;base64,AAAA" }, { image: "data:image/png;base64,AAAA" }, { image: `data:image/png;base64,${png}" onerror="evil` }, { image: `data:image/png;base64,${Buffer.alloc(MAX_CHART_IMAGE_BYTES + 1).toString("base64")}` }]
+  const invalid = [null, [], { requestId: "bad" }, { title: "Header\r\nInjected" }, { title: " " }, { title: "x".repeat(301) }, { details: "x".repeat(10001) }, { comment: " " }, { comment: null }, { comment: 123 }, { comment: "bad\u0000comment" }, { comment: "가".repeat(MAX_CHART_MAIL_COMMENT_LENGTH + 1) }, { recipients: [] }, { recipients: ["bad@external.test"] }, { recipients: Array.from({ length: 101 }, (_, i) => `r${i}`) }, { image: "https://external.test/image.png" }, { image: "data:image/svg+xml;base64,AAAA" }, { image: "data:image/png;base64,AAAA" }, { image: `data:image/png;base64,${png}" onerror="evil` }, { image: `data:image/png;base64,${Buffer.alloc(MAX_CHART_IMAGE_BYTES + 1).toString("base64")}` }]
   for (const change of invalid) {
     const body = change === null || Array.isArray(change) ? change : { ...draft(), ...change }
     assert.equal((await call(f.handler, { body })).status, 400)

@@ -3,7 +3,7 @@ import { getSsoCurrentUser, sendSsoAuthenticationError } from "./currentUser.mjs
 import { prepareKnoxMailRequest } from "./knoxMailConfig.mjs"
 import { createChartMailStore } from "./chartMailStore.mjs"
 import { inspectMailResponse, mailFailureHint, mailNetworkCode, safeMailDiagnostics } from "./chartMailDiagnostics.mjs"
-import { CHART_MAIL_COMMENTS, MAX_CHART_IMAGE_BYTES, parseMailRecipients } from "../src/features/fdc-trend/utils/chartMail.mjs"
+import { MAX_CHART_MAIL_COMMENT_LENGTH, MAX_CHART_IMAGE_BYTES, parseMailRecipients } from "../src/features/fdc-trend/utils/chartMail.mjs"
 
 const maxBase64Length = 4 * Math.ceil(MAX_CHART_IMAGE_BYTES / 3)
 const maxRequestBytes = maxBase64Length + 65536
@@ -27,7 +27,7 @@ export function buildChartMail(input, sender) {
   const subject = textField(input.title, 300, "제목")
   if (/[\r\n]/.test(subject)) throw new TypeError("제목은 한 줄로 입력해 주세요.")
   const details = textField(input.details, 10000, "차트 정보")
-  if (!CHART_MAIL_COMMENTS.includes(input.comment)) throw new TypeError("코멘트를 선택해 주세요.")
+  const comment = textField(input.comment, MAX_CHART_MAIL_COMMENT_LENGTH, "코멘트")
   let recipients
   try { recipients = parseMailRecipients(input.recipients) } catch (error) { throw new TypeError(error.message) }
   const prefix = "data:image/png;base64,"
@@ -41,7 +41,7 @@ export function buildChartMail(input, sender) {
     || !png.readUInt32BE(16) || !png.readUInt32BE(20)
     || png.subarray(-12).toString("hex") !== "0000000049454e44ae426082") throw new TypeError("PNG 차트 이미지를 확인해 주세요.")
   // 사용자 요청에 따라 Base64 data URL 지원을 가정한다. 실제 수신 호환성은 별도 확인한다.
-  const contents = `<html lang="ko"><body style="font-family:Arial,sans-serif;color:#172033;"><h2>${escapeHtml(subject)}</h2><p>${escapeHtml(details).replace(/\r?\n/g, "<br>")}</p><p>${escapeHtml(input.comment)}</p><p>차트 전체 범위</p><img src="${prefix}${base64}" alt="전체 범위 차트" style="max-width:100%;height:auto;"></body></html>`
+  const contents = `<html lang="ko"><body style="font-family:Arial,sans-serif;color:#172033;"><h2>${escapeHtml(subject)}</h2><p>${escapeHtml(details).replace(/\r?\n/g, "<br>")}</p><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:60px 0;font-size:14px;line-height:20px;overflow-wrap:anywhere;">${escapeHtml(comment).replace(/\r\n|\r|\n/g, "<br>")}</td></tr></table><p>차트 전체 범위</p><img src="${prefix}${base64}" alt="전체 범위 차트" style="max-width:100%;height:auto;"></body></html>`
   return { subject, docSecuType: "PERSONAL", contents, contentType: "HTML", sender,
     recipients: recipients.map((id) => ({ emailAddress: `${id}@samsung.com`, recipientType: "TO" })) }
 }

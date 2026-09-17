@@ -1443,7 +1443,7 @@ const ErdScatterCard = memo(function ErdScatterCard({
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <ChartMailDialog
-            title={`[SPIDER] 자설비 이상감지 · ${eqp}`}
+            title={`[SPIDER] 자설비 이상감지 / ${eqp || "EQPID 미지정"} / ${row.sensor || "-"} 확인 부탁드립니다.`}
             details={`Line: ${lineId} · EQP: ${eqp} · PPID: ${row.recipe_id || "-"} · Sensor: ${row.sensor || "-"} · Step: ${row.step || "-"} · Grade: ${row.priority || "-"}${reasonLabel ? ` · 사유: ${reasonLabel}` : ""}`}
             prepareImage={() => renderChartPng(renderScatterChart(null, buildRenderedScatterSeries(points, null)))}
             disabled={chartQuery.isLoading || chartQuery.isError || !points.length}

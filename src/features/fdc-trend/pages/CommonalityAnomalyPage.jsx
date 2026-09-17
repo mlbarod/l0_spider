@@ -223,7 +223,7 @@ function CommonalityImageCard({ row, config, lineId }) {
       </div>
       <footer className="flex flex-wrap items-center justify-end gap-2 border-t bg-muted/20 px-4 py-2.5">
         {config.queryKey === "commonality-data" && <ChartMailDialog
-          title={`[SPIDER] 동일성 이상감지 · ${row.sensor} / ${row.chStep}`}
+          title={`[SPIDER] 동일성 이상감지 / ${row.sensor || "-"} 확인 부탁드립니다.`}
           details={`Line: ${lineId} · STEP: ${row.stepDesc || "-"} · PPID: ${row.ppid || "-"} · Sensor: ${row.sensor || "-"} · ch_step: ${row.chStep || "-"} · Grade: ${row.grade || "-"}`}
           prepareImage={() => loadChartPng(imageUrl)}
           disabled={imageFailed}
