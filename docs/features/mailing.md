@@ -36,6 +36,11 @@
 `public/mailing-report.html`의 존재는 실제 렌더링이나 자동 발송을 증명하지 않는다.
 `/api/mailing-registration`은 수신 조건 관리 API이며 메일 생성 또는 발송 trigger가 아니다.
 
+추가된 서버 간 조회 경로: 외부 Mailing Report 발송기는 전용 키로
+`GET /api/mailing-report/dashboard-data`를 호출하여 SSO 세션 없이 기존 대시보드 응답을 받을 수 있다.
+이 경로는 데이터 조회만 제공하며 context 조립·렌더링·스케줄러·발송을 구현하지 않는다.
+설정, 인증 범위와 외부 발송기 변경은 [Mailing Report 데이터 API](mailing-report-data-api.md)를 따른다.
+
 ## 3. 현재 구성요소와 책임
 
 | 구성요소 | 위치 | 확인된 책임 | 하지 않는 일 | 상태 |

@@ -9,6 +9,8 @@ import { fileURLToPath, URL } from "node:url"
 import { createServer as createViteServer } from "vite"
 
 import { createSsoAuth, handleSsoSessionRequest } from "./server/ssoAuth.mjs"
+import { loadOidcConfig } from "./server/oidcService.mjs"
+import { createMailingReportDataHandler } from "./server/mailingReportData.mjs"
 import { createAccessControl } from "./server/accessControl.mjs"
 
 import { handleDashboardDataRequest } from "./server/dashboardData.mjs"
@@ -49,7 +51,9 @@ const distDir = join(rootDir, "dist")
 const port = Number(process.env.PORT ?? 5173)
 const host = process.env.HOST ?? "0.0.0.0"
 const buildOnStart = process.env.BUILD_ON_START !== "0"
-const ssoAuth = createSsoAuth()
+const ssoConfig = loadOidcConfig()
+const ssoAuth = createSsoAuth({ config: ssoConfig })
+const handleMailingReportData = createMailingReportDataHandler({ ssoConfig })
 const accessControl = createAccessControl({ enabled: ssoAuth.enabled })
 if (ssoAuth.enabled && process.env.LIVE_RELOAD === "1") {
   throw new Error("SSO 운영에서는 LIVE_RELOAD=0을 사용하세요.")
@@ -330,6 +334,7 @@ function handleApplicationRequest(req, res) {
 
 const server = createServer(async (req, res) => {
   try {
+    if (await handleMailingReportData(req, res)) return
     if (await ssoAuth.handle(req, res)) return
     if (await accessControl.handle(req, res)) return
     handleApplicationRequest(req, res)
