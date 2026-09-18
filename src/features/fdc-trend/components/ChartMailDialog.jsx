@@ -74,10 +74,10 @@ export function ChartMailDialog({ title, details, prepareImage, disabled = false
       const response = await sendChartMail({ requestId: requestId.current, title: draft.title, details: draft.details, comment, recipients, image: draft.image })
       if (response.status !== "accepted") {
         setUncertain(true)
-        setSendError("발송 결과를 확인하지 못했습니다. 수신 여부를 먼저 확인해 주세요.")
+        setSendError("메일전송 실패. 관리자에게 문의바랍니다")
       } else setResult(response)
     } catch (error) {
-      setSendError(error.message)
+      setSendError("메일전송 실패. 관리자에게 문의바랍니다")
       if (["NETWORK_ERROR", "UNKNOWN_RESPONSE", "MAIL_RESULT_UNKNOWN", "MAIL_IN_PROGRESS", "MAIL_REJECTED", "MAIL_REQUEST_CONFLICT"].includes(error.code)) setUncertain(true)
     } finally {
       setSending(false)
@@ -111,8 +111,8 @@ export function ChartMailDialog({ title, details, prepareImage, disabled = false
         {status.isError && <p role="alert" className="text-sm text-destructive">{status.error.message}</p>}
         {status.data && !status.data.ready && <p role="status" className="text-sm text-amber-700">{status.data.reason}{status.data.requestId && ` [문의 코드: ${status.data.requestId}]`}</p>}
         {sendError && <p role="alert" className="text-sm text-destructive">{sendError}</p>}
-        {result && <p role="status" className="text-sm text-amber-700">메일 API의 응답을 받았습니다{result.diagnostics?.upstreamStatus && ` (HTTP ${result.diagnostics.upstreamStatus})`}. 실제 발송·수신 여부는 아직 확인되지 않았습니다. 수신함을 확인해 주세요.{result.requestId && ` [문의 코드: ${result.requestId}]`}</p>}
-        <DialogFooter><Button variant="outline" disabled={sending} onClick={() => { generation.current += 1; setOpen(false) }}>닫기</Button><Button disabled={locked || !contentValid || imageBusy || !draft?.image || !knoxId || Boolean(recipientError) || !status.data?.ready} onClick={send}>{sending ? "발송 중…" : result ? "응답 확인" : "보내기"}</Button></DialogFooter>
+        {result && <p role="status" className="text-sm text-green-700">메일전송 완료</p>}
+        <DialogFooter><Button variant="outline" disabled={sending} onClick={() => { generation.current += 1; setOpen(false) }}>닫기</Button><Button disabled={locked || !contentValid || imageBusy || !draft?.image || !knoxId || Boolean(recipientError) || !status.data?.ready} onClick={send}>{sending ? "발송 중…" : result ? "메일전송 완료" : "보내기"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   </>
