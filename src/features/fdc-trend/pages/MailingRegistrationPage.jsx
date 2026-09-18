@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
@@ -9,7 +9,7 @@ import {
   Loader2,
   MailPlus,
   Search,
-  Send,
+  Save,
   Trash2,
   UserRound,
   X,
@@ -195,10 +195,7 @@ function SelectionItem({ label, value, complete }) {
   )
 }
 
-export const MailingRegistrationPage = forwardRef(function MailingRegistrationPage(
-  { embedded = false },
-  saveRef,
-) {
+export function MailingRegistrationPage({ embedded = false }) {
   const queryClient = useQueryClient()
   const initializedKnoxId = useRef(false)
   const [selectedLine, setSelectedLine] = useState("")
@@ -371,22 +368,6 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
     if (!isReadyToSave || registrationMutation.isPending) return
     registrationMutation.mutate({ knoxIds: recipientKnoxIds, sdwts: resolvedSdwts })
   }
-
-  useImperativeHandle(saveRef, () => ({
-    isReady: isReadyToSave,
-    save: () => {
-      if (!isReadyToSave || registrationMutation.isPending) return null
-      return registrationMutation.mutateAsync({
-        knoxIds: recipientKnoxIds,
-        sdwts: resolvedSdwts,
-      })
-    },
-  }), [
-    isReadyToSave,
-    recipientKnoxIds,
-    registrationMutation,
-    resolvedSdwts,
-  ])
 
   const showUrl = (row) => {
     const absoluteUrl = typeof window === "undefined"
@@ -572,30 +553,28 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
             </CardContent>
           </Card>
 
-          {!embedded ? (
-            <section className="flex flex-col items-stretch justify-between gap-4 rounded-2xl border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:p-6">
+          <section className="flex flex-col items-stretch justify-between gap-4 rounded-2xl border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:p-6">
             <div>
               <h2 className="text-sm font-semibold">등록할 Mailing 조건을 확인하세요.</h2>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                SDWT와 Grade는 각각 JSON list 형식으로 email 테이블의 VARCHAR 컬럼에 저장됩니다.
+                선택한 Line·SDWT와 수신인을 확인한 뒤 저장하세요.
               </p>
             </div>
             <Button
               type="button"
               size="lg"
-              className="h-14 min-w-64 rounded-xl text-base shadow-lg shadow-primary/15"
+              className="h-12 min-w-52 rounded-xl text-base shadow-lg shadow-primary/15"
               disabled={!isReadyToSave || registrationMutation.isPending}
               onClick={handleSave}
             >
               {registrationMutation.isPending ? (
                 <Loader2 className="size-5 animate-spin" aria-hidden="true" />
               ) : (
-                <Send className="size-5" aria-hidden="true" />
+                <Save className="size-5" aria-hidden="true" />
               )}
-              {registrationMutation.isPending ? "등록 중…" : "Mailing 기능 등록"}
+              {registrationMutation.isPending ? "저장 중…" : "Mailing Report 저장"}
             </Button>
-            </section>
-          ) : null}
+          </section>
 
           <section className="grid gap-3" aria-labelledby="registered-mailing-title">
             <div className="flex flex-wrap items-end justify-between gap-3">
@@ -775,4 +754,4 @@ export const MailingRegistrationPage = forwardRef(function MailingRegistrationPa
 
     </div>
   )
-})
+}

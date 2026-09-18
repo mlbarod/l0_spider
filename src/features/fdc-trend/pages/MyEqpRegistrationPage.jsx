@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowLeft,
   Check,
@@ -270,10 +270,7 @@ function RegisteredMyEqpSection({ activeLine, registrationsQuery, onDelete }) {
   )
 }
 
-export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
-  { embedded = false },
-  saveRef,
-) {
+export function MyEqpRegistrationPage({ embedded = false }) {
   const queryClient = useQueryClient()
   const initializedKnoxId = useRef(false)
   const [selectedLine, setSelectedLine] = useState("")
@@ -496,18 +493,6 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
     if (!isReadyToSave || registrationMutation.isPending) return
     registrationMutation.mutate(buildSavePayload())
   }
-
-  useImperativeHandle(saveRef, () => ({
-    isReady: isReadyToSave,
-    save: () => {
-      if (!isReadyToSave || registrationMutation.isPending) return null
-      return registrationMutation.mutateAsync(buildSavePayload())
-    },
-  }), [
-    buildSavePayload,
-    isReadyToSave,
-    registrationMutation,
-  ])
 
   return (
     <div className={cn(
@@ -798,22 +783,20 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
               </p>
             </div>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              {!embedded ? (
-                <Button
-                  type="button"
-                  size="lg"
-                  className="h-12 min-w-52 rounded-xl text-base shadow-lg shadow-primary/15"
-                  disabled={!isReadyToSave || registrationMutation.isPending}
-                  onClick={handleSave}
-                >
-                  {registrationMutation.isPending ? (
-                    <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Save className="size-5" aria-hidden="true" />
-                  )}
-                  {registrationMutation.isPending ? "저장 중…" : "My EQP 저장"}
-                </Button>
-              ) : null}
+              <Button
+                type="button"
+                size="lg"
+                className="h-12 min-w-52 rounded-xl text-base shadow-lg shadow-primary/15"
+                disabled={!isReadyToSave || registrationMutation.isPending}
+                onClick={handleSave}
+              >
+                {registrationMutation.isPending ? (
+                  <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Save className="size-5" aria-hidden="true" />
+                )}
+                {registrationMutation.isPending ? "저장 중…" : "My EQP 저장"}
+              </Button>
             </div>
           </section>
 
@@ -867,4 +850,4 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
 
     </div>
   )
-})
+}

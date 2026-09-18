@@ -127,13 +127,14 @@ SKIP 사유는 선택 입력입니다. 해제하려면 SDWT에서 `SKIP LIST`를
 
 ## 5. Mailing Report 및 My EQP 등록
 
-메인 화면의 **Mailing Report 및 My EQP 등록**에서 두 기능을 함께 관리합니다. 처음에는 두 영역이 모두 접혀 있으며 **펼치기/접기**로 필요한 영역만 표시합니다.
+메인 화면의 **Mailing Report 및 My EQP 등록**에서 Mailing Report, Chart Mailing, My EQP를 관리합니다. 처음에는 세 영역이 모두 접혀 있으며 **펼치기/접기**로 필요한 영역만 표시합니다. 각 영역의 저장 버튼은 해당 영역의 입력 내용만 저장합니다.
 
 ### 5.1 Mailing Report 수신 조건
 
 1. 위쪽 **Mailing Report 수신인 등록**을 펼칩니다.
 2. Line을 선택하고 SDWT를 복수 선택하거나 `ALL`을 선택합니다.
 3. 수신인의 `knox_id`를 입력하고 Enter를 누릅니다. 여러 명을 추가하거나 목록에서 바로 삭제할 수 있습니다.
+4. 해당 영역의 **Mailing Report 저장**을 누릅니다.
 
 Grade는 `A`, `B`, `D`, `M`, `N`으로 고정되며 지정한 수신인별로 등록됩니다. 등록 목록에서 Line·SDWT·Grade별 호출 URL을 확인할 수 있으며 **Line 삭제**는 조회 중인 수신인의 Line 조건 전체를 삭제합니다.
 같은 `knox_id`에 조건을 추가하면 기존 Mailing 조건을 유지한 채 새 SDWT 조건이 합쳐져 저장됩니다.
@@ -144,9 +145,9 @@ Grade는 `A`, `B`, `D`, `M`, `N`으로 고정되며 지정한 수신인별로 �
 2. **Line Name → SDWT → PRC Group → EQP** 순서로 선택합니다.
 3. 모니터링 기간과 선택 Comment를 입력합니다.
 4. **열람 및 메일수신인 지정**에 `knox_id`를 입력하고 Enter를 누릅니다. 여러 명을 추가하거나 목록에서 바로 삭제할 수 있습니다.
-5. 화면 아래의 **저장 및 Mailing등록**을 누릅니다.
+5. 해당 영역의 **My EQP 저장**을 누릅니다.
 
-Mailing 또는 My EQP 중 한 영역만 완성해도 저장할 수 있으며, 둘 다 완성하면 함께 처리됩니다. My EQP는 지정한 `knox_id`별로 저장되어 각 사용자의 자설비 `MY EQP`에 표시됩니다.
+My EQP는 지정한 `knox_id`별로 저장되어 각 사용자의 자설비 `MY EQP`에 표시됩니다.
 
 ### 5.3 My EQP 등록 목록과 조회
 
@@ -165,6 +166,10 @@ Mailing 또는 My EQP 중 한 영역만 완성해도 저장할 수 있으며, �
 `MY EQP`에는 유효기간이 남은 내 지정 건과 과거 전체 공개 건이 합쳐져 표시됩니다. 신규 등록은 입력한 `knox_id`에게만 공개됩니다. 만료된 조건은 DB에서 자동 삭제되지는 않지만 자설비 조회에서는 제외됩니다.
 
 SDWT와 기준정보의 `sdwt_prod`는 대소문자, 앞뒤 공백, 전각·반각 표기가 달라도 같은 값으로 비교합니다. EQP도 대소문자, 공백, `_`, `-`, `.png` 차이를 정규화해 매칭합니다.
+
+### 5.4 Chart Mailing 수신인 그룹
+
+**Chart Mailing 수신인 등록**을 펼쳐 그룹 이름과 수신인 Knox ID를 입력한 뒤 **Chart Mailing 저장**을 누릅니다. 기존 그룹의 **수정**을 선택하면 **Chart Mailing 수정 저장**으로 변경 내용을 저장할 수 있습니다.
 
 ## 6. 동일성·공통부 이상감지
 
@@ -234,7 +239,9 @@ Mailing Report에는 다음 내용이 포함됩니다.
 | SKIP해제 | 선택한 활성 SKIP을 해제 |
 | 이력저장 | 자설비·동일성·공통부·공통부 동일성의 현재 카드 결과를 이력으로 저장 |
 | 일반 조회의 최종 필터 선택 | 조회 카테고리 이력을 자동 저장. sensor `ALL`은 `ALL`로 기록 |
-| 저장 및 Mailing등록 | 입력이 완료된 Mailing·My EQP 조건 저장 |
+| Mailing Report 저장 | 해당 영역의 Mailing 수신 조건 저장 |
+| Chart Mailing 저장 / Chart Mailing 수정 저장 | 개인 차트 메일 수신인 그룹 추가·수정 |
+| My EQP 저장 | 해당 영역의 모니터링 조건과 열람·메일수신인 저장 |
 | My EQP 삭제 / Mailing Line 삭제 | 모니터링 또는 메일 수신 조건 삭제 |
 
 저장·삭제 전에는 Line, SDWT, EQP, sensor와 공개 여부를 다시 확인하십시오.

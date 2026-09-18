@@ -1,8 +1,7 @@
-import { useRef, useState } from "react"
-import { ArrowLeft, ChevronDown, Loader2, Mail, Save, Settings2, UsersRound } from "lucide-react"
+import { useState } from "react"
+import { ArrowLeft, ChevronDown, Loader2, Mail, Settings2, UsersRound } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
-import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -53,15 +52,12 @@ function RegistrationSection({
 }
 
 export function RegistrationHubPage() {
-  const mailingRef = useRef(null)
-  const myEqpRef = useRef(null)
   const [mailingOpen, setMailingOpen] = useState(false)
   const [myEqpOpen, setMyEqpOpen] = useState(false)
   const [mailingMounted, setMailingMounted] = useState(false)
   const [myEqpMounted, setMyEqpMounted] = useState(false)
   const [chartMailOpen, setChartMailOpen] = useState(false)
   const [chartMailMounted, setChartMailMounted] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
   const currentUserQuery = useQuery({
     queryKey: ["current-user"],
     queryFn: fetchCurrentUser,
@@ -81,27 +77,6 @@ export function RegistrationHubPage() {
   const toggleChartMail = () => {
     setChartMailMounted(true)
     setChartMailOpen((current) => !current)
-  }
-
-  const handleCombinedSave = async () => {
-    if (isSaving) return
-    const readySections = [mailingRef.current, myEqpRef.current]
-      .filter((section) => section?.isReady)
-    if (!readySections.length) {
-      toast.error("저장할 입력사항이 없습니다.", {
-        description: "Mailing 또는 My EQP 영역을 펼쳐 필수 조건을 입력해 주세요.",
-      })
-      return
-    }
-
-    const requests = readySections.map((section) => section.save()).filter(Boolean)
-    if (!requests.length) return
-    setIsSaving(true)
-    try {
-      await Promise.allSettled(requests)
-    } finally {
-      setIsSaving(false)
-    }
   }
 
   return (
@@ -141,7 +116,7 @@ export function RegistrationHubPage() {
             mounted={mailingMounted}
             onToggle={toggleMailing}
           >
-            <MailingRegistrationPage ref={mailingRef} embedded />
+            <MailingRegistrationPage embedded />
           </RegistrationSection>
 
           <RegistrationSection
@@ -172,25 +147,8 @@ export function RegistrationHubPage() {
             mounted={myEqpMounted}
             onToggle={toggleMyEqp}
           >
-            <MyEqpRegistrationPage ref={myEqpRef} embedded />
+            <MyEqpRegistrationPage embedded />
           </RegistrationSection>
-
-          <section className="sticky bottom-4 z-20 rounded-2xl border border-primary/25 bg-card/95 p-4 shadow-xl backdrop-blur sm:p-5">
-            <Button
-              type="button"
-              size="lg"
-              className="h-16 w-full rounded-xl text-lg font-semibold shadow-lg shadow-primary/20"
-              disabled={isSaving}
-              onClick={handleCombinedSave}
-            >
-              {isSaving ? (
-                <Loader2 className="size-6 animate-spin" aria-hidden="true" />
-              ) : (
-                <Save className="size-6" aria-hidden="true" />
-              )}
-              {isSaving ? "저장 및 등록 중…" : "저장 및 Mailing등록"}
-            </Button>
-          </section>
         </div>
       </main>
     </div>

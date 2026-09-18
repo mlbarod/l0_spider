@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Loader2, Save } from "lucide-react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -44,7 +45,7 @@ export function MailRecipientGroups({ knoxId }) {
     <Card>
       <CardHeader>
         <CardTitle>내 수신인 그룹</CardTitle>
-        <CardDescription>그룹 추가·수정 저장 버튼으로 저장하면 차트 메일 작성창에서 선택할 수 있습니다.</CardDescription>
+        <CardDescription>Chart Mailing 저장 버튼으로 그룹을 저장하면 차트 메일 작성창에서 선택할 수 있습니다.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
         {!knoxId ? <p className="text-sm text-muted-foreground">로그인 사용자 확인 후 그룹을 관리할 수 있습니다.</p> : <>
@@ -61,9 +62,12 @@ export function MailRecipientGroups({ knoxId }) {
             <label className="grid gap-1 text-sm">수신인 Knox ID
               <textarea value={recipients} onChange={(event) => setRecipients(event.target.value)} required disabled={busy} maxLength={15000} rows={3} className="w-full rounded-md border bg-background p-3 text-sm" placeholder="쉼표 또는 줄바꿈으로 구분해 주세요." />
             </label>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={busy || !name.trim() || !recipients.trim()}>{save.isPending ? "저장 중…" : editingId ? "그룹 수정 저장" : "그룹 추가"}</Button>
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
               {editingId && <Button type="button" variant="outline" disabled={busy} onClick={reset}>수정 취소</Button>}
+              <Button type="submit" size="lg" className="h-12 min-w-52 rounded-xl text-base shadow-lg shadow-primary/15" disabled={busy || !name.trim() || !recipients.trim()}>
+                {save.isPending ? <Loader2 className="size-5 animate-spin" aria-hidden="true" /> : <Save className="size-5" aria-hidden="true" />}
+                {save.isPending ? "저장 중…" : editingId ? "Chart Mailing 수정 저장" : "Chart Mailing 저장"}
+              </Button>
             </div>
           </form>
           {groups.isPending ? <p className="text-sm">그룹을 불러오는 중입니다.</p> : groups.isError ? (
