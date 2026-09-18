@@ -3,6 +3,7 @@ import { FdcTrendShell } from "./components/FdcTrendShell"
 import { CommonalityAnomalyPage } from "./pages/CommonalityAnomalyPage"
 import { CommonAnomalyPage } from "./pages/CommonAnomalyPage"
 import { FdcTrendPage } from "./pages/FdcTrendPage"
+import { HardLimitConstructionPage } from "./pages/HardLimitConstructionPage"
 import { L0SpiderHomePage } from "./pages/L0SpiderHomePage"
 import { RegistrationHubPage } from "./pages/RegistrationHubPage"
 import { SpiderFeaturePage } from "./pages/SpiderFeaturePage"
@@ -16,6 +17,10 @@ const fdcTrendChildren = [
   {
     path: "self-equipment",
     element: <FdcTrendPage />,
+  },
+  {
+    path: "hard-limit",
+    element: <HardLimitConstructionPage />,
   },
   {
     path: "my-eqp",

@@ -51,10 +51,9 @@ const spiderApps = [
     title: "FDC Hard Limit추천",
     subtitle: "FDC 분포 기반 Hard Limit 후보를 추천합니다.",
     category: "Limit",
-    href: "http://mem-etch-spider.samsungds.net:32603/",
+    href: "/hard-limit",
     active: true,
-    external: true,
-    status: "운영중",
+    status: "개발중",
     gridClassName: "2xl:col-start-1 2xl:row-start-2",
   },
   {
@@ -122,11 +121,11 @@ function SpiderAppCard({ app, animationIndex = 0 }) {
   const content = (
     <div
       className={cn(
-        "relative flex h-full min-h-[220px] flex-col rounded-[18px] border p-6 transition-all duration-300 active:scale-[0.98]",
-        "cursor-pointer hover:-translate-y-1",
+        "relative flex h-full min-h-[220px] flex-col rounded-[18px] border p-6 transition-all duration-300",
+        "cursor-pointer hover:-translate-y-1 active:scale-[0.98]",
         isOperating
           ? "border-[#e0e0e0] bg-white hover:border-[#0066cc]"
-          : "border-[#e0e0e0] bg-[#fafafc] hover:border-[#b8b8bd]",
+          : "border-[#d2d2d7] bg-[#e8e8ed]",
       )}
     >
       <Badge className={cn(
@@ -151,7 +150,7 @@ function SpiderAppCard({ app, animationIndex = 0 }) {
         <div>
           <h3 className={cn(
             "mb-2 whitespace-pre-line text-[21px] font-semibold leading-tight tracking-[-0.23px] transition-colors",
-            isOperating ? "text-[#1d1d1f] group-hover:text-[#0066cc]" : "text-[#333333]",
+            isOperating ? "text-[#1d1d1f] group-hover:text-[#0066cc]" : "text-[#7a7a7a]",
           )}>
             {app.title}
           </h3>
