@@ -14,8 +14,11 @@ L0 공정의 이상감지 결과를 Line·SDWT·STEP·설비·Sensor 조건별�
 - 진행 중 공지 조회와 관리자용 공지 등록·완료 처리
 - 서비스 내 사용자 메뉴얼
 
-Mailing 요약 데이터와 HTML 템플릿은 이 저장소에서 관리하지만 실제 메일 renderer,
-scheduler와 sender의 구현 위치는 확인되지 않았습니다.
+정기 Mailing 요약 데이터와 HTML 템플릿은 이 저장소에서 관리하지만 정기 발송용
+renderer·scheduler·sender의 구현 위치는 확인되지 않았습니다.
+차트별 수동 메일은 `.env.mail` 설정으로 사용할 수 있으며, HTML 본문에 Base64 PNG를
+삽입합니다. 실제 사내 수신·이미지 표시는 미검증입니다.
+설정과 범위는 [차트 메일 안내](docs/features/anomaly-chart-mailing-plan.md)를 참고하세요.
 
 ## 기술 구성
 

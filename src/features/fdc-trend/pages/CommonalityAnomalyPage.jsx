@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, Check, ChevronRight, FileWarning, Loader2 } from "lucide-react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
@@ -12,6 +12,9 @@ import { cn } from "@/lib/utils"
 
 import { createClickedCategoryHistory } from "../api/clickedCategoryHistoryApi"
 import { createHitHistory } from "../api/hitHistoryApi"
+import { ChartMailDialog } from "../components/ChartMailDialog"
+import { buildChartMailPath, prioritizeLinkedChart } from "../utils/chartMailLinks.mjs"
+import { loadChartPng } from "../utils/chartMailImage"
 import { ResizableFilterArea } from "../components/ResizableFilterArea"
 import {
   buildCommonalityImageUrl,
@@ -173,7 +176,7 @@ function FilterCard({
   )
 }
 
-function CommonalityImageCard({ row, config, lineId }) {
+function CommonalityImageCard({ row, config, lineId, team }) {
   const [imageFailed, setImageFailed] = useState(false)
   const imageUrl = config.buildImageUrl(row.filePath)
   const detailText = row.eqpModel
@@ -219,7 +222,14 @@ function CommonalityImageCard({ row, config, lineId }) {
           />
         )}
       </div>
-      <footer className="flex items-center justify-end border-t bg-muted/20 px-4 py-2.5">
+      <footer className="flex flex-wrap items-center justify-end gap-2 border-t bg-muted/20 px-4 py-2.5">
+        {config.queryKey === "commonality-data" && <ChartMailDialog
+          title={`[SPIDER] 동일성 이상감지 / ${row.sensor || "-"} 확인 부탁드립니다.`}
+          details={`Line: ${lineId} · STEP: ${row.stepDesc || "-"} · PPID: ${row.ppid || "-"} · Sensor: ${row.sensor || "-"} · ch_step: ${row.chStep || "-"} · Grade: ${row.grade || "-"}`}
+          chartPath={buildChartMailPath({ app: "matching-anomaly", line: lineId, sdwt: team, row })}
+          prepareImage={() => loadChartPng(imageUrl)}
+          disabled={imageFailed}
+        />}
         <Button
           type="button"
           variant="outline"
@@ -278,12 +288,13 @@ function buildPageItems(totalPages, activePage) {
 
 export function CommonalityAnomalyPage({ variant = "matching" }) {
   const config = PAGE_VARIANTS[variant] ?? PAGE_VARIANTS.matching
+  const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
-  const [selectedLine, setSelectedLine] = useState("")
-  const [selectedTeam, setSelectedTeam] = useState("")
-  const [selectedStepDesc, setSelectedStepDesc] = useState("")
-  const [selectedSensor, setSelectedSensor] = useState("")
-  const [selectedChStep, setSelectedChStep] = useState("")
+  const [selectedLine, setSelectedLine] = useState(() => variant === "matching" ? (searchParams.get("line") ?? "") : "")
+  const [selectedTeam, setSelectedTeam] = useState(() => variant === "matching" ? (searchParams.get("sdwt") ?? "") : "")
+  const [selectedStepDesc, setSelectedStepDesc] = useState(() => variant === "matching" ? (searchParams.get("stepDesc") ?? "") : "")
+  const [selectedSensor, setSelectedSensor] = useState(() => variant === "matching" ? (searchParams.get("sensor") ?? "") : "")
+  const [selectedChStep, setSelectedChStep] = useState(() => variant === "matching" ? (searchParams.get("chStep") ?? "") : "")
   const [imagePage, setImagePage] = useState(1)
   const [queries, setQueries] = useState({ line: "", team: "", stepDesc: "", sensor: "", chStep: "" })
   const mappingQuery = useQuery({
@@ -335,7 +346,7 @@ export function CommonalityAnomalyPage({ variant = "matching" }) {
   const activeSensor = dataQuery.data?.filters?.sensor ?? ""
   const activeChStep = dataQuery.data?.filters?.chStep ?? ""
   const imageRows = selectedChStep && activeChStep === selectedChStep
-    ? dataQuery.data?.rows ?? EMPTY_LIST
+    ? prioritizeLinkedChart(dataQuery.data?.rows ?? EMPTY_LIST, searchParams.get("chart"))
     : EMPTY_LIST
   const totalImagePages = Math.ceil(imageRows.length / IMAGES_PER_PAGE)
   const activeImagePage = Math.min(imagePage, Math.max(totalImagePages, 1))
@@ -677,7 +688,7 @@ export function CommonalityAnomalyPage({ variant = "matching" }) {
                   </header>
                   <div className="grid min-w-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2 xl:grid-cols-3">
                     {group.rows.map((row) => (
-                      <CommonalityImageCard key={row.id} row={row} config={config} lineId={activeLine} />
+                      <CommonalityImageCard key={row.id} row={row} config={config} lineId={activeLine} team={activeTeam} />
                     ))}
                   </div>
                 </section>

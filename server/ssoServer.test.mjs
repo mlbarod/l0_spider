@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
 import { createHash, sign } from "node:crypto"
-import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { once } from "node:events"
@@ -19,6 +19,10 @@ test("실제 Node 진입점의 전체 API/React 보호, 로그인, 사용자, �
   const privateKey = await readFile(keyPath)
   const port = 49000 + Math.floor(Math.random() * 10000)
   const base = `http://127.0.0.1:${port}`
+  const mailingKey = "synthetic-mailing-report-server-test-key"
+  const mailingPath = "/api/mailing-report/dashboard-data"
+  const dashboardRoot = join(directory, "empty-dashboard")
+  await mkdir(dashboardRoot)
   const environment = {
     ...process.env, HOST: "127.0.0.1", PORT: String(port), LIVE_RELOAD: "0", BUILD_ON_START: "0",
     SSO_ENABLED: "true", SSO_CLIENT_ID: "synthetic-client", SSO_REDIRECT_URI: "https://spider.example/auth/callback",
@@ -27,6 +31,7 @@ test("실제 Node 진입점의 전체 API/React 보호, 로그인, 사용자, �
     SSO_EXPECTED_ISSUER: "https://idp.example", SSO_USER_ID_CLAIM: "knox_id",
     SSO_SAFE_CLAIM_TRACE: "false", SSO_DISPLAY_NAME_CLAIM: "full_name", SSO_DEPARTMENT_CLAIM: "org_name", SSO_TRUSTED_PROXY_IPS: "127.0.0.1",
     SSO_ACCESS_CONTROL_FILE: join(directory, "access.json"), SSO_BOOTSTRAP_MASTER_USER_IDS: "user01",
+    MAILING_REPORT_API_KEY: mailingKey, SPIDER_DASHBOARD_PATH_ROOT: dashboardRoot,
   }
   async function start(overrides = {}) {
     const child = spawn(process.execPath, ["server.mjs"], { env: { ...environment, ...overrides }, stdio: ["ignore", "pipe", "pipe"] })
@@ -60,6 +65,23 @@ test("실제 Node 진입점의 전체 API/React 보호, 로그인, 사용자, �
     assert.equal(response.status, 401, path)
     assert.equal((await response.json()).code, "SSO_AUTHENTICATION_REQUIRED")
   }
+  // The machine credential only reaches the dedicated read endpoint. Use an
+  // empty synthetic data directory so this never reads operational dashboard data.
+  const deniedMail = await request(mailingPath)
+  assert.equal(deniedMail.status, 401)
+  assert.equal((await deniedMail.json()).code, "MAILING_REPORT_AUTHENTICATION_REQUIRED")
+  const mailHeaders = { authorization: `Bearer ${mailingKey}` }
+  const mailData = await request(mailingPath, { headers: mailHeaders })
+  assert.equal(mailData.status, 404)
+  assert.equal((await mailData.json()).code, "DASHBOARD_LATEST_DATE_NOT_FOUND")
+  assert.equal(mailData.headers.get("cache-control"), "no-store")
+  for (const path of ["/api/dashboard-data", "/api/current-user", "/api/chart-mail"]) {
+    const response = await request(path, { headers: mailHeaders })
+    assert.equal(response.status, 401)
+    assert.equal((await response.json()).code, "SSO_AUTHENTICATION_REQUIRED")
+  }
+  assert.equal((await request(mailingPath, { headers: { ...mailHeaders, "x-forwarded-proto": "http" } })).status, 400)
+  assert.equal((await request(mailingPath, { method: "POST", headers: mailHeaders })).status, 405)
   const entry = await request("/deep/link?line=A")
   assert.equal(entry.status, 303)
   const login = await request(entry.headers.get("location"))

@@ -3,6 +3,7 @@ import { fileURLToPath, URL } from "node:url"
 import { parseEnv } from "node:util"
 
 const defaultEnvPath = fileURLToPath(new URL("../notices.env", import.meta.url))
+const mailEnvPath = fileURLToPath(new URL("../.env.mail", import.meta.url))
 
 export function readServerEnv(envPath = defaultEnvPath) {
   if (!existsSync(envPath)) return { exists: false, values: {} }
@@ -25,3 +26,4 @@ export function loadServerEnv(envPath = defaultEnvPath) {
 }
 
 loadServerEnv()
+loadServerEnv(mailEnvPath)

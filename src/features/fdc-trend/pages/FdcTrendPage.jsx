@@ -39,6 +39,9 @@ import {
 import { cn } from "@/lib/utils"
 
 import { createClickedCategoryHistory } from "../api/clickedCategoryHistoryApi"
+import { ChartMailDialog } from "../components/ChartMailDialog"
+import { buildChartMailPath, prioritizeLinkedChart } from "../utils/chartMailLinks.mjs"
+import { renderChartPng } from "../utils/chartMailImage"
 import { ResizableFilterArea } from "../components/ResizableFilterArea"
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { createHitHistory } from "../api/hitHistoryApi"
@@ -1119,6 +1122,7 @@ export const EqpAllSkipDialog = memo(function EqpAllSkipDialog({
 const ErdScatterCard = memo(function ErdScatterCard({
   row,
   lineId,
+  team,
   passRecord,
   allSkipLoadTargets,
   dataQueryKeyPrefix,
@@ -1210,6 +1214,68 @@ const ErdScatterCard = memo(function ErdScatterCard({
     ], 60 * 60 * 1000),
     y: numericDomain(points.map((point) => point.value), 1),
   }), [changeHistory, points])
+
+  const renderScatterChart = (domain, series) => (
+    <ResponsiveContainer width="100%" height="100%">
+      <ScatterChart
+        margin={SCATTER_CHART_MARGIN}
+      >
+        <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+        <XAxis
+          dataKey="actTimeMs"
+          type="number"
+          name="act_time"
+          height={SCATTER_X_AXIS_HEIGHT}
+          domain={domain?.x ?? baseDomain.x}
+          allowDataOverflow={Boolean(domain)}
+          scale="time"
+          tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+          tickFormatter={formatActTimeTick}
+          label={{ value: "act_time", position: "insideBottom", offset: -18, fontSize: 11 }}
+        />
+        <YAxis
+          dataKey="value"
+          type="number"
+          name={axisColumn}
+          width={SCATTER_Y_AXIS_WIDTH}
+          domain={domain?.y ?? baseDomain.y}
+          allowDataOverflow={Boolean(domain)}
+          tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+          tickFormatter={(value) => Number(value).toFixed(2)}
+        />
+        <RechartsTooltip
+          content={<ScatterPointTooltip axisColumn={axisColumn} />}
+          cursor={false}
+          isAnimationActive={false}
+          animationDuration={0}
+          wrapperStyle={{ transition: "none", willChange: "auto" }}
+        />
+        {changeHistory.map((history, index) => (
+          <ReferenceLine
+            key={`${history.dateMs}-${index}`}
+            x={history.dateMs}
+            stroke="#16a34a"
+            strokeDasharray="6 4"
+            strokeWidth={1.5}
+            ifOverflow="extendDomain"
+            label={<ChangeHistoryLabel history={history} />}
+          />
+        ))}
+        <Scatter
+          data={series.previous}
+          dataKey={ERD_SCATTER_SERIES_DATA_KEYS.previous}
+          fill="#9ca3af"
+          isAnimationActive={false}
+        />
+        <Scatter
+          data={series.recent}
+          dataKey={ERD_SCATTER_SERIES_DATA_KEYS.recent}
+          fill="#ef4444"
+          isAnimationActive={false}
+        />
+      </ScatterChart>
+    </ResponsiveContainer>
+  )
 
   const getZoomPoint = (event) => {
     const chart = chartContainerRef.current
@@ -1338,65 +1404,7 @@ const ErdScatterCard = memo(function ErdScatterCard({
               className="pointer-events-none absolute left-0 top-0 z-10 hidden border border-primary bg-primary/10 will-change-transform"
               aria-hidden="true"
             />
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart
-                margin={SCATTER_CHART_MARGIN}
-              >
-                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="actTimeMs"
-                  type="number"
-                  name="act_time"
-                  height={SCATTER_X_AXIS_HEIGHT}
-                  domain={zoomDomain?.x ?? baseDomain.x}
-                  allowDataOverflow={Boolean(zoomDomain)}
-                  scale="time"
-                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                  tickFormatter={formatActTimeTick}
-                  label={{ value: "act_time", position: "insideBottom", offset: -18, fontSize: 11 }}
-                />
-                <YAxis
-                  dataKey="value"
-                  type="number"
-                  name={axisColumn}
-                  width={SCATTER_Y_AXIS_WIDTH}
-                  domain={zoomDomain?.y ?? baseDomain.y}
-                  allowDataOverflow={Boolean(zoomDomain)}
-                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                  tickFormatter={(value) => Number(value).toFixed(2)}
-                />
-                <RechartsTooltip
-                  content={<ScatterPointTooltip axisColumn={axisColumn} />}
-                  cursor={false}
-                  isAnimationActive={false}
-                  animationDuration={0}
-                  wrapperStyle={{ transition: "none", willChange: "auto" }}
-                />
-                {changeHistory.map((history, index) => (
-                  <ReferenceLine
-                    key={`${history.dateMs}-${index}`}
-                    x={history.dateMs}
-                    stroke="#16a34a"
-                    strokeDasharray="6 4"
-                    strokeWidth={1.5}
-                    ifOverflow="extendDomain"
-                    label={<ChangeHistoryLabel history={history} />}
-                  />
-                ))}
-                <Scatter
-                  data={renderedPointSeries.previous}
-                  dataKey={ERD_SCATTER_SERIES_DATA_KEYS.previous}
-                  fill="#9ca3af"
-                  isAnimationActive={false}
-                />
-                <Scatter
-                  data={renderedPointSeries.recent}
-                  dataKey={ERD_SCATTER_SERIES_DATA_KEYS.recent}
-                  fill="#ef4444"
-                  isAnimationActive={false}
-                />
-              </ScatterChart>
-            </ResponsiveContainer>
+            {renderScatterChart(zoomDomain, renderedPointSeries)}
           </div>
         ) : (
           <div className="px-4 text-center text-sm text-muted-foreground">
@@ -1436,6 +1444,13 @@ const ErdScatterCard = memo(function ErdScatterCard({
           ) : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <ChartMailDialog
+            title={`[SPIDER] 자설비 이상감지 / ${eqp || "EQPID 미지정"} / ${row.sensor || "-"} 확인 부탁드립니다.`}
+            details={`Line: ${lineId} · EQP: ${eqp} · PPID: ${row.recipe_id || "-"} · Sensor: ${row.sensor || "-"} · Step: ${row.step || "-"} · Grade: ${row.priority || "-"}${reasonLabel ? ` · 사유: ${reasonLabel}` : ""}`}
+            chartPath={buildChartMailPath({ app: "self-equipment", line: lineId, sdwt: team, row })}
+            prepareImage={() => renderChartPng(renderScatterChart(null, buildRenderedScatterSeries(points, null)))}
+            disabled={chartQuery.isLoading || chartQuery.isError || !points.length}
+          />
           <IdentityChartDialog row={row} eqp={eqp} />
           <Dialog>
             <DialogTrigger asChild>
@@ -1541,11 +1556,11 @@ export function FdcTrendPage() {
       : ["A/B"]
   ))
   const [selectedDesc, setSelectedDesc] = useState(() => (
-    requestedFilters.stepToken === ALL_STEPS ? ALL_STEPS : ""
+    requestedFilters.stepToken === ALL_STEPS ? ALL_STEPS : (searchParams.get("desc") ?? "")
   ))
   const [selectedEqpCh, setSelectedEqpCh] = useState(() => requestedFilters.eqpCh)
-  const [selectedSensor, setSelectedSensor] = useState("")
-  const [selectedChStep, setSelectedChStep] = useState("")
+  const [selectedSensor, setSelectedSensor] = useState(() => searchParams.get("sensor") ?? "")
+  const [selectedChStep, setSelectedChStep] = useState(() => searchParams.get("chStep") ?? "")
   const [chartPage, setChartPage] = useState(1)
   const [selectedStatus, setSelectedStatus] = useState("")
   const [showThreeDayIdentity, setShowThreeDayIdentity] = useState(true)
@@ -1703,8 +1718,8 @@ export function FdcTrendPage() {
   const dataRows = dataQuery.data?.rows
   const chartRows = useMemo(() => {
     if (!chStepIsSelected) return []
-    return filterChartsByStatus(dataRows ?? [], isSkipList ? "" : selectedStatus)
-  }, [chStepIsSelected, dataRows, isSkipList, selectedStatus])
+    return prioritizeLinkedChart(filterChartsByStatus(dataRows ?? [], isSkipList ? "" : selectedStatus), searchParams.get("chart"))
+  }, [chStepIsSelected, dataRows, isSkipList, selectedStatus, searchParams])
   const chartGroups = useMemo(() => {
     const groups = new Map()
 
@@ -2337,6 +2352,7 @@ export function FdcTrendPage() {
                             <ErdScatterCard
                               row={row}
                               lineId={activeLine}
+                              team={activeTeam}
                               passRecord={isSkipList
                                 ? row.pass_history
                                 : passHistoryByKey.get(buildChartPassHistoryKey(activeLine, row))}

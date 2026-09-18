@@ -1,5 +1,6 @@
 import { useRef, useState } from "react"
-import { ArrowLeft, ChevronDown, Loader2, Mail, Save, Settings2 } from "lucide-react"
+import { ArrowLeft, ChevronDown, Loader2, Mail, Save, Settings2, UsersRound } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
 
@@ -8,6 +9,8 @@ import { cn } from "@/lib/utils"
 
 import { MailingRegistrationPage } from "./MailingRegistrationPage"
 import { MyEqpRegistrationPage } from "./MyEqpRegistrationPage"
+import { MailRecipientGroups } from "../components/MailRecipientGroups"
+import { fetchCurrentUser } from "../api/currentUserApi"
 
 function RegistrationSection({
   title,
@@ -56,7 +59,16 @@ export function RegistrationHubPage() {
   const [myEqpOpen, setMyEqpOpen] = useState(false)
   const [mailingMounted, setMailingMounted] = useState(false)
   const [myEqpMounted, setMyEqpMounted] = useState(false)
+  const [chartMailOpen, setChartMailOpen] = useState(false)
+  const [chartMailMounted, setChartMailMounted] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const currentUserQuery = useQuery({
+    queryKey: ["current-user"],
+    queryFn: fetchCurrentUser,
+    enabled: chartMailMounted,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  })
 
   const toggleMailing = () => {
     setMailingMounted(true)
@@ -65,6 +77,10 @@ export function RegistrationHubPage() {
   const toggleMyEqp = () => {
     setMyEqpMounted(true)
     setMyEqpOpen((current) => !current)
+  }
+  const toggleChartMail = () => {
+    setChartMailMounted(true)
+    setChartMailOpen((current) => !current)
   }
 
   const handleCombinedSave = async () => {
@@ -98,11 +114,11 @@ export function RegistrationHubPage() {
             </span>
             <div className="min-w-0">
               <h1 className="text-lg font-semibold leading-tight tracking-tight">
-                <span className="block">Mailing Report 및</span>
+                <span className="block">Mailing Report · Chart Mailing 및</span>
                 <span className="block">My EQP 등록</span>
               </h1>
               <p className="mt-1 text-xs text-muted-foreground">
-                Mailing 수신 조건과 My EQP 모니터링 기준정보를 한 화면에서 관리합니다.
+                Mailing 수신 조건, 개인별 Chart Mailing 수신인 그룹과 My EQP 기준정보를 관리합니다.
               </p>
             </div>
           </div>
@@ -126,6 +142,26 @@ export function RegistrationHubPage() {
             onToggle={toggleMailing}
           >
             <MailingRegistrationPage ref={mailingRef} embedded />
+          </RegistrationSection>
+
+          <RegistrationSection
+            title="Chart Mailing 수신인 등록"
+            description="로그인한 knox_id별로 차트 메일에 사용할 개인 수신인 그룹을 관리합니다."
+            icon={UsersRound}
+            open={chartMailOpen}
+            mounted={chartMailMounted}
+            onToggle={toggleChartMail}
+          >
+            {currentUserQuery.isPending ? (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />로그인 사용자를 확인하고 있습니다.</p>
+            ) : currentUserQuery.isError ? (
+              <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">
+                {currentUserQuery.error.message}
+                <Button type="button" variant="outline" size="sm" onClick={() => currentUserQuery.refetch()}>다시 확인</Button>
+              </div>
+            ) : (
+              <MailRecipientGroups key={currentUserQuery.data?.knoxId} knoxId={currentUserQuery.data?.knoxId} />
+            )}
           </RegistrationSection>
 
           <RegistrationSection

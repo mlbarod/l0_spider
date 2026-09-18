@@ -9,9 +9,13 @@ import { fileURLToPath, URL } from "node:url"
 import { createServer as createViteServer } from "vite"
 
 import { createSsoAuth, handleSsoSessionRequest } from "./server/ssoAuth.mjs"
+import { loadOidcConfig } from "./server/oidcService.mjs"
+import { createMailingReportDataHandler } from "./server/mailingReportData.mjs"
 import { createAccessControl } from "./server/accessControl.mjs"
 
 import { handleDashboardDataRequest } from "./server/dashboardData.mjs"
+import { handleChartMailRequest } from "./server/chartMail.mjs"
+import { handleMailRecipientGroupsRequest } from "./server/mailRecipientGroups.mjs"
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
 import { handleClickedCategoryHistoryRequest } from "./server/clickedCategoryHistory.mjs"
 import {
@@ -47,7 +51,9 @@ const distDir = join(rootDir, "dist")
 const port = Number(process.env.PORT ?? 5173)
 const host = process.env.HOST ?? "0.0.0.0"
 const buildOnStart = process.env.BUILD_ON_START !== "0"
-const ssoAuth = createSsoAuth()
+const ssoConfig = loadOidcConfig()
+const ssoAuth = createSsoAuth({ config: ssoConfig })
+const handleMailingReportData = createMailingReportDataHandler({ ssoConfig })
 const accessControl = createAccessControl({ enabled: ssoAuth.enabled })
 if (ssoAuth.enabled && process.env.LIVE_RELOAD === "1") {
   throw new Error("SSO 운영에서는 LIVE_RELOAD=0을 사용하세요.")
@@ -268,6 +274,19 @@ function handleApplicationRequest(req, res) {
     return
   }
 
+  if (url.pathname === "/api/chart-mail") {
+    handleChartMailRequest(req, res).catch(() => {
+      res.writeHead(500, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" })
+      res.end(JSON.stringify({ ok: false, error: "메일 요청을 처리하지 못했습니다." }))
+    })
+    return
+  }
+
+  if (url.pathname === "/api/mail-recipient-groups") {
+    handleMailRecipientGroupsRequest(req, res)
+    return
+  }
+
   if (url.pathname === "/api/mailing-registration") {
     handleMailingRegistrationRequest(req, res, url).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
@@ -315,6 +334,7 @@ function handleApplicationRequest(req, res) {
 
 const server = createServer(async (req, res) => {
   try {
+    if (await handleMailingReportData(req, res)) return
     if (await ssoAuth.handle(req, res)) return
     if (await accessControl.handle(req, res)) return
     handleApplicationRequest(req, res)

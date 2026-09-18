@@ -7,6 +7,8 @@ import path from "node:path"
 import process from "node:process"
 
 import { handleDashboardDataRequest } from "./server/dashboardData.mjs"
+import { handleChartMailRequest } from "./server/chartMail.mjs"
+import { handleMailRecipientGroupsRequest } from "./server/mailRecipientGroups.mjs"
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
 import {
   handleCommonAnomalyDataRequest,
@@ -49,6 +51,19 @@ function mappingConfigApi() {
         const url = new URL(req.url ?? "/", "http://localhost")
         if (url.pathname === "/api/dashboard-data") {
           handleDashboardDataRequest(req, res)
+          return
+        }
+
+        if (url.pathname === "/api/chart-mail") {
+          handleChartMailRequest(req, res).catch(() => {
+            res.writeHead(500, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" })
+            res.end(JSON.stringify({ ok: false, error: "메일 요청을 처리하지 못했습니다." }))
+          })
+          return
+        }
+
+        if (url.pathname === "/api/mail-recipient-groups") {
+          handleMailRecipientGroupsRequest(req, res)
           return
         }
 
