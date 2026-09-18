@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { fetchChartMailPosts, fetchChartMailPost, updateChartMailPost, chartMailPostImageUrl } from "../api/chartMailBoardApi"
+import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 
 const appNames = { "self-equipment": "설비별 SPEC내 이상감지", "matching-anomaly": "동일성 이상감지", "common-anomaly": "공통부 이상감지" }
 const workNames = { IN_PROGRESS: "진행중", COMPLETED: "완료" }
@@ -50,6 +51,7 @@ function PostDetail({ id, onClose }) {
         : post ? <div className="grid gap-5">
           <div className="flex flex-wrap items-center gap-3 text-sm"><WorkBadge status={post.workStatus} /><span>{appNames[post.app] ?? "차트 메일"}</span><span className="text-muted-foreground">{formatDate(post.createdAt)}</span></div>
           <dl className="grid gap-2 rounded-lg border bg-muted/30 p-4 text-sm">
+            <div><dt className="inline font-medium">라인: </dt><dd className="inline">{formatLineDisplayName(post.line) || "미지정"}</dd><dt className="ml-4 inline font-medium">SDWT: </dt><dd className="inline">{post.sdwt || "미지정"}</dd></div>
             <div><dt className="inline font-medium">발신자: </dt><dd className="inline">{post.sender}</dd></div>
             <div className="break-words"><dt className="inline font-medium">수신인: </dt><dd className="inline">{post.recipients.join(", ")}</dd></div>
             <div><dt className="inline font-medium">메일 상태: </dt><dd className="inline">{mailNames[post.mailState] ?? post.mailState}</dd></div>
@@ -88,8 +90,12 @@ export function ChartMailBoardPage() {
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("")
+  const [line, setLine] = useState("")
+  const [sdwt, setSdwt] = useState("")
   const [page, setPage] = useState(1)
-  const query = useQuery({ queryKey: ["chart-mail-posts", { page, status, search }], queryFn: ({ signal }) => fetchChartMailPosts({ page, status, search, signal }), retry: false, staleTime: 0 })
+  const query = useQuery({ queryKey: ["chart-mail-posts", { page, status, search, line, sdwt }], queryFn: ({ signal }) => fetchChartMailPosts({ page, status, search, line, sdwt, signal }), retry: false, staleTime: 0 })
+  const lines = [...new Set([line, ...(query.data?.filters?.lines ?? [])].filter(Boolean))]
+  const sdwts = [...new Set([sdwt, ...(query.data?.filters?.sdwts ?? [])].filter(Boolean))]
   const pages = Math.max(1, Math.ceil((query.data?.total ?? 0) / 20))
   useEffect(() => {
     if (query.isSuccess && page > pages) setPage(pages)
@@ -101,6 +107,8 @@ export function ChartMailBoardPage() {
     </div></header>
     <main className="mx-auto grid w-full max-w-[1440px] gap-5 p-6">
       <form className="flex flex-wrap items-end gap-3" onSubmit={event => { event.preventDefault(); setSearch(searchInput.trim()); setPage(1) }}>
+        <label className="grid gap-2 text-sm">라인<select aria-label="라인" value={line} disabled={query.isPending} onChange={event => { setLine(event.target.value); setSdwt(""); setPage(1) }} className="h-10 min-w-32 rounded-md border bg-background px-3"><option value="">전체</option>{lines.map(value => <option key={value} value={value}>{formatLineDisplayName(value)}</option>)}</select></label>
+        <label className="grid gap-2 text-sm">SDWT<select aria-label="SDWT" value={sdwt} disabled={query.isPending} onChange={event => { setSdwt(event.target.value); setPage(1) }} className="h-10 min-w-32 rounded-md border bg-background px-3"><option value="">전체</option>{sdwts.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
         <label className="grid gap-2 text-sm">업무 상태<select aria-label="업무 상태" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} className="h-10 rounded-md border bg-background px-3"><option value="">전체</option><option value="IN_PROGRESS">진행중</option><option value="COMPLETED">완료</option></select></label>
         <label className="grid min-w-48 flex-1 gap-2 text-sm">검색<Input value={searchInput} onChange={event => setSearchInput(event.target.value)} maxLength={200} placeholder="제목, 발신자, 차트 정보" className="h-10" /></label>
         <Button type="submit" className="h-10"><Search className="size-4" />검색</Button>
@@ -111,12 +119,13 @@ export function ChartMailBoardPage() {
         : <>
           <p className="text-sm text-muted-foreground">총 {query.data.total.toLocaleString()}건 · 로그인 사용자는 누구나 조회하고 상태를 변경할 수 있습니다.</p>
           <div className="overflow-x-auto rounded-xl border bg-card"><table className="w-full min-w-[680px] text-left text-sm">
-            <thead className="border-b bg-muted/40"><tr><th className="p-4">업무 상태</th><th className="p-4">제목 / App</th><th className="p-4">발신자</th><th className="p-4">메일 상태</th><th className="p-4">등록 시각</th></tr></thead>
+            <thead className="border-b bg-muted/40"><tr><th className="p-4">업무 상태</th><th className="p-4">라인 / SDWT</th><th className="p-4">제목 / App</th><th className="p-4">발신자</th><th className="p-4">메일 상태</th><th className="p-4">등록 시각</th></tr></thead>
             <tbody>{query.data.posts.length ? query.data.posts.map(post => <tr key={post.id} className="border-b last:border-0 hover:bg-muted/20">
               <td className="p-4"><WorkBadge status={post.workStatus} /></td>
+              <td className="p-4"><p>{formatLineDisplayName(post.line) || "미지정"}</p><p className="mt-1 text-xs text-muted-foreground">{post.sdwt || "미지정"}</p></td>
               <td className="max-w-lg p-4"><Link to={`?post=${post.id}`} className="break-words font-medium text-primary underline-offset-4 hover:underline">{post.title}</Link><p className="mt-1 text-xs text-muted-foreground">{appNames[post.app] ?? "차트 메일"}</p></td>
               <td className="p-4">{post.sender}</td><td className="p-4">{mailNames[post.mailState] ?? post.mailState}</td><td className="whitespace-nowrap p-4 text-xs">{formatDate(post.createdAt)}</td>
-            </tr>) : <tr><td colSpan={5} className="p-12 text-center text-muted-foreground">조건에 맞는 발송 건이 없습니다.</td></tr>}</tbody>
+            </tr>) : <tr><td colSpan={6} className="p-12 text-center text-muted-foreground">조건에 맞는 발송 건이 없습니다.</td></tr>}</tbody>
           </table></div>
           <nav aria-label="게시판 페이지" className="flex items-center justify-center gap-4"><Button variant="outline" disabled={page <= 1 || query.isFetching} onClick={() => setPage(value => value - 1)}>이전</Button><span className="text-sm">{page} / {pages}</span><Button variant="outline" disabled={page >= pages || query.isFetching} onClick={() => setPage(value => value + 1)}>다음</Button></nav>
         </>}

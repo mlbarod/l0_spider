@@ -5,6 +5,7 @@ import json
 import re
 import sys
 from datetime import datetime, timezone
+from urllib.parse import parse_qs, urlsplit
 
 try:
     from .mailing_registration import load_db_info
@@ -52,8 +53,31 @@ def public_post(row):
     return {
         "id": row["post_id"], "title": row["title"], "sender": row["sender_knox_id"],
         "app": row["app"], "workStatus": row["work_status"], "mailState": row["mail_state"],
+        "line": row["line"], "sdwt": row["sdwt"],
         "version": row["version"], "createdAt": row["created_at"], "updatedAt": row["updated_at"],
     }
+
+
+def chart_scope(chart_url):
+    """Use the saved chart link, including legacy links, as the scope source."""
+    try:
+        params = parse_qs(urlsplit(chart_url).query, keep_blank_values=True)
+    except ValueError:
+        return {"line": "", "sdwt": ""}
+    # MY EQP / SKIP LIST links identify a view, not the chart's actual SDWT.
+    # The chart parameter retains the original path (also for legacy posts).
+    chart_path = params.get("chart", [""])[0]
+    folder = re.search(r"/(?:erd|common|erd_commonality)/[^/]+/([^/]+)/", chart_path)
+    if folder:
+        params["sdwt"] = [folder.group(1)]
+    scope = {}
+    for key in ("line", "sdwt"):
+        value = params.get(key, [""])[0].strip()
+        # Preserve older send contracts: unusable metadata does not block mail.
+        scope[key] = value if len(value) <= 200 and not re.search(r"[\x00-\x1f\x7f]", value) else ""
+    if scope["sdwt"] in ("__MY_EQP__", "MY EQP", "__SKIP_LIST__"):
+        scope["sdwt"] = ""
+    return scope
 
 
 def begin(cursor, payload):
@@ -61,14 +85,16 @@ def begin(cursor, payload):
     if not 45 <= len(image) <= 5 * 1024 * 1024 or not image.startswith(b"\x89PNG\r\n\x1a\n"):
         raise BoardError("BOARD_INVALID")
     now = timestamp()
+    scope = chart_scope(payload["chartUrl"])
     # A unique primary key and this row lock serialize the same send request across processes.
     cursor.execute("""INSERT INTO chart_mail_post
-        (post_id, fingerprint, sender_knox_id, title, details, comment, chart_url, app,
+        (post_id, fingerprint, sender_knox_id, title, details, comment, chart_url, app, line, sdwt,
          work_status, version, mail_state, diagnostics, created_at, updated_at)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'IN_PROGRESS',1,'pending',%s,%s,%s)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'IN_PROGRESS',1,'pending',%s,%s,%s)
         ON DUPLICATE KEY UPDATE post_id = post_id""", (
         payload["id"], payload["fingerprint"], payload["actor"], payload["title"],
         payload["details"], payload["comment"], payload["chartUrl"], payload["app"],
+        scope["line"], scope["sdwt"],
         json.dumps(payload["diagnostics"]), now, now,
     ))
     created = cursor.rowcount == 1
@@ -105,10 +131,17 @@ def execute_action(connection, action, payload):
             result = {}
         elif action == "list":
             page = payload["page"]
+            line, sdwt = payload.get("line", ""), payload.get("sdwt", "")
             if not isinstance(page, int) or not 1 <= page <= 100000 or payload["status"] not in ("", "IN_PROGRESS", "COMPLETED") or len(payload["search"]) > 200:
+                raise BoardError("BOARD_INVALID")
+            if any(not isinstance(value, str) or len(value) > 200 for value in (line, sdwt)):
                 raise BoardError("BOARD_INVALID")
             where = "1 = 1"
             params = []
+            for column, value in (("line", line), ("sdwt", sdwt)):
+                if value:
+                    where += f" AND p.{column} = %s"
+                    params.append(value)
             if payload["status"]:
                 where += " AND p.work_status = %s"
                 params.append(payload["status"])
@@ -117,10 +150,16 @@ def execute_action(connection, action, payload):
                 params.extend([payload["search"]] * 3)
             cursor.execute("SELECT COUNT(*) AS total FROM chart_mail_post p WHERE " + where, tuple(params))
             total = cursor.fetchone()["total"]
-            cursor.execute("""SELECT p.post_id, p.title, p.sender_knox_id, p.app, p.work_status,
+            cursor.execute("""SELECT p.post_id, p.title, p.sender_knox_id, p.app, p.line, p.sdwt, p.work_status,
                 p.mail_state, p.version, p.created_at, p.updated_at FROM chart_mail_post p WHERE """ + where
                 + " ORDER BY p.created_at DESC, p.post_id DESC LIMIT 20 OFFSET %s", tuple(params + [(page - 1) * 20]))
             result = {"posts": [public_post(row) for row in cursor.fetchall()], "total": total, "page": page, "pageSize": 20}
+            # Options cover the entire board, not just this page or search result.
+            cursor.execute("SELECT DISTINCT line FROM chart_mail_post WHERE line <> '' ORDER BY line")
+            lines = [row["line"] for row in cursor.fetchall()]
+            cursor.execute("SELECT DISTINCT sdwt FROM chart_mail_post WHERE sdwt <> ''"
+                           + (" AND line = %s" if line else "") + " ORDER BY sdwt", (line,) if line else ())
+            result["filters"] = {"lines": lines, "sdwts": [row["sdwt"] for row in cursor.fetchall()]}
         elif action in ("detail", "image", "status"):
             post, recipients = require_post(cursor, payload["id"], actor, lock=action == "status")
             if action == "image":

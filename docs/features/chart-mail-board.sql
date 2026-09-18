@@ -10,6 +10,8 @@ CREATE TABLE chart_mail_post (
     comment TEXT NOT NULL,
     chart_url TEXT NOT NULL,
     app VARCHAR(40) NOT NULL,
+    line VARCHAR(200) NOT NULL DEFAULT '',
+    sdwt VARCHAR(200) NOT NULL DEFAULT '',
     work_status VARCHAR(20) NOT NULL DEFAULT 'IN_PROGRESS',
     version INT UNSIGNED NOT NULL DEFAULT 1,
     mail_state VARCHAR(20) NOT NULL DEFAULT 'pending',
@@ -19,7 +21,9 @@ CREATE TABLE chart_mail_post (
     updated_at DATETIME(3) NOT NULL,
     INDEX idx_chart_mail_post_created (created_at, post_id),
     INDEX idx_chart_mail_post_sender (sender_knox_id, created_at),
-    INDEX idx_chart_mail_post_work (work_status, created_at)
+    INDEX idx_chart_mail_post_work (work_status, created_at),
+    INDEX idx_chart_mail_post_scope (line, sdwt, created_at),
+    INDEX idx_chart_mail_post_sdwt (sdwt, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE chart_mail_post_recipient (

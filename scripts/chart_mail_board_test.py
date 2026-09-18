@@ -6,6 +6,7 @@ import json
 import sqlite3
 import sys
 import unittest
+from urllib.parse import urlencode
 from datetime import datetime
 from unittest.mock import patch
 
@@ -57,7 +58,7 @@ class Database:
         self.connection.executescript("""
             PRAGMA foreign_keys=ON;
             CREATE TABLE chart_mail_post (post_id TEXT PRIMARY KEY, fingerprint TEXT, sender_knox_id TEXT,
-                title TEXT, details TEXT, comment TEXT, chart_url TEXT, app TEXT, work_status TEXT,
+                title TEXT, details TEXT, comment TEXT, chart_url TEXT, app TEXT, line TEXT DEFAULT '', sdwt TEXT DEFAULT '', work_status TEXT,
                 version INTEGER, mail_state TEXT, diagnostics TEXT, created_at TEXT, updated_at TEXT, mail_updated_at TEXT);
             CREATE TABLE chart_mail_post_recipient (post_id TEXT REFERENCES chart_mail_post(post_id), recipient_knox_id TEXT,
                 recipient_order INTEGER, PRIMARY KEY(post_id, recipient_knox_id));
@@ -105,6 +106,7 @@ class BoardTest(unittest.TestCase):
         self.assertEqual(post["recipients"], ["reader.test", "reader2.test"])
         self.assertEqual(post["comment"], "첫 줄\n두 번째 줄")
         self.assertEqual(post["workStatus"], "IN_PROGRESS")
+        self.assertEqual((post["line"], post["sdwt"]), ("TEST", ""))
         self.assertEqual(self.run_action("image")["imageBase64"], PNG)
         image = self.db.connection.execute("SELECT image_png, byte_size FROM chart_mail_post_image").fetchone()
         self.assertEqual(image["image_png"], base64.b64decode(PNG))
@@ -163,6 +165,57 @@ class BoardTest(unittest.TestCase):
         self.assertEqual(self.run_action("list", page=1, search="", status="COMPLETED")["total"], 0)
         with self.assertRaisesRegex(board.BoardError, "BOARD_NOT_FOUND"):
             self.run_action("detail", id="f" * 64)
+
+    def test_scope_filter_counts_pages_and_options_cover_entire_board(self):
+        for index in range(25):
+            scope = {"line": "L1" if index < 23 else "L2", "sdwt": "TEAM 공통 &+" if index < 22 or index == 23 else "TEAM2"}
+            board.execute_action(self.db, "begin", draft(id=f"{index:064x}", chartUrl="https://example.test/self-equipment?" + urlencode(scope)))
+        first = self.run_action("list", page=1, search="", status="", line="L1", sdwt="TEAM 공통 &+")
+        self.assertEqual(first["total"], 22)
+        self.assertEqual(len(first["posts"]), 20)
+        self.assertTrue(all(post["line"] == "L1" and post["sdwt"] == "TEAM 공통 &+" for post in first["posts"]))
+        second = self.run_action("list", page=2, search="", status="", line="L1", sdwt="TEAM 공통 &+")
+        self.assertEqual(len(second["posts"]), 2)
+        self.assertFalse({post["id"] for post in first["posts"]} & {post["id"] for post in second["posts"]})
+        self.assertEqual(self.run_action("list", page=1, search="", status="", sdwt="TEAM 공통 &+")["total"], 23)
+        self.assertEqual(self.run_action("list", page=1, search="", status="", line="L1")["total"], 23)
+        self.run_action("status", id=f"{0:064x}", status="COMPLETED", version=1, comment="done")
+        combined = self.run_action("list", page=1, search="TEST", status="COMPLETED", line="L1", sdwt="TEAM 공통 &+")
+        self.assertEqual(combined["total"], 1)
+        # Options remain available even if status/search returns no matching posts.
+        empty = self.run_action("list", page=1, search="no match", status="COMPLETED", line="L2")
+        self.assertEqual(empty["total"], 0)
+        self.assertEqual(empty["filters"], {"lines": ["L1", "L2"], "sdwts": ["TEAM 공통 &+", "TEAM2"]})
+        for field in ("line", "sdwt"):
+            for value in ("TEAM", "L", "%' OR 1=1 --"):
+                self.assertEqual(self.run_action("list", page=1, search="", status="", **{field: value})["total"], 0)
+            with self.assertRaisesRegex(board.BoardError, "BOARD_INVALID"):
+                self.run_action("list", page=1, search="", status="", **{field: "x" * 201})
+
+    def test_line_limits_sdwt_options_and_missing_metadata_remains_visible(self):
+        for index, query in enumerate(("line=L1&sdwt=S1", "line=L2&sdwt=S2", "")):
+            board.execute_action(self.db, "begin", draft(id=f"{index:064x}", chartUrl="https://example.test/common-anomaly?" + query))
+        filtered = self.run_action("list", page=1, search="", status="", line="L1")
+        self.assertEqual(filtered["filters"], {"lines": ["L1", "L2"], "sdwts": ["S1"]})
+        unfiltered = self.run_action("list", page=1, search="", status="")
+        self.assertEqual(unfiltered["total"], 3)
+        self.assertEqual(len([post for post in unfiltered["posts"] if post["line"] == "" and post["sdwt"] == ""]), 1)
+
+    def test_scope_parser_preserves_send_compatibility(self):
+        self.assertEqual(board.chart_scope(""), {"line": "", "sdwt": ""})
+        self.assertEqual(board.chart_scope("http://[invalid"), {"line": "", "sdwt": ""})
+        self.assertEqual(board.chart_scope("https://example.test/fdc_trend/matching-anomaly?line=L+1&sdwt=T%2B1&sdwt=ignored"), {"line": "L 1", "sdwt": "T+1"})
+        self.assertEqual(board.chart_scope("https://example.test/?line=" + "x" * 201 + "&sdwt=S%00X"), {"line": "", "sdwt": ""})
+
+    def test_actual_chart_sdwt_takes_priority_over_view_or_mapping_key(self):
+        for app, folder in (("self-equipment", "erd"), ("common-anomaly", "common"), ("matching-anomaly", "erd_commonality")):
+            for team in ("__MY_EQP__", "__SKIP_LIST__", "TEAM_KEY"):
+                url = "https://example.test/" + app + "?" + urlencode({
+                    "line": "L1", "sdwt": team,
+                    "chart": f"/appdata/abnormal_trend/pic_server2/{folder}/2026-09-18/Actual SDWT/ETCH/img.png",
+                })
+                self.assertEqual(board.chart_scope(url), {"line": "L1", "sdwt": "Actual SDWT"})
+        self.assertEqual(board.chart_scope("https://example.test/self-equipment?line=L1&sdwt=__MY_EQP__"), {"line": "L1", "sdwt": ""})
 
 
 if __name__ == "__main__":

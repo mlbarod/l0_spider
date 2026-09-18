@@ -41,9 +41,12 @@ export function createChartMailBoardHandler({ db = createChartMailBoardDb(), env
         const page = Number(pageText)
         const status = url.searchParams.get("status") ?? ""
         const search = (url.searchParams.get("search") ?? "").trim()
+        const line = (url.searchParams.get("line") ?? "").trim()
+        const sdwt = (url.searchParams.get("sdwt") ?? "").trim()
         if (!/^\d+$/.test(pageText) || !Number.isSafeInteger(page) || page < 1 || page > 100000
-          || !["", "IN_PROGRESS", "COMPLETED"].includes(status) || search.length > 200) throw new TypeError()
-        return json(res, 200, await db.list(actor, { page, status, search }))
+          || !["", "IN_PROGRESS", "COMPLETED"].includes(status)
+          || [search, line, sdwt].some(value => value.length > 200)) throw new TypeError()
+        return json(res, 200, await db.list(actor, { page, status, search, line, sdwt }))
       }
       if (req.method === "GET" && image) {
         const result = await db.image(actor, id)

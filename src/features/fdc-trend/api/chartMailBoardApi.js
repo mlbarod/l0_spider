@@ -11,8 +11,8 @@ async function request(path, options = {}) {
   return payload
 }
 
-export function fetchChartMailPosts({ page, status, search, signal }) {
-  const query = new URLSearchParams({ page: String(page), status, search })
+export function fetchChartMailPosts({ page = 1, status = "", search = "", line = "", sdwt = "", signal } = {}) {
+  const query = new URLSearchParams({ page: String(page), status, search, line, sdwt })
   return request(`/api/chart-mail-board?${query}`, { signal })
 }
 export function fetchChartMailPost(id, signal) {
