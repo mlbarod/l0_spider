@@ -30,7 +30,7 @@ function chartMailButtons(value, expectedOrigin) {
   if (/\s/.test(value) || !["http:", "https:"].includes(url.protocol) || url.username || url.password
     || !/^\/(?:fdc_trend\/)?(?:self-equipment|matching-anomaly|common-anomaly)$/.test(url.pathname)
     || (expectedOrigin && url.origin !== expectedOrigin)) throw new TypeError("차트 링크를 확인해 주세요.")
-  const links = [[url.href, "차트 링크"], [new URL("/", url).href, "SPIDER 접속"]]
+  const links = [[url.href, "차트 링크"], [new URL("/", url).href, "SPIDER 접속"], [new URL("/chart-mail-board", url).href, "Chart Mailing 게시판"]]
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:20px;"><tr>${links.map(([href, label]) => `<td style="padding-right:12px;"><a href="${escapeHtml(href)}" target="_blank" rel="noreferrer" style="display:inline-block;padding:12px 20px;background-color:#0071e3;color:#ffffff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:bold;">${label}</a></td>`).join("")}</tr></table>`
 }
 

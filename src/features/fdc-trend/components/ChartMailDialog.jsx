@@ -54,7 +54,7 @@ export function ChartMailDialog({ title, details, chartPath, prepareImage, disab
   }
   function openDraft() {
     prepareRef.current = prepareImage
-    setDraft({ title, details, chartUrl: new URL(chartPath, window.location.origin).href, homeUrl: new URL("/", window.location.origin).href, image: null })
+    setDraft({ title, details, chartUrl: new URL(chartPath, window.location.origin).href, homeUrl: new URL("/", window.location.origin).href, boardUrl: new URL("/chart-mail-board", window.location.origin).href, image: null })
     setDirect("")
     setSelectedGroups([])
     setCommentChoice(CHART_MAIL_COMMENTS[0])
@@ -111,6 +111,7 @@ export function ChartMailDialog({ title, details, chartPath, prepareImage, disab
           <div className="flex flex-wrap gap-3">
             <Button asChild><a href={draft?.chartUrl} target="_blank" rel="noreferrer">차트 링크</a></Button>
             <Button asChild variant="outline"><a href={draft?.homeUrl} target="_blank" rel="noreferrer">SPIDER 접속</a></Button>
+            <Button asChild variant="outline"><a href={draft?.boardUrl} target="_blank" rel="noreferrer">Chart Mailing 게시판</a></Button>
           </div>
         </section>
         {status.isError && <p role="alert" className="text-sm text-destructive">{status.error.message}</p>}

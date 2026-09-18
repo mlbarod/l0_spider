@@ -94,7 +94,8 @@ test("메일 본문에 원본 폭과 안전한 차트·메인 링크 버튼을 �
   assert.ok(contents.includes(`href="${chartUrl.replaceAll("&", "&amp;")}"`))
   assert.match(contents, />차트 링크<\/a>/)
   assert.match(contents, /href="https:\/\/spider\.example\/"[^>]*>SPIDER 접속<\/a>/)
-  assert.doesNotMatch(buildChartMail(draft(), {}).contents, /차트 링크|SPIDER 접속/)
+  assert.match(contents, /href="https:\/\/spider\.example\/chart-mail-board"[^>]*>Chart Mailing 게시판<\/a>/)
+  assert.doesNotMatch(buildChartMail(draft(), {}).contents, /차트 링크|SPIDER 접속|Chart Mailing 게시판/)
 })
 
 test("잘못된 차트 링크는 메일 발송 전에 거절한다", async (t) => {
