@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { Activity, ArrowRight, BookOpen, CalendarClock, ChartNoAxesCombined, Gauge, GitCompareArrows, Mail, Network, Radar, ScanSearch, Users } from "lucide-react"
+import { Activity, ArrowRight, BookOpen, CalendarClock, ChartNoAxesCombined, ClipboardList, Gauge, GitCompareArrows, Mail, Network, Radar, ScanSearch, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
@@ -57,8 +57,13 @@ const spiderApps = [
     gridClassName: "2xl:col-start-1 2xl:row-start-2",
   },
   {
-    key: "yield-hard-limit-placeholder",
-    empty: true,
+    icon: ClipboardList,
+    title: "Chart Mailing 게시판",
+    subtitle: "발송한 차트와 메일 내용을 확인하고 진행 상황을 관리합니다.",
+    category: "Chart Mailing",
+    href: "/chart-mail-board",
+    active: true,
+    status: "운영중",
   },
   {
     icon: Mail,

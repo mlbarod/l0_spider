@@ -15,6 +15,7 @@ import { createAccessControl } from "./server/accessControl.mjs"
 
 import { handleDashboardDataRequest } from "./server/dashboardData.mjs"
 import { handleChartMailRequest } from "./server/chartMail.mjs"
+import { handleChartMailBoardRequest } from "./server/chartMailBoard.mjs"
 import { handleMailRecipientGroupsRequest } from "./server/mailRecipientGroups.mjs"
 import { handleCurrentUserRequest } from "./server/currentUser.mjs"
 import { handleClickedCategoryHistoryRequest } from "./server/clickedCategoryHistory.mjs"
@@ -151,6 +152,11 @@ async function serveStatic(req, res) {
 
 function handleApplicationRequest(req, res) {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`)
+
+  if (url.pathname === "/api/chart-mail-board" || url.pathname.startsWith("/api/chart-mail-board/")) {
+    void handleChartMailBoardRequest(req, res, url)
+    return
+  }
 
   if (url.pathname === "/api/auth/session") {
     handleSsoSessionRequest(req, res, ssoAuth.enabled)

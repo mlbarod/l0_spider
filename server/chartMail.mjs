@@ -2,6 +2,8 @@ import { createHash, randomUUID } from "node:crypto"
 import { getSsoCurrentUser, sendSsoAuthenticationError } from "./currentUser.mjs"
 import { prepareKnoxMailRequest } from "./knoxMailConfig.mjs"
 import { createChartMailStore } from "./chartMailStore.mjs"
+import { createChartMailBoardDb } from "./chartMailBoardDb.mjs"
+import { isChartMailBoardEnabled } from "./chartMailBoard.mjs"
 import { inspectMailResponse, mailFailureHint, mailNetworkCode, safeMailDiagnostics } from "./chartMailDiagnostics.mjs"
 import { MAX_CHART_MAIL_COMMENT_LENGTH, MAX_CHART_IMAGE_BYTES, parseMailRecipients } from "../src/features/fdc-trend/utils/chartMail.mjs"
 
@@ -77,9 +79,9 @@ function json(res, status, payload) {
   res.end(JSON.stringify(payload))
 }
 
-function sendOutcome(res, state, details) {
+function sendOutcome(res, state, details, boardPostId) {
   const diagnostics = safeMailDiagnostics(details)
-  const metadata = { requestId: diagnostics.requestId, diagnostics }
+  const metadata = { requestId: diagnostics.requestId, diagnostics, ...(boardPostId ? { boardPostId } : {}) }
   if (state === "accepted") return json(res, 200, { ok: true, status: "accepted", deliveryVerified: false, ...metadata })
   if (state === "pending") return json(res, 409, { ok: false, code: "MAIL_IN_PROGRESS", error: "이미 처리 중이거나 결과 확인이 필요한 요청입니다. 수신 여부를 먼저 확인해 주세요.", ...metadata })
   const hint = mailFailureHint(diagnostics)
@@ -87,7 +89,7 @@ function sendOutcome(res, state, details) {
   return json(res, 502, { ok: false, code: "MAIL_RESULT_UNKNOWN", error: `${hint} 중복 발송을 피하려면 수신 여부를 먼저 확인해 주세요.`, ...metadata })
 }
 
-export function createChartMailHandler({ env = process.env, fetchImpl = globalThis.fetch, store = createChartMailStore(), logger = console.info } = {}) {
+export function createChartMailHandler({ env = process.env, fetchImpl = globalThis.fetch, store = createChartMailStore(), board = createChartMailBoardDb(), logger = console.info } = {}) {
   return async function handle(req, res) {
     const startedAt = Date.now()
     const diagnostics = { requestId: randomUUID() }
@@ -95,8 +97,9 @@ export function createChartMailHandler({ env = process.env, fetchImpl = globalTh
       try { logger(`[chart-mail] ${JSON.stringify({ at: new Date().toISOString(), event, ...safeMailDiagnostics(details) })}`) } catch { /* 로그 출력 실패로 발송 상태를 바꾸지 않는다. */ }
     }
     let stage = "request"
+    let boardPostId
     try {
-      getSsoCurrentUser(req)
+      const actor = getSsoCurrentUser(req).knoxId.trim().toLowerCase()
       if (!["GET", "POST"].includes(req.method)) return json(res, 405, { ok: false, error: "지원하지 않는 요청입니다." })
       if (req.method === "POST") log("request_received")
       stage = "configuration"
@@ -134,6 +137,26 @@ export function createChartMailHandler({ env = process.env, fetchImpl = globalTh
         log("duplicate_suppressed", previousDiagnostics)
         return sendOutcome(res, previous.state, previousDiagnostics)
       }
+      if (isChartMailBoardEnabled(env)) {
+        stage = "board"
+        const chartUrl = input.chartUrl ?? ""
+        const saved = await board.begin({
+          id: key, fingerprint, actor,
+          title: input.title, details: input.details, comment: input.comment,
+          chartUrl, app: chartUrl ? new URL(chartUrl).pathname.split("/").at(-1) : "",
+          recipients: payload.recipients.map(({ emailAddress }) => emailAddress.slice(0, -"@samsung.com".length)),
+          imageBase64: input.image.slice("data:image/png;base64,".length),
+          diagnostics: safeMailDiagnostics(diagnostics),
+        })
+        boardPostId = key
+        if (!saved.created) {
+          // The DB's unique key also suppresses duplicates from another Node process.
+          const previousDiagnostics = { ...diagnostics, ...safeMailDiagnostics(saved.diagnostics) }
+          store.finish(key, saved.state, previousDiagnostics)
+          log("duplicate_suppressed", previousDiagnostics)
+          return sendOutcome(res, saved.state, previousDiagnostics, boardPostId)
+        }
+      }
       stage = "transport"
       let state = "unknown"
       diagnostics.timeoutMs = prepared.timeoutMs
@@ -154,11 +177,17 @@ export function createChartMailHandler({ env = process.env, fetchImpl = globalTh
       }
       diagnostics.durationMs = Date.now() - startedAt
       log(state === "accepted" ? "http_response_unverified" : state === "rejected" ? "rejected" : "result_unknown")
-      try { store.finish(key, state, diagnostics) } catch {
-        log("result_storage_failed")
-        return sendOutcome(res, "unknown", diagnostics)
+      let storageFailed = false
+      try { store.finish(key, state, diagnostics) } catch { storageFailed = true }
+      if (boardPostId) {
+        try { await board.finish({ id: boardPostId, actor, state, diagnostics: safeMailDiagnostics(diagnostics) }) }
+        catch { storageFailed = true }
       }
-      return sendOutcome(res, state, diagnostics)
+      if (storageFailed) {
+        log("result_storage_failed")
+        return sendOutcome(res, "unknown", diagnostics, boardPostId)
+      }
+      return sendOutcome(res, state, diagnostics, boardPostId)
     } catch (error) {
       if (sendSsoAuthenticationError(error, res)) return
       if (stage === "validation" && error instanceof TypeError) {
@@ -168,6 +197,15 @@ export function createChartMailHandler({ env = process.env, fetchImpl = globalTh
       if (stage === "transport") {
         log("unexpected_transport_error")
         return sendOutcome(res, "unknown", diagnostics)
+      }
+      if (stage === "board") {
+        log("board_storage_failed")
+        const conflict = error.code === "MAIL_REQUEST_CONFLICT"
+        return json(res, conflict ? 409 : 500, { ok: false,
+          code: conflict ? "MAIL_REQUEST_CONFLICT" : "BOARD_STORAGE_ERROR",
+          error: conflict ? "이미 사용한 요청 ID입니다. 작성창을 새로 열어 주세요." : "게시판과 이미지를 DB에 저장하지 못해 발송하지 않았습니다. 관리자 확인 후 작성창을 새로 열어 주세요.",
+          requestId: diagnostics.requestId,
+        })
       }
       log("request_storage_failed")
       return json(res, 500, { ok: false, code: "MAIL_REQUEST_STORAGE_ERROR", error: "메일 요청을 준비하거나 기록하지 못했습니다. 발송하지 않았습니다.", requestId: diagnostics.requestId })

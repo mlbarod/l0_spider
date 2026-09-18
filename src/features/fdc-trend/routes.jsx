@@ -3,6 +3,7 @@ import { FdcTrendShell } from "./components/FdcTrendShell"
 import { CommonalityAnomalyPage } from "./pages/CommonalityAnomalyPage"
 import { CommonAnomalyPage } from "./pages/CommonAnomalyPage"
 import { FdcTrendPage } from "./pages/FdcTrendPage"
+import { ChartMailBoardPage } from "./pages/ChartMailBoardPage"
 import { HardLimitConstructionPage } from "./pages/HardLimitConstructionPage"
 import { L0SpiderHomePage } from "./pages/L0SpiderHomePage"
 import { RegistrationHubPage } from "./pages/RegistrationHubPage"
@@ -21,6 +22,10 @@ const fdcTrendChildren = [
   {
     path: "hard-limit",
     element: <HardLimitConstructionPage />,
+  },
+  {
+    path: "chart-mail-board",
+    element: <ChartMailBoardPage />,
   },
   {
     path: "my-eqp",

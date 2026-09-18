@@ -1,5 +1,6 @@
 import { useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { Link } from "react-router-dom"
 import { Loader2, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -78,7 +79,7 @@ export function ChartMailDialog({ title, details, chartPath, prepareImage, disab
       } else setResult(response)
     } catch (error) {
       setSendError("메일전송 실패. 관리자에게 문의바랍니다")
-      if (["NETWORK_ERROR", "UNKNOWN_RESPONSE", "MAIL_RESULT_UNKNOWN", "MAIL_IN_PROGRESS", "MAIL_REJECTED", "MAIL_REQUEST_CONFLICT"].includes(error.code)) setUncertain(true)
+      if (["NETWORK_ERROR", "UNKNOWN_RESPONSE", "MAIL_RESULT_UNKNOWN", "MAIL_IN_PROGRESS", "MAIL_REJECTED", "MAIL_REQUEST_CONFLICT", "BOARD_STORAGE_ERROR"].includes(error.code)) setUncertain(true)
     } finally {
       setSending(false)
       sendLock.current = false
@@ -116,6 +117,7 @@ export function ChartMailDialog({ title, details, chartPath, prepareImage, disab
         {status.data && !status.data.ready && <p role="status" className="text-sm text-amber-700">{status.data.reason}{status.data.requestId && ` [문의 코드: ${status.data.requestId}]`}</p>}
         {sendError && <p role="alert" className="text-sm text-destructive">{sendError}</p>}
         {result && <p role="status" className="text-sm text-green-700">메일전송 완료</p>}
+        {result?.boardPostId && <Button asChild variant="outline"><Link to={`/chart-mail-board?post=${result.boardPostId}`}>게시판에서 발송 건 확인</Link></Button>}
         <DialogFooter><Button variant="outline" disabled={sending} onClick={() => { generation.current += 1; setOpen(false) }}>닫기</Button><Button disabled={locked || !contentValid || imageBusy || !draft?.image || !knoxId || Boolean(recipientError) || !status.data?.ready} onClick={send}>{sending ? "발송 중…" : result ? "메일전송 완료" : "보내기"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
