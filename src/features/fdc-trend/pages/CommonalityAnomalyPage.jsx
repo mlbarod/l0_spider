@@ -16,6 +16,7 @@ import { ChartMailDialog } from "../components/ChartMailDialog"
 import { buildChartMailPath, prioritizeLinkedChart } from "../utils/chartMailLinks.mjs"
 import { loadChartPng } from "../utils/chartMailImage"
 import { ResizableFilterArea } from "../components/ResizableFilterArea"
+import { usePendingFilterView } from "../components/usePendingFilterView"
 import {
   buildCommonalityImageUrl,
   fetchCommonalityData,
@@ -97,15 +98,23 @@ function SelectRow({ label, meta, selected, onClick }) {
 
 function FilterCard({
   title,
-  badge,
-  disabled = false,
-  placeholder,
-  isActive = false,
+  badge: nextBadge,
+  disabled: nextDisabled = false,
+  placeholder: nextPlaceholder,
+  isActive: nextIsActive = false,
   isLoading = false,
+  isPending = false,
   query,
   onQueryChange,
-  children,
+  children: nextChildren,
 }) {
+  const { badge, disabled, placeholder, isActive, children } = usePendingFilterView({
+    badge: nextBadge,
+    disabled: nextDisabled,
+    placeholder: nextPlaceholder,
+    isActive: nextIsActive,
+    children: nextChildren,
+  }, isPending)
   const contentRef = useRef(null)
   const scrollPositionRef = useRef(0)
   const isRestoringScrollRef = useRef(false)
@@ -126,7 +135,7 @@ function FilterCard({
   })
 
   return (
-    <Card className={cn(
+    <Card aria-busy={isPending} className={cn(
       "grid min-h-0 min-w-0 grid-rows-[48px_44px_minmax(0,1fr)] gap-0 overflow-hidden rounded-[18px] border border-[#e0e0e0] bg-white py-0",
       isActive && "ring-2 ring-[#0071e3]",
     )}>
@@ -135,11 +144,21 @@ function FilterCard({
           <CardTitle className={cn("truncate text-sm font-semibold", disabled && "text-muted-foreground", isActive && "text-primary")}>
             {title}
           </CardTitle>
-          {isLoading
-            ? <Loader2 className="size-3.5 animate-spin text-muted-foreground" aria-label="로딩 중" />
-            : badge != null
-            ? <Badge variant={isActive ? "default" : "secondary"} className="text-[11px]">{badge}</Badge>
-            : null}
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Loader2
+              className={cn(
+                "size-3.5 text-muted-foreground transition-opacity duration-200 motion-reduce:animate-none motion-reduce:transition-none",
+                isLoading || isPending ? "animate-spin opacity-100 delay-150" : "opacity-0",
+              )}
+              aria-label={isLoading || isPending ? "로딩 중" : undefined}
+              aria-hidden={!isLoading && !isPending}
+            />
+            {badge != null ? (
+              <Badge variant={isActive ? "default" : "secondary"} className="shrink-0 text-[11px]">
+                {badge}
+              </Badge>
+            ) : null}
+          </div>
         </div>
       </div>
       <div className="border-b border-[#e0e0e0] bg-white px-2 py-1.5">
@@ -147,8 +166,11 @@ function FilterCard({
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder="검색…"
-          className="h-8 rounded-full border-[#e0e0e0] bg-white px-3 text-xs"
-          disabled={disabled}
+          className={cn(
+            "h-8 rounded-full border-[#e0e0e0] bg-white px-3 text-xs",
+            isPending && !disabled && "disabled:opacity-100",
+          )}
+          disabled={nextDisabled || isPending}
         />
       </div>
       <CardContent
@@ -165,7 +187,7 @@ function FilterCard({
             {placeholder}
           </div>
         ) : children.length ? (
-          <div className="grid content-start gap-1.5">{children}</div>
+          <div className="grid content-start gap-1.5" inert={isPending}>{children}</div>
         ) : (
           <div className="flex h-full min-h-16 items-center justify-center px-3 text-center text-sm text-muted-foreground">
             {placeholder}
@@ -526,6 +548,7 @@ export function CommonalityAnomalyPage({ variant = "matching" }) {
               title={config.categoryLabel}
               badge={stepDescs.length}
               disabled={!activeTeam || dataQuery.isLoading}
+              isPending={dataQuery.isLoading}
               placeholder={dataQuery.isLoading ? config.latestLoadingText : `선택 SDWT에 해당하는 ${config.categoryLabel}이 없습니다.`}
               isActive={Boolean(activeStepDesc)}
               isLoading={dataQuery.isFetching && !selectedStepDesc}
@@ -551,6 +574,7 @@ export function CommonalityAnomalyPage({ variant = "matching" }) {
               title="Sensor"
               badge={sensors.length}
               disabled={!selectedStepDesc || dataQuery.isLoading}
+              isPending={dataQuery.isLoading}
               placeholder={selectedStepDesc ? `선택 ${config.categoryLabel}에 해당하는 Sensor가 없습니다.` : `${config.categoryLabel}을 먼저 선택하세요`}
               isActive={Boolean(activeSensor)}
               isLoading={dataQuery.isFetching && !selectedSensor}
@@ -575,6 +599,7 @@ export function CommonalityAnomalyPage({ variant = "matching" }) {
               title="ch_step"
               badge={chSteps.length}
               disabled={!selectedSensor || dataQuery.isLoading}
+              isPending={dataQuery.isLoading}
               placeholder={selectedSensor ? "선택 Sensor에 해당하는 ch_step이 없습니다." : "Sensor를 먼저 선택하세요"}
               isActive={Boolean(activeChStep)}
               isLoading={dataQuery.isFetching && Boolean(selectedSensor)}

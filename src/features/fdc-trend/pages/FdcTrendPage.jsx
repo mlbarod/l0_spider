@@ -43,6 +43,7 @@ import { ChartMailDialog } from "../components/ChartMailDialog"
 import { buildChartMailPath, prioritizeLinkedChart } from "../utils/chartMailLinks.mjs"
 import { renderChartPng } from "../utils/chartMailImage"
 import { ResizableFilterArea } from "../components/ResizableFilterArea"
+import { usePendingFilterView } from "../components/usePendingFilterView"
 import { fetchCurrentUser } from "../api/currentUserApi"
 import { createHitHistory } from "../api/hitHistoryApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
@@ -164,16 +165,24 @@ function SelectRow({ label, meta, selected, multiple = false, onClick }) {
 
 function FilterCard({
   title,
-  badge,
-  disabled = false,
-  placeholder,
-  isActive = false,
+  badge: nextBadge,
+  disabled: nextDisabled = false,
+  placeholder: nextPlaceholder,
+  isActive: nextIsActive = false,
   isLoading = false,
+  isPending = false,
   query,
   onQueryChange,
   scrollPositionRef,
-  children,
+  children: nextChildren,
 }) {
+  const { badge, disabled, placeholder, isActive, children } = usePendingFilterView({
+    badge: nextBadge,
+    disabled: nextDisabled,
+    placeholder: nextPlaceholder,
+    isActive: nextIsActive,
+    children: nextChildren,
+  }, isPending)
   const contentRef = useRef(null)
   const localScrollPositionRef = useRef(0)
   const activeScrollPositionRef = scrollPositionRef ?? localScrollPositionRef
@@ -196,6 +205,7 @@ function FilterCard({
 
   return (
     <Card
+      aria-busy={isPending}
       className={cn(
         "grid min-h-0 min-w-0 grid-rows-[48px_44px_minmax(0,1fr)] gap-0 overflow-hidden rounded-[18px] border border-[#e0e0e0] bg-white py-0 transition-all",
         isActive && "ring-2 ring-[#0071e3]",
@@ -217,13 +227,21 @@ function FilterCard({
           >
             {title}
           </CardTitle>
-          {isLoading ? (
-            <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" aria-label="로딩 중" />
-          ) : badge != null ? (
-            <Badge variant={isActive ? "default" : "secondary"} className="shrink-0 text-[11px]">
-              {badge}
-            </Badge>
-          ) : null}
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Loader2
+              className={cn(
+                "size-3.5 text-muted-foreground transition-opacity duration-200 motion-reduce:animate-none motion-reduce:transition-none",
+                isLoading || isPending ? "animate-spin opacity-100 delay-150" : "opacity-0",
+              )}
+              aria-label={isLoading || isPending ? "로딩 중" : undefined}
+              aria-hidden={!isLoading && !isPending}
+            />
+            {badge != null ? (
+              <Badge variant={isActive ? "default" : "secondary"} className="shrink-0 text-[11px]">
+                {badge}
+              </Badge>
+            ) : null}
+          </div>
         </div>
       </div>
       <div className="border-b border-[#e0e0e0] bg-white px-2 py-1.5">
@@ -231,8 +249,11 @@ function FilterCard({
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder="검색…"
-          className="h-8 rounded-full border-[#e0e0e0] bg-white px-3 text-xs"
-          disabled={disabled}
+          className={cn(
+            "h-8 rounded-full border-[#e0e0e0] bg-white px-3 text-xs",
+            isPending && !disabled && "disabled:opacity-100",
+          )}
+          disabled={nextDisabled || isPending}
         />
       </div>
       <CardContent
@@ -249,7 +270,7 @@ function FilterCard({
             {placeholder}
           </div>
         ) : children.length ? (
-          <div className="grid content-start gap-1.5">{children}</div>
+          <div className="grid content-start gap-1.5" inert={isPending}>{children}</div>
         ) : (
           <div className="flex h-full min-h-16 items-center justify-center px-3 text-center text-sm text-muted-foreground">
             {placeholder}
@@ -1445,7 +1466,7 @@ const ErdScatterCard = memo(function ErdScatterCard({
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <ChartMailDialog
-            title={`[SPIDER] 자설비 이상감지 / ${eqp || "EQPID 미지정"} / ${row.sensor || "-"} 확인 부탁드립니다.`}
+            title={`[SPIDER] 설비별 SPEC내 이상감지 / ${eqp || "EQPID 미지정"} / ${row.sensor || "-"} 확인 부탁드립니다.`}
             details={`Line: ${lineId} · EQP: ${eqp} · PPID: ${row.recipe_id || "-"} · Sensor: ${row.sensor || "-"} · Step: ${row.step || "-"} · Grade: ${row.priority || "-"}${reasonLabel ? ` · 사유: ${reasonLabel}` : ""}`}
             chartPath={buildChartMailPath({ app: "self-equipment", line: lineId, sdwt: team, row })}
             prepareImage={() => renderChartPng(renderScatterChart(null, buildRenderedScatterSeries(points, null)))}
@@ -1977,7 +1998,7 @@ export function FdcTrendPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold tracking-tight">자설비 이상감지</h1>
+              <h1 className="text-lg font-semibold tracking-tight">설비별 SPEC내 이상감지</h1>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
               라인, 분임조, 센서 등급과 STEP, eqp_ch, sensor, ch_step을 선택해 ERD 결과를 조회합니다.
@@ -2077,6 +2098,7 @@ export function FdcTrendPage() {
               title="Sensor Grade"
               badge={`${gradeOptions.length}`}
               disabled={!activeTeam}
+              isPending={dataQuery.isLoading && (isMyEqp || isSkipList)}
               placeholder={!activeTeam
                 ? "SDWT를 먼저 선택하세요"
                 : dataQuery.isLoading
@@ -2102,6 +2124,7 @@ export function FdcTrendPage() {
               title="STEP"
               badge={steps.length ? `${steps.length}` : null}
               disabled={!activeTeam || dataQuery.isLoading}
+              isPending={dataQuery.isLoading}
               placeholder={dataQuery.isLoading ? "로딩 중…" : "선택 조건에 해당하는 STEP이 없습니다."}
               isActive={Boolean(activeDesc)}
               isLoading={dataQuery.isFetching && !selectedDesc}
@@ -2131,6 +2154,7 @@ export function FdcTrendPage() {
               title="eqp_ch"
               badge={eqpChannels.length ? `${eqpChannels.length}` : null}
               disabled={!activeDesc || dataQuery.isLoading}
+              isPending={dataQuery.isLoading}
               placeholder={activeDesc ? "선택 STEP에 해당하는 eqp_ch가 없습니다." : "STEP을 먼저 선택하세요"}
               isActive={Boolean(activeEqpCh)}
               isLoading={dataQuery.isFetching && Boolean(activeDesc) && !selectedEqpCh}
@@ -2157,6 +2181,7 @@ export function FdcTrendPage() {
               title="sensor"
               badge={sensors.length ? `${sensors.length}` : null}
               disabled={!selectedEqpCh || dataQuery.isLoading}
+              isPending={dataQuery.isLoading}
               placeholder={selectedEqpCh ? "선택 eqp_ch에 해당하는 sensor가 없습니다." : "eqp_ch를 먼저 선택하세요"}
               isActive={Boolean(activeSensor)}
               isLoading={dataQuery.isFetching && Boolean(selectedEqpCh)}
@@ -2181,6 +2206,7 @@ export function FdcTrendPage() {
               title="ch_step"
               badge={chSteps.length ? `${chSteps.length}` : null}
               disabled={!selectedSensor || dataQuery.isLoading}
+              isPending={dataQuery.isLoading}
               placeholder={selectedSensor ? "선택 sensor에 해당하는 ch_step이 없습니다." : "sensor를 먼저 선택하세요"}
               isActive={Boolean(activeChStep)}
               isLoading={dataQuery.isFetching && Boolean(selectedSensor)}

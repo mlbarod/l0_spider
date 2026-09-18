@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils"
 
 import { createClickedCategoryHistory } from "../api/clickedCategoryHistoryApi"
 import { ResizableFilterArea } from "../components/ResizableFilterArea"
+import { usePendingFilterView } from "../components/usePendingFilterView"
 import {
   buildCommonAnomalyImageUrl,
   fetchCommonAnomalyData,
@@ -59,17 +60,25 @@ function SelectRow({ label, meta, selected, onClick }) {
 
 function FilterCard({
   title,
-  badge,
-  disabled = false,
-  placeholder,
-  isActive = false,
+  badge: nextBadge,
+  disabled: nextDisabled = false,
+  placeholder: nextPlaceholder,
+  isActive: nextIsActive = false,
   isLoading = false,
+  isPending = false,
   query,
   onQueryChange,
-  children,
+  children: nextChildren,
 }) {
+  const { badge, disabled, placeholder, isActive, children } = usePendingFilterView({
+    badge: nextBadge,
+    disabled: nextDisabled,
+    placeholder: nextPlaceholder,
+    isActive: nextIsActive,
+    children: nextChildren,
+  }, isPending)
   return (
-    <Card className={cn(
+    <Card aria-busy={isPending} className={cn(
       "grid min-h-0 min-w-0 grid-rows-[48px_44px_minmax(0,1fr)] gap-0 overflow-hidden rounded-[18px] border border-[#e0e0e0] bg-white py-0",
       isActive && "ring-2 ring-[#0071e3]",
     )}>
@@ -78,11 +87,21 @@ function FilterCard({
           <CardTitle className={cn("truncate text-sm font-semibold", disabled && "text-muted-foreground", isActive && "text-primary")}>
             {title}
           </CardTitle>
-          {isLoading
-            ? <Loader2 className="size-3.5 animate-spin text-muted-foreground" aria-label="로딩 중" />
-            : badge != null
-            ? <Badge variant={isActive ? "default" : "secondary"} className="text-[11px]">{badge}</Badge>
-            : null}
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Loader2
+              className={cn(
+                "size-3.5 text-muted-foreground transition-opacity duration-200 motion-reduce:animate-none motion-reduce:transition-none",
+                isLoading || isPending ? "animate-spin opacity-100 delay-150" : "opacity-0",
+              )}
+              aria-label={isLoading || isPending ? "로딩 중" : undefined}
+              aria-hidden={!isLoading && !isPending}
+            />
+            {badge != null ? (
+              <Badge variant={isActive ? "default" : "secondary"} className="shrink-0 text-[11px]">
+                {badge}
+              </Badge>
+            ) : null}
+          </div>
         </div>
       </div>
       <div className="border-b border-[#e0e0e0] bg-white px-2 py-1.5">
@@ -90,8 +109,11 @@ function FilterCard({
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder="검색…"
-          className="h-8 rounded-full border-[#e0e0e0] bg-white px-3 text-xs"
-          disabled={disabled}
+          className={cn(
+            "h-8 rounded-full border-[#e0e0e0] bg-white px-3 text-xs",
+            isPending && !disabled && "disabled:opacity-100",
+          )}
+          disabled={nextDisabled || isPending}
         />
       </div>
       <CardContent className="min-h-0 overflow-y-auto overflow-x-hidden bg-white p-2">
@@ -100,7 +122,7 @@ function FilterCard({
             {placeholder}
           </div>
         ) : children.length ? (
-          <div className="grid content-start gap-1.5">{children}</div>
+          <div className="grid content-start gap-1.5" inert={isPending}>{children}</div>
         ) : (
           <div className="flex h-full min-h-16 items-center justify-center px-3 text-center text-sm text-muted-foreground">
             {placeholder}
@@ -557,6 +579,7 @@ export function CommonAnomalyPage() {
               title="prc_group"
               badge={prcGroups.length || null}
               disabled={!activeTeam || dataQuery.isLoading}
+              isPending={dataQuery.isLoading}
               placeholder={dataQuery.isLoading ? "로딩 중…" : "선택 조건에 해당하는 prc_group이 없습니다."}
               isActive={Boolean(activePrcGroup)}
               isLoading={dataQuery.isFetching && !selectedPrcGroup}
@@ -577,6 +600,7 @@ export function CommonAnomalyPage() {
               title="eqp"
               badge={eqps.length || null}
               disabled={!selectedPrcGroup || dataQuery.isLoading}
+              isPending={dataQuery.isLoading}
               placeholder={selectedPrcGroup ? "선택 prc_group에 해당하는 eqp가 없습니다." : "prc_group을 먼저 선택하세요"}
               isActive={Boolean(activeEqp)}
               isLoading={dataQuery.isFetching && Boolean(selectedPrcGroup) && !selectedEqp}
@@ -595,6 +619,7 @@ export function CommonAnomalyPage() {
               title="sensor"
               badge={sensors.length || null}
               disabled={!selectedEqp || dataQuery.isLoading}
+              isPending={dataQuery.isLoading}
               placeholder={selectedEqp ? "선택 eqp에 해당하는 sensor가 없습니다." : "eqp를 먼저 선택하세요"}
               isActive={Boolean(activeSensor)}
               isLoading={dataQuery.isFetching && Boolean(selectedEqp)}

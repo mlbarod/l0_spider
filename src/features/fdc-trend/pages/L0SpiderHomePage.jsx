@@ -12,7 +12,7 @@ import { NoticeManagement } from "../components/NoticeManagement"
 const spiderApps = [
   {
     icon: Activity,
-    title: "자설비 이상감지",
+    title: "설비별 SPEC내 이상감지",
     subtitle: "STEP과 FDC 센서를 기준으로 설비별 이상 Trend를 확인합니다.",
     category: "FDC Trend",
     href: "/self-equipment",
@@ -283,7 +283,7 @@ export function L0SpiderHomePage() {
             ETCH SPIDER
           </h1>
           <p className="mt-5 max-w-2xl text-[21px] font-normal leading-[1.4] tracking-[-0.23px] text-[#333333] sm:text-[24px]">
-            L0 공정 이상감지와 Hard Limit 추천 기능을 한 화면에서 시작합니다.
+            SPEC내 공정 이상감지와 설비간 이상감지 기능을 한 화면에서 시작합니다.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <a href="#spider-apps" className="rounded-full bg-[#0066cc] px-[22px] py-[11px] text-[17px] text-white transition-colors active:scale-95 hover:bg-[#0071e3]">

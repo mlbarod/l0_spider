@@ -23,7 +23,7 @@ export async function fetchSelfEquipmentData({
   const payload = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(getApiErrorMessage(payload, "자설비 이상감지 데이터를 불러오지 못했습니다."))
+    throw new Error(getApiErrorMessage(payload, "설비별 SPEC내 이상감지 데이터를 불러오지 못했습니다."))
   }
 
   return payload

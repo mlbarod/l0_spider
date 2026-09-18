@@ -390,13 +390,13 @@ async function generateScreenshots() {
     await capture(page, "01-main-screen.png", { fullPage: true })
     await capture(page, "02-main-menu.png", {
       highlights: [
-        page.getByRole("heading", { name: "자설비 이상감지" }),
+        page.getByRole("heading", { name: "설비별 SPEC내 이상감지" }),
         page.getByRole("heading", { name: "동일성 이상감지" }),
         page.getByRole("heading", { name: "공통부 이상감지" }),
       ],
     })
 
-    await goto(page, "/self-equipment", "자설비 이상감지")
+    await goto(page, "/self-equipment", "설비별 SPEC내 이상감지")
     await capture(page, "03-self-equipment-filters.png", { highlights: [page.getByText("Sensor Grade"), page.getByText("ch_step", { exact: true })] })
     await clickFilter(page, "MAIN ETCH")
     await clickFilter(page, "EQP-DEMO")

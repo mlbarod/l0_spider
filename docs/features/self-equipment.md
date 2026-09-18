@@ -34,7 +34,7 @@ Self Equipment는 Line·SDWT·Grade와 종속 조건을 좁혀 ERD 이상감지 
 | 출발 위치 | 진입 방식 | 대상 라우트 | 전달 파라미터 | 상태 | 근거 |
 |---|---|---|---|---|---|
 | 브라우저 | 직접 URL·공유 URL | `/self-equipment` | 선택적으로 `line`, `sdwt`, `grade`, `step`, `eqpCh` | `Confirmed` | `routes.jsx:11-19`; `selfEquipmentUrlFilters.mjs:23-32` |
-| SPIDER 메인 | `자설비 이상감지` 카드 | `/self-equipment` | 없음 | `Confirmed` | `L0SpiderHomePage.jsx:11-19` |
+| SPIDER 메인 | `설비별 SPEC내 이상감지` 카드 | `/self-equipment` | 없음 | `Confirmed` | `L0SpiderHomePage.jsx:11-19` |
 | Dashboard | Line 상세 링크 | `/self-equipment?...` | `line`, 반복 `sdwt`, 반복 `grade` | `Confirmed` | `LineAnomalyDashboard.jsx:287-301`; `dashboardLinks.mjs:6-13` |
 | Mailing template | 전체 이상현황 `LINK` | `/self-equipment?...` | `line`, `sdwt`, `grade` | template `Confirmed` | `public/mailing-report.html:180-190` |
 | Mailing template | My EQP `LINK` | `/self-equipment?...` | `line`, `sdwt=MY_EQP`, `grade`, `step=ALL`, `eqpCh` | template `Confirmed` | `public/mailing-report.html:229-241` |

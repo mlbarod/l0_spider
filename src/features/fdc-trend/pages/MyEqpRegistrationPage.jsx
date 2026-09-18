@@ -526,7 +526,7 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
                 <h1 className="text-lg font-semibold tracking-tight">My EQP 등록</h1>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                자설비 이상감지에서 집중 모니터링할 설비와 조회 기간을 등록합니다.
+                설비별 SPEC내 이상감지에서 집중 모니터링할 설비와 조회 기간을 등록합니다.
               </p>
             </div>
           </div>
@@ -658,7 +658,7 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
                   <h2 id="monitoring-period-title" className="text-base font-semibold">모니터링 기간</h2>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  자설비 이상감지에서 조회할 최근 기간을 일 단위로 입력하세요.
+                  설비별 SPEC내 이상감지에서 조회할 최근 기간을 일 단위로 입력하세요.
                 </p>
                 <label htmlFor="monitoring-days" className="mb-2 mt-5 block text-xs font-medium text-foreground">
                   기간 입력
@@ -749,7 +749,7 @@ export const MyEqpRegistrationPage = forwardRef(function MyEqpRegistrationPage(
                   className="h-12 text-base font-semibold"
                 />
                 <p className="mt-2 text-xs text-muted-foreground">
-                  복수 등록할 수 있으며, 각 사용자에게 자설비 이상감지의 MY EQP 열람 권한이 부여됩니다.
+                  복수 등록할 수 있으며, 각 사용자에게 설비별 SPEC내 이상감지의 MY EQP 열람 권한이 부여됩니다.
                 </p>
               </div>
 
