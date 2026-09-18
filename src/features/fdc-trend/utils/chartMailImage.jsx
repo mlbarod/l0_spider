@@ -72,8 +72,8 @@ export async function renderChartPng(chart) {
     image.src = objectUrl
     await image.decode()
     const canvas = document.createElement("canvas")
-    canvas.width = 1200
-    canvas.height = 480
+    canvas.width = 600
+    canvas.height = 240
     const context = canvas.getContext("2d")
     context.fillStyle = "white"
     context.fillRect(0, 0, canvas.width, canvas.height)

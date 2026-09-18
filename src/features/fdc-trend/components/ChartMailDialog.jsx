@@ -8,7 +8,7 @@ import { fetchCurrentUser } from "../api/currentUserApi"
 import { fetchChartMailStatus, fetchMailRecipientGroups, sendChartMail } from "../api/chartMailApi"
 import { CHART_MAIL_COMMENTS, MAX_CHART_MAIL_COMMENT_LENGTH, parseMailRecipients } from "../utils/chartMail.mjs"
 
-export function ChartMailDialog({ title, details, prepareImage, disabled = false }) {
+export function ChartMailDialog({ title, details, chartPath, prepareImage, disabled = false }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(null)
   const [imageBusy, setImageBusy] = useState(false)
@@ -53,7 +53,7 @@ export function ChartMailDialog({ title, details, prepareImage, disabled = false
   }
   function openDraft() {
     prepareRef.current = prepareImage
-    setDraft({ title, details, image: null })
+    setDraft({ title, details, chartUrl: new URL(chartPath, window.location.origin).href, homeUrl: new URL("/", window.location.origin).href, image: null })
     setDirect("")
     setSelectedGroups([])
     setCommentChoice(CHART_MAIL_COMMENTS[0])
@@ -71,7 +71,7 @@ export function ChartMailDialog({ title, details, prepareImage, disabled = false
     setSending(true)
     setSendError("")
     try {
-      const response = await sendChartMail({ requestId: requestId.current, title: draft.title, details: draft.details, comment, recipients, image: draft.image })
+      const response = await sendChartMail({ requestId: requestId.current, title: draft.title, details: draft.details, comment, recipients, image: draft.image, chartUrl: draft.chartUrl })
       if (response.status !== "accepted") {
         setUncertain(true)
         setSendError("메일전송 실패. 관리자에게 문의바랍니다")
@@ -106,7 +106,11 @@ export function ChartMailDialog({ title, details, prepareImage, disabled = false
           <p className="whitespace-pre-wrap break-words text-sm">{draft?.details}</p>
           <p className="whitespace-pre-wrap break-words py-[60px] text-sm leading-5">{comment}</p>
           <p className="text-xs text-slate-500">차트 전체 범위</p>
-          {imageBusy ? <p className="flex items-center gap-2 text-sm"><Loader2 className="size-4 animate-spin" />전체 범위 이미지를 준비 중입니다.</p> : imageError ? <div role="alert" className="text-sm text-destructive">{imageError} <Button variant="outline" size="sm" onClick={prepare}>다시 준비</Button></div> : draft?.image ? <img src={draft.image} alt="메일 본문에 포함할 전체 범위 차트" className="h-auto w-full" /> : null}
+          {imageBusy ? <p className="flex items-center gap-2 text-sm"><Loader2 className="size-4 animate-spin" />전체 범위 이미지를 준비 중입니다.</p> : imageError ? <div role="alert" className="text-sm text-destructive">{imageError} <Button variant="outline" size="sm" onClick={prepare}>다시 준비</Button></div> : draft?.image ? <img src={draft.image} alt="메일 본문에 포함할 전체 범위 차트" className="h-auto max-w-full" /> : null}
+          <div className="flex flex-wrap gap-3">
+            <Button asChild><a href={draft?.chartUrl} target="_blank" rel="noreferrer">차트 링크</a></Button>
+            <Button asChild variant="outline"><a href={draft?.homeUrl} target="_blank" rel="noreferrer">SPIDER 접속</a></Button>
+          </div>
         </section>
         {status.isError && <p role="alert" className="text-sm text-destructive">{status.error.message}</p>}
         {status.data && !status.data.ready && <p role="status" className="text-sm text-amber-700">{status.data.reason}{status.data.requestId && ` [문의 코드: ${status.data.requestId}]`}</p>}

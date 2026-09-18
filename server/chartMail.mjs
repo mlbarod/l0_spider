@@ -21,13 +21,25 @@ function textField(value, limit, name) {
   return value
 }
 
-export function buildChartMail(input, sender) {
+function chartMailButtons(value, expectedOrigin) {
+  if (value === undefined) return ""
+  let url
+  try { url = new URL(textField(value, 16000, "차트 링크")) } catch { throw new TypeError("차트 링크를 확인해 주세요.") }
+  if (/\s/.test(value) || !["http:", "https:"].includes(url.protocol) || url.username || url.password
+    || !/^\/(?:fdc_trend\/)?(?:self-equipment|matching-anomaly|common-anomaly)$/.test(url.pathname)
+    || (expectedOrigin && url.origin !== expectedOrigin)) throw new TypeError("차트 링크를 확인해 주세요.")
+  const links = [[url.href, "차트 링크"], [new URL("/", url).href, "SPIDER 접속"]]
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:20px;"><tr>${links.map(([href, label]) => `<td style="padding-right:12px;"><a href="${escapeHtml(href)}" target="_blank" rel="noreferrer" style="display:inline-block;padding:12px 20px;background-color:#0071e3;color:#ffffff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:bold;">${label}</a></td>`).join("")}</tr></table>`
+}
+
+export function buildChartMail(input, sender, expectedOrigin) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new TypeError("메일 요청을 확인해 주세요.")
   if (typeof input.requestId !== "string" || !idPattern.test(input.requestId)) throw new TypeError("메일 요청 ID를 확인해 주세요.")
   const subject = textField(input.title, 300, "제목")
   if (/[\r\n]/.test(subject)) throw new TypeError("제목은 한 줄로 입력해 주세요.")
   const details = textField(input.details, 10000, "차트 정보")
   const comment = textField(input.comment, MAX_CHART_MAIL_COMMENT_LENGTH, "코멘트")
+  const buttons = chartMailButtons(input.chartUrl, expectedOrigin)
   let recipients
   try { recipients = parseMailRecipients(input.recipients) } catch (error) { throw new TypeError(error.message) }
   const prefix = "data:image/png;base64,"
@@ -41,7 +53,8 @@ export function buildChartMail(input, sender) {
     || !png.readUInt32BE(16) || !png.readUInt32BE(20)
     || png.subarray(-12).toString("hex") !== "0000000049454e44ae426082") throw new TypeError("PNG 차트 이미지를 확인해 주세요.")
   // 사용자 요청에 따라 Base64 data URL 지원을 가정한다. 실제 수신 호환성은 별도 확인한다.
-  const contents = `<html lang="ko"><body style="font-family:Arial,sans-serif;color:#172033;"><h2>${escapeHtml(subject)}</h2><p>${escapeHtml(details).replace(/\r?\n/g, "<br>")}</p><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:60px 0;font-size:14px;line-height:20px;overflow-wrap:anywhere;">${escapeHtml(comment).replace(/\r\n|\r|\n/g, "<br>")}</td></tr></table><p>차트 전체 범위</p><img src="${prefix}${base64}" alt="전체 범위 차트" style="max-width:100%;height:auto;"></body></html>`
+  const imageWidth = png.readUInt32BE(16)
+  const contents = `<html lang="ko"><body style="font-family:Arial,sans-serif;color:#172033;"><h2>${escapeHtml(subject)}</h2><p>${escapeHtml(details).replace(/\r?\n/g, "<br>")}</p><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:60px 0;font-size:14px;line-height:20px;overflow-wrap:anywhere;">${escapeHtml(comment).replace(/\r\n|\r|\n/g, "<br>")}</td></tr></table><p>차트 전체 범위</p><img src="${prefix}${base64}" alt="전체 범위 차트" width="${imageWidth}" style="width:${imageWidth}px;max-width:100%;height:auto;">${buttons}</body></html>`
   return { subject, docSecuType: "PERSONAL", contents, contentType: "HTML", sender,
     recipients: recipients.map((id) => ({ emailAddress: `${id}@samsung.com`, recipientType: "TO" })) }
 }
@@ -106,7 +119,7 @@ export function createChartMailHandler({ env = process.env, fetchImpl = globalTh
       if (req.method === "GET") return json(res, 200, { ok: true, ready: true })
       stage = "validation"
       const input = await readBody(req)
-      const payload = buildChartMail(input, prepared.sender)
+      const payload = buildChartMail(input, prepared.sender, req.headers.origin)
       const body = JSON.stringify(payload)
       const fingerprint = hash(body)
       const key = hash(`${prepared.sender.emailAddress}\0${input.requestId.toLowerCase()}`)

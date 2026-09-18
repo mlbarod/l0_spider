@@ -1,11 +1,12 @@
 import { memo, useMemo, useRef, useState } from "react"
 import { ArrowLeft, ArrowUp, Check, ChevronRight, ImageOff, Loader2 } from "lucide-react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ChartMailDialog } from "../components/ChartMailDialog"
+import { buildChartMailPath, prioritizeLinkedChart } from "../utils/chartMailLinks.mjs"
 import { loadChartPng } from "../utils/chartMailImage"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -168,6 +169,7 @@ function buildCommonRecordPassHistoryKey(record) {
 const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({
   row,
   lineId,
+  team,
   passRecord,
 }) {
   const eqp = stripPngExtension(row.eqp)
@@ -273,6 +275,7 @@ const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({
           <ChartMailDialog
             title={`[SPIDER] 공통부 이상감지 / ${eqp || "EQPID 미지정"} / ${row.sensor || "-"} 확인 부탁드립니다.`}
             details={`Line: ${lineId} · EQP: ${eqp} · PRC Group: ${row.prc_group || "-"} · Sensor: ${row.sensor || "-"} · Step: ${row.step || "-"} · Grade: ${row.priority || "-"}`}
+            chartPath={buildChartMailPath({ app: "common-anomaly", line: lineId, sdwt: team, row })}
             prepareImage={() => loadChartPng(imageUrl)}
             disabled={imageFailed}
           />
@@ -310,13 +313,14 @@ function filterItems(items, query) {
 }
 
 export function CommonAnomalyPage() {
+  const [searchParams] = useSearchParams()
   const pageRef = useRef(null)
   const queryClient = useQueryClient()
-  const [selectedLine, setSelectedLine] = useState("")
-  const [selectedTeam, setSelectedTeam] = useState("")
-  const [selectedPrcGroup, setSelectedPrcGroup] = useState("")
-  const [selectedEqp, setSelectedEqp] = useState("")
-  const [selectedSensor, setSelectedSensor] = useState("")
+  const [selectedLine, setSelectedLine] = useState(() => searchParams.get("line") ?? "")
+  const [selectedTeam, setSelectedTeam] = useState(() => searchParams.get("sdwt") ?? "")
+  const [selectedPrcGroup, setSelectedPrcGroup] = useState(() => searchParams.get("prcGroup") ?? "")
+  const [selectedEqp, setSelectedEqp] = useState(() => searchParams.get("eqp") ?? "")
+  const [selectedSensor, setSelectedSensor] = useState(() => searchParams.get("sensor") ?? "")
   const [queries, setQueries] = useState({ line: "", team: "", prcGroup: "", eqp: "", sensor: "" })
   const currentUserQuery = useQuery({
     queryKey: ["current-user"],
@@ -398,7 +402,7 @@ export function CommonAnomalyPage() {
       .map((record) => [buildCommonRecordPassHistoryKey(record), record]),
   ), [passHistoryQuery.data?.records])
   const sensorIsSelected = Boolean(selectedSensor && activeSensor === selectedSensor)
-  const chartRows = sensorIsSelected ? dataQuery.data?.rows ?? EMPTY_LIST : EMPTY_LIST
+  const chartRows = sensorIsSelected ? prioritizeLinkedChart(dataQuery.data?.rows ?? EMPTY_LIST, searchParams.get("chart")) : EMPTY_LIST
   const chartGroups = useMemo(() => {
     const groups = new Map()
     chartRows.forEach((row) => {
@@ -655,6 +659,7 @@ export function CommonAnomalyPage() {
                         key={row.id}
                         row={row}
                         lineId={activeLine}
+                        team={activeTeam}
                         passRecord={isSkipList
                           ? row.pass_history
                           : passHistoryByKey.get(buildCommonChartPassHistoryKey(activeLine, row))}

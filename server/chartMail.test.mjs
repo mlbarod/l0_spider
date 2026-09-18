@@ -84,6 +84,28 @@ test("로그인·설정·HTTP 메서드 실패는 외부 호출을 하지 않는
   }
 })
 
+test("메일 본문에 원본 폭과 안전한 차트·메인 링크 버튼을 포함한다", async (t) => {
+  const f = fixture(t)
+  const chartUrl = "https://spider.example/self-equipment?line=L1&sensor=A%26B&chStep=2"
+  const input = { ...draft(), chartUrl }
+  assert.equal((await call(f.handler, { body: input, headers: { origin: "https://spider.example" } })).status, 200)
+  const { contents } = JSON.parse(f.calls[0][1].body)
+  assert.match(contents, /width="1" style="width:1px;max-width:100%;height:auto;/)
+  assert.ok(contents.includes(`href="${chartUrl.replaceAll("&", "&amp;")}"`))
+  assert.match(contents, />차트 링크<\/a>/)
+  assert.match(contents, /href="https:\/\/spider\.example\/"[^>]*>SPIDER 접속<\/a>/)
+  assert.doesNotMatch(buildChartMail(draft(), {}).contents, /차트 링크|SPIDER 접속/)
+})
+
+test("잘못된 차트 링크는 메일 발송 전에 거절한다", async (t) => {
+  const f = fixture(t)
+  for (const chartUrl of [null, "", "javascript:alert(1)", "data:text/html,test", "/self-equipment", "https://user:pass@spider.example/self-equipment", "https://spider.example/auth/logout", "https://external.example/self-equipment", "https://spider.example/self-equipment\n", "x".repeat(16001)]) {
+    const response = await call(f.handler, { body: { ...draft(), chartUrl }, headers: { origin: "https://spider.example" } })
+    assert.equal(response.status, 400, String(chartUrl).slice(0, 100))
+  }
+  assert.equal(f.calls.length, 0)
+})
+
 test("이미지·수신인·본문 검증과 요청 크기 제한은 발송 전에 적용한다", async (t) => {
   const f = fixture(t)
   const invalid = [null, [], { requestId: "bad" }, { title: "Header\r\nInjected" }, { title: " " }, { title: "x".repeat(301) }, { details: "x".repeat(10001) }, { comment: " " }, { comment: null }, { comment: 123 }, { comment: "bad\u0000comment" }, { comment: "가".repeat(MAX_CHART_MAIL_COMMENT_LENGTH + 1) }, { recipients: [] }, { recipients: ["bad@external.test"] }, { recipients: Array.from({ length: 101 }, (_, i) => `r${i}`) }, { image: "https://external.test/image.png" }, { image: "data:image/svg+xml;base64,AAAA" }, { image: "data:image/png;base64,AAAA" }, { image: `data:image/png;base64,${png}" onerror="evil` }, { image: `data:image/png;base64,${Buffer.alloc(MAX_CHART_IMAGE_BYTES + 1).toString("base64")}` }]
