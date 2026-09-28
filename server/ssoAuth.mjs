@@ -154,8 +154,10 @@ export function createSsoAuth({ config = loadOidcConfig(), publicKey, now = Date
             return json(res, 503, "SSO_CLAIM_TRACE", "Claim 확인 모드입니다. 서버 로그의 키와 자료형을 확인한 뒤 매핑을 설정하고 SSO_SAFE_CLAIM_TRACE=false로 재시작하세요.")
           }
           const identity = Object.freeze(mapIdentityClaims(claims, config))
-          const expiresAt = Math.min(claims.exp * 1000, callbackTime + config.absoluteSeconds * 1000)
-          if (expiresAt <= callbackTime) throw new Error("Expired token")
+          // Token expiry governs acceptance at login, not the resulting local session.
+          // Keep strict callback expiry even within the verifier's clock tolerance.
+          if (claims.exp * 1000 <= callbackTime) throw new Error("Expired token")
+          const expiresAt = callbackTime + config.absoluteSeconds * 1000
           if (sessions.size >= config.maxEntries) return json(res, 503, "SSO_BUSY", "잠시 후 다시 로그인해 주세요.")
           const token = randomOpaqueToken()
           sessions.delete(transaction.previousSession)

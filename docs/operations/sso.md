@@ -55,7 +55,7 @@
 | `SSO_TRUSTED_PROXY_IPS` | 필수 | Node socket에서 보이는 Nginx의 정확한 IP를 쉼표로 지정. 같은 호스트일 때만 `127.0.0.1,::1` |
 | `SSO_LOGIN_TRANSACTION_SECONDS` | 300초 | 로그인 시도 만료, 최대 900초 |
 | `SSO_SESSION_IDLE_SECONDS` | 1800초 | 마지막 인증된 업무 요청 이후 만료 |
-| `SSO_SESSION_ABSOLUTE_SECONDS` | 28800초 | 로그인 이후 최대 유지 시간. ID Token 만료가 더 빠르면 그 시각 적용 |
+| `SSO_SESSION_ABSOLUTE_SECONDS` | 28800초 | 로그인 이후 서비스 세션의 최대 유지 시간. ID Token 수명과 별도로 적용 |
 | `SSO_CLOCK_TOLERANCE_SECONDS` | 60초 | token 시간 검증 허용 오차, 최대 300초. 만료된 token으로 세션 생성은 불가 |
 | `SSO_MAX_SESSIONS` | 10000 | 세션/대기 로그인 각각의 저장 한도. 초과 시 신규 로그인 503 |
 | `LIVE_RELOAD` | SSO에서 0 | 1이면 시작 거부. 미설정이어도 SSO는 정적 모드 |
@@ -66,6 +66,12 @@
 `SSO_SECURE_COOKIES=false`는 거부한다. 세션 쿠키는 `__Host-l0_spider_session`, `Path=/`, `Secure`, `HttpOnly`, `SameSite=Lax`, Domain 없음이다. cross-site POST callback용 correlation 쿠키는 `__Secure-l0_spider_oidc`, `Path=/auth/callback`, `SameSite=None; Secure; HttpOnly`이다. [쿠키 속성 기준](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie).
 
 Express가 없어 `app.set('trust proxy', ...)`를 추가하지 않는다. 지정된 socket peer와 단일 `X-Forwarded-Proto: https`를 모두 확인한다. 요청 Host나 전달된 사용자 ID 헤더로 로그인 주소/신원을 결정하지 않는다. 업무 변경 요청과 로그아웃은 공개 origin과 일치하는 Origin 또는 Referer가 필요하다. 미인증 callback만 state/correlation 검증으로 출처 검사를 대신한다. 상태 polling은 idle 시간을 연장하지 않는다.
+
+ID Token은 로그인 콜백에서 서명·claim·만료를 검증하는 인증 증명이며, 생성된 서비스 세션은 별도의 idle/absolute 제한을 따른다. [OpenID Connect의 `exp` 정의](https://openid.net/specs/openid-connect-core-1_0.html#IDToken)도 토큰 만료와 인증 세션 수명을 구분한다. 콜백 시 이미 만료된 토큰으로 새 세션을 만들 수 없으며, 서비스 세션과 쿠키는 로그인 시점부터 `SSO_SESSION_ABSOLUTE_SECONDS`까지만 유효하다.
+
+**사용 중 약 1시간마다 재로그인되는 경우:** 이전 코드는 서비스 세션과 쿠키의 만료를 ID Token 만료 시각으로도 제한했다. 따라서 1시간 토큰이면 `SSO_SESSION_ABSOLUTE_SECONDS=28800`으로 설정해도 1시간 뒤 종료되어 환경변수 변경만으로 해결되지 않았다. 수정 버전에서는 업무 요청이 계속되는 동안 설정한 최대 시간까지 유지한다. 기존 세션에는 적용되지 않으므로 수정 코드 배포·기존 서비스 재시작·재로그인 후 확인한다. 운영 `.env.sso`나 우선 적용되는 process 환경에 `SSO_SESSION_ABSOLUTE_SECONDS=3600`이 별도로 지정돼 있다면 원하는 최대 시간(예: 28800)으로 변경해야 한다.
+
+기본값은 최대 8시간, 마지막 업무 요청 이후 미사용 30분이다. 화면 내 조작만 하고 서버 요청이 없으면 미사용으로 계산되며, 60초 세션 확인만으로는 연장되지 않는다. 실제 idle/absolute 만료나 서버 재시작 후에는 기존대로 재로그인하면서 페이지가 다시 로드된다. 현재 URL로 복귀하지만 메모리에만 남아 있던 화면 선택·필터 등은 초기화될 수 있다. 이번 변경은 토큰 수명으로 인한 조기 재로그인을 방지하는 조치다.
 
 공개 origin은 이 서비스 전용이어야 한다. Node 포트는 Nginx만 접근하도록 기존 네트워크 제한을 확인한다. 같은 호스트의 임의 프로세스까지 인증된 프록시로 구분하는 기능은 아니다. Nginx가 모든 React/API/auth 경로를 Node로 전달하며 인증 응답을 캐시하지 않는지 확인한다. 이미 이 조건을 만족하면 Nginx 변경이 없다. 부족한 경우에만 담당자가 기존 server/location에 다음 전달 설정을 확인·반영한다(별도 TLS/server 구성을 만들지 않음).
 
@@ -189,7 +195,7 @@ curl --silent --show-error --output /dev/null --write-out '%{http_code}\n' 'http
 - 기존 조회, My EQP의 본인/공개 데이터 구분, 타 사용자 수신인 지정 동작. 실제 쓰기·메일 발송을 자동 검증하지 않았다.
 - HIT·클릭·SKIP 이력 실행자가 SSO Knox ID로 기록되는지. 운영 데이터에 테스트용 이력을 만들지 말고 승인된 실제 업무 또는 별도 검증 환경에서 확인한다.
 - `GET /api/my-eqp-registration`과 관련 설비 조회는 기존 Python 코드가 조건부 DDL을 수행할 수 있다. 운영에 점검용 요청을 보내지 말고 기존 운영 증거 또는 별도 검증 환경으로 확인한다.
-- 세션 idle/absolute/토큰 만료, 새 탭/뒤로가기/재로그인, POST 실패 시 자동 재전송 없이 다시 작업하는지.
+- 세션 idle/absolute 만료, 콜백 시 만료된 토큰 거부, 로그인 후 토큰 수명과 별도로 세션 유지, 새 탭/뒤로가기/재로그인, POST 실패 시 자동 재전송 없이 다시 작업하는지.
 - 로그아웃 후 이전 세션 API 접근 401, IdP 로그아웃 완료와 `/auth/logged-out` 복귀, 다시 로그인. IdP signout 실패여도 로컬 세션은 이미 폐기된다.
 - 재시작 후 재로그인, 공개 인증서 갱신 절차. 인증서·Secret 파일 읽기 권한과 로그에 token/code/secret이 없는지.
 

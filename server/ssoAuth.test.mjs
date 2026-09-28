@@ -48,14 +48,14 @@ function harness(overrides = {}, logger) {
     const handled = await auth.handle(req, res)
     return { req, res, handled }
   }
-  async function begin(returnTo = "/") {
+  async function begin(returnTo = "/", tokenOverrides = {}) {
     const { res } = await request(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`)
     assert.equal(res.statusCode, 303)
     const url = new URL(res.headers.location)
     assert.equal(url.searchParams.get("response_type"), "code id_token")
     assert.equal(url.searchParams.get("response_mode"), "form_post")
     const cookie = res.headers["set-cookie"][0].split(";")[0]
-    const form = new URLSearchParams({ state: url.searchParams.get("state"), code: "synthetic-code", id_token: token(claims(url.searchParams.get("nonce"))) })
+    const form = new URLSearchParams({ state: url.searchParams.get("state"), code: "synthetic-code", id_token: token(claims(url.searchParams.get("nonce"), tokenOverrides)) })
     return { cookie, form, res }
   }
   async function finish(login) {
@@ -167,16 +167,47 @@ test("인증 후에도 변경 요청은 동일 출처만 허용하고 로그아�
   assert.equal((await h.request("/auth/logged-out")).res.statusCode, 200)
 })
 
-test("idle/absolute/ID token 만료와 재시작은 세션을 끝내며 상태 polling은 idle을 연장하지 않는다", async () => {
+test("idle/absolute 만료와 재시작은 세션을 끝내며 상태 polling은 idle을 연장하지 않는다", async () => {
   const idle = harness({ idleSeconds: 10 }); const a = await idle.login()
   idle.advance(9000); assert.equal((await idle.request("/api/auth/session", { cookie: a.cookie })).handled, false)
   idle.advance(1001); assert.equal((await idle.request("/api/current-user", { cookie: a.cookie })).res.statusCode, 401)
   const absolute = harness({ idleSeconds: 100, absoluteSeconds: 10 }); const b = await absolute.login()
   absolute.advance(9000); assert.equal((await absolute.request("/api/current-user", { cookie: b.cookie })).handled, false)
   absolute.advance(1001); assert.equal((await absolute.request("/api/current-user", { cookie: b.cookie })).res.statusCode, 401)
-  const expiry = harness({ idleSeconds: 10000 }); const c = await expiry.login()
-  expiry.advance(3_600_000); assert.equal((await expiry.request("/api/current-user", { cookie: c.cookie })).res.statusCode, 401)
-  assert.equal((await harness().request("/api/current-user", { cookie: c.cookie })).res.statusCode, 401)
+  assert.equal((await harness().request("/api/current-user", { cookie: b.cookie })).res.statusCode, 401)
+})
+
+test("1시간 ID token으로 로그인해도 업무 이용 중에는 설정된 8시간까지 세션을 유지한다", async () => {
+  const h = harness()
+  const { cookie, res } = await h.login()
+  assert.match(res.headers["set-cookie"][1], /; Max-Age=28800$/)
+  // Ten-minute business requests keep the default 30-minute idle limit alive.
+  // Session polling remains authenticated across the old one-hour cutoff.
+  for (let minutes = 10; minutes < 480; minutes += 10) {
+    h.advance(600_000)
+    const status = await h.request("/api/auth/session", { cookie })
+    assert.equal(status.handled, false, `session at ${minutes} minutes`)
+    assert.equal(status.req.auth.knoxId, "user01")
+    assert.equal((await h.request("/api/current-user", { cookie })).handled, false)
+  }
+  h.advance(599_999)
+  assert.equal((await h.request("/api/current-user", { cookie })).handled, false)
+  h.advance(1)
+  const expired = await h.request("/api/auth/session", { cookie })
+  assert.equal(expired.res.statusCode, 401)
+  assert.equal(JSON.parse(expired.res.body).code, "SSO_AUTHENTICATION_REQUIRED")
+})
+
+test("콜백 시 이미 만료된 ID token은 시간 허용 오차 안이어도 새 세션을 만들지 않는다", async () => {
+  for (const secondsAgo of [0, 1, 59, 61]) {
+    const h = harness()
+    const start = await h.begin("/", { exp: initialTime / 1000 - secondsAgo })
+    const { res } = await h.finish(start)
+    assert.equal(res.statusCode, 401)
+    assert.equal(JSON.parse(res.body).code, "SSO_CALLBACK_FAILED")
+    assert.doesNotMatch(JSON.stringify(res.headers), /__Host-l0_spider_session=/)
+    assert.equal((await h.request("/api/auth/session")).res.statusCode, 401)
+  }
 })
 
 test("세션 개수는 제한되고 재로그인 시 이전 세션을 폐기한다", async () => {
