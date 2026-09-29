@@ -326,7 +326,7 @@ export function L0SpiderHomePage() {
                 L0 Spider 기반 이상감지와 사용자 지원 기능입니다.
               </p>
             </div>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {spiderApps.map((app, index) => (
                 app.empty
                   ? null
