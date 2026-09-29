@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { Activity, ArrowRight, BookOpen, CalendarClock, ChartNoAxesCombined, ClipboardList, Gauge, GitCompareArrows, Mail, Network, Radar, ScanSearch, Users } from "lucide-react"
+import { Activity, ArrowRight, BookOpen, CalendarClock, ChartNoAxesCombined, ClipboardList, MessageSquare, GitCompareArrows, Mail, Network, Radar, ScanSearch, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
@@ -47,13 +47,13 @@ const spiderApps = [
     status: "운영중",
   },
   {
-    icon: Gauge,
-    title: "FDC Hard Limit추천",
-    subtitle: "FDC 분포 기반 Hard Limit 후보를 추천합니다.",
-    category: "Limit",
-    href: "/hard-limit",
+    icon: MessageSquare,
+    title: "VOE 게시판",
+    subtitle: "원하는 기능을 요청하거나 문의 사항을 등록합니다",
+    category: "VOE",
+    href: "/voe",
     active: true,
-    status: "개발중",
+    status: "운영중",
     gridClassName: "2xl:col-start-1 2xl:row-start-2",
   },
   {
@@ -323,7 +323,7 @@ export function L0SpiderHomePage() {
               <p className="mb-3 text-sm font-semibold text-[#0066cc]">L0 SPIDER</p>
               <h2 className="text-[34px] font-semibold leading-[1.15] tracking-[-0.37px] sm:text-[40px]">이상 징후를 발견하는 모든 도구.</h2>
               <p className="mt-4 text-[17px] leading-[1.47] tracking-[-0.37px] text-[#55555a]">
-                L0 Spider 기반 이상감지와 Hard Limit 추천 기능입니다.
+                L0 Spider 기반 이상감지와 사용자 지원 기능입니다.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

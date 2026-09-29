@@ -4,7 +4,8 @@ import { CommonalityAnomalyPage } from "./pages/CommonalityAnomalyPage"
 import { CommonAnomalyPage } from "./pages/CommonAnomalyPage"
 import { FdcTrendPage } from "./pages/FdcTrendPage"
 import { ChartMailBoardPage } from "./pages/ChartMailBoardPage"
-import { HardLimitConstructionPage } from "./pages/HardLimitConstructionPage"
+import { Navigate } from "react-router-dom"
+import { VoePage } from "@/features/voe/VoePage"
 import { L0SpiderHomePage } from "./pages/L0SpiderHomePage"
 import { RegistrationHubPage } from "./pages/RegistrationHubPage"
 import { SpiderFeaturePage } from "./pages/SpiderFeaturePage"
@@ -21,8 +22,9 @@ const fdcTrendChildren = [
   },
   {
     path: "hard-limit",
-    element: <HardLimitConstructionPage />,
+    element: <Navigate to="/voe" replace />,
   },
+  { path: "voe", element: <VoePage /> },
   {
     path: "chart-mail-board",
     element: <ChartMailBoardPage />,

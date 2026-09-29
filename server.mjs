@@ -1,4 +1,5 @@
 import "./server/loadEnv.mjs"
+import { handleVoeRequest } from "./server/voeBoard.mjs"
 
 import { spawnSync } from "node:child_process"
 import { createReadStream, existsSync, statSync } from "node:fs"
@@ -153,6 +154,10 @@ async function serveStatic(req, res) {
 function handleApplicationRequest(req, res) {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`)
 
+  if (url.pathname === "/api/voe" || url.pathname.startsWith("/api/voe/")) {
+    void handleVoeRequest(req, res, url)
+    return
+  }
   if (url.pathname === "/api/chart-mail-board" || url.pathname.startsWith("/api/chart-mail-board/")) {
     void handleChartMailBoardRequest(req, res, url)
     return

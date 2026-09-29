@@ -230,6 +230,7 @@ flowchart TD
 | `/common-commonality-anomaly` | `CommonalityAnomalyPage.jsx` | 공통부 동일성 EQP_MODEL 필터와 `img.png` 카드 | 운영 파일 |
 | `/registration` | `RegistrationHubPage.jsx` | Mailing 등록과 My EQP 등록 통합 화면 | DB |
 | `/my-eqp`, `/recipients` | `RegistrationHubPage.jsx` | `/registration`과 같은 화면의 호환 alias | DB |
+| `/voe` | `VoePage.jsx` | 기능 요청·문의 게시판 | SSO + DB (테이블 생성 필요) |
 | `/manual` | `UserManualPage.jsx` | `docs/user-manual/USER_MANUAL.md`를 HTML로 렌더링 | 빌드 리소스 |
 | `/defect-spider`, `/l1-spider`, `/l3-spider` | `SpiderFeaturePage.jsx` | 직접 URL 접근 시 mock 기반 공통 화면 | mock/prototype |
 
@@ -237,7 +238,7 @@ flowchart TD
 
 - `/fdc_trend/self-equipment`처럼 모든 내부 경로는 `/fdc_trend` prefix로도 접근할 수 있습니다.
 - 메인 화면의 Defect/L1/L3 카드는 위 내부 route가 아니라 별도 외부 서비스 URL로 이동합니다.
-- Hard Limit 추천 카드는 5열 기준 두 번째 줄 첫 칸에 배치되며 외부 서비스로 이동합니다.
+- VOE 게시판 카드는 기존 Hard Limit 추천 자리인 두 번째 줄 첫 칸에 배치되며 `/voe`로 이동합니다. 기존 `/hard-limit` 접근도 `/voe`로 이동합니다. 화면과 DB 준비는 `docs/features/voe-board.md`를 참고합니다.
 - `SpiderFeaturePage.jsx`가 지원하는 `hardSpec`, `yieldSpec`, `recipients` 타입 중 일부는 현재 route에 직접 연결되어 있지 않은 prototype 코드입니다.
 
 ## 5. 화면 → API → 서버 → 저장소 연결

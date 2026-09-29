@@ -1,4 +1,5 @@
 import "./server/loadEnv.mjs"
+import { handleVoeRequest } from "./server/voeBoard.mjs"
 import { loadOidcConfig } from "./server/oidcService.mjs"
 
 import { defineConfig } from "vite"
@@ -50,6 +51,10 @@ function mappingConfigApi() {
       if (loadOidcConfig().enabled) throw new Error("SSO는 LIVE_RELOAD=0 npm start로 실행하세요.")
       server.middlewares.use((req, res, next) => {
         const url = new URL(req.url ?? "/", "http://localhost")
+        if (url.pathname === "/api/voe" || url.pathname.startsWith("/api/voe/")) {
+          void handleVoeRequest(req, res, url)
+          return
+        }
         if (url.pathname === "/api/chart-mail-board" || url.pathname.startsWith("/api/chart-mail-board/")) {
           void handleChartMailBoardRequest(req, res, url)
           return

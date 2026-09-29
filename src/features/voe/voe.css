@@ -1,0 +1,317 @@
+
+#qna-root,
+.qna-scope {
+  height: 100%;
+}
+
+.qna-scope {
+  font-family: "Pretendard Variable", Inter, Pretendard, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* 기존 목록 폭(최대 1420px, 내부 여백 40px)의 바깥 여백을 1/3로 축소한다. */
+.qna-board-container {
+  width: 100%;
+  padding-inline: max(calc(40px / 3), calc((100% - 1340px) / 6));
+}
+
+.qna-detail-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 20px;
+}
+
+.qna-detail-summary > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.qna-detail-summary > :nth-child(2):last-child {
+  grid-column: span 2;
+}
+
+.qna-scope button {
+  font-family: inherit;
+}
+
+/* 전역 button 글꼴 상속보다 Q&A 공통 버튼 크기를 우선한다. */
+.qna-scope button.text-\[16px\] { font-size: 16px; }
+.qna-scope button.text-\[14px\] { font-size: 14px; }
+.qna-scope button.text-\[17px\] { font-size: 17px; }
+
+.qna-scope input,
+.qna-scope textarea {
+  font: inherit;
+}
+
+.qna-scope .qna-write-button {
+  position: relative;
+  overflow: hidden;
+  background: #0673bc;
+  color: #fff;
+  font-size: 19px;
+  box-shadow: none;
+  transition: background-color 180ms ease, transform 220ms ease;
+}
+
+.qna-scope .qna-write-button:hover,
+.qna-scope .qna-write-button:focus-visible {
+  background: #055f9e;
+  box-shadow: none;
+  transform: translateY(-2px);
+}
+
+.qna-write-icon,
+.qna-write-label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  will-change: transform;
+}
+
+.qna-write-button .qna-write-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.qna-write-button:hover .qna-write-icon,
+.qna-write-button:focus-visible .qna-write-icon {
+  animation: qna-write-icon 520ms cubic-bezier(.2, .75, .3, 1);
+}
+
+.qna-write-button:hover .qna-write-label,
+.qna-write-button:focus-visible .qna-write-label {
+  animation: qna-write-label 380ms cubic-bezier(.2, .75, .3, 1);
+}
+
+.qna-prosemirror {
+  min-height: 230px;
+  padding: 18px 20px 26px;
+  color: #263b4a;
+  font-size: 11pt;
+  line-height: 1.75;
+  outline: none;
+}
+
+.qna-prosemirror-compact {
+  min-height: 150px;
+  padding: 14px 16px 18px;
+}
+
+.qna-prosemirror > *:first-child,
+.qna-rendered-content > *:first-child {
+  margin-top: 0;
+}
+
+.qna-prosemirror > *:last-child,
+.qna-rendered-content > *:last-child {
+  margin-bottom: 0;
+}
+
+.qna-prosemirror p,
+.qna-rendered-content p {
+  margin: 0 0 14px;
+}
+
+.qna-prosemirror h2,
+.qna-prosemirror h3,
+.qna-rendered-content h2,
+.qna-rendered-content h3 {
+  margin: 22px 0 10px;
+  color: #172c3c;
+  font-weight: 680;
+  line-height: 1.35;
+}
+
+.qna-prosemirror h2,
+.qna-rendered-content h2 { font-size: 18px; }
+.qna-prosemirror h3,
+.qna-rendered-content h3 { font-size: 15px; }
+
+.qna-prosemirror ul,
+.qna-prosemirror ol,
+.qna-rendered-content ul,
+.qna-rendered-content ol {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.qna-prosemirror ul,
+.qna-rendered-content ul { list-style: disc; }
+.qna-prosemirror ol,
+.qna-rendered-content ol { list-style: decimal; }
+
+.qna-prosemirror blockquote,
+.qna-rendered-content blockquote {
+  margin: 18px 0;
+  padding: 12px 15px;
+  border-left: 3px solid #6ec0f7;
+  border-radius: 0 8px 8px 0;
+  background: #eef6fc;
+  color: #567286;
+}
+
+.qna-prosemirror a,
+.qna-rendered-content a {
+  color: #0673bc;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.qna-prosemirror .is-editor-empty:first-child::before {
+  height: 0;
+  color: #526b7d;
+  content: attr(data-placeholder);
+  float: left;
+  pointer-events: none;
+}
+
+.qna-prosemirror .tableWrapper {
+  margin: 18px 0;
+  overflow-x: auto;
+}
+
+.qna-editor-table,
+.qna-prosemirror table,
+.qna-rendered-content table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.qna-editor-table th,
+.qna-editor-table td,
+.qna-prosemirror table th,
+.qna-prosemirror table td,
+.qna-rendered-content table th,
+.qna-rendered-content table td {
+  min-width: 90px;
+  padding: 9px 10px;
+  border: 1px solid #d5e3ec;
+  vertical-align: top;
+  text-align: left;
+}
+
+.qna-editor-table th,
+.qna-prosemirror table th,
+.qna-rendered-content table th {
+  background: #eef6fc;
+  font-weight: 650;
+}
+
+.qna-prosemirror .selectedCell::after {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: hsl(204 94% 45% / 10%);
+  content: "";
+  pointer-events: none;
+}
+
+.qna-editor-image,
+.qna-prosemirror img,
+.qna-rendered-content img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 18px 0;
+  border: 1px solid #d5e3ec;
+  border-radius: 10px;
+  object-fit: contain;
+}
+
+.qna-rendered-content {
+  color: #405665;
+  font-size: 11pt;
+  line-height: 1.8;
+}
+
+.qna-question-content {
+  color: #263b4a;
+  font-size: 11pt;
+  font-weight: 430;
+}
+
+.qna-question-content blockquote {
+  color: #405665;
+}
+
+.qna-message-content {
+  color: #454a4f;
+  line-height: 1.65;
+}
+
+@keyframes qna-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes qna-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes qna-dialog-in {
+  from { opacity: 0; scale: .985; }
+  to { opacity: 1; scale: 1; }
+}
+
+@keyframes qna-dialog-out {
+  from { opacity: 1; scale: 1; }
+  to { opacity: 0; scale: .985; }
+}
+
+@keyframes qna-write-icon {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0); }
+  45% { transform: translate3d(2px, -2px, 0) rotate(-9deg); }
+  72% { transform: translate3d(0, 0, 0) rotate(3deg); }
+}
+
+@keyframes qna-write-label {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(3px, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qna-workspace,
+  [data-qna-modal],
+  .qna-write-button,
+  .qna-write-icon,
+  .qna-write-label,
+  .qna-boot-spinner {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .qna-write-button:hover,
+  .qna-write-button:focus-visible {
+    transform: none;
+  }
+}
+
+/* 상세 안내·정보는 기존 대비 약 1.2배(최소 12px)로 조정하고 작성 서식은 편집기 선택을 따른다. */
+.qna-scope .qna-detail [class~="text-[9px]"]:not(.qna-rich-editor *, .qna-rendered-content, .qna-rendered-content *) { font-size: 12px; }
+.qna-scope .qna-detail [class~="text-[10px]"]:not(.qna-rich-editor *, .qna-rendered-content, .qna-rendered-content *) { font-size: 12px; }
+.qna-scope .qna-detail [class~="text-[11px]"]:not(.qna-rich-editor *, .qna-rendered-content, .qna-rendered-content *) { font-size: 14px; }
+.qna-scope .qna-detail [class~="text-[12px]"]:not(.qna-rich-editor *, .qna-rendered-content, .qna-rendered-content *) { font-size: 15px; }
+.qna-scope .qna-detail [class~="text-[13px]"]:not([data-slot="badge"], .qna-rich-editor *, .qna-rendered-content, .qna-rendered-content *) { font-size: 16px; }
+.qna-scope .qna-detail [data-slot="badge"] { font-size: 14px; }
+.qna-scope .qna-detail [class~="text-[14px]"]:not(.qna-rich-editor *, .qna-rendered-content, .qna-rendered-content *) { font-size: 17px; }
+.qna-scope .qna-detail [class~="text-[15px]"]:not(.qna-rich-editor *, .qna-rendered-content, .qna-rendered-content *) { font-size: 18px; }
+.qna-scope .qna-detail [class~="text-[16px]"]:not(.qna-rich-editor *, .qna-rendered-content, .qna-rendered-content *) { font-size: 19px; }
+.qna-scope .qna-detail [class~="text-[17px]"]:not(.qna-rich-editor *, .qna-rendered-content, .qna-rendered-content *) { font-size: 20px; }
+
+/* 안전한 크기 속성만 화면 서식으로 변환한다. */
+:is(.qna-prosemirror, .qna-rendered-content) [data-qna-font-size="8"] { font-size: 8pt; }
+:is(.qna-prosemirror, .qna-rendered-content) [data-qna-font-size="9"] { font-size: 9pt; }
+:is(.qna-prosemirror, .qna-rendered-content) [data-qna-font-size="10"] { font-size: 10pt; }
+:is(.qna-prosemirror, .qna-rendered-content) [data-qna-font-size="11"] { font-size: 11pt; }
+:is(.qna-prosemirror, .qna-rendered-content) [data-qna-font-size="12"] { font-size: 12pt; }
+:is(.qna-prosemirror, .qna-rendered-content) [data-qna-font-size="14"] { font-size: 14pt; }
+:is(.qna-prosemirror, .qna-rendered-content) [data-qna-font-size="16"] { font-size: 16pt; }
+:is(.qna-prosemirror, .qna-rendered-content) [data-qna-font-size="18"] { font-size: 18pt; }
+:is(.qna-prosemirror, .qna-rendered-content) [data-qna-font-size="20"] { font-size: 20pt; }
+:is(.qna-prosemirror, .qna-rendered-content) [data-qna-font-size="24"] { font-size: 24pt; }
+:is(.qna-prosemirror, .qna-rendered-content) [data-qna-font-size="28"] { font-size: 28pt; }
+:is(.qna-prosemirror, .qna-rendered-content) [data-qna-font-size="32"] { font-size: 32pt; }
+:is(.qna-prosemirror, .qna-rendered-content) [data-qna-font-size="36"] { font-size: 36pt; }
