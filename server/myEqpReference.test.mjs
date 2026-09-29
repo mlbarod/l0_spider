@@ -9,6 +9,8 @@ import {
 
 test("DB 오류는 알려진 번호만 안전한 안내로 변환한다", () => {
   assert.match(referenceLookupErrorMessage(1054), /컬럼.*DB 1054/)
+  assert.match(referenceLookupErrorMessage(1054, "edisn.m_equipment.fdc_model"), /edisn\.m_equipment\.fdc_model 컬럼/)
+  assert.equal(referenceLookupErrorMessage(1054, "secret"), referenceLookupErrorMessage(1054))
   assert.match(referenceLookupErrorMessage(1142), /SELECT 권한/)
   assert.match(referenceLookupErrorMessage(1267), /collation/)
   assert.match(referenceLookupErrorMessage(1271), /UNION/)

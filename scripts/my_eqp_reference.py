@@ -1,10 +1,28 @@
 import json
 import os
 import pickle
+import re
 import sys
 
 
 DB_INFO_PATH = os.environ.get("DB_INFO_PATH") or "/appdata/l0_spider/db_info.pkl"
+
+
+def lookup_error_details(error):
+    db_errno = error.args[0] if error.args and type(error.args[0]) is int else None
+    missing_column = None
+    if db_errno == 1054 and len(error.args) > 1:
+        match = re.search(r"Unknown column '([^']+)'", str(error.args[1]))
+        # Only expose identifiers used by our query, never the raw DB message.
+        allowed_columns = {
+            "r.main": "erdtsum_info.main",
+            **{f"e.{name}": f"edisn.m_equipment.{name}" for name in (
+                "eqpid", "sdwt_code", "fdc_model", "eqp_model", "eqp_prc_group",
+            )},
+        }
+        if match:
+            missing_column = allowed_columns.get(match.group(1))
+    return {"db_errno": db_errno, "missing_column": missing_column}
 
 
 def write_json(payload):
@@ -75,11 +93,10 @@ def main():
         rows = read_reference_rows(load_db_info())
     except Exception as error:
         # Do not expose DB connection details or raw SQL errors.
-        db_errno = error.args[0] if error.args and type(error.args[0]) is int else None
         write_json({
             "ok": False,
             "code": "LOOKUP_FAILED",
-            "db_errno": db_errno,
+            **lookup_error_details(error),
             "error": "erdtsum_info 기준정보를 조회하지 못했습니다.",
         })
         return

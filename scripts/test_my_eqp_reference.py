@@ -5,10 +5,19 @@ import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
 
-from my_eqp_reference import read_reference_rows
+from my_eqp_reference import lookup_error_details, read_reference_rows
 
 
 class ReferenceMergeTest(unittest.TestCase):
+    def test_missing_column_diagnostic_does_not_expose_raw_error(self):
+        for name in ("eqpid", "sdwt_code", "fdc_model", "eqp_model", "eqp_prc_group"):
+            details = lookup_error_details(Exception(1054, f"Unknown column 'e.{name}' in 'field list'"))
+            self.assertEqual(details, {"db_errno": 1054, "missing_column": f"edisn.m_equipment.{name}"})
+        self.assertEqual(lookup_error_details(Exception(1054, "Unknown column 'secret'")),
+                         {"db_errno": 1054, "missing_column": None})
+        self.assertEqual(lookup_error_details(Exception("secret connection details")),
+                         {"db_errno": None, "missing_column": None})
+
     def test_preserves_existing_rows_and_maps_equipment_only_rows(self):
         db = sqlite3.connect(":memory:")
         self.addCleanup(db.close)
