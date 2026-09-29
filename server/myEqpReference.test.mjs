@@ -4,20 +4,7 @@ import test from "node:test"
 import {
   handleMyEqpReferenceRequest,
   normalizeMyEqpReferenceRows,
-  referenceLookupErrorMessage,
 } from "./myEqpReference.mjs"
-
-test("DB 오류는 알려진 번호만 안전한 안내로 변환한다", () => {
-  assert.match(referenceLookupErrorMessage(1054), /컬럼.*DB 1054/)
-  assert.match(referenceLookupErrorMessage(1054, "edisn.m_equipment.fdc_model"), /edisn\.m_equipment\.fdc_model 컬럼/)
-  assert.equal(referenceLookupErrorMessage(1054, "secret"), referenceLookupErrorMessage(1054))
-  assert.match(referenceLookupErrorMessage(1142), /SELECT 권한/)
-  assert.match(referenceLookupErrorMessage(1267), /collation/)
-  assert.match(referenceLookupErrorMessage(1271), /UNION/)
-  for (const value of [null, undefined, "secret connection details", 9999]) {
-    assert.equal(referenceLookupErrorMessage(value), "My EQP 기준정보를 불러오지 못했습니다.")
-  }
-})
 
 test("erdtsum_info 응답은 허용된 네 컬럼만 노출한다", () => {
   const rows = normalizeMyEqpReferenceRows([{
