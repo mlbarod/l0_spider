@@ -74,10 +74,12 @@ def main():
     try:
         rows = read_reference_rows(load_db_info())
     except Exception as error:
-        print(f"my eqp reference lookup failed: {error}", file=sys.stderr)
+        # Do not expose DB connection details or raw SQL errors.
+        db_errno = error.args[0] if error.args and type(error.args[0]) is int else None
         write_json({
             "ok": False,
             "code": "LOOKUP_FAILED",
+            "db_errno": db_errno,
             "error": "erdtsum_info 기준정보를 조회하지 못했습니다.",
         })
         return

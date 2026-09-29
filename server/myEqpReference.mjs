@@ -8,6 +8,22 @@ const CACHE_TTL_MS = 5 * 60 * 1000
 let cachedPayload = null
 let pendingLookup = null
 
+export function referenceLookupErrorMessage(dbErrno) {
+  const reasons = {
+    1044: "DB 접근 권한을 확인해 주세요.",
+    1045: "DB 인증 정보를 확인해 주세요.",
+    1054: "조회 컬럼이 실제 테이블에 존재하지 않습니다.",
+    1142: "기준정보 테이블의 SELECT 권한이 없습니다.",
+    1146: "기준정보 테이블이 존재하지 않습니다.",
+    1267: "두 테이블의 문자열 비교 설정(collation)이 서로 다릅니다.",
+    1271: "두 테이블의 UNION 문자열 설정(collation)이 서로 다릅니다.",
+  }
+  const reason = Number.isInteger(dbErrno) ? reasons[dbErrno] : null
+  return reason
+    ? `My EQP 기준정보 조회 실패: ${reason} (DB ${dbErrno})`
+    : "My EQP 기준정보를 불러오지 못했습니다."
+}
+
 function sendJson(res, statusCode, payload, method = "GET") {
   res.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
@@ -52,7 +68,7 @@ export function readMyEqpReferenceRows() {
     child.on("close", () => {
       clearTimeout(timeout)
       if (timedOut) {
-        reject(new Error("erdtsum_info 기준정보 조회 시간이 초과되었습니다."))
+        reject(Object.assign(new Error("기준정보 조회 시간 초과"), { referenceTimeout: true }))
         return
       }
 
@@ -65,7 +81,7 @@ export function readMyEqpReferenceRows() {
       }
 
       if (!payload.ok) {
-        reject(new Error("erdtsum_info 기준정보를 조회하지 못했습니다."))
+        reject(Object.assign(new Error("기준정보 조회 실패"), { dbErrno: payload.db_errno }))
         return
       }
 
@@ -91,10 +107,12 @@ export async function handleMyEqpReferenceRequest(req, res) {
   try {
     const rows = await readMyEqpReferenceRows()
     sendJson(res, 200, { ok: true, rows }, req.method)
-  } catch {
+  } catch (error) {
     sendJson(res, 500, createSafeApiError({
       code: "MY_EQP_REFERENCE_LOAD_FAILED",
-      message: "My EQP 기준정보를 불러오지 못했습니다.",
+      message: error?.referenceTimeout
+        ? "My EQP 기준정보 조회 시간이 15초를 초과했습니다."
+        : referenceLookupErrorMessage(error?.dbErrno),
       scope: "my-eqp-reference",
     }), req.method)
   }
