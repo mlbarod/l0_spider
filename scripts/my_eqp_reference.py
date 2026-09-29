@@ -27,12 +27,6 @@ def load_db_info():
 def read_reference_rows(db_info):
     import pymysql
 
-    query = """
-        SELECT DISTINCT `main`, `disp_name`, `sdwt_prod`, `prc_group`
-        FROM `erdtsum_info`
-        ORDER BY `sdwt_prod`, `prc_group`, `main`, `disp_name`
-    """
-
     with pymysql.connect(
         host=db_info["DB_HOST"],
         user=db_info["DB_USER"],
@@ -42,17 +36,37 @@ def read_reference_rows(db_info):
         port=db_info["DB_PORT"],
     ) as connection:
         with connection.cursor() as cursor:
-            cursor.execute(query)
-            rows = cursor.fetchall()
+            # Read the actual schema so equipment-only rows retain exactly the
+            # erdtsum_info column layout, including columns unused by the UI.
+            cursor.execute("SELECT * FROM `erdtsum_info` LIMIT 0")
+            columns = [column[0] for column in cursor.description]
+            equipment_columns = {
+                "main": "eqpid", "sdwt_prod": "sdwt_code",
+                "fdc_model": "fdc_model", "eqp_model": "eqp_model",
+                "prc_group": "eqp_prc_group",
+            }
+            projection = ", ".join(
+                f"e.`{equipment_columns[column]}`" if column in equipment_columns else "NULL"
+                for column in columns
+            )
+            cursor.execute(f"""
+                SELECT r.* FROM `erdtsum_info` r
+                UNION ALL
+                SELECT {projection}
+                FROM `edisn`.`m_equipment` e
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM `erdtsum_info` r WHERE r.`main` = e.`eqpid`
+                )
+            """)
+            rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
     return [
-        {
-            "main": str(row[0] or "").strip(),
-            "disp_name": str(row[1] or "").strip(),
-            "sdwt_prod": str(row[2] or "").strip(),
-            "prc_group": str(row[3] or "").strip(),
-        }
+        {**row, "disp_name": disp_name}
         for row in rows
+        for disp_name in (
+            ("PM1", "PM2", "PM3", "PM4")
+            if row["disp_name"] is None else (row["disp_name"],)
+        )
     ]
 
 
