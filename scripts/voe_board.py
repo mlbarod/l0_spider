@@ -9,7 +9,8 @@ import sys
 
 from create_voe_tables import connect
 
-REMOVED_POST_FIELDS = {'category', 'line', 'lineName', 'tags', 'process', 'department', 'type', 'searchText'}
+REMOVED_POST_FIELDS = {'line', 'lineName', 'tags', 'process', 'department', 'type', 'searchText'}
+CATEGORIES = ('L0 SPIDER', 'L1 SPIDER', 'L3 SPIDER', 'Defect SPIDER', '기타')
 STATUSES = {'waiting', 'active', 'completed'}
 ACTIONS = {'created': '질문 등록', 'edited': '질문 수정', 'hide': '질문 삭제',
            'restore': '질문 복구', 'status': '상태 변경', 'final': '최종 답변 지정',
@@ -100,6 +101,7 @@ def now():
 
 def serialized(post, actor, summary=False):
     result = copy.deepcopy({key: value for key, value in post.items() if key not in REMOVED_POST_FIELDS})
+    result['category'] = post.get('category') if post.get('category') in CATEGORIES else '기타'
     if actor['role'] != 'master':
         result['messages'] = [m for m in result['messages'] if not m.get('hidden')]
     if summary:
@@ -114,6 +116,8 @@ def serialized(post, actor, summary=False):
 def save(cursor, post):
     for key in REMOVED_POST_FIELDS:
         post.pop(key, None)
+    if post.get('category') not in CATEGORIES:
+        post['category'] = '기타'
     document = json.dumps(post, ensure_ascii=False)
     require(len(document.encode()) <= 48 * 1024 * 1024, 'BODY_TOO_LARGE')
     summary = serialized(post, {'role': 'master'}, True)
@@ -202,6 +206,9 @@ def apply_change(post, action, data, actor, message_id=None):
             post.update(hidden=False, hiddenAt=None, hiddenBy=None)
         else:
             require(operation == 'edit')
+            if 'category' in data:
+                require(data['category'] in CATEGORIES)
+                post['category'] = data['category']
             post['title'] = text(data.get('title'), 255)
             post['content'], plain = body(data.get('bodyHtml'))
             post['excerpt'] = plain[:100]
@@ -227,12 +234,14 @@ def execute(connection, payload):
                 cursor.execute('UPDATE spider_voe_events SET read_at=UTC_TIMESTAMP(3) WHERE recipient_id=%s AND event_id=%s', (actor['userId'], notification_id))
             return events(cursor, actor)
         if action == 'create':
+            category = data.get('category', '기타')
+            require(category in CATEGORIES)
             title = text(data.get('title'), 255)
             html, plain = body(data.get('bodyHtml'))
             cursor.execute("INSERT INTO spider_voe_posts (document,summary,updated_at) VALUES ('{}','{}',UTC_TIMESTAMP(3))")
             qid = cursor.lastrowid
             stamp = now()
-            post = {'id': f'VOE-{qid:05d}', 'questionId': qid, 'title': title, 'content': html, 'excerpt': plain[:100],
+            post = {'id': f'VOE-{qid:05d}', 'questionId': qid, 'title': title, 'category': category, 'content': html, 'excerpt': plain[:100],
                     'status': 'waiting', 'author': actor['displayName'],
                     'authorUserId': actor['userId'], 'createdAt': stamp, 'updatedAt': stamp, 'views': 0, 'messages': [], 'attachments': [], 'hidden': False, 'detailLoaded': True}
             save(cursor, post)

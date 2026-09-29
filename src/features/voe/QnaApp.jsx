@@ -32,7 +32,7 @@ import { useNavigate } from "react-router-dom"
 import DOMPurify from "dompurify"
 import "./voe.css"
 import { qnaRepository } from "@/features/voe/repository"
-import { filterPosts, STATUS } from "@/features/voe/data"
+import { CATEGORIES, filterPosts, STATUS } from "@/features/voe/data"
 
 const RichTextEditor = lazy(() => import("@/features/voe/RichTextEditor").then((module) => ({ default: module.RichTextEditor })))
 
@@ -46,6 +46,23 @@ function formatDateTime(value) {
 function StatusBadge({ status }) {
   const config = STATUS[status] ?? STATUS.waiting
   return <Badge variant={config.variant}><span className="size-1.5 rounded-full bg-current opacity-70" />{config.label}</Badge>
+}
+
+function CategoryBadge({ category }) {
+  const label = CATEGORIES.includes(category) ? category : "기타"
+  return <Badge variant="outline" aria-label={`카테고리: ${label}`}>{label}</Badge>
+}
+
+function CategorySelect({ id, value, onValueChange }) {
+  return (
+    <div className="grid gap-1.5 text-[11px] font-semibold text-[#4c5257]">
+      <label htmlFor={id}>카테고리</label>
+      <Select value={value} onValueChange={onValueChange}>
+        <SelectTrigger id={id}><SelectValue /></SelectTrigger>
+        <SelectContent>{CATEGORIES.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent>
+      </Select>
+    </div>
+  )
 }
 
 function QnaTopBar({ onHome, view, unreadCount, onNavigate, role, deletedCount, onOpenDeleted, onOpenHistory }) {
@@ -143,7 +160,7 @@ function PostListView({ posts, allPosts, statusFilter, setStatusFilter, onSelect
                 <article key={post.id} className="group relative">
                   <button type="button" className="grid w-full grid-cols-[minmax(0,1fr)_150px_120px_70px] items-center gap-4 bg-white px-6 py-5 text-left transition hover:bg-[#f1f6f9] focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[rgba(7,136,223,.18)]" onClick={() => onSelect(post.id)}>
                     <span className="min-w-0">
-                      <span className="mb-2 flex flex-wrap items-center gap-2"><StatusBadge status={post.status} /><small className="ml-1 text-[10px] font-semibold text-[#60798b]">{post.id}</small></span>
+                      <span className="mb-2 flex flex-wrap items-center gap-2"><StatusBadge status={post.status} /><CategoryBadge category={post.category} /><small className="ml-1 text-[10px] font-semibold text-[#60798b]">{post.id}</small></span>
                       <strong className="block truncate text-[15px] font-[650] tracking-[-.015em] text-[#24272b] transition group-hover:text-[#0673bc]">{post.title}</strong>
                       <span className="mt-1.5 block truncate text-[12px] text-[#567286]">{post.excerpt}</span>
                       <small className="mt-3 block text-[10px] text-[#60798b]">최근 변경 {formatDateTime(post.updatedAt)} · 답변 {post.messages.filter((message) => !message.hidden).length}</small>
@@ -181,6 +198,7 @@ function plainTextToHtml(value) {
 
 function EditQuestionDialog({ post, open, onOpenChange, onSave }) {
   const [title, setTitle] = useState(post?.title ?? "")
+  const [category, setCategory] = useState(CATEGORIES.includes(post?.category) ? post.category : "기타")
   const [content, setContent] = useState(post?.content ?? "")
   // 수정창은 열 때마다 새로 마운트합니다. 늦은 조회 응답과 초안을 분리합니다.
   const [initialContent] = useState(post?.content ?? "")
@@ -189,7 +207,7 @@ function EditQuestionDialog({ post, open, onOpenChange, onSave }) {
   const submit = (event) => {
     event.preventDefault()
     if (!title.trim() || !plainText.trim()) return
-    onSave({ title: title.trim(), content, excerpt: plainText.trim().slice(0, 100) })
+    onSave({ title: title.trim(), category, content, excerpt: plainText.trim().slice(0, 100) })
   }
 
   return (
@@ -197,6 +215,7 @@ function EditQuestionDialog({ post, open, onOpenChange, onSave }) {
       <DialogContent className="grid-rows-[auto_minmax(0,1fr)_auto] w-[min(760px,calc(100vw-64px))]">
         <header className="border-b border-[#e3ebf0] px-7 py-5"><DialogTitle className="text-[18px] font-[680]">질문 수정</DialogTitle><DialogDescription className="mt-1 text-[11px] text-[#60798b]">현재 사용자와 작성자 권한을 확인한 뒤 DB의 질문을 변경합니다.</DialogDescription></header>
         <form id="qna-edit-form" className="grid gap-4 overflow-y-auto px-7 py-6" onSubmit={submit}>
+          <CategorySelect id="qna-edit-category" value={category} onValueChange={setCategory} />
           <label className="grid gap-1.5 text-[11px] font-semibold">제목<Input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
           <div><label className="mb-1.5 block text-[11px] font-semibold">본문</label><Suspense fallback={<div className="grid min-h-[280px] place-items-center rounded-[10px] border border-[#d5e3ec] bg-[#fafbfa] text-[11px] text-[#7b8287]">편집기를 준비하고 있습니다.</div>}><RichTextEditor key={post?.questionId} initialContent={initialContent} onChange={(html, text) => { setContent(html); setPlainText(text) }} /></Suspense></div>
         </form>
@@ -285,7 +304,7 @@ function PostDetailView({ post, onBack, onMutate, currentRole, currentUser, busy
           </aside>
           <div className="min-w-0 space-y-5">
             <article className="rounded-[14px] border border-[#dce7ee] bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,.03)]">
-              <div className="flex flex-wrap items-center gap-2"><StatusBadge status={post.status} /><span className="ml-auto text-[10px] font-semibold text-[#60798b]">{post.id}</span>{canEditQuestion ? <Button type="button" size="sm" variant="ghost" onClick={() => setEditQuestionOpen(true)}><Pencil className="size-3.5" />질문 수정</Button> : null}{canRemoveQuestion ? <Button type="button" size="sm" variant="ghost" className="text-[#a13f39]" onClick={() => onMutate(() => qnaRepository.updateQuestion(post.questionId, { operation: "hide" }), "질문을 삭제했습니다.", onBack)}><Trash2 className="size-3.5" />질문 삭제</Button> : null}</div>
+              <div className="flex flex-wrap items-center gap-2"><StatusBadge status={post.status} /><CategoryBadge category={post.category} /><span className="ml-auto text-[10px] font-semibold text-[#60798b]">{post.id}</span>{canEditQuestion ? <Button type="button" size="sm" variant="ghost" onClick={() => setEditQuestionOpen(true)}><Pencil className="size-3.5" />질문 수정</Button> : null}{canRemoveQuestion ? <Button type="button" size="sm" variant="ghost" className="text-[#a13f39]" onClick={() => onMutate(() => qnaRepository.updateQuestion(post.questionId, { operation: "hide" }), "질문을 삭제했습니다.", onBack)}><Trash2 className="size-3.5" />질문 삭제</Button> : null}</div>
               <h1 className="mb-3 mt-5 text-[26px] font-[680] leading-[1.35] tracking-[-.035em] text-[#172c3c]">{post.title}</h1>
               <div className="flex items-center gap-4 border-b border-[#e8eef2] pb-5 text-[11px] text-[#567286]"><span className="flex items-center gap-1.5"><UserRound className="size-3.5" />{post.author}</span><span className="flex items-center gap-1.5"><Clock3 className="size-3.5" />{formatDateTime(post.createdAt)}</span><span className="flex items-center gap-1.5"><Eye className="size-3.5" />조회 {post.views}</span></div>
               <div className="qna-rendered-content qna-question-content py-6" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }} />
@@ -318,7 +337,7 @@ function PostDetailView({ post, onBack, onMutate, currentRole, currentUser, busy
           </div>
         </div>
       </div>
-      {editQuestionOpen ? <EditQuestionDialog key={post.questionId} post={post} open={editQuestionOpen} onOpenChange={setEditQuestionOpen} onSave={async (changes) => { const succeeded = await onMutate(() => qnaRepository.updateQuestion(post.questionId, { title: changes.title, bodyHtml: changes.content }), "질문을 수정했습니다."); if (succeeded) setEditQuestionOpen(false) }} /> : null}
+      {editQuestionOpen ? <EditQuestionDialog key={post.questionId} post={post} open={editQuestionOpen} onOpenChange={setEditQuestionOpen} onSave={async (changes) => { const succeeded = await onMutate(() => qnaRepository.updateQuestion(post.questionId, { title: changes.title, category: changes.category, bodyHtml: changes.content }), "질문을 수정했습니다."); if (succeeded) setEditQuestionOpen(false) }} /> : null}
     </main>
   )
 }
@@ -340,6 +359,7 @@ function NotificationsView({ notifications, onReadAll, onOpenPost }) {
 
 function WriteQuestionDialog({ open, onOpenChange, onSubmit, returnFocusRef, busy, onFailure }) {
   const [title, setTitle] = useState("")
+  const [category, setCategory] = useState("기타")
   const [content, setContent] = useState("")
   const [plainText, setPlainText] = useState("")
   const [errors, setErrors] = useState({})
@@ -349,6 +369,7 @@ function WriteQuestionDialog({ open, onOpenChange, onSubmit, returnFocusRef, bus
   useEffect(() => {
     if (!open) return
     setTitle("")
+    setCategory("기타")
     setContent("")
     setPlainText("")
     setErrors({})
@@ -365,14 +386,15 @@ function WriteQuestionDialog({ open, onOpenChange, onSubmit, returnFocusRef, bus
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length) { onFailure(Object.values(nextErrors).join(" ")); return }
     submittedRef.current = true
-    onSubmit({ title: title.trim(), content })
+    onSubmit({ title: title.trim(), category, content })
   }
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!busy) onOpenChange(next) }}>
       <DialogContent className="grid-rows-[auto_minmax(0,1fr)_auto]" aria-describedby="write-question-description" onCloseAutoFocus={(event) => { event.preventDefault(); window.requestAnimationFrame(() => { if (submittedRef.current) document.querySelector("#qna-main")?.focus(); else returnFocusRef.current?.focus() }) }}>
-        <header className="border-b border-[#e3ebf0] px-7 py-5 pr-16"><DialogTitle className="text-[19px] font-[680] tracking-[-.025em]">새 질문 작성</DialogTitle><DialogDescription id="write-question-description" className="mt-1 text-[12px] text-[#567286]">제목과 문의 내용을 작성합니다.</DialogDescription></header>
+        <header className="border-b border-[#e3ebf0] px-7 py-5 pr-16"><DialogTitle className="text-[19px] font-[680] tracking-[-.025em]">새 질문 작성</DialogTitle><DialogDescription id="write-question-description" className="mt-1 text-[12px] text-[#567286]">카테고리를 선택하고 제목과 문의 내용을 작성합니다.</DialogDescription></header>
         <form id="qna-write-form" className="overflow-y-auto px-7 py-6" onSubmit={submit} noValidate>
+          <CategorySelect id="qna-write-category" value={category} onValueChange={setCategory} />
           <label className="mt-5 grid gap-1.5 text-[11px] font-semibold text-[#4c5257]">제목 <Input value={title} onChange={(event) => setTitle(event.target.value)} aria-invalid={Boolean(errors.title)} aria-describedby={errors.title ? "qna-title-error" : undefined} placeholder="질문의 핵심을 한 문장으로 입력하세요" />{errors.title ? <small id="qna-title-error" className="text-[10px] text-[#b64c45]">{errors.title}</small> : null}</label>
           <div className="mt-5"><label className="mb-1.5 block text-[11px] font-semibold text-[#4c5257]">본문</label><Suspense fallback={<div className="grid min-h-[280px] place-items-center rounded-[10px] border border-[#d5e3ec] bg-[#fafbfa] text-[11px] text-[#7b8287]">편집기를 준비하고 있습니다.</div>}><RichTextEditor key={editorKey} onChange={(html, text) => { setContent(html); setPlainText(text) }} error={Boolean(errors.content)} /></Suspense>{errors.content ? <small className="mt-1.5 block text-[10px] text-[#b64c45]">{errors.content}</small> : null}</div>
         </form>
@@ -492,7 +514,7 @@ export function QnaApp({ user, role, initialView = "list" }) {
 
   const createPost = async (draft) => {
     const succeeded = await runMutation(
-      () => qnaRepository.createQuestion({ title: draft.title, bodyHtml: draft.content }),
+      () => qnaRepository.createQuestion({ title: draft.title, category: draft.category, bodyHtml: draft.content }),
       "새 질문을 등록했습니다.",
       (snapshot) => {
         const created = snapshot.posts.find((post) => post.authorUserId === currentUser.userId && post.title === draft.title)

@@ -94,15 +94,16 @@ class VoeTests(unittest.TestCase):
 
     def test_removed_fields_are_not_required_or_stored(self):
         post = self.call('create', input={'title': '새 질문', 'bodyHtml': '<p>분류 없는 본문</p>',
-                         'category': 'FDC', 'lineName': 'P3D', 'tags': ['예전 클라이언트']})['post']
+                         'lineName': 'P3D', 'tags': ['예전 클라이언트']})['post']
         self.assertEqual(post['status'], 'waiting')
-        for field in ['category', 'line', 'tags', 'searchText']:
+        self.assertEqual(post['category'], '기타')
+        for field in ['line', 'tags', 'searchText']:
             self.assertNotIn(field, post)
         row = self.connection.db.execute('SELECT document, summary FROM spider_voe_posts WHERE question_id=2').fetchone()
         for value in row:
             stored = json.loads(value)
             self.assertNotIn('searchText', stored)
-            self.assertNotIn('category', stored)
+            self.assertEqual(stored['category'], '기타')
 
     def test_legacy_post_can_be_read_and_updated_without_classifications(self):
         fields = {'category': 'FDC', 'line': 'P3D', 'tags': ['기존'], 'process': '공정',
@@ -112,12 +113,58 @@ class VoeTests(unittest.TestCase):
             stored = {**json.loads(row[0]), **fields}
             self.connection.db.execute(f'UPDATE spider_voe_posts SET {column}=? WHERE question_id=1', (json.dumps(stored),))
         self.connection.db.commit()
+        removed_fields = fields.keys() - {'category'}
         for post in [self.call('list')['posts'][0], self.call('detail')['post']]:
-            self.assertTrue(fields.keys().isdisjoint(post))
+            self.assertTrue(removed_fields.isdisjoint(post))
+            self.assertEqual(post['category'], '기타')
         updated = self.call('update', input={'title': '수정 제목', 'bodyHtml': '<p>수정 본문</p>'})['post']
         self.assertEqual(updated['content'], '<p>수정 본문</p>')
         for value in self.connection.db.execute('SELECT document, summary FROM spider_voe_posts WHERE question_id=1').fetchone():
-            self.assertTrue(fields.keys().isdisjoint(json.loads(value)))
+            self.assertTrue(removed_fields.isdisjoint(json.loads(value)))
+            self.assertEqual(json.loads(value)['category'], '기타')
+
+    def test_categories_persist_in_document_summary_list_and_detail(self):
+        for category in ['L0 SPIDER', 'L1 SPIDER', 'L3 SPIDER', 'Defect SPIDER', '기타']:
+            with self.subTest(category=category):
+                post = self.call('create', input={'title': category, 'category': category, 'bodyHtml': '<p>문의</p>'})['post']
+                qid = post['questionId']
+                self.assertEqual(post['category'], category)
+                self.assertEqual(self.call('list')['posts'][0]['category'], category)
+                self.assertEqual(self.call('detail', questionId=qid)['post']['category'], category)
+                for value in self.connection.db.execute('SELECT document, summary FROM spider_voe_posts WHERE question_id=?', (qid,)).fetchone():
+                    self.assertEqual(json.loads(value)['category'], category)
+
+    def test_category_edit_preserved_by_reply_status_and_older_client(self):
+        self.call('update', input={'title': '수정', 'category': 'Defect SPIDER', 'bodyHtml': '<p>수정</p>'})
+        self.call('reply', OTHER, input={'bodyHtml': '<p>답변</p>'})
+        self.call('update', MASTER, input={'operation': 'status', 'status': 'completed'})
+        post = self.call('update', input={'title': '다시 수정', 'bodyHtml': '<p>본문</p>'})['post']
+        self.assertEqual(post['category'], 'Defect SPIDER')
+        self.assertEqual(self.call('list')['posts'][0]['category'], 'Defect SPIDER')
+        self.denied('update', input={'title': '권한 없음', 'category': 'L0 SPIDER', 'bodyHtml': '<p>본문</p>'})
+        self.assertEqual(self.call('detail')['post']['category'], 'Defect SPIDER')
+
+    def test_invalid_category_is_rejected_without_changing_posts(self):
+        original = self.call('detail')['post']
+        for category in ['', 'FDC', 'L2 SPIDER', None, [], {}]:
+            with self.subTest(category=category):
+                data = {'title': '질문', 'bodyHtml': '<p>본문</p>', 'category': category}
+                self.denied('create', OWNER, code='VALIDATION_FAILED', input=data)
+                self.denied('update', OWNER, code='VALIDATION_FAILED', input=data)
+                self.assertEqual(len(self.call('list')['posts']), 1)
+                self.assertEqual(self.call('detail')['post'], original)
+
+    def test_missing_legacy_category_defaults_without_writing_on_read(self):
+        for column in ['document', 'summary']:
+            row = self.connection.db.execute(f'SELECT {column} FROM spider_voe_posts WHERE question_id=1').fetchone()
+            stored = json.loads(row[0])
+            stored.pop('category')
+            self.connection.db.execute(f'UPDATE spider_voe_posts SET {column}=? WHERE question_id=1', (json.dumps(stored),))
+        self.connection.db.commit()
+        self.assertEqual(self.call('list')['posts'][0]['category'], '기타')
+        self.assertEqual(self.call('detail')['post']['category'], '기타')
+        for value in self.connection.db.execute('SELECT document, summary FROM spider_voe_posts WHERE question_id=1').fetchone():
+            self.assertNotIn('category', json.loads(value))
 
     def test_author_permissions_and_restore(self):
         self.denied('update', input={'title': '탈취', 'bodyHtml': '<p>악성</p>'})

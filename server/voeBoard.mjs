@@ -5,7 +5,7 @@ import { MAX_QNA_REQUEST_BYTES } from "../src/features/voe/limits.mjs"
 
 const helper = fileURLToPath(new URL("../scripts/voe_board.py", import.meta.url))
 const errors = {
-  VALIDATION_FAILED: [400, "제목, 본문과 상태를 확인해 주세요."],
+  VALIDATION_FAILED: [400, "제목, 카테고리, 본문과 상태를 확인해 주세요."],
   QNA_NOT_FOUND: [404, "게시글 또는 답변을 찾을 수 없습니다."],
   QNA_FORBIDDEN: [403, "이 내용을 변경할 권한이 없습니다."],
   BODY_TOO_LARGE: [413, "글과 사진의 전체 용량이 너무 큽니다. 사진 크기를 줄여 주세요."],
