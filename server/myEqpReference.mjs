@@ -11,7 +11,7 @@ let pendingLookup = null
 export function referenceLookupErrorMessage(dbErrno, missingColumn) {
   const allowedColumns = new Set([
     "erdtsum_info.main",
-    ...["eqpid", "sdwt_code", "fdc_model", "eqp_model", "eqp_prc_group"]
+    ...["eqp_id", "sdwt_code", "fdc_model", "eqp_model", "eqp_prc_group"]
       .map((name) => `edisn.m_equipment.${name}`),
   ])
   if (dbErrno === 1054 && allowedColumns.has(missingColumn)) {

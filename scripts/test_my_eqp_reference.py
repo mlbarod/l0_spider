@@ -10,7 +10,7 @@ from my_eqp_reference import lookup_error_details, read_reference_rows
 
 class ReferenceMergeTest(unittest.TestCase):
     def test_missing_column_diagnostic_does_not_expose_raw_error(self):
-        for name in ("eqpid", "sdwt_code", "fdc_model", "eqp_model", "eqp_prc_group"):
+        for name in ("eqp_id", "sdwt_code", "fdc_model", "eqp_model", "eqp_prc_group"):
             details = lookup_error_details(Exception(1054, f"Unknown column 'e.{name}' in 'field list'"))
             self.assertEqual(details, {"db_errno": 1054, "missing_column": f"edisn.m_equipment.{name}"})
         self.assertEqual(lookup_error_details(Exception(1054, "Unknown column 'secret'")),
@@ -26,7 +26,7 @@ class ReferenceMergeTest(unittest.TestCase):
             main TEXT, disp_name TEXT, sdwt_prod TEXT, fdc_model TEXT,
             eqp_model TEXT, prc_group TEXT, extra_column TEXT)""")
         db.execute("""CREATE TABLE edisn.m_equipment (
-            eqpid TEXT, sdwt_code TEXT, fdc_model TEXT,
+            eqp_id TEXT, sdwt_code TEXT, fdc_model TEXT,
             eqp_model TEXT, eqp_prc_group TEXT)""")
         original = [
             ("MATCH", "CH1", "OLD", "F1", "M1", "P1", "keep"),

@@ -17,7 +17,7 @@ def lookup_error_details(error):
         allowed_columns = {
             "r.main": "erdtsum_info.main",
             **{f"e.{name}": f"edisn.m_equipment.{name}" for name in (
-                "eqpid", "sdwt_code", "fdc_model", "eqp_model", "eqp_prc_group",
+                "eqp_id", "sdwt_code", "fdc_model", "eqp_model", "eqp_prc_group",
             )},
         }
         if match:
@@ -59,7 +59,7 @@ def read_reference_rows(db_info):
             cursor.execute("SELECT * FROM `erdtsum_info` LIMIT 0")
             columns = [column[0] for column in cursor.description]
             equipment_columns = {
-                "main": "eqpid", "sdwt_prod": "sdwt_code",
+                "main": "eqp_id", "sdwt_prod": "sdwt_code",
                 "fdc_model": "fdc_model", "eqp_model": "eqp_model",
                 "prc_group": "eqp_prc_group",
             }
@@ -73,7 +73,7 @@ def read_reference_rows(db_info):
                 SELECT {projection}
                 FROM `edisn`.`m_equipment` e
                 WHERE NOT EXISTS (
-                    SELECT 1 FROM `erdtsum_info` r WHERE r.`main` = e.`eqpid`
+                    SELECT 1 FROM `erdtsum_info` r WHERE r.`main` = e.`eqp_id`
                 )
             """)
             rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
