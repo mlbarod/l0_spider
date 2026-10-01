@@ -1,3 +1,5 @@
+import { FilterFavoriteButton, FilterFavoriteHint } from "../components/FilterFavoriteButton"
+import { useFilterFavorites } from "../components/useFilterFavorites"
 import { memo, useMemo, useRef, useState } from "react"
 import { ArrowLeft, ArrowUp, Check, ChevronRight, ImageOff, Loader2 } from "lucide-react"
 import { Link, useSearchParams } from "react-router-dom"
@@ -36,8 +38,8 @@ const COMMON_PASS_HISTORY_VERSION = "NA"
 const SKIP_LIST_TEAM = "__SKIP_LIST__"
 const SKIP_LIST_LABEL = "SKIP LIST"
 
-function SelectRow({ label, meta, selected, onClick }) {
-  return (
+function SelectRow({ label, meta, selected, onClick, favoriteAction }) {
+  const row = (
     <button
       type="button"
       onClick={onClick}
@@ -56,10 +58,12 @@ function SelectRow({ label, meta, selected, onClick }) {
         : <ChevronRight className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />}
     </button>
   )
+  return favoriteAction ? <div className="flex min-w-0 items-center gap-1">{favoriteAction}{row}</div> : row
 }
 
 function FilterCard({
   title,
+  headerNote,
   badge: nextBadge,
   disabled: nextDisabled = false,
   placeholder: nextPlaceholder,
@@ -78,15 +82,19 @@ function FilterCard({
     children: nextChildren,
   }, isPending)
   return (
+    <div className="relative h-full min-h-0 min-w-0">
+      {headerNote}
     <Card aria-busy={isPending} className={cn(
-      "grid min-h-0 min-w-0 grid-rows-[48px_44px_minmax(0,1fr)] gap-0 overflow-hidden rounded-[18px] border border-[#e0e0e0] bg-white py-0",
+      "grid h-full min-h-0 min-w-0 grid-rows-[48px_44px_minmax(0,1fr)] gap-0 overflow-hidden rounded-[18px] border border-[#e0e0e0] bg-white py-0",
       isActive && "ring-2 ring-[#0071e3]",
     )}>
-      <div className={cn("flex h-12 items-center border-b border-[#e0e0e0] px-4", isActive ? "bg-[#f5f5f7]" : "bg-[#fafafc]")}>
+      <div className={cn("relative flex h-12 items-center border-b border-[#e0e0e0] px-4", isActive ? "bg-[#f5f5f7]" : "bg-[#fafafc]")}>
         <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-          <CardTitle className={cn("truncate text-sm font-semibold", disabled && "text-muted-foreground", isActive && "text-primary")}>
-            {title}
-          </CardTitle>
+          <div className="flex min-w-0 flex-col items-start">
+            <CardTitle className={cn("truncate text-sm font-semibold", disabled && "text-muted-foreground", isActive && "text-primary")}>
+              {title}
+            </CardTitle>
+          </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <Loader2
               className={cn(
@@ -130,6 +138,7 @@ function FilterCard({
         )}
       </CardContent>
     </Card>
+    </div>
   )
 }
 
@@ -338,8 +347,6 @@ export function CommonAnomalyPage() {
   const [searchParams] = useSearchParams()
   const pageRef = useRef(null)
   const queryClient = useQueryClient()
-  const [selectedLine, setSelectedLine] = useState(() => searchParams.get("line") ?? "")
-  const [selectedTeam, setSelectedTeam] = useState(() => searchParams.get("sdwt") ?? "")
   const [selectedPrcGroup, setSelectedPrcGroup] = useState(() => searchParams.get("prcGroup") ?? "")
   const [selectedEqp, setSelectedEqp] = useState(() => searchParams.get("eqp") ?? "")
   const [selectedSensor, setSelectedSensor] = useState(() => searchParams.get("sensor") ?? "")
@@ -358,6 +365,14 @@ export function CommonAnomalyPage() {
   const lineMapping = mappingReady ? mappingQuery.data.line_mapping : EMPTY_MAPPING
   const sdwtMapping = mappingReady ? mappingQuery.data.sdwt_mapping : EMPTY_MAPPING
   const lines = useMemo(() => Array.from(new Set(Object.values(lineMapping))), [lineMapping])
+  const favorites = useFilterFavorites({
+    initialLine: searchParams.get("line") ?? "",
+    initialTeam: searchParams.get("sdwt") ?? "",
+    skipRestore: searchParams.size > 0,
+    mappingReady,
+    lineMapping,
+  })
+  const { selectedLine, selectedTeam, setSelectedLine, setSelectedTeam } = favorites
   const activeLine = lines.includes(selectedLine) ? selectedLine : (lines[0] ?? "")
   const teamOptions = useMemo(
     () => [
@@ -399,7 +414,7 @@ export function CommonAnomalyPage() {
           eqp: selectedEqp,
           sensor: selectedSensor,
         }),
-    enabled: Boolean(mappingReady && activeLine && activeTeam && activeTeamLabel),
+    enabled: Boolean(favorites.ready && mappingReady && activeLine && activeTeam && activeTeamLabel),
   })
   const prcGroups = dataQuery.data?.prcGroups ?? EMPTY_LIST
   const eqps = dataQuery.data?.eqps ?? EMPTY_LIST
@@ -414,7 +429,7 @@ export function CommonAnomalyPage() {
       sdwt: activeTeamLabel,
       desc: "",
     }),
-    enabled: Boolean(mappingReady && !isSkipList && activeLine && activeTeamLabel),
+    enabled: Boolean(favorites.ready && mappingReady && !isSkipList && activeLine && activeTeamLabel),
     staleTime: 30 * 1000,
     retry: false,
   })
@@ -538,10 +553,11 @@ export function CommonAnomalyPage() {
 
       <section className="shrink-0 border-b border-[#e0e0e0] bg-[#f5f5f7]">
         <ResizableFilterArea defaultHeight={332} minHeight={160} maxHeight={720}>
-          <div className="h-full overflow-x-auto px-6 py-2">
+          <div className="h-full overflow-x-auto px-6 pb-2 pt-9">
             <div className="grid h-full min-w-[1120px] grid-cols-5 gap-4">
             <FilterCard
               title="Line Name"
+              headerNote={<FilterFavoriteHint />}
               badge={lines.length || null}
               disabled={mappingQuery.isLoading || !lines.length}
               placeholder={mappingQuery.isLoading ? "로딩 중…" : "선택 가능한 Line이 없습니다."}
@@ -551,7 +567,7 @@ export function CommonAnomalyPage() {
               onQueryChange={(value) => setQuery("line", value)}
             >
               {filteredLines.map((item) => (
-                <SelectRow key={item.value} label={item.label} selected={activeLine === item.value} onClick={() => {
+                <SelectRow favoriteAction={<FilterFavoriteButton label={item.label} {...favorites.buttonProps("line", item.value, undefined)} />} key={item.value} label={item.label} selected={activeLine === item.value} onClick={() => {
                   setSelectedLine(item.value)
                   setSelectedTeam("")
                   setQueries((current) => ({ ...current, team: "" }))
@@ -569,7 +585,7 @@ export function CommonAnomalyPage() {
               onQueryChange={(value) => setQuery("team", value)}
             >
               {filteredTeams.map((item) => (
-                <SelectRow key={item.value} label={item.label} selected={activeTeam === item.value} onClick={() => {
+                <SelectRow favoriteAction={<FilterFavoriteButton label={item.label} {...favorites.buttonProps("sdwt", activeLine, item.value)} />} key={item.value} label={item.label} selected={activeTeam === item.value} onClick={() => {
                   setSelectedTeam(item.value)
                   resetAfterTeam()
                 }} />

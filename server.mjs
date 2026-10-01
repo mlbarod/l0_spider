@@ -1,4 +1,5 @@
 import "./server/loadEnv.mjs"
+import { handleFilterFavoritesRequest } from "./server/filterFavorites.mjs"
 import { handleVoeRequest } from "./server/voeBoard.mjs"
 
 import { spawnSync } from "node:child_process"
@@ -172,6 +173,11 @@ function handleApplicationRequest(req, res) {
     handleDashboardDataRequest(req, res).catch((error) => {
       sendJson(res, 500, { ok: false, error: error.message })
     })
+    return
+  }
+
+  if (url.pathname === "/api/filter-favorites") {
+    void handleFilterFavoritesRequest(req, res)
     return
   }
 

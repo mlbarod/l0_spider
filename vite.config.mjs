@@ -1,4 +1,5 @@
 import "./server/loadEnv.mjs"
+import { handleFilterFavoritesRequest } from "./server/filterFavorites.mjs"
 import { handleVoeRequest } from "./server/voeBoard.mjs"
 import { loadOidcConfig } from "./server/oidcService.mjs"
 
@@ -74,6 +75,11 @@ function mappingConfigApi() {
 
         if (url.pathname === "/api/mail-recipient-groups") {
           handleMailRecipientGroupsRequest(req, res)
+          return
+        }
+
+        if (url.pathname === "/api/filter-favorites") {
+          void handleFilterFavoritesRequest(req, res)
           return
         }
 

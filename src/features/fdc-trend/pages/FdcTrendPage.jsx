@@ -1,3 +1,5 @@
+import { FilterFavoriteButton, FilterFavoriteHint } from "../components/FilterFavoriteButton"
+import { useFilterFavorites } from "../components/useFilterFavorites"
 import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, ArrowUp, Check, ChevronRight, Loader2 } from "lucide-react"
 import { Link, useSearchParams } from "react-router-dom"
@@ -131,8 +133,8 @@ function uploadMyEqpCategoryHistory(lineId) {
   })
 }
 
-function SelectRow({ label, meta, selected, multiple = false, onClick }) {
-  return (
+function SelectRow({ label, meta, selected, multiple = false, onClick, favoriteAction }) {
+  const row = (
     <button
       type="button"
       onClick={onClick}
@@ -161,10 +163,12 @@ function SelectRow({ label, meta, selected, multiple = false, onClick }) {
       )}
     </button>
   )
+  return favoriteAction ? <div className="flex min-w-0 items-center gap-1">{favoriteAction}{row}</div> : row
 }
 
 function FilterCard({
   title,
+  headerNote,
   badge: nextBadge,
   disabled: nextDisabled = false,
   placeholder: nextPlaceholder,
@@ -204,29 +208,33 @@ function FilterCard({
   })
 
   return (
+    <div className="relative h-full min-h-0 min-w-0">
+      {headerNote}
     <Card
       aria-busy={isPending}
       className={cn(
-        "grid min-h-0 min-w-0 grid-rows-[48px_44px_minmax(0,1fr)] gap-0 overflow-hidden rounded-[18px] border border-[#e0e0e0] bg-white py-0 transition-all",
+        "grid h-full min-h-0 min-w-0 grid-rows-[48px_44px_minmax(0,1fr)] gap-0 overflow-hidden rounded-[18px] border border-[#e0e0e0] bg-white py-0 transition-all",
         isActive && "ring-2 ring-[#0071e3]",
       )}
     >
       <div
         className={cn(
-          "flex h-12 items-center border-b border-[#e0e0e0] px-4",
+          "relative flex h-12 items-center border-b border-[#e0e0e0] px-4",
           isActive ? "bg-[#f5f5f7]" : "bg-[#fafafc]",
         )}
       >
         <div className="flex h-full min-w-0 flex-1 items-center justify-between gap-2">
-          <CardTitle
-            className={cn(
-              "truncate text-sm font-semibold leading-5",
-              disabled && "text-muted-foreground",
-              isActive && "text-primary",
-            )}
-          >
-            {title}
-          </CardTitle>
+          <div className="flex min-w-0 flex-col items-start">
+            <CardTitle
+              className={cn(
+                "truncate text-sm font-semibold leading-5",
+                disabled && "text-muted-foreground",
+                isActive && "text-primary",
+              )}
+            >
+              {title}
+            </CardTitle>
+          </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <Loader2
               className={cn(
@@ -278,6 +286,7 @@ function FilterCard({
         )}
       </CardContent>
     </Card>
+    </div>
   )
 }
 
@@ -1569,8 +1578,6 @@ export function FdcTrendPage() {
     staleTime: Infinity,
     retry: false,
   })
-  const [selectedLine, setSelectedLine] = useState(() => requestedFilters.line)
-  const [selectedTeam, setSelectedTeam] = useState(() => requestedFilters.sdwts[0] ?? "")
   const [selectedGrades, setSelectedGrades] = useState(() => (
     resolveSelfEquipmentGrades(requestedFilters.grades, SENSOR_GRADES).length
       ? resolveSelfEquipmentGrades(requestedFilters.grades, SENSOR_GRADES)
@@ -1610,11 +1617,19 @@ export function FdcTrendPage() {
     () => Array.from(new Set(Object.values(lineMapping))),
     [lineMapping],
   )
+  const favorites = useFilterFavorites({
+    initialLine: requestedFilters.line,
+    initialTeam: requestedFilters.sdwts[0] ?? "",
+    skipRestore: searchParams.size > 0,
+    mappingReady,
+    lineMapping,
+  })
+  const { selectedLine, selectedTeam, setSelectedLine, setSelectedTeam } = favorites
   const activeLine = lines.includes(selectedLine) ? selectedLine : (lines[0] ?? "")
   const myEqpRegistrationsQuery = useQuery({
     queryKey: ["my-eqp-registrations", activeLine, true],
     queryFn: () => fetchMyEqpRegistrations({ line: activeLine, activeOnly: true }),
-    enabled: Boolean(mappingReady && activeLine),
+    enabled: Boolean(favorites.ready && mappingReady && activeLine),
     staleTime: 15 * 1000,
     refetchInterval: 30 * 1000,
     retry: false,
@@ -1680,7 +1695,7 @@ export function FdcTrendPage() {
           chStep: selectedChStep,
         }),
     enabled: Boolean(
-      mappingReady
+      favorites.ready && mappingReady
       && activeLine
       && activeTeam
       && activeTeamLabel
@@ -1719,7 +1734,7 @@ export function FdcTrendPage() {
       desc: activeDesc,
     }),
     enabled: Boolean(
-      mappingReady
+      favorites.ready && mappingReady
       && !isSkipList
       && !isMyEqp
       && activeLine
@@ -2055,10 +2070,11 @@ export function FdcTrendPage() {
 
       <section className="shrink-0 border-b border-[#e0e0e0] bg-[#f5f5f7]">
         <ResizableFilterArea defaultHeight={332} minHeight={160} maxHeight={720}>
-          <div className="h-full overflow-x-auto px-6 py-2">
+          <div className="h-full overflow-x-auto px-6 pb-2 pt-9">
             <div className="grid h-full min-w-[1640px] grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,.8fr)_minmax(0,1.45fr)_minmax(0,1.15fr)_minmax(0,1.2fr)_minmax(0,1.05fr)] gap-4">
             <FilterCard
               title="Line Name"
+              headerNote={<FilterFavoriteHint />}
               badge={lines.length ? `${lines.length}` : null}
               disabled={lines.length === 0}
               placeholder="선택 가능한 Line이 없습니다."
@@ -2068,7 +2084,7 @@ export function FdcTrendPage() {
               onQueryChange={(value) => setQuery("line", value)}
             >
               {filteredLines.map((item) => (
-                <SelectRow
+                <SelectRow favoriteAction={<FilterFavoriteButton label={item.label} {...favorites.buttonProps("line", item.value, undefined)} />}
                   key={item.value}
                   label={item.label}
                   selected={activeLine === item.value}
@@ -2086,7 +2102,7 @@ export function FdcTrendPage() {
               onQueryChange={(value) => setQuery("team", value)}
             >
               {filteredTeams.map((item) => (
-                <SelectRow
+                <SelectRow favoriteAction={<FilterFavoriteButton label={item.label} {...favorites.buttonProps("sdwt", activeLine, item.value)} />}
                   key={item.value}
                   label={item.label}
                   selected={activeTeam === item.value}
