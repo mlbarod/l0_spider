@@ -226,7 +226,9 @@ Line·SDWT 매핑 검증은 두 삭제 방식에 동일하게 적용한다.
 DB의 기존 `email`, `sdwt`, `priority` 컬럼과 JSON 배열 형식을 유지한다. 한 수신인에게 서로 다른 Grade 조합이 있으면
 여러 행으로 표현한다. 기존 행 일부를 삭제할 때 남은 SDWT와 Grade 조합을 분리해 같은 트랜잭션에서 보존한다.
 실패 시 commit하지 않으며 DDL이나 migration을 실행하지 않는다. 운영 DB의 실제 인덱스는 로컬에서 확인하지 않았다.
-`email` 단독 UNIQUE 제약이 있는 환경에서는 조합별 복수 행 저장이 실패하므로 별도 스키마 검토가 필요하다.
+`email` 단독 PRIMARY KEY 또는 UNIQUE 제약이 있으면 복수 행이 필요한 변경을 DB 쓰기 전에
+`MAILING_DB_SINGLE_ROW_LIMIT`로 거부한다. 기존 한 행 안에서 처리 가능한 Grade 변경과 Line 삭제는 유지한다.
+일반적인 SDWT별 Grade 변경을 허용하려면 수신인별 복수 행이 가능한 스키마로 조정해야 한다.
 외부 발송기도 각 DB 행의 SDWT × Grade 조합을 유지해서 읽어야 하며 수신인 전체의 SDWT와 Grade를 각각 합쳐 재조합하면 안 된다.
 MY EQP 등록은 Line·SDWT·PRC Group·EQP·기간·`knox_id`를 저장한다.
 

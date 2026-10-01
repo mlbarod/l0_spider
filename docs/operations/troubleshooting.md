@@ -371,6 +371,32 @@ journalctl -u <unit-name> --since "<approved-time>" --no-pager
 - retry·dedupe·timeout 정책 부재 또는 저장소 밖 변경
 - Dashboard mailing summary와 sender 소비 경계 불일치
 
+Grade 개별 삭제는 기존 여러 SDWT가 묶인 행을 분리하여 남은 조건을 저장할 수 있다.
+`MAILING_DB_SINGLE_ROW_LIMIT`이면 사전 메타데이터 검사에서 `email` 단독 PRIMARY KEY 또는 UNIQUE가 확인된 것이다.
+복수 행이 필요한 요청은 UPDATE·INSERT·DELETE 전에 중단하며, 이 제한은 기존 저장 형식으로 코드만 바꾸어 해결할 수 없다.
+`MAILING_DB_DUPLICATE_KEY`이면 DB 오류 1062(고유키 충돌), `MAILING_DB_COLUMN_TOO_SHORT`이면
+1406(컬럼 길이 부족), `MAILING_DB_REQUIRED_COLUMN`이면 1364(필수 컬럼 기본값 누락)로 구분한다.
+이 코드는 수신인·SQL 상세를 포함하지 않는다. 1062만으로 `email` 단독 고유키라고 단정하지 말고,
+운영자가 `SHOW INDEX FROM email;`로 실제 고유키 구성을 읽기 전용으로 확인한다.
+스키마와 실제 오류가 확인되기 전에는 고유키 제거 또는 DDL을 실행하지 않는다.
+
+수신인별 복수 행이 필요한 경우의 최소 스키마 변경안은 `email`의 단독 PRIMARY KEY를 해제하고
+조회용 일반 인덱스를 두는 것이다. 기존 `email`, `sdwt`, `priority` 컬럼과 값은 유지한다.
+[Mailing Grade 인덱스 변경안](mailing-grade-index-change.sql)에 사용자 제공 테이블 정의에 맞춘 조회·변경 구문을 정리했다.
+아래는 **검토용 예시이며 자동 적용 대상이 아니다**. `SHOW CREATE TABLE email;`, `SHOW INDEX FROM email;` 및
+해당 테이블을 참조하는 외래키를 확인한 뒤 운영자가 변경안을 확정한다. 다른 단독 UNIQUE가 남아 있거나,
+PRIMARY KEY를 요구하는 운영 정책·참조 제약이 있으면 아래 예시를 그대로 적용하지 않는다.
+
+```sql
+-- 검토용. 실제 테이블 정의·참조 관계·동명 인덱스 존재 여부를 확인한 뒤 별도 적용한다.
+-- ALTER TABLE email
+--   DROP PRIMARY KEY,
+--   ADD INDEX idx_mailing_email_lookup (email);
+```
+
+변경 후 외부 발송기도 동일 수신인의 각 DB 행을 읽고, 행별 SDWT × Grade 조합을 유지해야 한다.
+수신인별 한 행만 읽거나 SDWT와 Grade를 각각 합치면 조건이 누락되거나 삭제한 조건이 재생성된다.
+
 ### 안전한 조치
 
 - 등록 저장과 실제 발송 단계를 분리한다.

@@ -4,14 +4,16 @@ from itertools import combinations
 from unittest.mock import patch
 
 from scripts.mailing_registration import (
-    delete_line_registration, insert_registration, missing_registration_groups,
+    MailingSchemaError, database_error_payload, delete_line_registration, insert_registration, missing_registration_groups,
     parse_list, remaining_registration_groups, serialize_list, split_list_for_column,
 )
 
 
 class SyntheticCursor:
     def __init__(self, connection):
+        self.connection = connection
         self.cursor = connection.cursor()
+        self.metadata_rows = None
 
     def __enter__(self):
         return self
@@ -20,10 +22,20 @@ class SyntheticCursor:
         self.cursor.close()
 
     def execute(self, query, values):
+        self.metadata_rows = None
+        if "`information_schema`.`STATISTICS`" in query:
+            self.metadata_rows = []
+            for index in self.connection.execute("PRAGMA index_list(email)").fetchall():
+                if index[2]:
+                    columns = self.connection.execute("SELECT name FROM pragma_index_info(?) ORDER BY seqno", (index[1],)).fetchall()
+                    self.metadata_rows.extend((index[1], row[0]) for row in columns)
+            return len(self.metadata_rows)
         self.cursor.execute(query.replace("%s", "?").replace("FOR UPDATE", ""), values)
         return self.cursor.rowcount
 
     def fetchall(self):
+        if self.metadata_rows is not None:
+            return self.metadata_rows
         return self.cursor.fetchall()
 
 
@@ -171,15 +183,54 @@ class MailingRegistrationTransactionTest(unittest.TestCase):
         self.assertEqual(self.connection.pairs(), before - {("user01", "S1", "D")})
         self.assertEqual(sum(parse_list(row[1]) == ["S1"] and row[0] == "user01" for row in self.connection.rows()), 1)
 
-    def test_split_failure_rolls_back_original_registration(self):
+    def test_unique_email_is_rejected_before_any_split_write(self):
         before = self.connection.rows()
         # Emulate an incompatible unique-email schema without accessing production.
         self.connection.db.execute("CREATE UNIQUE INDEX one_row_per_user ON email(email)")
-        with self.assertRaises(sqlite3.IntegrityError):
+        statements = []
+        self.connection.db.set_trace_callback(statements.append)
+        with self.assertRaises(MailingSchemaError) as raised:
             delete_line_registration({
                 "knoxId": "user01", "line": "L1", "sdwts": ["S1"], "priorities": ["D"],
             }, self.db_info)
         self.assertEqual(self.connection.rows(), before)
+        self.assertEqual(database_error_payload(raised.exception, "delete_line")["code"], "MAILING_DB_SINGLE_ROW_LIMIT")
+        self.assertFalse(any(sql.lstrip().startswith(("UPDATE", "INSERT", "DELETE")) for sql in statements))
+
+    def test_unique_email_allows_line_delete_and_single_sdwt_grade_update(self):
+        self.connection.db.execute("CREATE UNIQUE INDEX one_row_per_user ON email(email)")
+        delete_line_registration({"knoxId": "user01", "line": "L1", "sdwts": ["S2"]}, self.db_info)
+        delete_line_registration({
+            "knoxId": "user01", "line": "L1", "sdwts": ["S1"], "priorities": ["D"],
+        }, self.db_info)
+        self.assertEqual({item for item in self.connection.pairs() if item[0] == "user01"}, {
+            ("user01", "S1", grade) for grade in ["A", "B", "M", "N"]
+        })
+
+    def test_unique_email_rejects_new_combinations_before_inserting(self):
+        self.connection.db.execute("CREATE UNIQUE INDEX one_row_per_user ON email(email)")
+        before = self.connection.rows()
+        with self.assertRaises(MailingSchemaError):
+            insert_registration({"knoxId": "user01", "sdwts": ["S3"], "priorities": ["D"]}, self.db_info)
+        self.assertEqual(self.connection.rows(), before)
+
+    def test_non_unique_email_index_preserves_data_and_enables_grade_delete_and_add(self):
+        # Emulate the uniqueness change in memory; this does not execute MySQL DDL.
+        self.connection.db.execute("CREATE UNIQUE INDEX one_row_per_user ON email(email)")
+        original_rows = self.connection.rows()
+        original_pairs = self.connection.pairs()
+        payload = {"knoxId": "user01", "line": "L1", "sdwts": ["S1"], "priorities": ["D"]}
+        with self.assertRaises(MailingSchemaError):
+            delete_line_registration(payload, self.db_info)
+
+        self.connection.db.execute("DROP INDEX one_row_per_user")
+        self.connection.db.execute("CREATE INDEX idx_mailing_email_lookup ON email(email)")
+        self.assertEqual(self.connection.rows(), original_rows)
+        delete_line_registration(payload, self.db_info)
+        self.assertEqual(self.connection.pairs(), original_pairs - {("user01", "S1", "D")})
+        insert_registration({"knoxId": "user01", "sdwts": ["S3"], "priorities": ["N"]}, self.db_info)
+        self.assertEqual(self.connection.pairs(),
+                         (original_pairs - {("user01", "S1", "D")}) | {("user01", "S3", "N")})
 
 
 if __name__ == "__main__":

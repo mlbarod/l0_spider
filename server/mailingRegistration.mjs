@@ -18,6 +18,37 @@ const MAX_SDWT_LENGTH = 160
 
 export const MAILING_PRIORITIES = Object.freeze(["A", "B", "D", "M", "N"])
 
+const MAILING_DB_ERRORS = new Map([
+  ["MAILING_DB_SINGLE_ROW_LIMIT", {
+    code: "MAILING_DB_SINGLE_ROW_LIMIT",
+    status: 409,
+    message: "현재 DB는 수신인당 한 행만 허용하여 SDWT·Grade별 조건을 나누어 저장할 수 없습니다. email 테이블의 고유키 구조 변경이 필요합니다.",
+  }],
+  [1062, {
+    code: "MAILING_DB_DUPLICATE_KEY",
+    status: 409,
+    message: "등록 조건을 나누어 저장하는 과정에서 DB 중복 제한에 걸렸습니다. email 테이블의 고유키 구성을 확인해 주세요.",
+  }],
+  [1406, {
+    code: "MAILING_DB_COLUMN_TOO_SHORT",
+    status: 500,
+    message: "Mailing 등록 조건을 저장할 DB 컬럼 길이가 부족합니다. email 테이블의 컬럼 길이를 확인해 주세요.",
+  }],
+  [1364, {
+    code: "MAILING_DB_REQUIRED_COLUMN",
+    status: 500,
+    message: "등록 조건을 나누어 저장할 때 DB의 필수 컬럼 값이 누락되었습니다. email 테이블의 기본값 설정을 확인해 주세요.",
+  }],
+])
+
+export function createMailingHelperError(result) {
+  const failure = MAILING_DB_ERRORS.get(result?.dbErrorCode) ?? MAILING_DB_ERRORS.get(result?.code)
+  const error = new Error("Mailing 기준정보를 처리하지 못했습니다.")
+  // Only allowlisted codes cross the helper boundary; never copy raw DB details.
+  if (failure) error.code = failure.code
+  return error
+}
+
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
@@ -151,7 +182,7 @@ function runMailingHelper(action, payload) {
         return
       }
       if (!result.ok) {
-        reject(new Error("Mailing 기준정보를 처리하지 못했습니다."))
+        reject(createMailingHelperError(result))
         return
       }
       resolvePromise(result)
@@ -217,15 +248,16 @@ export async function handleMailingRegistrationRequest(
   } catch (error) {
     const mappingUnavailable = error.code === MAPPING_CONFIG_UNAVAILABLE_CODE
     const mappingMismatch = error.code === MAPPING_SCOPE_MISMATCH_CODE
-    sendJson(res, mappingUnavailable ? 503 : mappingMismatch ? 400 : 500, createSafeApiError({
+    const databaseFailure = Array.from(MAILING_DB_ERRORS.values()).find((failure) => failure.code === error.code)
+    sendJson(res, mappingUnavailable ? 503 : mappingMismatch ? 400 : databaseFailure?.status ?? 500, createSafeApiError({
       code: mappingUnavailable
         ? MAPPING_CONFIG_UNAVAILABLE_CODE
-        : mappingMismatch ? MAPPING_SCOPE_MISMATCH_CODE : "MAILING_REGISTRATION_REQUEST_FAILED",
+        : mappingMismatch ? MAPPING_SCOPE_MISMATCH_CODE : databaseFailure?.code ?? "MAILING_REGISTRATION_REQUEST_FAILED",
       message: mappingUnavailable
         ? "기준정보 매핑을 사용할 수 없어 Mailing 요청을 중단했습니다."
         : mappingMismatch
           ? "선택한 Line과 SDWT가 기준정보와 일치하지 않습니다."
-          : "Mailing 기준정보 요청을 처리하지 못했습니다.",
+          : databaseFailure?.message ?? "Mailing 기준정보 요청을 처리하지 못했습니다.",
       scope: "mailing-registration",
     }))
   }

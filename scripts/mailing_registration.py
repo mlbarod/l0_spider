@@ -10,6 +10,27 @@ EMAIL_COLUMNS = ("email", "sdwt", "priority")
 REQUIRED_EMAIL_COLUMNS = frozenset(EMAIL_COLUMNS)
 
 
+class MailingSchemaError(ValueError):
+    pass
+
+
+def require_multiple_recipient_rows(connection, db_name):
+    """Check metadata before a write that requires multiple rows per recipient."""
+    query = """
+        SELECT `INDEX_NAME`, `COLUMN_NAME`
+        FROM `information_schema`.`STATISTICS`
+        WHERE `TABLE_SCHEMA` = %s AND `TABLE_NAME` = 'email' AND `NON_UNIQUE` = 0
+        ORDER BY `INDEX_NAME`, `SEQ_IN_INDEX`
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(query, (db_name,))
+        indexes = {}
+        for index_name, column_name in cursor.fetchall():
+            indexes.setdefault(index_name, []).append(column_name)
+    if any(columns == ["email"] for columns in indexes.values()):
+        raise MailingSchemaError("email unique key permits only one row per recipient")
+
+
 def write_json(payload):
     print(json.dumps(payload, ensure_ascii=False, default=str))
 
@@ -198,6 +219,8 @@ def insert_registration(payload, db_info):
             existing_rows = cursor.fetchall()
             groups = missing_registration_groups(payload, existing_rows)
             records = serialize_registration_groups(groups, column_schema)
+            if records and len(existing_rows) + len(records) > 1:
+                require_multiple_recipient_rows(connection, db_info["DB_NAME"])
             affected_rows = 0
             for serialized_sdwts, serialized_priorities in records:
                 affected_rows += cursor.execute(
@@ -275,11 +298,17 @@ def delete_line_registration(payload, db_info):
             cursor.execute(select_query, (payload["knoxId"],))
             rows = cursor.fetchall()
 
+            plans = []
             for email_value, raw_sdwt, raw_priority in rows:
                 groups = remaining_registration_groups(parse_list(raw_sdwt), parse_list(raw_priority), payload)
                 if groups is None:
                     continue
                 records = serialize_registration_groups(groups, column_schema)
+                plans.append((email_value, raw_sdwt, raw_priority, records))
+            if any(len(records) > 1 for _, _, _, records in plans):
+                require_multiple_recipient_rows(connection, db_info["DB_NAME"])
+
+            for email_value, raw_sdwt, raw_priority, records in plans:
                 if records:
                     serialized_sdwts, serialized_priorities = records[0]
                     changed = cursor.execute(
@@ -329,6 +358,7 @@ def database_error_payload(error, action):
 
     return {
         "ok": False,
+        "code": "MAILING_DB_SINGLE_ROW_LIMIT" if isinstance(error, MailingSchemaError) else None,
         "error": message,
         "dbErrorCode": error_code,
         "dbErrorDetail": detail,

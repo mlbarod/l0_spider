@@ -7,6 +7,7 @@ import {
   buildMailingDeletePayload,
   buildMailingRecipientPayloads,
   buildMailingRegistrationPayload,
+  createMailingHelperError,
   handleMailingRegistrationRequest,
   normalizeMailingRecords,
 } from "./mailingRegistration.mjs"
@@ -149,6 +150,52 @@ test("Grade 삭제도 Line·SDWT 매핑 검증을 통과하기 전에 DB를 호�
     helperRunner: async () => assert.fail("매핑 불일치 요청은 DB 호출 금지"),
   })
   assert.equal(response.statusCode, 400)
+})
+
+test("Grade 삭제 DB 오류는 원인을 구분하되 수신인과 SQL 상세를 응답·예외에 노출하지 않는다", async () => {
+  for (const [dbErrorCode, expectedCode, status] of [
+    [1062, "MAILING_DB_DUPLICATE_KEY", 409],
+    [1406, "MAILING_DB_COLUMN_TOO_SHORT", 500],
+    [1364, "MAILING_DB_REQUIRED_COLUMN", 500],
+    [9999, "MAILING_REGISTRATION_REQUEST_FAILED", 500],
+    [undefined, "MAILING_REGISTRATION_REQUEST_FAILED", 500],
+  ]) {
+    const helperError = createMailingHelperError({
+      ok: false, dbErrorCode,
+      error: "secret-recipient@example.test private-host SQL details",
+      dbErrorDetail: "secret-recipient@example.test private-host SQL details",
+    })
+    assert.doesNotMatch(helperError.message, /secret-recipient|private-host|SQL details/)
+    const request = Readable.from([JSON.stringify({
+      knoxId: "user01", line: "LINE_A", sdwts: ["DREAMS P1D"], priorities: ["D"],
+    })])
+    request.method = "DELETE"
+    const response = createResponse()
+    await handleMailingRegistrationRequest(request, response, undefined, {
+      mappingReader: async () => syntheticMapping,
+      helperRunner: async () => { throw helperError },
+    })
+    const payload = JSON.parse(response.body)
+    assert.equal(response.statusCode, status)
+    assert.equal(payload.code, expectedCode)
+    assert.deepEqual(Object.keys(payload).sort(), ["code", "error", "ok", "requestId"])
+    assert.doesNotMatch(response.body, /secret-recipient|private-host|SQL details|dbErrorDetail/)
+  }
+})
+
+test("수신인 단독 고유키 사전 검증 실패는 명시적인 409 오류로 반환한다", async () => {
+  const request = Readable.from([JSON.stringify({
+    knoxId: "user01", line: "LINE_A", sdwts: ["DREAMS P1D"], priorities: ["D"],
+  })])
+  request.method = "DELETE"
+  const response = createResponse()
+  await handleMailingRegistrationRequest(request, response, undefined, {
+    mappingReader: async () => syntheticMapping,
+    helperRunner: async () => { throw createMailingHelperError({ code: "MAILING_DB_SINGLE_ROW_LIMIT" }) },
+  })
+  assert.equal(response.statusCode, 409)
+  assert.equal(JSON.parse(response.body).code, "MAILING_DB_SINGLE_ROW_LIMIT")
+  assert.match(JSON.parse(response.body).error, /수신인당 한 행/)
 })
 
 test("Mailing 등록 API는 GET, POST, DELETE 외 요청을 거부한다", async () => {
