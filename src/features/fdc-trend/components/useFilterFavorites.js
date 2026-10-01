@@ -62,6 +62,10 @@ export function useFilterFavorites({ initialLine, initialTeam, skipRestore, mapp
     setSelectedLine: (value) => { interacted.current = true; updateLine(value) },
     setSelectedTeam: (value) => { interacted.current = true; updateTeam(value) },
     ready: restored || skipRestore || interacted.current,
+    orderItems: (field, items, line) => {
+      const saved = (item) => isSaved(field, field === "line" ? item.value : line, item.value)
+      return [...items].sort((left, right) => Number(saved(right)) - Number(saved(left)))
+    },
     buttonProps: (field, line, sdwt) => ({
       field,
       saved: isSaved(field, line, sdwt),

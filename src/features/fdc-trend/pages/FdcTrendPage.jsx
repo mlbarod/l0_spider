@@ -2083,7 +2083,7 @@ export function FdcTrendPage() {
               query={queries.line}
               onQueryChange={(value) => setQuery("line", value)}
             >
-              {filteredLines.map((item) => (
+              {favorites.orderItems("line", filteredLines).map((item) => (
                 <SelectRow favoriteAction={<FilterFavoriteButton label={item.label} {...favorites.buttonProps("line", item.value, undefined)} />}
                   key={item.value}
                   label={item.label}
@@ -2101,7 +2101,7 @@ export function FdcTrendPage() {
               query={queries.team}
               onQueryChange={(value) => setQuery("team", value)}
             >
-              {filteredTeams.map((item) => (
+              {favorites.orderItems("sdwt", filteredTeams, activeLine).map((item) => (
                 <SelectRow favoriteAction={<FilterFavoriteButton label={item.label} {...favorites.buttonProps("sdwt", activeLine, item.value)} />}
                   key={item.value}
                   label={item.label}
