@@ -404,7 +404,7 @@ function WriteQuestionDialog({ open, onOpenChange, onSubmit, returnFocusRef, bus
   )
 }
 
-export function QnaApp({ user, role, initialView = "list" }) {
+export function QnaApp({ user, role, initialView = "list", initialQuestionId }) {
   const navigateHome = useNavigate()
   const initialRole = role
   const [initialSnapshot] = useState(() => qnaRepository.read())
@@ -430,6 +430,7 @@ export function QnaApp({ user, role, initialView = "list" }) {
   const [liveMessage, setLiveMessage] = useState("")
   const liveTimerRef = useRef(null)
   const writeReturnFocusRef = useRef(null)
+  const pendingQuestionIdRef = useRef(initialQuestionId)
 
   const filteredPosts = useMemo(() => filterPosts(posts, statusFilter), [posts, statusFilter])
   const activePosts = useMemo(() => posts.filter((post) => !post.hidden), [posts])
@@ -451,7 +452,19 @@ export function QnaApp({ user, role, initialView = "list" }) {
     if (!cached.posts.length && !cached.notifications.length) setLoadState("loading")
     setLoadError("")
     try {
-      applySnapshot(await qnaRepository.getSnapshot({ force }))
+      const snapshot = await qnaRepository.getSnapshot({ force })
+      applySnapshot(snapshot)
+      if (pendingQuestionIdRef.current) {
+        const questionId = pendingQuestionIdRef.current
+        pendingQuestionIdRef.current = null
+        const linkedPost = snapshot.posts.find(post => String(post.questionId) === questionId && !post.hidden)
+        if (linkedPost) {
+          setSelectedId(linkedPost.id)
+          setView("detail")
+        } else {
+          setFailureMessage("메일에서 연결한 게시글을 찾을 수 없거나 삭제되었습니다.")
+        }
+      }
       setLoadState("ready")
     } catch (error) {
       setLoadError(error.message ?? "VOE DB 데이터를 불러오지 못했습니다.")

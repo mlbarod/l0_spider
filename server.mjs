@@ -1,6 +1,7 @@
 import "./server/loadEnv.mjs"
 import { handleFilterFavoritesRequest } from "./server/filterFavorites.mjs"
-import { handleVoeRequest } from "./server/voeBoard.mjs"
+import { createVoeHandler } from "./server/voeBoard.mjs"
+import { createVoeMailNotifier } from "./server/voeMail.mjs"
 
 import { spawnSync } from "node:child_process"
 import { createReadStream, existsSync, statSync } from "node:fs"
@@ -58,6 +59,7 @@ const ssoConfig = loadOidcConfig()
 const ssoAuth = createSsoAuth({ config: ssoConfig })
 const handleMailingReportData = createMailingReportDataHandler({ ssoConfig })
 const accessControl = createAccessControl({ enabled: ssoAuth.enabled })
+const handleVoeRequest = createVoeHandler({ notify: createVoeMailNotifier({ getMasterUserIds: () => accessControl.getMasterUserIds() }) })
 if (ssoAuth.enabled && process.env.LIVE_RELOAD === "1") {
   throw new Error("SSO 운영에서는 LIVE_RELOAD=0을 사용하세요.")
 }

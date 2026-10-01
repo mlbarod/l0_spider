@@ -3,12 +3,12 @@ import assert from "node:assert/strict"
 import { Readable } from "node:stream"
 import { createVoeHandler } from "./voeBoard.mjs"
 
-async function call({ method = "GET", path = "/api/voe", body, auth = true, role = "general", run = async () => ({ ok: true, posts: [] }) } = {}) {
+async function call({ method = "GET", path = "/api/voe", body, auth = true, role = "general", run = async () => ({ ok: true, posts: [] }), notify = async () => {} } = {}) {
   const req = Readable.from(body === undefined ? [] : [Buffer.from(JSON.stringify(body))])
   Object.assign(req, { method, headers: { "content-type": "application/json", "x-quality-hub-role": "master" },
     ssoRequired: auth, auth: auth ? { knoxId: "Test.User", displayName: "테스트 사용자" } : undefined, accessRole: role })
   const res = { writeHead(status) { this.status = status }, end(value) { this.body = JSON.parse(value) } }
-  await createVoeHandler({ run })(req, res, new URL(path, "http://localhost"))
+  await createVoeHandler({ run, notify: context => notify(context, res) })(req, res, new URL(path, "http://localhost"))
   return res
 }
 
@@ -49,4 +49,49 @@ test("권한·용량·DB 실패를 안전한 응답으로 변환한다", async (
     assert.equal(res.status, status)
     assert.ok(!JSON.stringify(res.body).includes("secret"))
   }
+})
+
+test("질문·답변 저장 성공 응답 뒤에 저장된 본문과 SSO 작성자로 한 번 발송한다", async () => {
+  for (const [path, action] of [["/api/voe/questions", "create"], ["/api/voe/questions/2/messages", "reply"]]) {
+    const post = { questionId: 2, content: "저장된 본문", authorUserId: "owner" }
+    let calls = 0
+    const res = await call({ method: "POST", path, body: { bodyHtml: "요청 본문", recipients: ["attacker"], actor: { userId: "attacker" } },
+      run: async () => ({ ok: true, post }), notify: async (context, response) => {
+        calls++
+        assert.equal(response.status, 201)
+        assert.deepEqual(response.body, { ok: true, post })
+        assert.equal(context.post, post)
+        assert.equal(context.action, action)
+        assert.equal(context.actor.userId, "test.user")
+      } })
+    assert.equal(res.status, 201)
+    assert.equal(calls, 1)
+  }
+})
+
+test("저장 실패·권한 실패·조회·수정·삭제·복구에는 발송하지 않는다", async () => {
+  let calls = 0
+  const notify = () => { calls++ }
+  for (const code of ["DB_FAILED", "QNA_FORBIDDEN", "VALIDATION_FAILED"]) {
+    await call({ method: "POST", path: "/api/voe/questions", body: {}, notify,
+      run: async () => { throw Object.assign(new Error(), { code }) } })
+  }
+  await call({ auth: false, notify })
+  await call({ role: "blocked", notify })
+  await call({ notify })
+  for (const path of ["/api/voe/questions/2", "/api/voe/questions/2/messages/3"]) {
+    for (const operation of ["edit", "hide", "restore", "status", "final"]) {
+      assert.equal((await call({ method: "PATCH", path, body: { operation }, notify })).status, 200)
+    }
+  }
+  assert.equal(calls, 0)
+})
+
+test("예상하지 못한 발송 실패도 저장 성공 응답을 바꾸지 않는다", async t => {
+  t.mock.method(console, "warn", () => {})
+  const res = await call({ method: "POST", path: "/api/voe/questions", body: {},
+    notify: async () => { throw new Error("secret") } })
+  assert.equal(res.status, 201)
+  assert.deepEqual(res.body, { ok: true, posts: [] })
+  assert.deepEqual(console.warn.mock.calls[0].arguments, ["[voe-mail] notification_failed"])
 })

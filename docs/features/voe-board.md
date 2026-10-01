@@ -2,7 +2,19 @@
 
 메인 Apps의 기존 FDC Hard Limit 추천 자리를 `VOE 게시판`으로 교체한다. 카드 설명과 게시판 헤더 아래 문구는 `원하는 기능을 요청하거나 문의 사항을 등록합니다`이다. 경로는 `/voe`이며 기존 `/hard-limit` 접근은 `/voe`로 이동한다.
 
-Quality-Hub 로컬 저장소의 `prototype/src/qna/QnaApp.jsx`, 서식 편집기와 CSS를 기준으로 목록/상세/작성 화면을 이식했다. 상태 필터, 표·이미지·글씨 크기 편집, 질문/답변 수정, 최종 답변, 알림, 삭제 복구, 변경 이력을 제공한다. 알림은 게시판 내부 알림이다. 외부 메일 발송은 연결하지 않는다.
+Quality-Hub 로컬 저장소의 `prototype/src/qna/QnaApp.jsx`, 서식 편집기와 CSS를 기준으로 목록/상세/작성 화면을 이식했다. 상태 필터, 표·이미지·글씨 크기 편집, 질문/답변 수정, 최종 답변, 알림, 삭제 복구, 변경 이력을 제공한다. 게시판 내부 알림과 새 질문·답변 등록 시 자동 메일 발송을 제공한다.
+
+## 자동 메일
+
+- 질문 등록: 접근 권한 저장소에 현재 등록된 모든 마스터 Knox ID로 발송한다.
+- 답변 등록: 모든 마스터와 질문 작성자에게 발송한다. 같은 ID는 한 번만 포함하며, 작성자가 수신 대상이면 본인도 받는다.
+- 수정·삭제·복구·상태 변경·최종 답변 지정에는 메일을 보내지 않는다.
+- 제목은 `[SPIDER VOE] <카테고리>-<게시글 제목>`이다.
+- 본문은 Quality-Hub의 VOE 메일 양식과 동일한 서식으로 작성자, 구분(카테고리), 게시글 링크, 질문 본문을 표시한다. 답변 등록 시 구분선 아래에 새 답변만 추가한다. Spider에서 사용하지 않는 라인 항목은 생략한다. 표·글씨 크기 등은 유지하고 이미지는 `[이미지: 게시글에서 확인]`으로 대체한다.
+
+Chart Mailing과 같은 `KNOX_MAIL_ENABLED`, `KNOX_MAIL_TOKEN`, `KNOX_MAIL_SYSTEM_ID`, `KNOX_MAIL_TIMEOUT_MS` 및 Knox API를 사용한다. 발신자와 API `userId`는 로그인한 작성자의 Knox ID이며 수신 주소는 `<knox_id>@samsung.com`이다. 링크 주소는 기존 `SSO_REDIRECT_URI`의 서비스 주소에 `/voe?questionId=<번호>`를 붙여 생성한다. 별도 메일 설정이나 DB 테이블 추가는 필요 없다.
+
+DB 저장과 성공 응답 후 발송한다. 발송 비활성화·설정 오류·API 실패 시에도 저장된 글은 유지한다. `[voe-mail]` 로그로 결과를 확인하며, 토큰·수신 주소·본문·원격 응답 원문은 기록하지 않는다. HTTP 접수는 실제 수신 성공을 보장하지 않는다. 중복 발송 방지를 위해 자동 재시도하지 않으며, 별도의 영속 발송 대기열은 없으므로 저장 후 발송 전에 서버가 종료되면 메일이 누락될 수 있다.
 
 ## 권한과 저장
 
@@ -39,7 +51,7 @@ python3 scripts/create_voe_tables.py --apply
 
 ```bash
 python3 -B -m unittest discover -s scripts -p 'test_voe_board.py'
-node --test server/voeBoard.test.mjs
+node --test server/voeBoard.test.mjs server/voeMail.test.mjs
 ```
 
 Python 검증은 메모리 SQLite로 저장 흐름·권한·알림·복구·HTML 정제를 검증하며 운영 DB에 접근하지 않는다. 실제 MySQL DDL, 잠금 동작, SSO와 운영 DB 연결은 배포 환경에서 별도 확인이 필요하다.

@@ -2,6 +2,7 @@ import { execFile } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import { getSsoCurrentUser, sendSsoAuthenticationError } from "./currentUser.mjs"
 import { MAX_QNA_REQUEST_BYTES } from "../src/features/voe/limits.mjs"
+import { createVoeMailNotifier } from "./voeMail.mjs"
 
 const helper = fileURLToPath(new URL("../scripts/voe_board.py", import.meta.url))
 const errors = {
@@ -49,7 +50,7 @@ async function readBody(req) {
   return result
 }
 
-export function createVoeHandler({ run = runVoeHelper } = {}) {
+export function createVoeHandler({ run = runVoeHelper, notify = createVoeMailNotifier() } = {}) {
   return async (req, res, url) => {
     try {
       const userId = getSsoCurrentUser(req).knoxId.trim().toLowerCase()
@@ -73,7 +74,13 @@ export function createVoeHandler({ run = runVoeHelper } = {}) {
       if (!action) return json(res, 405, { error: { message: "지원하지 않는 요청입니다." } })
       const input = req.method === "GET" ? undefined : await readBody(req)
       // 사용자 식별과 권한은 SSO에서만 가져옵니다. 요청 본문의 actor는 사용하지 않습니다.
-      return json(res, req.method === "POST" ? 201 : 200, await run({ action, actor, questionId, messageId, input }))
+      const result = await run({ action, actor, questionId, messageId, input })
+      json(res, req.method === "POST" ? 201 : 200, result)
+      // DB 커밋과 저장 응답 뒤에 발송한다. 메일 실패로 글 재등록을 유도하지 않는다.
+      if (action === "create" || action === "reply") {
+        try { await notify({ req, action, actor, post: result.post }) }
+        catch { console.warn("[voe-mail] notification_failed") }
+      }
     } catch (error) {
       if (sendSsoAuthenticationError(error, res)) return
       const code = error instanceof TypeError ? "VALIDATION_FAILED" : Object.hasOwn(errors, error.code) ? error.code : "DB_FAILED"

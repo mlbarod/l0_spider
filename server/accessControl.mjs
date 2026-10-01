@@ -132,7 +132,7 @@ export function createAccessControl({ enabled, environment = process.env, store 
   } }
   const origin = new URL(environment.SSO_REDIRECT_URI).origin
   const repository = store ?? createAccessStore({ filePath: environment.SSO_ACCESS_CONTROL_FILE || defaultPath, bootstrapUserIds: String(environment.SSO_BOOTSTRAP_MASTER_USER_IDS ?? "").split(",").map(id => id.trim()).filter(Boolean) })
-  return { async handle(req, res) {
+  return { getMasterUserIds: () => repository.read().masters.map(master => master.userId), async handle(req, res) {
     const url = new URL(req.url, origin)
     if (!req.auth?.knoxId) return json(res, 401, { ok: false, code: "SSO_AUTHENTICATION_REQUIRED", error: "SSO 로그인이 필요합니다." })
     try {
