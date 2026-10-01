@@ -132,7 +132,11 @@ desc | recipe_id | priority | sensor | eqp
 A와 B는 이 배열에서 `A/B`로 합치지 않는다.
 유효 row가 없으면 `mailingSummary`는 빈 배열이다.
 
-현재 저장소에서 제외 규칙이 적용되는 실행 가능한 Mailing 경계는 `lineDashboard.mailingSummary`다.
+추가 배열 `lineDashboard.mailingCriticalSummary`는 같은 행 구조·정렬을 유지하되 `status=ALARM`인
+원본 행을 먼저 선별한 뒤 같은 고유건 규칙으로 집계한다. 기존 요약에 있는 조건 중 ALARM이 없으면 0건이다.
+전체 이상현황 Report는 이 추가 배열을 사용하며 기존 `mailingSummary`의 의미는 유지한다.
+
+현재 저장소에서 제외 규칙이 적용되는 실행 가능한 Mailing 경계는 `lineDashboard.mailingSummary`와 `mailingCriticalSummary`다.
 실제 renderer·sender와 MY EQP mail row 생산 함수는 확인되지 않았으므로, 외부 sender가 별도로 재집계하는 데이터까지 적용됐다고 확정하지 않는다.
 
 ## 8. Template context 인벤토리
@@ -155,7 +159,8 @@ template에서 이름 또는 소비가 확인된 context는 다음과 같다.
 | `dashboard_change_from_previous_day` | 이미 format된 표시 text | string | numeric change 변환 주체 없음 | format `Documented`, 생산 `Unknown` |
 | `dashboard_change_color` | inline CSS color | 3개 hex 후보 | numeric change에서 파생 | 규칙 `Documented`, 생산 `Unknown` |
 | `recipient_knox_id` | 두 row list filter | string | 최종 recipient 결정 없음 | 소비 `Confirmed`, 생산 `Unknown` |
-| `rows` | 전체설비 table | object array | 조건+summary 결합 없음 | shape `Documented`, 생산 `Unknown` |
+| `rows` | 전체설비 table의 수신인별 모든 등록 조건 | object array | 외부 발송기가 이상건 유무와 관계없이 전달 | shape `Documented`, 생산 `Unknown` |
+| `mailing_critical_summary` | 전체설비 CRITICAL count | object array | `lineDashboard.mailingCriticalSummary` | API 생산 `Confirmed`, 외부 연결 `Needs Validation` |
 | `my_eqp_rows` | MY EQP table | object array, default `[]` | 별도 집계·결합 없음 | shape `Documented`, 생산 `Unknown` |
 
 full context의 required, nullable, 기본값과 잘못된 타입 처리 방식은 renderer가 없어 확정할 수 없다.
@@ -175,13 +180,16 @@ sender가 stats file이나 전일 파일을 독자적으로 다시 선택해서�
 
 ## 10. 전체설비 `rows` 결합 후보
 
-template이 소비하는 field는 `knox_id`, `line_name`, `sdwt`, `sensor_grade`, `dashboard_abnormal_count`다.
-`dashboard_abnormal_count`는 `lineDashboard.mailingSummary[].abnormalCount`에서 가져오도록 명시돼 있다.
-나머지 field는 `email` 등록 조건과 `mailingSummary`를 결합해 생성해야 하지만 해당 join 구현은 없다.
+template이 소비하는 등록 field는 `knox_id`, `line_name`, `sdwt`, `sensor_grade`다.
+발송기는 `email`의 수신인별 모든 등록 조건을 0건 조건까지 포함해 `rows`에 전달해야 한다.
+template은 수신인을 제한한 뒤 Line·SDWT·등록 Grade로 `mailing_critical_summary`를 대조하여 CRITICAL 건수를 표시한다.
+등록 A/B는 한 행으로 합산하고 D·M·N은 각각 표시한다. 중복 등록은 중복 집계하지 않는다.
+대응하는 집계 행이 없으면 0건이며, summary 자체가 미전달이면 `집계 미연결`을 표시한다.
+전체 이상건수인 기존 `rows[].dashboard_abnormal_count`는 이 표에서 사용하지 않는다. MY EQP는 기존 값을 유지한다.
+전체 Report LINK는 `status=ALARM`으로 CRITICAL 필터를 적용하며 STEP 등 하위 선택은 기존 화면 동작을 따른다.
 
-예상 join key는 이름상 SDWT·Grade이며 Line은 mapping 또는 summary에서 얻을 수 있지만 실제 선택 규칙은 `Unknown`이다.
-등록 조건에 존재하지만 이상건이 0인 row를 포함할지, summary에 존재하는 row만 포함할지도 `Unknown`이다.
-따라서 `rows` context Schema와 fixture는 생성하지 않는다.
+외부 발송기의 등록 조건 생성·context 전달은 여전히 `Needs Validation`이다.
+연결 예시와 A/B 상세 조회 범위는 [Mailing Report 데이터 API](mailing-report-data-api.md)를 따른다.
 
 ## 11. MY EQP `my_eqp_rows` 결합 후보
 
@@ -209,7 +217,17 @@ MY EQP link는 `row.prc_group`을 URL에 넣지 않고 `row.eqp`을 `eqpCh`로 �
 ## 13. 발신자와 수신자 결정
 
 `email.email` column에는 현재 API가 받은 `knox_id` 문자열이 저장되며 실제 이메일 주소 변환은 확인되지 않았다.
-Mailing 등록은 `knoxId` 또는 `knoxIds`, SDWT와 고정 priority `A`, `B`, `D`, `M`, `N`을 저장한다.
+Mailing 등록은 `knoxId` 또는 `knoxIds`, SDWT와 선택한 `priorities`를 저장한다.
+화면은 A·B·D·M·N을 복수 선택하며 기본 선택은 전체다. POST의 `priorities`를 생략한 기존 호출은 전체 Grade를 유지하고,
+빈 배열·미지원 Grade는 거부한다. 저장은 기존 등록에서 누락된 SDWT·Grade 조합만 추가하며 다른 SDWT에 Grade를 확장하지 않는다.
+DELETE에 `priorities`가 있으면 지정한 SDWT·Grade 조합만 제거하고, 생략하면 기존 Line 전체 삭제를 수행한다.
+Line·SDWT 매핑 검증은 두 삭제 방식에 동일하게 적용한다.
+
+DB의 기존 `email`, `sdwt`, `priority` 컬럼과 JSON 배열 형식을 유지한다. 한 수신인에게 서로 다른 Grade 조합이 있으면
+여러 행으로 표현한다. 기존 행 일부를 삭제할 때 남은 SDWT와 Grade 조합을 분리해 같은 트랜잭션에서 보존한다.
+실패 시 commit하지 않으며 DDL이나 migration을 실행하지 않는다. 운영 DB의 실제 인덱스는 로컬에서 확인하지 않았다.
+`email` 단독 UNIQUE 제약이 있는 환경에서는 조합별 복수 행 저장이 실패하므로 별도 스키마 검토가 필요하다.
+외부 발송기도 각 DB 행의 SDWT × Grade 조합을 유지해서 읽어야 하며 수신인 전체의 SDWT와 Grade를 각각 합쳐 재조합하면 안 된다.
 MY EQP 등록은 Line·SDWT·PRC Group·EQP·기간·`knox_id`를 저장한다.
 
 template 주석은 `email.email`과 active `myeqp_regist.knox_id`의 합집합을 recipient set으로 사용하도록 요구한다.

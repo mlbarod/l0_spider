@@ -68,11 +68,12 @@
 
 | 영역 | 등록 순서 |
 | --- | --- |
-| Mailing Report 수신인 등록 | Line·SDWT 선택 → 수신인 Knox ID 입력 후 Enter → **Mailing Report 저장** |
+| Mailing Report 수신인 등록 | Line·SDWT·Grade 선택 → 수신인 Knox ID 입력 후 Enter → **Mailing Report 저장** |
 | Chart Mailing 수신인 등록 | 그룹 이름·수신인 Knox ID 입력 → **Chart Mailing 저장** |
 | My EQP 등록 | Line Name·SDWT·PRC Group·EQP 선택 → 모니터링 기간·열람 및 메일수신인 입력 → **My EQP 저장** |
 
-Mailing Report는 A·B·D·M·N Grade가 함께 등록됩니다. 같은 수신인에게 조건을 추가하면 기존 조건에 합쳐집니다. **Line 삭제**는 선택한 수신인의 해당 Line 조건 전체를 삭제합니다.
+Mailing Report의 Grade는 A·B·D·M·N 중 1개 이상 복수 선택합니다. 처음에는 전체가 선택되어 있으며, 필요 없는 Grade를 눌러 해제할 수 있습니다. 같은 수신인에게 추가로 저장하면 선택한 SDWT·Grade 조합만 추가됩니다.
+등록 목록의 **Grade 삭제**는 해당 행의 SDWT·Grade 한 건만 삭제하고, 다른 조건은 유지합니다. **Line 삭제**는 해당 Line 조건 전체를 삭제합니다. 삭제 전 확인창에서 대상 SDWT와 Grade를 확인하세요.
 
 My EQP 수신인은 Knox ID 입력 후 Enter로 추가합니다. 등록한 설비는 설비별 이상감지의 **SDWT → MY EQP**에서 조회하며, STEP의 `ALL`로 여러 STEP을 함께 볼 수 있습니다. 만료된 조건은 조회 대상에서 제외되고, 본인이 등록한 조건만 삭제할 수 있습니다.
 

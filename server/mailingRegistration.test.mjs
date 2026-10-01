@@ -29,18 +29,18 @@ function createResponse() {
   }
 }
 
-test("Mailing 등록 요청은 SDWT를 중복 제거하고 priority를 고정한다", () => {
+test("Mailing 등록 요청은 SDWT와 선택한 Grade를 정규화하고 중복 제거한다", () => {
   const payload = buildMailingRegistrationPayload({
     knoxId: " user01@samsung.com ",
     sdwts: ["DREAMS P1D", " DREAMS P1D ", "NAND P1D"],
-    priorities: ["X"],
+    priorities: ["N", " d ", "D"],
   })
 
   assert.deepEqual(payload, {
     knoxId: "user01",
     knoxIds: ["user01"],
     sdwts: ["DREAMS P1D", "NAND P1D"],
-    priorities: [...MAILING_PRIORITIES],
+    priorities: ["D", "N"],
   })
 })
 
@@ -103,6 +103,52 @@ test("Line 삭제 요청은 knox_id와 삭제 대상 SDWT를 정규화한다", (
   assert.equal(payload.knoxId, "user01")
   assert.equal(payload.line, "P1D")
   assert.deepEqual(payload.sdwts, ["DREAMS P1D", "NAND P1D"])
+  assert.equal(Object.hasOwn(payload, "priorities"), false)
+})
+
+test("Grade 삭제는 지정한 Grade만 전달하고 빈 값·미지원 Grade는 거부한다", () => {
+  const body = { knoxId: "user01", line: "LINE_A", sdwts: ["DREAMS P1D"] }
+  assert.deepEqual(buildMailingDeletePayload({ ...body, priorities: ["D"] }).priorities, ["D"])
+  for (const priorities of [[], ["X"], ["A", "X"], null, "A"]) {
+    assert.throws(() => buildMailingRegistrationPayload({ ...body, priorities }), /Grade/)
+    assert.throws(() => buildMailingDeletePayload({ ...body, priorities }), /Grade/)
+  }
+})
+
+test("등록과 Grade 삭제 API는 선택 조건을 그대로 helper에 전달한다", async () => {
+  for (const method of ["POST", "DELETE"]) {
+    const body = { knoxId: "user01", line: "LINE_A", sdwts: ["DREAMS P1D"], priorities: ["D", "N"] }
+    const request = Readable.from([JSON.stringify(body)])
+    request.method = method
+    const response = createResponse()
+    const calls = []
+    await handleMailingRegistrationRequest(request, response, undefined, {
+      mappingReader: async () => syntheticMapping,
+      helperRunner: async (action, payload) => {
+        calls.push({ action, payload })
+        return { ok: true, affectedRows: 1, requestedRows: 1 }
+      },
+    })
+    assert.equal(response.statusCode, 200)
+    assert.equal(calls.length, 1)
+    assert.equal(calls[0].action, method === "POST" ? "insert" : "delete_line")
+    assert.deepEqual(calls[0].payload.sdwts, body.sdwts)
+    assert.deepEqual(calls[0].payload.priorities, body.priorities)
+    if (method === "POST") assert.deepEqual(JSON.parse(response.body).registration.priorities, body.priorities)
+  }
+})
+
+test("Grade 삭제도 Line·SDWT 매핑 검증을 통과하기 전에 DB를 호출하지 않는다", async () => {
+  const request = Readable.from([JSON.stringify({
+    knoxId: "user01", line: "LINE_B", sdwts: ["DREAMS P1D"], priorities: ["D"],
+  })])
+  request.method = "DELETE"
+  const response = createResponse()
+  await handleMailingRegistrationRequest(request, response, undefined, {
+    mappingReader: async () => syntheticMapping,
+    helperRunner: async () => assert.fail("매핑 불일치 요청은 DB 호출 금지"),
+  })
+  assert.equal(response.statusCode, 400)
 })
 
 test("Mailing 등록 API는 GET, POST, DELETE 외 요청을 거부한다", async () => {

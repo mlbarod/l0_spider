@@ -68,6 +68,12 @@ export function buildMailingRegistrationPayload(body) {
   }
   const knoxIds = Array.from(new Set(requestedKnoxIds.map(normalizeKnoxId)))
   const sdwts = uniqueTextValues(body?.sdwts)
+  const priorities = body?.priorities === undefined
+    ? [...MAILING_PRIORITIES]
+    : uniqueTextValues(body.priorities).map((value) => value.toUpperCase())
+  if (!priorities.length || priorities.some((value) => !MAILING_PRIORITIES.includes(value))) {
+    throw new Error("Grade는 A, B, D, M, N 중 1개 이상 선택해야 합니다.")
+  }
 
   if (!sdwts.length || sdwts.length > MAX_SDWT_COUNT) {
     throw new Error(`SDWT는 1개 이상 ${MAX_SDWT_COUNT}개 이하로 선택해야 합니다.`)
@@ -80,12 +86,14 @@ export function buildMailingRegistrationPayload(body) {
     knoxId: knoxIds[0],
     knoxIds,
     sdwts,
-    priorities: [...MAILING_PRIORITIES],
+    priorities: MAILING_PRIORITIES.filter((value) => priorities.includes(value)),
   }
 }
 
 export function buildMailingDeletePayload(body) {
   const payload = buildMailingRegistrationPayload(body)
+  // A legacy Line deletion removes every grade, including historical values.
+  if (body?.priorities === undefined) delete payload.priorities
   const line = normalizeText(body?.line)
   if (!line) throw new Error("삭제할 Line Name이 필요합니다.")
   return { ...payload, line }
@@ -156,7 +164,7 @@ export async function handleMailingRegistrationRequest(
   req,
   res,
   url,
-  { mappingReader = readLineMapping } = {},
+  { mappingReader = readLineMapping, helperRunner = runMailingHelper } = {},
 ) {
   if (!new Set(["GET", "POST", "DELETE"]).has(req.method)) {
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
@@ -167,7 +175,7 @@ export async function handleMailingRegistrationRequest(
     const mapping = await requireLineMapping(mappingReader)
     if (req.method === "GET") {
       const knoxId = normalizeKnoxId(url.searchParams.get("knoxId"))
-      const result = await runMailingHelper("list", { knoxId })
+      const result = await helperRunner("list", { knoxId })
       sendJson(res, 200, {
         ok: true,
         registrations: normalizeMailingRecords(result.records),
@@ -179,7 +187,7 @@ export async function handleMailingRegistrationRequest(
     if (req.method === "DELETE") {
       const payload = buildMailingDeletePayload(body)
       assertKnownMappingSdwts(mapping, { line: payload.line, sdwts: payload.sdwts })
-      const result = await runMailingHelper("delete_line", payload)
+      const result = await helperRunner("delete_line", payload)
       sendJson(res, 200, result)
       return
     }
@@ -189,7 +197,7 @@ export async function handleMailingRegistrationRequest(
     const recipientPayloads = buildMailingRecipientPayloads(payload)
     const results = []
     for (const recipientPayload of recipientPayloads) {
-      results.push(await runMailingHelper("insert", recipientPayload))
+      results.push(await helperRunner("insert", recipientPayload))
     }
     const result = {
       ok: true,

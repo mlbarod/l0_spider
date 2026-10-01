@@ -67,7 +67,7 @@ import {
 } from "../api/selfEquipmentApi"
 import { SENSOR_GRADES } from "../utils/fdcTrendMockData"
 import { getLowestChStepRowsByPpid } from "../utils/chStepGrouping.mjs"
-import { ANOMALY_STATUSES, filterChartsByStatus } from "../utils/anomalyStatus.mjs"
+import { ANOMALY_STATUSES, filterChartsByStatus, readAnomalyStatusFromUrl } from "../utils/anomalyStatus.mjs"
 import { getAnomalyReasonLabel } from "../utils/anomalyReason.mjs"
 import { paginateChartGroups } from "../utils/chartPagination.mjs"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
@@ -1590,7 +1590,7 @@ export function FdcTrendPage() {
   const [selectedSensor, setSelectedSensor] = useState(() => searchParams.get("sensor") ?? "")
   const [selectedChStep, setSelectedChStep] = useState(() => searchParams.get("chStep") ?? "")
   const [chartPage, setChartPage] = useState(1)
-  const [selectedStatus, setSelectedStatus] = useState("")
+  const [selectedStatus, setSelectedStatus] = useState(() => readAnomalyStatusFromUrl(searchParams))
   const [showThreeDayIdentity, setShowThreeDayIdentity] = useState(true)
   const [expandedChSteps, setExpandedChSteps] = useState({
     contextKey: "",

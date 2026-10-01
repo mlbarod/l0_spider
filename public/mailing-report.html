@@ -29,7 +29,10 @@
       - dashboard_change_color: #d97706 for increase, #059669 for decrease,
         #667085 for no change or missing comparison data
       - recipient_knox_id: the knox_id receiving this rendered mail
-      - rows: knox_id, line_name, sdwt, sensor_grade, dashboard_abnormal_count
+      - rows: ALL registered knox_id, line_name, sdwt, sensor_grade conditions,
+        including conditions with no anomalies (do not filter by abnormalCount)
+      - mailing_critical_summary: lineDashboard.mailingCriticalSummary from the API;
+        entries have lineId, sdwt, sensorGrade, abnormalCount (ALARM only)
       - my_eqp_rows: knox_id, line_name, sdwt, prc_group, eqp, sensor_grade,
         dashboard_abnormal_count
 
@@ -45,9 +48,13 @@
       Never include another knox_id's conditions. If one list is empty, keep that report
       table empty and render only the rows available in the other report table.
 
-      dashboard_abnormal_count must come from lineDashboard.mailingSummary.abnormalCount.
-      It uses the same dashboard rule: unique desc, recipe_id, priority, sensor,
-      and eqp combinations, aggregated by date, Line, SDWT, and Sensor Grade.
+      The overall report joins registered conditions with mailing_critical_summary
+      by exact Line, SDWT and registered Grade. A and B are displayed together;
+      only registered grades contribute to that count. Other grades stay separate.
+      An absent matching summary row means zero; a missing summary means unavailable,
+      NEVER fall back to rows.dashboard_abnormal_count or mailingSummary totals.
+      CRITICAL means status=ALARM, filtered BEFORE counting unique desc, recipe_id,
+      priority, sensor and eqp combinations per date, Line, SDWT and Grade.
 
       The two dashboard-prefixed KPI values must be copied from the SAME unfiltered
       GET /api/dashboard-data response used for the SPIDER Dashboard. Never recalculate
@@ -161,7 +168,7 @@
                   <tr>
                     <td style="padding:16px 18px 13px; border-bottom:1px solid #eaecf0;">
                       <div style="color:#172033; font-size:15px; line-height:22px; font-weight:700;">전체 이상현황 Report</div>
-                      <div style="margin-top:3px; color:#667085; font-size:11px; line-height:17px;">LINK를 누르면 선택 조건이 적용된 설비별 SPEC내 이상감지 화면으로 이동합니다.</div>
+                      <div style="margin-top:3px; color:#667085; font-size:11px; line-height:17px;">등록된 Line · SDWT · Grade의 CRITICAL 이상건수입니다. LINK에서 해당 조건으로 이동한 뒤 STEP 등을 선택해 차트를 확인하세요.</div>
                     </td>
                   </tr>
                   <tr>
@@ -172,26 +179,53 @@
                             <th align="left" scope="col" style="padding:12px 16px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">Line Name</th>
                             <th align="left" scope="col" style="padding:12px 16px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">SDWT</th>
                             <th align="center" scope="col" style="padding:12px 16px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">Sensor Grade</th>
+                            <th align="center" scope="col" style="padding:12px 16px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">심각도</th>
                             <th align="right" scope="col" style="padding:12px 16px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">이상건수</th>
                             <th align="center" scope="col" style="width:112px; padding:12px 16px; border-bottom:1px solid #dfe3e8; color:#475467; font-size:11px; line-height:16px; font-weight:700;">LINK</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {% for row in rows if row.knox_id == recipient_knox_id %}
+                          {% set report = namespace(rows=[]) %}
+                          {% set has_critical_summary = mailing_critical_summary is defined and mailing_critical_summary is not none %}
+                          {% for line_group in rows | selectattr('knox_id', 'equalto', recipient_knox_id) | groupby('line_name', case_sensitive=true) %}
+                            {% for sdwt_group in line_group.list | groupby('sdwt', case_sensitive=true) %}
+                              {% set registered_grades = sdwt_group.list | map(attribute='sensor_grade') | list %}
+                              {% for grade, priorities in [('A/B', ['A', 'B']), ('D', ['D']), ('M', ['M']), ('N', ['N'])] %}
+                                {% set matched = namespace(grades=[], count=0) %}
+                                {% for priority in priorities %}
+                                  {% if priority in registered_grades or (grade == 'A/B' and 'A/B' in registered_grades) %}
+                                    {% set matched.grades = matched.grades + [priority] %}
+                                  {% endif %}
+                                {% endfor %}
+                                {% if matched.grades %}
+                                  {% if has_critical_summary %}
+                                    {% for summary in mailing_critical_summary if summary.lineId == line_group.grouper and summary.sdwt == sdwt_group.grouper and summary.sensorGrade in matched.grades %}
+                                      {% set matched.count = matched.count + summary.abnormalCount %}
+                                    {% endfor %}
+                                  {% endif %}
+                                  {% set report.rows = report.rows + [{'line_name': line_group.grouper, 'sdwt': sdwt_group.grouper, 'sensor_grade': grade, 'critical_count': matched.count}] %}
+                                {% endif %}
+                              {% endfor %}
+                            {% endfor %}
+                          {% endfor %}
+                          {% for row in report.rows %}
                           <tr>
                             <td style="padding:13px 16px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700;">{{ row.line_name }}</td>
                             <td style="padding:13px 16px; border-bottom:1px solid #f0f2f5; color:#344054; font-size:13px; line-height:19px;">{{ row.sdwt }}</td>
                             <td align="center" style="padding:13px 16px; border-bottom:1px solid #f0f2f5;">
                               <span style="display:inline-block; min-width:34px; padding:3px 9px; border:1px solid #bfdbfe; border-radius:999px; background-color:#eff6ff; color:#1d4ed8; font-size:11px; line-height:16px; font-weight:700;">{{ row.sensor_grade }}</span>
                             </td>
-                            <td align="right" style="padding:13px 16px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700; white-space:nowrap;">{{ "{:,}".format(row.dashboard_abnormal_count | int) }}건</td>
+                            <td align="center" style="padding:13px 16px; border-bottom:1px solid #f0f2f5;">
+                              <span style="display:inline-block; padding:3px 9px; border:1px solid #fecaca; border-radius:999px; background-color:#fef2f2; color:#b91c1c; font-size:11px; line-height:16px; font-weight:700;">CRITICAL</span>
+                            </td>
+                            <td align="right" style="padding:13px 16px; border-bottom:1px solid #f0f2f5; color:#172033; font-size:13px; line-height:19px; font-weight:700; white-space:nowrap;">{% if has_critical_summary %}{{ "{:,}".format(row.critical_count | int) }}건{% else %}집계 미연결{% endif %}</td>
                             <td align="center" style="padding:10px 16px; border-bottom:1px solid #f0f2f5;">
-                              <a href="{{ spider_base_url }}/self-equipment?line={{ row.line_name | urlencode }}&amp;sdwt={{ row.sdwt | urlencode }}&amp;grade={{ row.sensor_grade | urlencode }}" target="_blank" rel="noopener noreferrer" style="display:inline-block; min-width:58px; padding:7px 12px; border:1px solid #2563eb; border-radius:7px; background-color:#ffffff; color:#2563eb; font-size:11px; line-height:15px; font-weight:700; text-align:center; text-decoration:none;">LINK&nbsp; ↗</a>
+                              <a href="{{ spider_base_url }}/self-equipment?line={{ row.line_name | urlencode }}&amp;sdwt={{ row.sdwt | urlencode }}&amp;grade={{ row.sensor_grade | urlencode }}&amp;status=ALARM" target="_blank" rel="noopener noreferrer" style="display:inline-block; min-width:58px; padding:7px 12px; border:1px solid #2563eb; border-radius:7px; background-color:#ffffff; color:#2563eb; font-size:11px; line-height:15px; font-weight:700; text-align:center; text-decoration:none;">LINK&nbsp; ↗</a>
                             </td>
                           </tr>
                           {% else %}
                           <tr>
-                            <td colspan="5" align="center" style="padding:34px 16px; color:#667085; font-size:13px; line-height:20px;">등록된 전체설비 Report 수신 조건 또는 해당 이상건이 없습니다.</td>
+                            <td colspan="6" align="center" style="padding:34px 16px; color:#667085; font-size:13px; line-height:20px;">등록된 전체설비 Report 수신 조건이 없습니다.</td>
                           </tr>
                           {% endfor %}
                         </tbody>

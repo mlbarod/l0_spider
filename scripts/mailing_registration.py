@@ -138,16 +138,45 @@ def merge_unique_values(*groups):
     return merged
 
 
-def merge_registration_values(payload, existing_rows):
-    existing_sdwts = []
-    existing_priorities = []
+def missing_registration_groups(payload, existing_rows):
+    existing_by_sdwt = {}
     for raw_sdwt, raw_priority in existing_rows:
-        existing_sdwts.extend(parse_list(raw_sdwt))
-        existing_priorities.extend(parse_list(raw_priority))
-    return {
-        "sdwts": merge_unique_values(existing_sdwts, payload["sdwts"]),
-        "priorities": merge_unique_values(payload["priorities"], existing_priorities),
-    }
+        for sdwt in parse_list(raw_sdwt):
+            existing_by_sdwt.setdefault(sdwt, set()).update(parse_list(raw_priority))
+    groups = {}
+    for sdwt in merge_unique_values(payload["sdwts"]):
+        missing = tuple(priority for priority in merge_unique_values(payload["priorities"])
+                        if priority not in existing_by_sdwt.get(sdwt, set()))
+        if missing:
+            groups.setdefault(missing, []).append(sdwt)
+    return [{"sdwts": sdwts, "priorities": list(priorities)}
+            for priorities, sdwts in groups.items()]
+
+
+def serialize_registration_groups(groups, column_schema):
+    records = []
+    for group in groups:
+        sdwt_chunks = split_list_for_column(group["sdwts"], column_schema["sdwt"]["maxLength"], "sdwt")
+        priority_chunks = split_list_for_column(group["priorities"], column_schema["priority"]["maxLength"], "priority")
+        records.extend((serialize_list(sdwts), serialize_list(priorities))
+                       for sdwts in sdwt_chunks for priorities in priority_chunks)
+    return records
+
+
+def remaining_registration_groups(stored_sdwts, stored_priorities, payload):
+    target_sdwts = set(payload["sdwts"])
+    target_priorities = set(payload.get("priorities", stored_priorities))
+    if not target_sdwts.intersection(stored_sdwts) or not target_priorities.intersection(stored_priorities):
+        return None
+    other_sdwts = [sdwt for sdwt in stored_sdwts if sdwt not in target_sdwts]
+    selected_sdwts = [sdwt for sdwt in stored_sdwts if sdwt in target_sdwts]
+    remaining_priorities = [priority for priority in stored_priorities if priority not in target_priorities]
+    groups = []
+    if other_sdwts:
+        groups.append({"sdwts": other_sdwts, "priorities": stored_priorities})
+    if remaining_priorities:
+        groups.append({"sdwts": selected_sdwts, "priorities": remaining_priorities})
+    return groups
 
 
 def insert_registration(payload, db_info):
@@ -161,34 +190,21 @@ def insert_registration(payload, db_info):
         INSERT INTO `email` (`email`, `sdwt`, `priority`)
         VALUES (%s, %s, %s)
     """
-    update_query = """
-        UPDATE `email`
-        SET `sdwt` = %s, `priority` = %s
-        WHERE `email` = %s
-    """
     with connect(db_info) as connection:
         column_schema = read_email_column_schema(connection, db_info["DB_NAME"])
         ensure_text_fits("email", payload["knoxId"], column_schema)
         with connection.cursor() as cursor:
             cursor.execute(select_query, (payload["knoxId"],))
             existing_rows = cursor.fetchall()
-            merged = merge_registration_values(payload, existing_rows)
-            serialized_sdwts = serialize_list(merged["sdwts"])
-            serialized_priorities = serialize_list(merged["priorities"])
-            ensure_text_fits("sdwt", serialized_sdwts, column_schema)
-            ensure_text_fits("priority", serialized_priorities, column_schema)
-            if existing_rows:
-                affected_rows = cursor.execute(
-                    update_query,
-                    (serialized_sdwts, serialized_priorities, payload["knoxId"]),
-                )
-                operation = "merged"
-            else:
-                affected_rows = cursor.execute(
+            groups = missing_registration_groups(payload, existing_rows)
+            records = serialize_registration_groups(groups, column_schema)
+            affected_rows = 0
+            for serialized_sdwts, serialized_priorities in records:
+                affected_rows += cursor.execute(
                     insert_query,
                     (payload["knoxId"], serialized_sdwts, serialized_priorities),
                 )
-                operation = "inserted"
+            operation = "merged" if existing_rows else "inserted"
         connection.commit()
 
     return {
@@ -229,7 +245,6 @@ def list_registrations(payload, db_info):
 
 
 def delete_line_registration(payload, db_info):
-    target_sdwts = set(payload["sdwts"])
     select_query = """
         SELECT `email`, `sdwt`, `priority`
         FROM `email`
@@ -242,12 +257,17 @@ def delete_line_registration(payload, db_info):
     """
     update_query = """
         UPDATE `email`
-        SET `sdwt` = %s
+        SET `sdwt` = %s, `priority` = %s
         WHERE `email` = %s AND `sdwt` = %s AND `priority` = %s
+    """
+    insert_query = """
+        INSERT INTO `email` (`email`, `sdwt`, `priority`)
+        VALUES (%s, %s, %s)
     """
     affected_rows = 0
     deleted_rows = 0
     updated_rows = 0
+    inserted_rows = 0
 
     with connect(db_info) as connection:
         column_schema = read_email_column_schema(connection, db_info["DB_NAME"])
@@ -256,20 +276,24 @@ def delete_line_registration(payload, db_info):
             rows = cursor.fetchall()
 
             for email_value, raw_sdwt, raw_priority in rows:
-                stored_sdwts = parse_list(raw_sdwt)
-                if not target_sdwts.intersection(stored_sdwts):
+                groups = remaining_registration_groups(parse_list(raw_sdwt), parse_list(raw_priority), payload)
+                if groups is None:
                     continue
-
-                remaining_sdwts = [sdwt for sdwt in stored_sdwts if sdwt not in target_sdwts]
-                if remaining_sdwts:
-                    serialized_remaining = serialize_list(remaining_sdwts)
-                    ensure_text_fits("sdwt", serialized_remaining, column_schema)
+                records = serialize_registration_groups(groups, column_schema)
+                if records:
+                    serialized_sdwts, serialized_priorities = records[0]
                     changed = cursor.execute(
                         update_query,
-                        (serialized_remaining, email_value, raw_sdwt, raw_priority),
+                        (serialized_sdwts, serialized_priorities, email_value, raw_sdwt, raw_priority),
                     )
                     updated_rows += changed
                     affected_rows += changed
+                    # Identical legacy rows may already have been updated by a previous iteration.
+                    if changed:
+                        for next_sdwts, next_priorities in records[1:]:
+                            inserted = cursor.execute(insert_query, (email_value, next_sdwts, next_priorities))
+                            inserted_rows += inserted
+                            affected_rows += inserted
                 else:
                     changed = cursor.execute(
                         delete_query,
@@ -284,6 +308,7 @@ def delete_line_registration(payload, db_info):
         "affectedRows": affected_rows,
         "deletedRows": deleted_rows,
         "updatedRows": updated_rows,
+        "insertedRows": inserted_rows,
         "line": payload["line"],
     }
 

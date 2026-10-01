@@ -36,12 +36,14 @@ Self Equipment는 Line·SDWT·Grade와 종속 조건을 좁혀 ERD 이상감지 
 | 브라우저 | 직접 URL·공유 URL | `/self-equipment` | 선택적으로 `line`, `sdwt`, `grade`, `step`, `eqpCh` | `Confirmed` | `routes.jsx:11-19`; `selfEquipmentUrlFilters.mjs:23-32` |
 | SPIDER 메인 | `설비별 SPEC내 이상감지` 카드 | `/self-equipment` | 없음 | `Confirmed` | `L0SpiderHomePage.jsx:11-19` |
 | Dashboard | Line 상세 링크 | `/self-equipment?...` | `line`, 반복 `sdwt`, 반복 `grade` | `Confirmed` | `LineAnomalyDashboard.jsx:287-301`; `dashboardLinks.mjs:6-13` |
-| Mailing template | 전체 이상현황 `LINK` | `/self-equipment?...` | `line`, `sdwt`, `grade` | template `Confirmed` | `public/mailing-report.html:180-190` |
+| Mailing template | 전체 이상현황 `LINK` | `/self-equipment?...` | `line`, `sdwt`, `grade`, `status=ALARM` | template `Confirmed` | `public/mailing-report.html`; `anomalyStatus.mjs` |
 | Mailing template | My EQP `LINK` | `/self-equipment?...` | `line`, `sdwt=MY_EQP`, `grade`, `step=ALL`, `eqpCh` | template `Confirmed` | `public/mailing-report.html:229-241` |
 | production SPA refresh | 서버 static fallback | 같은 URL | 기존 query 유지 | 코드 `Confirmed` | `server.mjs:89-128` |
 | `/fdc_trend` alias | 중첩 alias route | `/fdc_trend/self-equipment` | 같은 query 형식 | `Confirmed` | `routes.jsx:58-67` |
 
 메일 template을 실제로 렌더링·발송하는 실행 주체는 `Unknown`이다.
+진입 URL의 `status=ALARM`은 CRITICAL, `status=WARN`은 WARNING 필터를 초기 선택한다.
+누락·미지원 값은 기존 전체 상태 조회를 유지하며, 일반 SDWT의 STEP 등 하위 조건 선택 방식은 바뀌지 않는다.
 ## 4. 브라우저 라우트
 
 | 항목 | 확인 결과 | 상태 | 근거 |

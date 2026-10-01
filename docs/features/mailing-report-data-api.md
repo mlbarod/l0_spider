@@ -60,13 +60,52 @@ if payload.get("ok") is not True:
 dashboard = payload["lineDashboard"]
 kpi = dashboard["summary"]
 mailing_rows = dashboard["mailingSummary"]
-# 기존 수신자별 필터링·HTML 렌더링·발송 처리로 전달한다.
+mailing_critical_summary = dashboard["mailingCriticalSummary"]
+# 아래 본문 연결 규칙에 따라 수신자별 등록 조건과 함께 렌더링한다.
 ```
 
 `L0_SPIDER_BASE_URL`은 발송기에서 사용하는 기존 HTTPS 서비스 주소이며 새로 추가된 L0 Spider 서버 설정이 아니다.
 예시는 기존 기본 조회 기간을 사용한다. 특정 기간이 필요하면 기존 API와 같은
 `startDate=YYYY-MM-DD`, `endDate=YYYY-MM-DD` query를 전달한다.
 `line` 반복 query도 기존대로 지원하지만, 전체 Dashboard KPI를 메일에 표시할 때는 `line` 필터를 넣지 않는다.
+
+## 전체 이상현황 Report의 CRITICAL 본문 연결
+
+`lineDashboard.mailingCriticalSummary`는 기존 `mailingSummary`와 같은 위치·행 구조의 추가 배열이다.
+`lineId`, `sdwt`, `sensorGrade`, `abnormalCount`를 제공하며, `status`를 공백 제거·대문자화한 값이
+`ALARM`인 원본 행만 기존 날짜별 고유 조합 기준으로 집계한다. API의 Grade는 `A`, `B`, `D`, `M`, `N`으로
+분리한다. 기존 센서 제외 규칙과 Line·기간 필터를 적용하며, 기존 요약에 존재하는 조건에 CRITICAL이 없으면
+`abnormalCount: 0`이다. 기존 `mailingSummary`, Dashboard KPI와 MY EQP 집계는 바뀌지 않는다.
+
+외부 발송기의 `public/mailing-report.html` 렌더링 context에 다음 값을 연결해야 한다.
+
+```python
+# rows에는 이상건수와 관계없이 수신자의 모든 등록 조건을 전달한다.
+# 각 행: knox_id, line_name(API의 lineId 원문), sdwt(API 표시 SDWT), sensor_grade
+# 기존 KPI와 my_eqp_rows 등 다른 context는 그대로 유지한다.
+context["rows"] = registered_condition_rows
+context["mailing_critical_summary"] = dashboard["mailingCriticalSummary"]
+html = template.render(**context)
+```
+
+템플릿은 `recipient_knox_id`로 등록 조건을 먼저 제한한 뒤 Line·SDWT·Grade를 정확히 대조한다.
+등록된 A/B는 한 행으로 합산하고 D·M·N은 각각 표시하며, 미등록 Grade는 표시하거나 합산하지 않는다.
+등록 조건에 대응하는 summary 행이 없으면 0건을 표시한다. 등록 행 자체를 이상건이 있는 조건으로만
+제한하면 0건 Grade가 누락되므로 반드시 **모든 등록 조건**을 전달한다. 등록 화면에서 선택한 Grade만 전달한다.
+수신인에게 DB 행이 여러 개 있으면 각 행의 SDWT·Grade 조합을 유지하여 펼친다. 수신인 전체의 SDWT와 Grade를
+각각 합친 뒤 재조합하면 등록하지 않은 조건이 추가되므로 그렇게 처리하지 않는다.
+`mailing_critical_summary`가 누락되거나 `None`이면 건수 대신 `집계 미연결`을 표시하며 전체 건수로 대체하지 않는다.
+
+Jinja 3.1 이상에서 HTML autoescape를 켜고 렌더링한다. 검증 명령은
+`python3 scripts/mailing_report_template_test.py`다(Jinja2 필요, 실제 발송 없음).
+
+전체 Report 링크는 `status=ALARM`을 추가하여 CRITICAL 필터로 진입한다.
+Grade는 기존 상세 화면의 `A/B`, `D`, `M`, `N` 필터를 사용한다. A 또는 B만 등록된 경우 메일 건수에는
+등록된 Grade만 합산하지만, 상세 화면의 기존 A/B 통합 조회는 유지한다.
+일반 SDWT에서는 STEP 등 하위 조건을 선택해야 차트가 표시되며, 링크는 메일 발송 시점의 데이터를 고정하지 않는다.
+MY EQP Report 링크에는 이 상태 조건을 추가하지 않는다.
+
+이 저장소에는 운영 발송기 코드가 없으므로 실제 배포 시 외부 발송기의 context 연결도 함께 반영해야 한다.
 
 ## 응답과 오류
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { filterChartsByStatus } from "./anomalyStatus.mjs"
+import { filterChartsByStatus, readAnomalyStatusFromUrl } from "./anomalyStatus.mjs"
 import { getLowestChStepRowsByPpid } from "./chStepGrouping.mjs"
 import { buildSelfEquipmentPayload, TEAM_ERD_COLUMNS } from "../../../../server/selfEquipmentData.mjs"
 
@@ -27,4 +27,16 @@ test("해당 상태가 없으면 빈 결과이며 상태 미지정 데이터는 
   assert.deepEqual(filterChartsByStatus(rows, "ALARM"), [])
   assert.deepEqual(filterChartsByStatus(rows, "WARN"), [rows[0]])
   assert.equal(filterChartsByStatus(rows, "").length, 3)
+})
+
+test("메일 URL은 CRITICAL 필터로 진입하며 미지정·잘못된 상태는 기존 전체 조회를 유지한다", () => {
+  const rows = [{ status: "ALARM" }, { status: "WARN" }, {}]
+  const status = readAnomalyStatusFromUrl(new URLSearchParams("grade=A%2FB&status=ALARM"))
+  assert.equal(status, "ALARM")
+  assert.deepEqual(filterChartsByStatus(rows, status), [rows[0]])
+  assert.equal(readAnomalyStatusFromUrl(new URLSearchParams("status=+alarm+")), "ALARM")
+  assert.equal(readAnomalyStatusFromUrl(new URLSearchParams("status=WARN")), "WARN")
+  for (const query of ["", "status=", "status=CRITICAL", "status=invalid"]) {
+    assert.equal(readAnomalyStatusFromUrl(new URLSearchParams(query)), "")
+  }
 })

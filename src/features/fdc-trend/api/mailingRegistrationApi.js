@@ -4,7 +4,7 @@ async function readPayload(response) {
   return response.json().catch(() => ({}))
 }
 
-export async function createMailingRegistration({ knoxId, knoxIds, sdwts }) {
+export async function createMailingRegistration({ knoxId, knoxIds, sdwts, priorities }) {
   const recipientKnoxIds = Array.isArray(knoxIds) && knoxIds.length
     ? knoxIds
     : knoxId
@@ -14,7 +14,7 @@ export async function createMailingRegistration({ knoxId, knoxIds, sdwts }) {
   const response = await fetch("/api/mailing-registration", {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ knoxId: primaryKnoxId, knoxIds: recipientKnoxIds, sdwts }),
+    body: JSON.stringify({ knoxId: primaryKnoxId, knoxIds: recipientKnoxIds, sdwts, priorities }),
   })
   const payload = await readPayload(response)
 
@@ -24,16 +24,16 @@ export async function createMailingRegistration({ knoxId, knoxIds, sdwts }) {
   return payload
 }
 
-export async function deleteMailingRegistrationLine({ knoxId, line, sdwts }) {
+export async function deleteMailingRegistrationLine({ knoxId, line, sdwts, priorities }) {
   const response = await fetch("/api/mailing-registration", {
     method: "DELETE",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ knoxId, line, sdwts }),
+    body: JSON.stringify({ knoxId, line, sdwts, priorities }),
   })
   const payload = await readPayload(response)
 
   if (!response.ok) {
-    throw new Error(getApiErrorMessage(payload, "Mailing Line 조건을 삭제하지 못했습니다."))
+    throw new Error(getApiErrorMessage(payload, "Mailing 등록 조건을 삭제하지 못했습니다."))
   }
   return payload
 }

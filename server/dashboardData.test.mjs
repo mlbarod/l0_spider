@@ -196,6 +196,53 @@ test("Mailing sensor 제외는 mailingSummary만 바꾸고 Dashboard 집계는 �
   ])
 })
 
+test("메일 CRITICAL 집계는 모든 Grade에서 ALARM만 날짜별 중복 제거하고 기존 집계를 유지한다", () => {
+  const base = { sdwt: "S1", desc: "ETCH", recipe_id: "R1", sensor: "TEMP", eqp: "EQ1" }
+  const rows = [{
+    dateTime: "2026-07-15 08:00:00",
+    rows: [
+      { ...base, priority: "A", status: "WARN" },
+      { ...base, priority: "A", status: "ALARM" },
+      { ...base, priority: "A", status: " alarm ", reason: "another reason" },
+      { ...base, priority: "B" },
+      { ...base, priority: "D", status: "ALARM" },
+      { ...base, priority: "M", status: "WARN" },
+      { ...base, priority: "N", status: "ALARM" },
+      { ...base, priority: "X", status: "ALARM" },
+      { ...base, sdwt: "S3", priority: "D", sensor: "FLOW", status: "ALARM" },
+      { ...base, sdwt: "UNKNOWN", priority: "D", status: "ALARM" },
+    ],
+  }, {
+    dateTime: "2026-07-16 08:00:00",
+    rows: [{ ...base, priority: "A", status: "ALARM" }],
+  }]
+  const payload = buildLinePayload({}, rows)
+  assert.deepEqual(payload.mailingCriticalSummary, [
+    { lineId: "P1", sdwt: "SDWT 1", sensorGrade: "A", abnormalCount: 2 },
+    { lineId: "P1", sdwt: "SDWT 1", sensorGrade: "B", abnormalCount: 0 },
+    { lineId: "P1", sdwt: "SDWT 1", sensorGrade: "D", abnormalCount: 1 },
+    { lineId: "P1", sdwt: "SDWT 1", sensorGrade: "M", abnormalCount: 0 },
+    { lineId: "P1", sdwt: "SDWT 1", sensorGrade: "N", abnormalCount: 1 },
+    { lineId: "P2", sdwt: "SDWT 3", sensorGrade: "D", abnormalCount: 1 },
+  ])
+  const withoutStatus = buildLinePayload({}, rows.map((file) => ({
+    ...file, rows: file.rows.map((row) => ({ ...row, status: undefined })),
+  })))
+  for (const field of ["summary", "lineSummary", "dailyTrend", "mailingSummary"]) {
+    assert.deepEqual(payload[field], withoutStatus[field])
+  }
+  assert.ok(withoutStatus.mailingCriticalSummary.every((row) => row.abnormalCount === 0))
+  const excluded = buildLinePayload({ mailingSensorExclusionPatterns: ["temp"] }, rows)
+  assert.deepEqual(excluded.mailingCriticalSummary, [
+    { lineId: "P2", sdwt: "SDWT 3", sensorGrade: "D", abnormalCount: 1 },
+  ])
+  const filtered = buildLinePayload({ lines: ["P1"], startDate: "2026-07-16" }, rows)
+  assert.deepEqual(filtered.mailingCriticalSummary, [
+    { lineId: "P1", sdwt: "SDWT 1", sensorGrade: "A", abnormalCount: 1 },
+  ])
+  assert.deepEqual(buildLinePayload({}, []).mailingCriticalSummary, [])
+})
+
 test("데이터 파일이 없는 날짜도 라인별 0건으로 채우고 날짜 오름차순을 유지한다", () => {
   const payload = buildLinePayload()
 

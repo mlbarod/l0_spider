@@ -140,6 +140,7 @@ function FilterPanel({
                 <button
                   key={option.value}
                   type="button"
+                  aria-pressed={selected}
                   onClick={() => onSelect(option.value)}
                   className={cn(
                     "flex min-h-9 w-full items-center gap-2 rounded-full border border-transparent px-3 py-2 text-left text-xs transition",
@@ -200,11 +201,13 @@ export function MailingRegistrationPage({ embedded = false }) {
   const initializedKnoxId = useRef(false)
   const [selectedLine, setSelectedLine] = useState("")
   const [selectedSdwts, setSelectedSdwts] = useState([])
+  const [selectedPriorities, setSelectedPriorities] = useState([...MAILING_PRIORITIES])
   const [recipientKnoxInput, setRecipientKnoxInput] = useState("")
   const [recipientKnoxIds, setRecipientKnoxIds] = useState([])
   const [lookupKnoxId, setLookupKnoxId] = useState("")
   const [lineQuery, setLineQuery] = useState("")
   const [sdwtQuery, setSdwtQuery] = useState("")
+  const [gradeQuery, setGradeQuery] = useState("")
   const [urlTarget, setUrlTarget] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
 
@@ -304,19 +307,19 @@ export function MailingRegistrationPage({ embedded = false }) {
         queryClient.invalidateQueries({ queryKey: ["mailing-registrations", knoxId] })
       })
       toast.success("Mailing 기능을 등록했습니다.", {
-        description: `${savedKnoxIds.length}명 · ${result.registration?.sdwts?.length ?? resolvedSdwts.length}개 SDWT · 5개 Grade`,
+        description: `${savedKnoxIds.length}명 · ${result.registration?.sdwts?.length ?? resolvedSdwts.length}개 SDWT · ${result.registration?.priorities?.length ?? selectedPriorities.length}개 Grade`,
       })
     },
     onError: (error) => toast.error(error.message),
   })
   const deleteMutation = useMutation({
     mutationFn: deleteMailingRegistrationLine,
-    onSuccess: (result) => {
-      const deletedLine = deleteTarget?.line ?? result.line
-      const deletedKnoxId = deleteTarget?.knoxId ?? validLookupKnoxId
+    onSuccess: (result, target) => {
+      const deletedLine = target.line
+      const deletedKnoxId = target.knoxId
       setDeleteTarget(null)
       queryClient.invalidateQueries({ queryKey: ["mailing-registrations", deletedKnoxId] })
-      toast.success(`${formatLineDisplayName(deletedLine)} Line Mailing 조건을 삭제했습니다.`, {
+      toast.success(`${formatLineDisplayName(deletedLine)} ${target.priorities ? `${target.priorities.join(", ")} Grade` : "Line"} Mailing 조건을 삭제했습니다.`, {
         description: `DB 반영 ${result.affectedRows?.toLocaleString() ?? 0}행`,
       })
     },
@@ -324,7 +327,7 @@ export function MailingRegistrationPage({ embedded = false }) {
   })
 
   const isReadyToSave = Boolean(
-    mappingReady && selectedLine && resolvedSdwts.length && recipientKnoxIds.length,
+    mappingReady && selectedLine && resolvedSdwts.length && selectedPriorities.length && recipientKnoxIds.length,
   )
 
   const handleLineChange = (line) => {
@@ -343,6 +346,12 @@ export function MailingRegistrationPage({ embedded = false }) {
         ? current.filter((item) => item !== sdwt)
         : [...current.filter((item) => item !== ALL_SDWT), sdwt]
     ))
+  }
+
+  const togglePriority = (priority) => {
+    setSelectedPriorities((current) => current.includes(priority)
+      ? current.filter((item) => item !== priority)
+      : MAILING_PRIORITIES.filter((item) => item === priority || current.includes(item)))
   }
 
   const addRecipientKnoxId = () => {
@@ -366,7 +375,7 @@ export function MailingRegistrationPage({ embedded = false }) {
 
   const handleSave = () => {
     if (!isReadyToSave || registrationMutation.isPending) return
-    registrationMutation.mutate({ knoxIds: recipientKnoxIds, sdwts: resolvedSdwts })
+    registrationMutation.mutate({ knoxIds: recipientKnoxIds, sdwts: resolvedSdwts, priorities: selectedPriorities })
   }
 
   const showUrl = (row) => {
@@ -391,7 +400,7 @@ export function MailingRegistrationPage({ embedded = false }) {
             <div className="min-w-0">
               <h1 className="text-lg font-semibold tracking-tight">이상감지 Mailing Report 수신인 등록</h1>
               <p className="mt-1 text-xs text-muted-foreground">
-                Line과 SDWT 조건별 이상감지 Mailing 대상자를 등록합니다.
+                Line, SDWT, Grade 조건별 이상감지 Mailing 대상자를 등록합니다.
               </p>
             </div>
           </div>
@@ -411,12 +420,12 @@ export function MailingRegistrationPage({ embedded = false }) {
             <div className="mb-3">
               <h2 id="mailing-filter-title" className="text-base font-semibold">Mailing 조건 선택</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Line을 선택한 뒤 SDWT를 복수 선택하거나 ALL로 한 번에 선택할 수 있습니다.
+                Line을 선택한 뒤 SDWT와 Grade를 복수 선택하세요. SDWT의 ALL은 해당 Line 전체를 선택합니다.
               </p>
             </div>
 
             <ResizableFilterArea defaultHeight={310} minHeight={220} maxHeight={700}>
-              <div className="grid h-full gap-4 overflow-y-auto pb-1 md:grid-cols-2">
+              <div className="grid h-full gap-4 overflow-y-auto pb-1 md:grid-cols-3">
                 <FilterPanel
                   step="1"
                   title="Line Name"
@@ -442,6 +451,20 @@ export function MailingRegistrationPage({ embedded = false }) {
                   onQueryChange={setSdwtQuery}
                   disabled={!selectedLine}
                   emptyMessage="Line Name을 먼저 선택하세요."
+                />
+                <FilterPanel
+                  step="3"
+                  title="Grade"
+                  description="수신할 Grade를 1개 이상 복수 선택하세요."
+                  options={MAILING_PRIORITIES.filter((grade) => matchesQuery(grade, gradeQuery))
+                    .map((grade) => ({ value: grade, label: grade }))}
+                  selectedValues={selectedPriorities}
+                  multiple
+                  onSelect={togglePriority}
+                  query={gradeQuery}
+                  onQueryChange={setGradeQuery}
+                  disabled={!selectedLine}
+                  emptyMessage={selectedLine ? "검색 결과가 없습니다." : "Line Name을 먼저 선택하세요."}
                 />
               </div>
             </ResizableFilterArea>
@@ -490,7 +513,7 @@ export function MailingRegistrationPage({ embedded = false }) {
                 <p className="mt-2 text-xs text-muted-foreground">
                   {currentUserQuery.isError
                     ? `현재 접속자 조회 오류: ${currentUserQuery.error.message}`
-                    : "복수 등록할 수 있으며, email 테이블에 수신인별로 1행씩 저장됩니다."}
+                    : "여러 수신인에게 선택한 SDWT·Grade 조건을 함께 등록할 수 있습니다."}
                 </p>
                 {recipientKnoxIds.length ? (
                   <div className="mt-4 rounded-xl border bg-muted/20 p-4">
@@ -533,7 +556,7 @@ export function MailingRegistrationPage({ embedded = false }) {
               <section className="border-t p-5 sm:p-6 lg:border-l lg:border-t-0" aria-labelledby="mailing-selection-title">
                 <h2 id="mailing-selection-title" className="text-base font-semibold">등록 예정 조건</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  priority는 정책에 따라 A, B, D, M, N으로 고정됩니다.
+                  선택한 SDWT와 Grade 조합을 수신인에게 추가합니다.
                 </p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <SelectionItem
@@ -547,7 +570,7 @@ export function MailingRegistrationPage({ embedded = false }) {
                     value={recipientKnoxIds.join(", ")}
                     complete={recipientKnoxIds.length > 0}
                   />
-                  <SelectionItem label="Grade (priority)" value={MAILING_PRIORITIES.join(", ")} complete />
+                  <SelectionItem label="Grade (priority)" value={selectedPriorities.join(", ")} complete={selectedPriorities.length > 0} />
                 </div>
               </section>
             </CardContent>
@@ -557,7 +580,7 @@ export function MailingRegistrationPage({ embedded = false }) {
             <div>
               <h2 className="text-sm font-semibold">등록할 Mailing 조건을 확인하세요.</h2>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                선택한 Line·SDWT와 수신인을 확인한 뒤 저장하세요.
+                선택한 Line·SDWT·Grade와 수신인을 확인한 뒤 저장하세요.
               </p>
             </div>
             <Button
@@ -609,7 +632,7 @@ export function MailingRegistrationPage({ embedded = false }) {
                         <TableHead>Line Name</TableHead>
                         <TableHead>SDWT</TableHead>
                         <TableHead>Grade</TableHead>
-                        <TableHead className="w-64 text-right">관리</TableHead>
+                        <TableHead className="w-80 text-right">관리</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -635,11 +658,28 @@ export function MailingRegistrationPage({ embedded = false }) {
                                 <Link2 className="size-3.5" aria-hidden="true" />
                                 링크확인
                               </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={!mappingReady || !row.line || !MAILING_PRIORITIES.includes(row.grade) || deleteMutation.isPending}
+                                aria-label={`${formatLineDisplayName(row.line)} ${row.sdwt} ${row.grade} Grade 삭제`}
+                                onClick={() => setDeleteTarget({
+                                  line: row.line,
+                                  knoxId: row.knoxId,
+                                  sdwts: [row.sdwt],
+                                  priorities: [row.grade],
+                                })}
+                              >
+                                <Trash2 className="size-3.5" aria-hidden="true" />
+                                Grade 삭제
+                              </Button>
                               {lineDeleteGroups.get(row.line)?.firstRowId === row.id ? (
                                 <Button
                                   type="button"
                                   variant="destructive"
                                   size="sm"
+                                  disabled={!mappingReady || deleteMutation.isPending}
                                   onClick={() => {
                                     const group = lineDeleteGroups.get(row.line)
                                     setDeleteTarget({
@@ -709,11 +749,11 @@ export function MailingRegistrationPage({ embedded = false }) {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{formatLineDisplayName(deleteTarget?.line)} Line을 삭제할까요?</DialogTitle>
+            <DialogTitle>{formatLineDisplayName(deleteTarget?.line)} {deleteTarget?.priorities ? `${deleteTarget.priorities.join(", ")} Grade를` : "Line을"} 삭제할까요?</DialogTitle>
             <DialogDescription>
-              {deleteTarget?.knoxId}에 등록된 해당 Line의 SDWT
-              {deleteTarget?.sdwts?.length ? ` ${deleteTarget.sdwts.length}개` : ""}와 Grade
-              {deleteTarget?.grades?.length ? ` ${deleteTarget.grades.length}개` : ""}가 모두 DB에서 삭제됩니다.
+              {deleteTarget?.priorities
+                ? `${deleteTarget.knoxId}의 선택한 SDWT에서 ${deleteTarget.priorities.join(", ")} Grade 등록만 삭제합니다. 다른 SDWT와 Grade는 유지됩니다.`
+                : `${deleteTarget?.knoxId}에 등록된 해당 Line의 SDWT ${deleteTarget?.sdwts?.length ?? 0}개와 모든 Grade가 삭제됩니다.`}
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border bg-destructive/5 px-4 py-3 text-sm">
@@ -721,6 +761,7 @@ export function MailingRegistrationPage({ embedded = false }) {
             <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">
               SDWT: {deleteTarget?.sdwts?.join(", ") || "-"}
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">Grade: {deleteTarget?.priorities?.join(", ") || "전체"}</p>
           </div>
           <DialogFooter>
             <Button
@@ -739,6 +780,7 @@ export function MailingRegistrationPage({ embedded = false }) {
                 knoxId: deleteTarget.knoxId,
                 line: deleteTarget.line,
                 sdwts: deleteTarget.sdwts,
+                priorities: deleteTarget.priorities,
               })}
             >
               {deleteMutation.isPending ? (
@@ -746,7 +788,7 @@ export function MailingRegistrationPage({ embedded = false }) {
               ) : (
                 <Trash2 className="size-4" aria-hidden="true" />
               )}
-              DB에서 Line 삭제
+              {deleteTarget?.priorities ? "Grade 삭제" : "DB에서 Line 삭제"}
             </Button>
           </DialogFooter>
         </DialogContent>
