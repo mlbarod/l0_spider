@@ -37,7 +37,7 @@ test("질문 제목·마스터 수신자·Quality-Hub 본문 서식과 실제 �
 test("답변은 마스터와 글 작성자를 합치고 중복 제거하며 새 답변만 추가한다", () => {
   const mail = buildVoeMail({ ...input, action: "reply", masterUserIds: ["MASTER.ONE", "Owner", "owner", "writer"] })
   assert.deepEqual(mail.recipients.map(r => r.emailAddress), ["master.one@samsung.com", "owner@samsung.com", "writer@samsung.com"])
-  assert.equal(mail.subject, "[SPIDER VOE] L0 SPIDER-메일 & 서식 확인")
+  assert.equal(mail.subject, "[SPIDER VOE] 답변: L0 SPIDER-메일 & 서식 확인")
   assert.match(mail.contents, /질문 본문[\s\S]*질문[\s\S]*<hr[\s\S]*추가 답변[\s\S]*새 답변/)
   assert.doesNotMatch(mail.contents, /이전 답변/)
   assert.throws(() => buildVoeMail({ ...input, action: "reply", post: { ...post, messages: [] } }))

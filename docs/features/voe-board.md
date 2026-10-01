@@ -9,7 +9,7 @@ Quality-Hub 로컬 저장소의 `prototype/src/qna/QnaApp.jsx`, 서식 편집기
 - 질문 등록: 접근 권한 저장소에 현재 등록된 모든 마스터 Knox ID로 발송한다.
 - 답변 등록: 모든 마스터와 질문 작성자에게 발송한다. 같은 ID는 한 번만 포함하며, 작성자가 수신 대상이면 본인도 받는다.
 - 수정·삭제·복구·상태 변경·최종 답변 지정에는 메일을 보내지 않는다.
-- 제목은 `[SPIDER VOE] <카테고리>-<게시글 제목>`이다.
+- 질문 등록 메일 제목은 `[SPIDER VOE] <카테고리>-<게시글 제목>`, 답변 등록 메일 제목은 `[SPIDER VOE] 답변: <카테고리>-<게시글 제목>`이다.
 - 본문은 Quality-Hub의 VOE 메일 양식과 동일한 서식으로 작성자, 구분(카테고리), 게시글 링크, 질문 본문을 표시한다. 답변 등록 시 구분선 아래에 새 답변만 추가한다. Spider에서 사용하지 않는 라인 항목은 생략한다. 표·글씨 크기 등은 유지하고 이미지는 `[이미지: 게시글에서 확인]`으로 대체한다.
 
 Chart Mailing과 같은 `KNOX_MAIL_ENABLED`, `KNOX_MAIL_TOKEN`, `KNOX_MAIL_SYSTEM_ID`, `KNOX_MAIL_TIMEOUT_MS` 및 Knox API를 사용한다. 발신자와 API `userId`는 로그인한 작성자의 Knox ID이며 수신 주소는 `<knox_id>@samsung.com`이다. 링크 주소는 기존 `SSO_REDIRECT_URI`의 서비스 주소에 `/voe?questionId=<번호>`를 붙여 생성한다. 별도 메일 설정이나 DB 테이블 추가는 필요 없다.

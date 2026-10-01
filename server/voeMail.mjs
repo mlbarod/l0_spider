@@ -35,7 +35,7 @@ export function buildVoeMail({ action, post, actor, masterUserIds, sender, porta
   )
   contents.push("</div></body></html>")
   return {
-    subject: `[SPIDER VOE] ${category}-${String(post.title).replace(/[\r\n]+/g, " ")}`,
+    subject: `[SPIDER VOE] ${reply ? "답변: " : ""}${category}-${String(post.title).replace(/[\r\n]+/g, " ")}`,
     docSecuType: "PERSONAL", contents: contents.join("\n"), contentType: "HTML", sender,
     recipients: [...new Set(recipients.map(emailAddress))].map(address => ({ emailAddress: address, recipientType: "TO" })),
   }
