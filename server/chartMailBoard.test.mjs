@@ -13,6 +13,59 @@ import { createChartMailBoardDb, runChartMailBoardHelper } from "./chartMailBoar
 const env = { CHART_MAIL_BOARD_ENABLED: "true", KNOX_MAIL_ENABLED: "true", KNOX_MAIL_TOKEN: "synthetic-token", KNOX_MAIL_SYSTEM_ID: "synthetic-system", KNOX_MAIL_TIMEOUT_MS: "100" }
 const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aC6sAAAAASUVORK5CYII="
 const draft = () => ({ requestId: randomUUID(), title: "Synthetic chart", details: "Line: TEST", comment: "확인 요청\n둘째 줄", recipients: ["reader.test", "READER.TEST@samsung.com"], image: `data:image/png;base64,${png}`, chartUrl: "https://spider.example/self-equipment?line=TEST" })
+
+test("이력저장은 메일 설정 없이 SSO 사용자 본인에게 저장하며 메일 전송을 호출하지 않는다", async t => {
+  t.mock.method(globalThis, "fetch", () => { assert.fail("history must never send mail") })
+  const posts = new Map()
+  const db = createChartMailBoardDb({ run: async (action, input) => {
+    assert.equal(action, "save-history")
+    const previous = posts.get(input.id)
+    if (previous && previous.fingerprint !== input.fingerprint) throw Object.assign(new Error(), { code: "MAIL_REQUEST_CONFLICT" })
+    posts.set(input.id, input)
+    return { ok: true, created: !previous }
+  } })
+  const handler = createChartMailBoardHandler({ db, env: { CHART_MAIL_BOARD_ENABLED: "true" } })
+  for (const app of ["self-equipment", "matching-anomaly", "common-anomaly", "common-commonality-anomaly"]) {
+    const input = { ...draft(), title: "[SPIDER] TEMP 확인 부탁드립니다.", actor: "forged", chartUrl: `https://spider.example/${app}?line=TEST` }
+    const request = { path: "/api/chart-mail-board", method: "POST", body: input }
+    const result = await call(handler, request)
+    assert.equal(result.status, 200)
+    assert.equal(result.body.status, "saved")
+    assert.equal(result.body.created, true)
+    const post = posts.get(result.body.boardPostId)
+    assert.equal(post.actor, "sender.test")
+    assert.deepEqual(post.recipients, ["sender.test"])
+    assert.equal(post.title, "[SPIDER] TEMP 이력을 저장했습니다.")
+    assert.equal(post.comment, "이력을 저장했습니다")
+    assert.equal(post.details, input.details)
+    assert.equal(post.imageBase64, png)
+    assert.equal(post.app, app)
+    const retry = await call(handler, request)
+    assert.equal(retry.body.boardPostId, result.body.boardPostId)
+    assert.equal(retry.body.created, false)
+    assert.equal((await call(handler, { ...request, body: { ...input, details: "changed" } })).status, 409)
+  }
+  assert.equal(posts.size, 4)
+})
+
+test("이력저장 입력·이미지·출처 오류와 DB 비활성·저장 실패는 성공으로 표시하지 않는다", async () => {
+  let writes = 0
+  const db = { saveHistory: async () => { writes++; throw new Error("private database password") } }
+  const handler = createChartMailBoardHandler({ db, env, logger: () => {} })
+  const request = { path: "/api/chart-mail-board", method: "POST", body: draft() }
+  for (const change of [{ image: "not png" }, { chartUrl: "https://other.example/self-equipment" }, { chartUrl: "" }, { requestId: "bad" }, { title: "bad\nheader" }]) {
+    assert.equal((await call(handler, { ...request, body: { ...request.body, ...change } })).status, 400)
+  }
+  assert.equal((await call(handler, { ...request, contentType: "text/plain" })).status, 400)
+  assert.equal((await call(handler, { ...request, raw: "{" })).status, 400)
+  assert.equal(writes, 0)
+  assert.equal((await call(createChartMailBoardHandler({ db, env: {} }), request)).status, 503)
+  assert.equal(writes, 0)
+  const failed = await call(handler, request)
+  assert.equal(failed.status, 500)
+  assert.equal(failed.body.code, "BOARD_STORAGE_ERROR")
+  assert.doesNotMatch(JSON.stringify(failed.body), /private database password/)
+})
 async function call(handler, { path = "/api/chart-mail", method = "GET", body, raw, user = "Sender.Test", authenticated = true, contentType = "application/json" } = {}) {
   const req = Readable.from([raw ?? (body ? JSON.stringify(body) : "")])
   Object.assign(req, { method, headers: { "content-type": contentType, origin: "https://spider.example" }, ssoRequired: authenticated, auth: { knoxId: user } })
@@ -131,7 +184,7 @@ test("board API requires login for list, image and writes; all logged-in users u
     return { ok: true, posts: [], total: 0, post: { id }, imageBase64: png }
   } })
   const handler = createChartMailBoardHandler({ db, env })
-  for (const [path, method] of [["/api/chart-mail-board", "GET"], [`/api/chart-mail-board/${id}/image`, "GET"], [`/api/chart-mail-board/${id}`, "PATCH"]]) {
+  for (const [path, method] of [["/api/chart-mail-board", "GET"], ["/api/chart-mail-board", "POST"], [`/api/chart-mail-board/${id}/image`, "GET"], [`/api/chart-mail-board/${id}`, "PATCH"]]) {
     assert.equal((await call(handler, { path, method, authenticated: false })).status, 401)
   }
   assert.equal(calls.length, 0)
@@ -147,7 +200,7 @@ test("board API requires login for list, image and writes; all logged-in users u
   assert.equal((await call(handler, { path: `/api/chart-mail-board/${id}`, method: "PATCH", body: { actor: "forged", status: "COMPLETED", version: 1, comment: "done" } })).status, 200)
   assert.equal(calls.at(-1).payload.actor, "sender.test")
   assert.equal((await call(handler, { path: `/api/chart-mail-board/${id}`, method: "DELETE" })).status, 405)
-  assert.equal((await call(handler, { path: "/api/chart-mail-board", method: "POST", body: {} })).status, 405)
+  assert.equal((await call(handler, { path: "/api/chart-mail-board", method: "POST", body: {} })).status, 400)
   for (const query of ["page=0", "page=2.5", "status=SKIP", ...["search", "line", "sdwt"].map(key => `${key}=${"a".repeat(201)}`)]) assert.equal((await call(handler, { path: `/api/chart-mail-board?${query}` })).status, 400)
   for (const body of [{ status: "SKIP", version: 1 }, { status: "COMPLETED", version: 0 }, { status: "COMPLETED", version: 1, comment: "a".repeat(1001) }]) assert.equal((await call(handler, { path: `/api/chart-mail-board/${id}`, method: "PATCH", body })).status, 400)
   assert.equal((await call(handler, { path: `/api/chart-mail-board/${id}`, method: "PATCH", raw: "x".repeat(8193) })).status, 400)

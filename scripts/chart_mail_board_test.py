@@ -118,6 +118,31 @@ class BoardTest(unittest.TestCase):
         board.execute_action(self.db, "begin", draft(id="d" * 64))
         self.assertEqual(self.run_action("list", page=1, search="", status="")["total"], 2)
 
+    def test_history_is_atomic_self_addressed_not_sent_and_idempotent(self):
+        request = draft(title="[SPIDER] TEMP 이력을 저장했습니다.")
+        self.assertTrue(board.execute_action(self.db, "save-history", request)["created"])
+        self.assertFalse(board.execute_action(self.db, "save-history", request)["created"])
+        post = self.run_action("detail")["post"]
+        self.assertEqual(post["sender"], "sender.test")
+        self.assertEqual(post["recipients"], ["sender.test"])
+        self.assertEqual(post["comment"], "이력을 저장했습니다")
+        self.assertEqual(post["title"], request["title"])
+        self.assertEqual(post["mailState"], "not_sent")
+        self.assertEqual(self.run_action("image")["imageBase64"], PNG)
+        self.run_action("status", status="COMPLETED", version=1, comment="확인")
+        self.assertEqual(self.run_action("detail")["post"]["mailState"], "not_sent")
+        with self.assertRaisesRegex(board.BoardError, "BOARD_CONFLICT"):
+            self.run_action("finish", actor="sender.test", state="accepted", diagnostics={})
+
+    def test_history_image_failure_rolls_back_post_and_self_recipient(self):
+        self.db.fail_image = True
+        output = io.StringIO()
+        with patch.object(board, "connect", return_value=self.db), patch.object(sys, "stdin", io.StringIO(json.dumps(draft()))), patch.object(sys, "argv", ["board", "save-history"]), contextlib.redirect_stdout(output):
+            board.main()
+        self.assertEqual(json.loads(output.getvalue()), {"ok": False, "code": "BOARD_STORAGE_ERROR"})
+        for table in ("chart_mail_post", "chart_mail_post_recipient", "chart_mail_post_image"):
+            self.assertEqual(self.db.connection.execute("SELECT COUNT(*) FROM " + table).fetchone()[0], 0)
+
     def test_image_insert_failure_rolls_back_whole_snapshot(self):
         self.db.fail_image = True
         output = io.StringIO()

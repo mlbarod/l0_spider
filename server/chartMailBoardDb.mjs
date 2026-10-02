@@ -27,6 +27,7 @@ export function runChartMailBoardHelper(action, payload, { execute = execFile } 
 export function createChartMailBoardDb({ run = runChartMailBoardHelper } = {}) {
   return {
     begin: (payload) => run("begin", payload),
+    saveHistory: (payload) => run("save-history", payload),
     finish: (payload) => run("finish", payload),
     list: (actor, filters) => run("list", { ...filters, actor }),
     detail: (actor, id) => run("detail", { actor, id }),

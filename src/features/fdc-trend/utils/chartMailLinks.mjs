@@ -6,6 +6,8 @@ export function buildChartMailPath({ app, line, sdwt, row }) {
     Object.assign(filters, { stepDesc: row.stepDesc, chStep: row.chStep, chart: row.filePath })
   } else if (app === "common-anomaly") {
     Object.assign(filters, { prcGroup: row.prc_group, eqp: row.eqp, chart: row.file_path ?? row.data_path })
+  } else if (app === "common-commonality-anomaly") {
+    Object.assign(filters, { eqpModel: row.eqpModel, chStep: row.chStep, chart: row.filePath })
   } else {
     throw new Error("지원하지 않는 차트 링크입니다.")
   }

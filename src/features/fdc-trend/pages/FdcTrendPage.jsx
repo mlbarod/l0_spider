@@ -41,13 +41,12 @@ import {
 import { cn } from "@/lib/utils"
 
 import { createClickedCategoryHistory } from "../api/clickedCategoryHistoryApi"
-import { ChartMailDialog } from "../components/ChartMailDialog"
+import { ChartMailActions } from "../components/ChartMailActions"
 import { buildChartMailPath, prioritizeLinkedChart } from "../utils/chartMailLinks.mjs"
 import { renderChartPng } from "../utils/chartMailImage"
 import { ResizableFilterArea } from "../components/ResizableFilterArea"
 import { usePendingFilterView } from "../components/usePendingFilterView"
 import { fetchCurrentUser } from "../api/currentUserApi"
-import { createHitHistory } from "../api/hitHistoryApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
 import { isLineMappingQueryReady } from "../api/mappingContract.mjs"
 import { fetchMyEqpRegistrations } from "../api/myEqpRegistrationApi"
@@ -1184,18 +1183,6 @@ const ErdScatterCard = memo(function ErdScatterCard({
   const handleSkipDelete = () => {
     deleteSkipMutation.mutate({ lineId, filePath: row.file_path })
   }
-  const saveHitHistoryMutation = useMutation({
-    mutationFn: createHitHistory,
-    onSuccess: () => toast.success("이력저장 완료"),
-    onError: (error) => toast.error(error.message),
-  })
-  const handleHistorySave = () => {
-    saveHitHistoryMutation.mutate({
-      lineId,
-      filePath: row.file_path,
-      execDate: new Date().toISOString(),
-    })
-  }
 
   useEffect(() => {
     const card = cardRef.current
@@ -1474,7 +1461,7 @@ const ErdScatterCard = memo(function ErdScatterCard({
           ) : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <ChartMailDialog
+          <ChartMailActions
             title={`[SPIDER] 설비별 SPEC내 이상감지 / ${eqp || "EQPID 미지정"} / ${row.sensor || "-"} 확인 부탁드립니다.`}
             details={`Line: ${lineId} · EQP: ${eqp} · PPID: ${row.recipe_id || "-"} · Sensor: ${row.sensor || "-"} · Step: ${row.step || "-"} · Grade: ${row.priority || "-"}${reasonLabel ? ` · 사유: ${reasonLabel}` : ""}`}
             chartPath={buildChartMailPath({ app: "self-equipment", line: lineId, sdwt: team, row })}
@@ -1543,19 +1530,6 @@ const ErdScatterCard = memo(function ErdScatterCard({
             )}
             </DialogContent>
           </Dialog>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 px-[0.9rem] text-sm"
-            onClick={handleHistorySave}
-            disabled={saveHitHistoryMutation.isPending}
-          >
-            {saveHitHistoryMutation.isPending
-              ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-              : null}
-            이력저장
-          </Button>
         </div>
       </footer>
     </article>

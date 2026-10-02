@@ -3,7 +3,7 @@ import { useFilterFavorites } from "../components/useFilterFavorites"
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, Check, ChevronRight, FileWarning, Loader2 } from "lucide-react"
 import { Link, useSearchParams } from "react-router-dom"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
@@ -13,8 +13,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 import { createClickedCategoryHistory } from "../api/clickedCategoryHistoryApi"
-import { createHitHistory } from "../api/hitHistoryApi"
-import { ChartMailDialog } from "../components/ChartMailDialog"
+import { ChartMailActions } from "../components/ChartMailActions"
 import { buildChartMailPath, prioritizeLinkedChart } from "../utils/chartMailLinks.mjs"
 import { loadChartPng } from "../utils/chartMailImage"
 import { ResizableFilterArea } from "../components/ResizableFilterArea"
@@ -213,18 +212,6 @@ function CommonalityImageCard({ row, config, lineId, team }) {
   const detailText = row.eqpModel
     ? `${row.grade} · ${row.eqpModel}`
     : `${row.grade} · ${row.stepSeq} · ${row.ppid}`
-  const saveHitHistoryMutation = useMutation({
-    mutationFn: createHitHistory,
-    onSuccess: () => toast.success("이력저장 완료"),
-    onError: (error) => toast.error(error.message),
-  })
-  const handleHistorySave = () => {
-    saveHitHistoryMutation.mutate({
-      lineId,
-      filePath: row.filePath,
-      execDate: new Date().toISOString(),
-    })
-  }
 
   return (
     <article className="grid min-w-0 overflow-hidden rounded-xl border bg-background shadow-sm">
@@ -254,26 +241,14 @@ function CommonalityImageCard({ row, config, lineId, team }) {
         )}
       </div>
       <footer className="flex flex-wrap items-center justify-end gap-2 border-t bg-muted/20 px-4 py-2.5">
-        {config.queryKey === "commonality-data" && <ChartMailDialog
-          title={`[SPIDER] 동일성 이상감지 / ${row.sensor || "-"} 확인 부탁드립니다.`}
-          details={`Line: ${lineId} · STEP: ${row.stepDesc || "-"} · PPID: ${row.ppid || "-"} · Sensor: ${row.sensor || "-"} · ch_step: ${row.chStep || "-"} · Grade: ${row.grade || "-"}`}
-          chartPath={buildChartMailPath({ app: "matching-anomaly", line: lineId, sdwt: team, row })}
+        <ChartMailActions
+          allowMail={config.queryKey === "commonality-data"}
+          title={`[SPIDER] ${config.title} / ${row.sensor || "-"} 확인 부탁드립니다.`}
+          details={`Line: ${lineId} · ${row.eqpModel ? `EQP_MODEL: ${row.eqpModel}` : `STEP: ${row.stepDesc || "-"}`} · PPID: ${row.ppid || "-"} · Sensor: ${row.sensor || "-"} · ch_step: ${row.chStep || "-"} · Grade: ${row.grade || "-"}`}
+          chartPath={buildChartMailPath({ app: config.queryKey === "commonality-data" ? "matching-anomaly" : "common-commonality-anomaly", line: lineId, sdwt: team, row })}
           prepareImage={() => loadChartPng(imageUrl)}
           disabled={imageFailed}
-        />}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-9 px-[0.9rem] text-sm"
-          onClick={handleHistorySave}
-          disabled={saveHitHistoryMutation.isPending}
-        >
-          {saveHitHistoryMutation.isPending
-            ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-            : null}
-          이력저장
-        </Button>
+        />
       </footer>
     </article>
   )

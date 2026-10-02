@@ -150,7 +150,7 @@ sequenceDiagram
 | scatter·identity | `GET` | `/api/erd-scatter-data` | `handleErdScatterDataRequest` | chart card·modal | `Confirmed` |
 | ERD image stream | `GET/HEAD` | `/api/erd-file` | `handleErdFileRequest` | 현재 화면 소비 미확인 | endpoint `Confirmed` |
 | 선택 이력 | `POST` | `/api/clicked-category-history` | `handleClickedCategoryHistoryRequest` | 마지막 filter·MY EQP 진입 | `Confirmed` |
-| 결과 이력 | `POST` | `/api/hit-history` | `handleHitHistoryRequest` | `이력저장` action | `Confirmed` |
+| 결과 이력 | `POST` | `/api/chart-mail-board` | `handleChartMailBoardRequest` | `이력저장`: 메일 없이 본인 발신·수신으로 차트와 코멘트 저장. 기존 `/api/hit-history` API는 유지 | `Confirmed` |
 
 통합 진입점 근거는 `server.mjs:141-260`이며 STEP token 전용 mapping·검증 API는 확인되지 않았다.
 ## 11. API 요청 계약

@@ -18,6 +18,11 @@ export function fetchChartMailPosts({ page = 1, status = "", search = "", line =
 export function fetchChartMailPost(id, signal) {
   return request(`/api/chart-mail-board/${encodeURIComponent(id)}`, { signal })
 }
+export function saveChartHistory(input) {
+  return request("/api/chart-mail-board", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input),
+  })
+}
 export function updateChartMailPost(id, input) {
   return request(`/api/chart-mail-board/${encodeURIComponent(id)}`, {
     method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input),

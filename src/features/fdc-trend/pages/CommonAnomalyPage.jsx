@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ChartMailDialog } from "../components/ChartMailDialog"
+import { ChartMailActions } from "../components/ChartMailActions"
 import { buildChartMailPath, prioritizeLinkedChart } from "../utils/chartMailLinks.mjs"
 import { loadChartPng } from "../utils/chartMailImage"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
@@ -24,7 +24,6 @@ import {
   fetchCommonSkipListData,
 } from "../api/commonAnomalyApi"
 import { fetchCurrentUser } from "../api/currentUserApi"
-import { createHitHistory } from "../api/hitHistoryApi"
 import { fetchLineMapping } from "../api/mappingConfigApi"
 import { isLineMappingQueryReady } from "../api/mappingContract.mjs"
 import { deletePassHistory, fetchPassHistory } from "../api/passHistoryApi"
@@ -234,18 +233,6 @@ const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({
       prcGroup: row.prc_group,
     })
   }
-  const saveHitHistoryMutation = useMutation({
-    mutationFn: createHitHistory,
-    onSuccess: () => toast.success("이력저장 완료"),
-    onError: (error) => toast.error(error.message),
-  })
-  const handleHistorySave = () => {
-    saveHitHistoryMutation.mutate({
-      lineId,
-      filePath: row.image_path,
-      execDate: new Date().toISOString(),
-    })
-  }
 
   return (
     <article className="grid min-h-[400px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border bg-card shadow-sm">
@@ -303,7 +290,7 @@ const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({
           ) : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <ChartMailDialog
+          <ChartMailActions
             title={`[SPIDER] 공통부 이상감지 / ${eqp || "EQPID 미지정"} / ${row.sensor || "-"} 확인 부탁드립니다.`}
             details={`Line: ${lineId} · EQP: ${eqp} · PRC Group: ${row.prc_group || "-"} · Sensor: ${row.sensor || "-"} · Step: ${row.step || "-"} · Grade: ${row.priority || "-"}`}
             chartPath={buildChartMailPath({ app: "common-anomaly", line: lineId, sdwt: team, row })}
@@ -317,19 +304,6 @@ const CommonAnomalyImageCard = memo(function CommonAnomalyImageCard({
             queryKeyPrefix="common-anomaly-identity-data"
             lotIdLabel="lotid"
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 px-[0.9rem] text-sm"
-            onClick={handleHistorySave}
-            disabled={saveHitHistoryMutation.isPending}
-          >
-            {saveHitHistoryMutation.isPending
-              ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-              : null}
-            이력저장
-          </Button>
         </div>
       </footer>
     </article>

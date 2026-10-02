@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto"
 import { getSsoCurrentUser, sendSsoAuthenticationError } from "./currentUser.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
 import { createChartMailBoardDb } from "./chartMailBoardDb.mjs"
+import { buildChartMail, readChartMailBody } from "./chartMailPayload.mjs"
 
 export function isChartMailBoardEnabled(env = process.env) {
   return String(env.CHART_MAIL_BOARD_ENABLED ?? "").trim().toLowerCase() === "true"
@@ -36,6 +38,25 @@ export function createChartMailBoardHandler({ db = createChartMailBoardDb(), env
       const match = /^\/api\/chart-mail-board(?:\/([a-f0-9]{64})(\/image)?)?$/.exec(url.pathname)
       if (!match) return json(res, 404, { ok: false, code: "BOARD_NOT_FOUND", error: "게시글을 찾을 수 없습니다." })
       const [, id, image] = match
+      if (req.method === "POST" && !id) {
+        const input = await readChartMailBody(req)
+        if (!input || typeof input.title !== "string" || !input.chartUrl) throw new TypeError()
+        const title = input.title.replaceAll("확인 부탁드립니다", "이력을 저장했습니다")
+        const draft = { ...input, title, comment: "이력을 저장했습니다", recipients: [actor] }
+        const mail = buildChartMail(draft, { emailAddress: `${actor}@samsung.com` }, req.headers.origin, { allowHistoryApp: true })
+        const hash = value => createHash("sha256").update(value).digest("hex")
+        // Separate namespace from mail sends; retries reuse the immutable snapshot.
+        const postId = hash(`history\0${actor}\0${input.requestId.toLowerCase()}`)
+        const saved = await db.saveHistory({
+          id: postId, fingerprint: hash(JSON.stringify(mail)), actor,
+          title, details: draft.details, comment: draft.comment,
+          recipients: [actor], chartUrl: draft.chartUrl,
+          app: new URL(draft.chartUrl).pathname.split("/").at(-1),
+          imageBase64: draft.image.slice("data:image/png;base64,".length),
+          diagnostics: {},
+        })
+        return json(res, 200, { ok: true, boardPostId: postId, created: saved.created, status: "saved" })
+      }
       if (req.method === "GET" && !id) {
         const pageText = url.searchParams.get("page") ?? "1"
         const page = Number(pageText)
@@ -63,9 +84,10 @@ export function createChartMailBoardHandler({ db = createChartMailBoardDb(), env
       return json(res, 405, { ok: false, error: "지원하지 않는 요청입니다." })
     } catch (error) {
       if (sendSsoAuthenticationError(error, res)) return
-      if (error instanceof TypeError || error.code === "BOARD_INVALID") return json(res, 400, { ok: false, code: "BOARD_INVALID", error: "게시판 조회 조건 또는 상태 변경 내용을 확인해 주세요." })
+      if (error instanceof TypeError || error.code === "BOARD_INVALID") return json(res, 400, { ok: false, code: "BOARD_INVALID", error: "게시판 조회·등록 또는 상태 변경 내용을 확인해 주세요." })
       if (error.code === "BOARD_NOT_FOUND") return json(res, 404, { ok: false, code: error.code, error: "게시글을 찾을 수 없습니다." })
       if (error.code === "BOARD_CONFLICT") return json(res, 409, { ok: false, code: error.code, error: "다른 사용자가 상태를 변경했습니다. 최신 내용을 확인한 뒤 다시 처리해 주세요." })
+      if (error.code === "MAIL_REQUEST_CONFLICT") return json(res, 409, { ok: false, code: error.code, error: "이미 다른 내용으로 저장한 요청입니다. 게시판에서 등록 내역을 확인해 주세요." })
       return json(res, 500, createSafeApiError({ code: "BOARD_STORAGE_ERROR", message: "게시판을 저장하거나 불러오지 못했습니다. DB 설정과 테이블을 확인해 주세요.", scope: "chart-mail-board", logger }))
     }
   }

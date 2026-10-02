@@ -58,8 +58,8 @@ const spiderApps = [
   },
   {
     icon: ClipboardList,
-    title: "Chart Mailing 게시판",
-    subtitle: "발송한 차트와 메일 내용을 확인하고 진행 상황을 관리합니다.",
+    title: "메일보내기 이력 및 이력저장 게시판",
+    subtitle: "메일 발송 내역과 저장한 차트를 확인하고 진행 상황을 관리합니다.",
     category: "Chart Mailing",
     href: "/chart-mail-board",
     active: true,

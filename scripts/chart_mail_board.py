@@ -67,7 +67,7 @@ def chart_scope(chart_url):
     # MY EQP / SKIP LIST links identify a view, not the chart's actual SDWT.
     # The chart parameter retains the original path (also for legacy posts).
     chart_path = params.get("chart", [""])[0]
-    folder = re.search(r"/(?:erd|common|erd_commonality)/[^/]+/([^/]+)/", chart_path)
+    folder = re.search(r"/(?:erd|common|erd_commonality|path_common_commonality)/[^/]+/([^/]+)/", chart_path)
     if folder:
         params["sdwt"] = [folder.group(1)]
     scope = {}
@@ -80,7 +80,7 @@ def chart_scope(chart_url):
     return scope
 
 
-def begin(cursor, payload):
+def begin(cursor, payload, mail_state="pending"):
     image = base64.b64decode(payload["imageBase64"], validate=True)
     if not 45 <= len(image) <= 5 * 1024 * 1024 or not image.startswith(b"\x89PNG\r\n\x1a\n"):
         raise BoardError("BOARD_INVALID")
@@ -90,12 +90,12 @@ def begin(cursor, payload):
     cursor.execute("""INSERT INTO chart_mail_post
         (post_id, fingerprint, sender_knox_id, title, details, comment, chart_url, app, line, sdwt,
          work_status, version, mail_state, diagnostics, created_at, updated_at)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'IN_PROGRESS',1,'pending',%s,%s,%s)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'IN_PROGRESS',1,%s,%s,%s,%s)
         ON DUPLICATE KEY UPDATE post_id = post_id""", (
         payload["id"], payload["fingerprint"], payload["actor"], payload["title"],
         payload["details"], payload["comment"], payload["chartUrl"], payload["app"],
         scope["line"], scope["sdwt"],
-        json.dumps(payload["diagnostics"]), now, now,
+        mail_state, json.dumps(payload["diagnostics"]), now, now,
     ))
     created = cursor.rowcount == 1
     cursor.execute("SELECT fingerprint, mail_state, diagnostics FROM chart_mail_post WHERE post_id = %s FOR UPDATE", (payload["id"],))
@@ -120,6 +120,10 @@ def execute_action(connection, action, payload):
     with connection.cursor() as cursor:
         if action == "begin":
             result = begin(cursor, payload)
+        elif action == "save-history":
+            # Snapshot, self-recipient and no-mail state commit in one transaction.
+            payload = {**payload, "recipients": [actor], "comment": "이력을 저장했습니다"}
+            result = begin(cursor, payload, mail_state="not_sent")
         elif action == "finish":
             if payload["state"] not in ("accepted", "rejected", "unknown"):
                 raise BoardError("BOARD_INVALID")

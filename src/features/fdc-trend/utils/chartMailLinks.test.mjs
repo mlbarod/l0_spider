@@ -25,3 +25,10 @@ test("메일에서 선택한 차트를 먼저 표시하고 기존 결과와 순�
     assert.equal(prioritizeLinkedChart(rows, ""), rows)
   }
 })
+
+test("공통부 동일성 저장 이력은 모델과 센서·ch_step·원본 차트 링크를 보존한다", () => {
+  const path = buildChartMailPath({ app: "common-commonality-anomaly", line: "L1", sdwt: "TEAM", row: { eqpModel: "MODEL", sensor: "S", chStep: "2", filePath: "/path_common_commonality/date/TEAM/image.png" } })
+  const url = new URL(path, "https://spider.example")
+  assert.equal(url.pathname, "/common-commonality-anomaly")
+  assert.deepEqual(Object.fromEntries(url.searchParams), { line: "L1", sdwt: "TEAM", sensor: "S", eqpModel: "MODEL", chStep: "2", chart: "/path_common_commonality/date/TEAM/image.png" })
+})

@@ -12,9 +12,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { fetchChartMailPosts, fetchChartMailPost, updateChartMailPost, chartMailPostImageUrl } from "../api/chartMailBoardApi"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 
-const appNames = { "self-equipment": "설비별 SPEC내 이상감지", "matching-anomaly": "동일성 이상감지", "common-anomaly": "공통부 이상감지" }
+const appNames = { "self-equipment": "설비별 SPEC내 이상감지", "matching-anomaly": "동일성 이상감지", "common-anomaly": "공통부 이상감지", "common-commonality-anomaly": "공통부 동일성 이상감지" }
 const workNames = { IN_PROGRESS: "진행중", COMPLETED: "완료" }
-const mailNames = { pending: "처리중 / 결과 확인 필요", accepted: "메일전송 완료", rejected: "발송 거절", unknown: "결과 확인 필요" }
+const mailNames = { not_sent: "이력저장 · 메일 미발송", pending: "처리중 / 결과 확인 필요", accepted: "메일전송 완료", rejected: "발송 거절", unknown: "결과 확인 필요" }
 const formatDate = value => value ? new Date(value).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }) : "-"
 
 function WorkBadge({ status }) {
@@ -43,8 +43,8 @@ function PostDetail({ id, onClose }) {
   return <Dialog open onOpenChange={open => { if (!open && !update.isPending) onClose() }}>
     <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
       <DialogHeader>
-        <DialogTitle className="break-words pr-6">{post?.title ?? "차트 메일 발송 건"}</DialogTitle>
-        <DialogDescription>발송 당시 내용과 차트 원본을 확인하고 업무 상태를 관리합니다.</DialogDescription>
+        <DialogTitle className="break-words pr-6">{post?.title ?? "차트 메일 및 저장 이력"}</DialogTitle>
+        <DialogDescription>등록 당시 내용과 차트 원본을 확인하고 업무 상태를 관리합니다.</DialogDescription>
       </DialogHeader>
       {query.isPending ? <p role="status" className="flex items-center gap-2 py-8"><Loader2 className="size-4 animate-spin" />게시글을 불러오는 중입니다.</p>
         : query.isError ? <div role="alert" className="grid gap-3"><p>{query.error.message}</p><Button variant="outline" onClick={() => query.refetch()}>다시 조회</Button></div>
@@ -102,7 +102,7 @@ export function ChartMailBoardPage() {
   }, [query.isSuccess, page, pages])
   return <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-muted/30">
     <header className="border-b bg-card py-5 pl-6 pr-20"><div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-4">
-      <div><h1 className="flex items-center gap-2 text-xl font-semibold"><ClipboardList className="size-5 text-primary" />Chart Mailing 게시판</h1><p className="mt-2 text-sm text-muted-foreground">차트 메일 발송 건과 당시 이미지를 확인하고 진행 상황을 관리합니다.</p></div>
+      <div><h1 className="flex items-center gap-2 text-xl font-semibold"><ClipboardList className="size-5 text-primary" />메일보내기 이력 및 이력저장 게시판</h1><p className="mt-2 text-sm text-muted-foreground">메일 발송 내역과 저장한 차트 이미지를 확인하고 진행 상황을 관리합니다.</p></div>
       <Button asChild variant="outline"><Link to="/"><ArrowLeft className="size-4" />SPIDER 메인</Link></Button>
     </div></header>
     <main className="mx-auto grid w-full max-w-[1440px] gap-5 p-6">

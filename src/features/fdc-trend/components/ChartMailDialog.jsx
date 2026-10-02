@@ -111,7 +111,7 @@ export function ChartMailDialog({ title, details, chartPath, prepareImage, disab
           <div className="flex flex-wrap gap-3">
             <Button asChild><a href={draft?.chartUrl} target="_blank" rel="noreferrer">차트 링크</a></Button>
             <Button asChild variant="outline"><a href={draft?.homeUrl} target="_blank" rel="noreferrer">SPIDER 접속</a></Button>
-            <Button asChild variant="outline"><a href={draft?.boardUrl} target="_blank" rel="noreferrer">Chart Mailing 게시판</a></Button>
+            <Button asChild variant="outline"><a href={draft?.boardUrl} target="_blank" rel="noreferrer">메일보내기 이력 및 이력저장 게시판</a></Button>
           </div>
         </section>
         {status.isError && <p role="alert" className="text-sm text-destructive">{status.error.message}</p>}
