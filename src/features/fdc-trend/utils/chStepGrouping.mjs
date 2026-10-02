@@ -33,3 +33,18 @@ export function getLowestChStepRowsByPpid(rows) {
   })
   return Array.from(rowsBySensorAndPpid.values()).flatMap(getLowestChStepRows)
 }
+
+// Match the chart's EQP grouping, including its extension-free equipment names.
+export function getGatheredChStepCount(rows) {
+  const rowsByEqp = new Map()
+  for (const row of rows) {
+    const eqp = String(row.eqp ?? "").replace(/\.png$/i, "") || "EQP 미지정"
+    const group = rowsByEqp.get(eqp) ?? []
+    group.push(row)
+    rowsByEqp.set(eqp, group)
+  }
+  return Array.from(rowsByEqp.values()).reduce(
+    (count, group) => count + getLowestChStepRowsByPpid(group).length,
+    0,
+  )
+}

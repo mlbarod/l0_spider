@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process"
 import { relative, resolve, sep } from "node:path"
 import { fileURLToPath, URL } from "node:url"
+import { getGatheredChStepCount } from "../src/features/fdc-trend/utils/chStepGrouping.mjs"
 
 import { resolveRequestCurrentUser, sendSsoAuthenticationError } from "./currentUser.mjs"
 import { createSafeApiError } from "./safeApiError.mjs"
@@ -140,7 +141,7 @@ export function buildPassHistoryFilterPayload(records, filters, nowMs = Date.now
   const baseRecords = uniqueRecords.filter((record) => selectedPriorities.has(normalizeText(record.priority)))
   const steps = aggregateBy(baseRecords, "desc", (desc, stepRecords) => ({
     desc,
-    rowCount: stepRecords.length,
+    rowCount: getGatheredChStepCount(stepRecords),
     equipmentCount: uniqueCount(stepRecords, "eqp", normalizeEqp),
   })).sort((left, right) => left.desc.localeCompare(right.desc, "ko", { numeric: true }))
   const selectedDesc = steps.some((item) => item.desc === filters.desc) ? filters.desc : ""
@@ -149,7 +150,7 @@ export function buildPassHistoryFilterPayload(records, filters, nowMs = Date.now
     : []
   const eqpChannels = sortByCount(aggregateBy(stepRecords, "eqp", (eqpCh, eqpRecords) => ({
     eqpCh,
-    rowCount: eqpRecords.length,
+    rowCount: getGatheredChStepCount(eqpRecords),
   }), normalizeEqp), "eqpCh")
   const selectedEqpCh = filters.eqpCh === ALL_VALUES && eqpChannels.length
     ? ALL_VALUES
@@ -163,7 +164,7 @@ export function buildPassHistoryFilterPayload(records, filters, nowMs = Date.now
     : []
   const sensors = sortByCount(aggregateBy(eqpRecords, "sensor", (sensor, sensorRecords) => ({
     sensor,
-    rowCount: sensorRecords.length,
+    rowCount: getGatheredChStepCount(sensorRecords),
   })), "sensor")
   const selectedSensor = filters.sensor === ALL_VALUES
     && sensors.length
@@ -178,7 +179,7 @@ export function buildPassHistoryFilterPayload(records, filters, nowMs = Date.now
     : []
   const chSteps = sortByCount(aggregateBy(sensorRecords, "step", (step, chStepRecords) => ({
     step,
-    rowCount: chStepRecords.length,
+    rowCount: getGatheredChStepCount(chStepRecords),
     equipmentCount: uniqueCount(chStepRecords, "eqp", normalizeEqp),
   })), "step")
   const selectedChStep = filters.chStep === ALL_VALUES && chSteps.length
@@ -202,6 +203,13 @@ export function buildPassHistoryFilterPayload(records, filters, nowMs = Date.now
       chStep: selectedChStep,
     },
     counts: { filteredRows: baseRecords.length, chartRows: chartRecords.length },
+    gatheredCounts: {
+      filteredRows: getGatheredChStepCount(baseRecords),
+      stepRows: getGatheredChStepCount(stepRecords),
+      eqpChannelRows: getGatheredChStepCount(eqpRecords),
+      sensorRows: getGatheredChStepCount(sensorRecords),
+      chartRows: getGatheredChStepCount(chartRecords),
+    },
     availablePriorities,
     steps,
     eqpChannels,

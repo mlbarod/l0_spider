@@ -1711,6 +1711,7 @@ export function FdcTrendPage() {
   const eqpChannels = dataQuery.data?.eqpChannels ?? []
   const sensors = dataQuery.data?.sensors ?? []
   const chSteps = dataQuery.data?.chSteps ?? []
+  const gatheredCounts = dataQuery.data?.gatheredCounts
   const activeDesc = dataQuery.data?.filters?.desc ?? ""
   const activeEqpCh = dataQuery.data?.filters?.eqpCh ?? ""
   const activeSensor = dataQuery.data?.filters?.sensor ?? ""
@@ -1771,10 +1772,12 @@ export function FdcTrendPage() {
   }, [chartRows])
   const visibleChartGroups = useMemo(() => chartGroups.map((group) => {
     const gathered = !expandedEqps.has(group.eqp)
-    const visibleRows = gathered ? getLowestChStepRowsByPpid(group.rows) : group.rows
+    const gatheredRows = getLowestChStepRowsByPpid(group.rows)
+    const visibleRows = gathered ? gatheredRows : group.rows
     return {
       ...group,
       gathered,
+      gatheredCount: gatheredRows.length,
       visibleRows,
       chartsPerRow: gathered && showThreeDayIdentity ? 2 : 1,
       animate: expandedChSteps.contextKey === gatherContextKey
@@ -1793,6 +1796,7 @@ export function FdcTrendPage() {
     [chartPage, visibleChartGroups],
   )
   const pageChartGroups = chartPagination.pageGroups
+  const gatheredChartCount = visibleChartGroups.reduce((total, group) => total + group.gatheredCount, 0)
   const activeChartPage = chartPagination.page
   const chartPageCount = chartPagination.totalPages
 
@@ -1852,7 +1856,7 @@ export function FdcTrendPage() {
       ...(isMyEqp && steps.length ? [{
         value: ALL_STEPS,
         label: ALL_STEPS,
-        meta: `${steps.reduce((total, item) => total + item.rowCount, 0).toLocaleString()}건 · 전체 STEP`,
+        meta: `${(gatheredCounts?.filteredRows ?? 0).toLocaleString()}건 · 전체 STEP`,
       }] : []),
       ...steps.map((item) => ({
         value: item.desc,
@@ -1867,7 +1871,7 @@ export function FdcTrendPage() {
       {
         value: ALL_EQP_CHANNELS,
         label: "ALL",
-        meta: `${eqpChannels.reduce((total, item) => total + item.rowCount, 0).toLocaleString()}건`,
+        meta: `${(gatheredCounts?.stepRows ?? 0).toLocaleString()}건`,
       },
       ...eqpChannels.map((item) => ({
         value: item.eqpCh,
@@ -1882,7 +1886,7 @@ export function FdcTrendPage() {
       {
         value: ALL_SENSORS,
         label: "ALL",
-        meta: `${sensors.reduce((total, item) => total + item.rowCount, 0).toLocaleString()}건`,
+        meta: `${(gatheredCounts?.eqpChannelRows ?? 0).toLocaleString()}건`,
       },
       ...sensors.map((item) => ({
         value: item.sensor,
@@ -1897,7 +1901,7 @@ export function FdcTrendPage() {
       {
         value: ALL_CH_STEPS,
         label: "ALL",
-        meta: `${chSteps.reduce((total, item) => total + item.rowCount, 0).toLocaleString()}건`,
+        meta: `${(gatheredCounts?.sensorRows ?? 0).toLocaleString()}건`,
       },
       ...(selectedSensor === ALL_SENSORS ? [] : chSteps.map((item) => ({
         value: item.step,
@@ -2275,7 +2279,7 @@ export function FdcTrendPage() {
           && (dataQuery.data?.counts?.matchedRegistrationRows ?? 0) === 0 ? (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
             등록된 SDWT·EQP와 일치하는 자설비 이상건을 찾지 못했습니다.
-            원본 이상건 {(dataQuery.data?.counts?.sourceRows ?? 0).toLocaleString()}건에서 매칭 결과가 없습니다.
+            원본 이상건 {(gatheredCounts?.sourceRows ?? 0).toLocaleString()}건에서 매칭 결과가 없습니다.
           </div>
         ) : null}
         {!isSkipList && passHistoryQuery.isError ? (
@@ -2320,7 +2324,7 @@ export function FdcTrendPage() {
                   </div>
                 ) : null}
                 <Badge variant="secondary">{chartGroups.length.toLocaleString()} EQP categories</Badge>
-                <Badge variant="outline">{chartRows.length.toLocaleString()} charts</Badge>
+                <Badge variant="outline">모아보기 {gatheredChartCount.toLocaleString()}건</Badge>
               </div>
             ) : null}
           </header>
@@ -2373,12 +2377,7 @@ export function FdcTrendPage() {
                         </Button>
                       </div>
                       <Badge variant="secondary">
-                        {group.visibleRows.length.toLocaleString()}
-                        {group.totalVisibleRows !== group.visibleRows.length
-                          ? ` / ${group.totalVisibleRows.toLocaleString()}`
-                          : group.gathered
-                          ? ` / ${group.rows.length.toLocaleString()}`
-                          : ""} charts
+                        모아보기 {group.gatheredCount.toLocaleString()}건
                       </Badge>
                     </header>
                     <div

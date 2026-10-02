@@ -5,7 +5,7 @@ export const ANOMALY_STATUSES = Object.freeze([
 
 export function readAnomalyStatusFromUrl(searchParams) {
   const status = String(searchParams.get("status") ?? "").trim().toUpperCase()
-  return ANOMALY_STATUSES.some((item) => item.value === status) ? status : ""
+  return ANOMALY_STATUSES.some((item) => item.value === status) ? status : "ALARM"
 }
 
 export function filterChartsByStatus(rows, status) {

@@ -10,6 +10,41 @@ import {
 
 const NOW = Date.parse("2026-07-16T12:00:00+09:00")
 
+test("필터·ALL 건수는 모아보기 기준이며 전체보기용 원본 행은 보존한다", () => {
+  const rows = [
+    createRow({ step: "2@MEAN" }),
+    createRow({ step: "2@MAX" }),
+    createRow({ step: "10@MEAN" }),
+    createRow({ eqp: "EQP-2.png", step: "10@MEAN" }),
+    createRow({ sensor: "PRESSURE", step: "20" }),
+  ]
+  const filters = {
+    line: "P1L", sdwt: "SDWT-1", priorities: ["A"], desc: "ETCH",
+    eqpCh: "ALL", sensor: "ALL", chStep: "ALL",
+  }
+  const payload = buildSelfEquipmentPayload(rows, filters)
+  assert.equal(payload.steps[0].rowCount, 4)
+  assert.deepEqual(payload.eqpChannels.map((item) => item.rowCount), [3, 1])
+  assert.deepEqual(payload.sensors.map((item) => item.rowCount), [3, 1])
+  assert.equal(payload.gatheredCounts.sensorRows, 4)
+  assert.equal(payload.gatheredCounts.chartRows, 4)
+  assert.equal(payload.chSteps.reduce((sum, item) => sum + item.rowCount, 0), 5)
+  assert.equal(payload.counts.chartRows, 5)
+  assert.equal(payload.rows.length, 5)
+
+  const individual = buildSelfEquipmentPayload(rows, { ...filters, sensor: "TEMP", chStep: "10@MEAN" })
+  assert.equal(individual.gatheredCounts.chartRows, 2)
+  assert.equal(individual.rows.length, 2)
+
+  const allSteps = buildSelfEquipmentPayload([
+    createRow({ desc: "STEP-A", step: "2" }),
+    createRow({ desc: "STEP-B", step: "10" }),
+  ], { ...filters, allowAllSteps: true, desc: "ALL" })
+  assert.equal(allSteps.steps.reduce((sum, item) => sum + item.rowCount, 0), 2)
+  assert.equal(allSteps.gatheredCounts.filteredRows, 1)
+  assert.equal(allSteps.gatheredCounts.chartRows, 1)
+})
+
 function createRow(overrides = {}) {
   return {
     line_rev: "P1L",

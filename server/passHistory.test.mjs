@@ -11,6 +11,25 @@ import {
 
 const NOW = Date.parse("2026-07-17T15:00:00+09:00")
 
+test("자설비 SKIP LIST의 필터 건수도 모아보기로 계산하고 복원할 원본 행은 유지한다", () => {
+  const base = {
+    line_id: "P1L", ver: "V1", sdwt: "SDWT-1", desc: "ETCH", recipe_id: "R1",
+    update_date: "2026-07-17", priority: "A", sensor: "TEMP", eqp: "EQP-1",
+    exec_date: "2026-07-17 12:00:00",
+  }
+  const payload = buildPassHistoryFilterPayload([
+    { ...base, step: "2@MEAN" },
+    { ...base, step: "2@MAX" },
+    { ...base, step: "10@MEAN" },
+  ], { lineId: "P1L", priorities: ["A"], desc: "ETCH", eqpCh: "ALL", sensor: "ALL", chStep: "ALL" }, NOW)
+  assert.equal(payload.steps[0].rowCount, 2)
+  assert.equal(payload.eqpChannels[0].rowCount, 2)
+  assert.equal(payload.sensors[0].rowCount, 2)
+  assert.equal(payload.gatheredCounts.sensorRows, 2)
+  assert.equal(payload.gatheredCounts.chartRows, 2)
+  assert.equal(payload.rows.length, 3)
+})
+
 test("공통부 data.parquet 경로를 pass_history 값으로 변환한다", () => {
   const values = parseCommonPassHistoryPath(
     "/appdata/abnormal_trend/pic/common/2026-07-17/SDWT-1/ETCH/A/TEMP/10/data.parquet",

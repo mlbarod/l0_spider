@@ -43,7 +43,7 @@ Self Equipment는 Line·SDWT·Grade와 종속 조건을 좁혀 ERD 이상감지 
 
 메일 template을 실제로 렌더링·발송하는 실행 주체는 `Unknown`이다.
 진입 URL의 `status=ALARM`은 CRITICAL, `status=WARN`은 WARNING 필터를 초기 선택한다.
-누락·미지원 값은 기존 전체 상태 조회를 유지하며, 일반 SDWT의 STEP 등 하위 조건 선택 방식은 바뀌지 않는다.
+누락·미지원 값은 CRITICAL을 초기 선택하며, 일반 SDWT의 STEP 등 하위 조건 선택 방식은 바뀌지 않는다.
 ## 4. 브라우저 라우트
 
 | 항목 | 확인 결과 | 상태 | 근거 |
@@ -457,6 +457,16 @@ route, query parameter, API 또는 데이터 경로가 바뀌면 관련 링크�
 
 ch_step까지 선택하면 Scatter chart 제목 오른쪽에 CRITICAL·WARNING 버튼이 표시됩니다.
 CRITICAL은 경로 데이터의 `status=ALARM`, WARNING은 `status=WARN` 차트만 표시합니다.
-초기에는 전체를 표시하며 선택한 버튼을 다시 누르면 전체 보기로 돌아갑니다.
+초기에는 CRITICAL을 선택하며 선택한 버튼을 다시 누르면 전체 보기로 돌아갑니다. URL의 `status=WARN`은 WARNING 초기 선택을 유지합니다.
 필터는 EQP별 묶음·대표 ch_step·페이지 계산 전에 적용되고, 전환 시 첫 페이지로 이동합니다.
 My EQP에도 적용하며, 상태 컬럼이 없는 SKIP LIST에는 버튼을 표시하지 않습니다.
+
+### 이상 건수 표시
+
+STEP·eqp_ch·sensor·ch_step의 건수와 각 ALL 건수는 해당 선택 범위의 `ch_step 모아보기` 결과를 셉니다.
+EQP별로 sensor·PPID를 나누어 최저 숫자 ch_step을 남기며, 최저 숫자가 같은 차트는 모두 셉니다.
+ALL은 하위 항목 건수의 합이 아니라 전체 선택 범위에서 다시 계산합니다. My EQP와 자설비 SKIP LIST에도 적용합니다.
+필터 항목 건수는 기존처럼 전체 상태 기준이고, 차트 상단과 EQP별 건수에는 현재 CRITICAL·WARNING 선택을 적용합니다.
+전체보기 전환이나 페이지 이동으로 모아보기 건수는 바뀌지 않습니다. 동일성 비교 차트는 이상 건수에 더하지 않습니다.
+API의 옵션 `rowCount`는 모아보기 건수이며, `gatheredCounts`는 각 단계의 ALL 건수를 제공합니다.
+기존 `counts`의 원본 행 수와 `rows`는 전체보기 및 SKIP 처리에 계속 사용합니다.

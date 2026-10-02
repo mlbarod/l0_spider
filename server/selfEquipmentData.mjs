@@ -5,6 +5,7 @@ import { asyncBufferFromFile, parquetReadObjects } from "hyparquet"
 import { compressors } from "hyparquet-compressors"
 
 import { buildTeamErdPath } from "../src/config/spiderDataPaths.mjs"
+import { getGatheredChStepCount } from "../src/features/fdc-trend/utils/chStepGrouping.mjs"
 import { getLruEntry, setLruEntry } from "./boundedCache.mjs"
 import { resolveRequestCurrentUser, sendSsoAuthenticationError } from "./currentUser.mjs"
 import { readLineMapping } from "./mappingConfig.mjs"
@@ -203,7 +204,7 @@ export function buildSelfEquipmentPayload(rows, filters) {
   ))
   const steps = sortByLabel(aggregateBy(baseRows, "desc", (desc, stepRows) => ({
     desc,
-    rowCount: stepRows.length,
+    rowCount: getGatheredChStepCount(stepRows),
     equipmentCount: uniqueCount(stepRows, "eqp"),
   })), "desc")
   const selectedDesc = filters.allowAllSteps && filters.desc === ALL_STEPS && steps.length > 0
@@ -218,7 +219,7 @@ export function buildSelfEquipmentPayload(rows, filters) {
     : []
   const eqpChannels = sortByRowCount(aggregateBy(stepRows, "eqp", (eqpCh, eqpChRows) => ({
     eqpCh,
-    rowCount: eqpChRows.length,
+    rowCount: getGatheredChStepCount(eqpChRows),
   })), "eqpCh")
   const matchedEqpCh = filters.normalizeEqpCh
     ? eqpChannels.find((item) => (
@@ -240,7 +241,7 @@ export function buildSelfEquipmentPayload(rows, filters) {
     : []
   const sensors = sortByRowCount(aggregateBy(eqpChannelRows, "sensor", (sensor, sensorRows) => ({
     sensor,
-    rowCount: sensorRows.length,
+    rowCount: getGatheredChStepCount(sensorRows),
   })), "sensor")
   const selectedSensor = filters.sensor === ALL_SENSORS
     && sensors.length > 0
@@ -255,7 +256,7 @@ export function buildSelfEquipmentPayload(rows, filters) {
     : []
   const chSteps = sortByRowCount(aggregateBy(sensorRows, "step", (step, chStepRows) => ({
     step,
-    rowCount: chStepRows.length,
+    rowCount: getGatheredChStepCount(chStepRows),
     equipmentCount: uniqueCount(chStepRows, "eqp"),
   })), "step")
   const allChStepsSelected = filters.chStep === ALL_CH_STEPS && chSteps.length > 0
@@ -284,6 +285,13 @@ export function buildSelfEquipmentPayload(rows, filters) {
     counts: {
       filteredRows: baseRows.length,
       chartRows: chartRows.length,
+    },
+    gatheredCounts: {
+      filteredRows: getGatheredChStepCount(baseRows),
+      stepRows: getGatheredChStepCount(stepRows),
+      eqpChannelRows: getGatheredChStepCount(eqpChannelRows),
+      sensorRows: getGatheredChStepCount(sensorRows),
+      chartRows: getGatheredChStepCount(chartRows),
     },
     steps,
     eqpChannels,
@@ -454,6 +462,10 @@ export async function handleMyEqpEquipmentDataRequest(req, res, url) {
         excludedSensorRows: sensorExclusion.excludedCount,
       },
       availablePriorities,
+      gatheredCounts: {
+        ...payload.gatheredCounts,
+        sourceRows: getGatheredChStepCount(sourceRows),
+      },
       sourcePaths: dataSources.map((source) => source.filePath),
     })
   } catch (error) {

@@ -29,7 +29,7 @@ test("해당 상태가 없으면 빈 결과이며 상태 미지정 데이터는 
   assert.equal(filterChartsByStatus(rows, "").length, 3)
 })
 
-test("메일 URL은 CRITICAL 필터로 진입하며 미지정·잘못된 상태는 기존 전체 조회를 유지한다", () => {
+test("첫 차트는 CRITICAL로 진입하며 URL의 명시적 WARNING 선택은 유지한다", () => {
   const rows = [{ status: "ALARM" }, { status: "WARN" }, {}]
   const status = readAnomalyStatusFromUrl(new URLSearchParams("grade=A%2FB&status=ALARM"))
   assert.equal(status, "ALARM")
@@ -37,6 +37,6 @@ test("메일 URL은 CRITICAL 필터로 진입하며 미지정·잘못된 상태�
   assert.equal(readAnomalyStatusFromUrl(new URLSearchParams("status=+alarm+")), "ALARM")
   assert.equal(readAnomalyStatusFromUrl(new URLSearchParams("status=WARN")), "WARN")
   for (const query of ["", "status=", "status=CRITICAL", "status=invalid"]) {
-    assert.equal(readAnomalyStatusFromUrl(new URLSearchParams(query)), "")
+    assert.equal(readAnomalyStatusFromUrl(new URLSearchParams(query)), "ALARM")
   }
 })
