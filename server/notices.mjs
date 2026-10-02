@@ -90,6 +90,12 @@ export function buildNoticeCompletePayload(value, completedBy) {
   return { noticeId, completedBy: normalizedCompletedBy }
 }
 
+export function buildNoticeUpdatePayload(value, updatedBy) {
+  const { noticeId } = buildNoticeCompletePayload(value, updatedBy)
+  const { title, body, createdBy } = buildNoticeCreatePayload(value, updatedBy)
+  return { noticeId, title, body, updatedBy: createdBy }
+}
+
 function normalizeNotice(row) {
   return {
     noticeId: Number(row?.noticeId),
@@ -213,7 +219,7 @@ export async function handleNoticesRequest(req, res, url, dependencies = {}) {
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
     return
   }
-  if (!manageRequest && !["GET", "POST", "PATCH"].includes(req.method)) {
+  if (!manageRequest && !["GET", "POST", "PUT", "PATCH"].includes(req.method)) {
     sendJson(res, 405, { ok: false, error: "Method not allowed" })
     return
   }
@@ -274,6 +280,19 @@ export async function handleNoticesRequest(req, res, url, dependencies = {}) {
         ok: true,
         notice: normalizeNotice(result.notice),
       })
+      return
+    }
+
+    if (req.method === "PUT") {
+      const result = await helper({
+        action: "update",
+        ...buildNoticeUpdatePayload(body, currentUser.knoxId),
+      })
+      if (!result.notice) {
+        sendJson(res, 404, { ok: false, code: "NOTICE_NOT_FOUND", error: "존재하지 않는 공지사항입니다." })
+        return
+      }
+      sendJson(res, 200, { ok: true, notice: normalizeNotice(result.notice) })
       return
     }
 

@@ -133,6 +133,32 @@ def create_notice(connection, payload):
     return notice
 
 
+def update_notice(connection, payload):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE site_notices
+            SET title = %s, body = %s, updated_by = %s, updated_at = NOW()
+            WHERE notice_id = %s
+            """,
+            (payload["title"], payload["body"], payload["updatedBy"], payload["noticeId"]),
+        )
+        # Read the row even when MySQL reports zero changes for an identical save.
+        cursor.execute(
+            """
+            SELECT notice_id, title, body, status,
+                   created_by, created_at, updated_by, updated_at,
+                   completed_by, completed_at
+            FROM site_notices
+            WHERE notice_id = %s
+            """,
+            (payload["noticeId"],),
+        )
+        notice = serialize_notice(cursor.fetchone())
+    connection.commit()
+    return notice
+
+
 def complete_notice(connection, payload):
     with connection.cursor() as cursor:
         cursor.execute(
@@ -164,6 +190,8 @@ def main():
                 result = {"ok": True, "notices": list_notices(connection, False)}
             elif action == "create":
                 result = {"ok": True, "notice": create_notice(connection, payload)}
+            elif action == "update":
+                result = {"ok": True, "notice": update_notice(connection, payload)}
             elif action == "complete":
                 result = {"ok": True, "affectedRows": complete_notice(connection, payload)}
             else:

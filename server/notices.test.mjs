@@ -259,3 +259,61 @@ test("완료 처리는 진행중 공지 한 건이 변경된 경우에만 성공
   assert.equal(response.statusCode, 200)
   assert.equal(JSON.parse(response.body).affectedRows, 1)
 })
+
+test("공지 수정은 서버 관리자 ID와 제목·본문만 전달하고 완료 상태도 유지한다", async () => {
+  for (const status of ["ACTIVE", "COMPLETED"]) {
+    const response = createResponse()
+    await handleNoticesRequest(
+      createRequest("PUT", { noticeId: 7, title: " 수정 제목 ", body: " 수정 본문 ", updatedBy: "forged", status: "ACTIVE" }),
+      response,
+      new URL("http://localhost/api/notices"),
+      {
+        ...adminDependencies,
+        helper: async (payload) => {
+          assert.deepEqual(payload, { action: "update", noticeId: 7, title: "수정 제목", body: "수정 본문", updatedBy: "notice.admin" })
+          return { ok: true, notice: { ...payload, status, createdBy: "original.admin" } }
+        },
+      },
+    )
+    assert.equal(response.statusCode, 200)
+    assert.equal(JSON.parse(response.body).notice.status, status)
+    assert.equal(JSON.parse(response.body).notice.createdBy, "original.admin")
+  }
+})
+
+test("관리자가 아닌 사용자의 공지 수정은 DB 호출 전에 거부한다", async () => {
+  const response = createResponse()
+  await handleNoticesRequest(
+    createRequest("PUT", { noticeId: 7, title: "제목", body: "본문" }, "other.user"),
+    response,
+    new URL("http://localhost/api/notices"),
+    { ...adminDependencies, helper: async () => assert.fail("DB must not be called") },
+  )
+  assert.equal(response.statusCode, 403)
+})
+
+test("공지 수정은 잘못된 번호와 비어 있거나 제한을 초과한 입력을 거부한다", async () => {
+  for (const invalid of [{ noticeId: 0 }, { noticeId: 1.5 }, { title: " " }, { body: " " }, { title: "가".repeat(201) }, { body: "가".repeat(10001) }]) {
+    const response = createResponse()
+    await handleNoticesRequest(
+      createRequest("PUT", { noticeId: 7, title: "제목", body: "본문", ...invalid }),
+      response,
+      new URL("http://localhost/api/notices"),
+      { ...adminDependencies, helper: async () => assert.fail("DB must not be called") },
+    )
+    assert.equal(response.statusCode, 400)
+    assert.equal(JSON.parse(response.body).code, "NOTICE_VALIDATION_FAILED")
+  }
+})
+
+test("존재하지 않는 공지의 수정은 404를 반환한다", async () => {
+  const response = createResponse()
+  await handleNoticesRequest(
+    createRequest("PUT", { noticeId: 7, title: "제목", body: "본문" }),
+    response,
+    new URL("http://localhost/api/notices"),
+    { ...adminDependencies, helper: async () => ({ ok: true, notice: null }) },
+  )
+  assert.equal(response.statusCode, 404)
+  assert.equal(JSON.parse(response.body).code, "NOTICE_NOT_FOUND")
+})

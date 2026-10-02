@@ -40,3 +40,10 @@ export function completeNotice(noticeId) {
     body: JSON.stringify({ noticeId }),
   })
 }
+
+export function updateNotice({ noticeId, title, body }) {
+  return requestNotices("/api/notices", {
+    method: "PUT",
+    body: JSON.stringify({ noticeId, title, body }),
+  })
+}
