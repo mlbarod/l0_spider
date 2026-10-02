@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, ClipboardList, Loader2, RefreshCw, Search } from "lucide-react"
+import { ArrowLeft, ClipboardList, Loader2, RefreshCw, Search, Trash2 } from "lucide-react"
 import { Link, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { fetchChartMailPosts, fetchChartMailPost, updateChartMailPost, chartMailPostImageUrl } from "../api/chartMailBoardApi"
+import { fetchChartMailPosts, fetchChartMailPost, updateChartMailPost, deleteChartMailPost, chartMailPostImageUrl } from "../api/chartMailBoardApi"
 import { formatLineDisplayName } from "../utils/lineDisplay.mjs"
 
 const appNames = { "self-equipment": "설비별 SPEC내 이상감지", "matching-anomaly": "동일성 이상감지", "common-anomaly": "공통부 이상감지", "common-commonality-anomaly": "공통부 동일성 이상감지" }
@@ -40,7 +40,21 @@ function PostDetail({ id, onClose }) {
       if (error.code === "BOARD_CONFLICT") void query.refetch()
     },
   })
-  return <Dialog open onOpenChange={open => { if (!open && !update.isPending) onClose() }}>
+  const remove = useMutation({
+    mutationFn: () => deleteChartMailPost(id),
+    onSuccess: async () => {
+      onClose()
+      client.removeQueries({ queryKey: ["chart-mail-post", id], exact: true })
+      await client.invalidateQueries({ queryKey: ["chart-mail-posts"] })
+      toast.success("게시글을 삭제했습니다.")
+    },
+    onError: error => {
+      toast.error(error.message)
+      if (error.code === "BOARD_FORBIDDEN") void query.refetch()
+    },
+  })
+  const busy = update.isPending || remove.isPending
+  return <Dialog open onOpenChange={open => { if (!open && !busy) onClose() }}>
     <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
       <DialogHeader>
         <DialogTitle className="break-words pr-6">{post?.title ?? "차트 메일 및 저장 이력"}</DialogTitle>
@@ -66,8 +80,8 @@ function PostDetail({ id, onClose }) {
           {post.chartUrl && <Button asChild variant="outline" className="justify-self-start"><a href={post.chartUrl} target="_blank" rel="noreferrer">현재 차트 조회 화면</a></Button>}
           <section className="grid gap-3 rounded-lg border p-4" aria-label="업무 상태 변경">
             <h2 className="font-semibold">업무 상태 변경</h2>
-            <label className="grid gap-2 text-sm">처리 코멘트 (선택)<Textarea value={comment} onChange={event => setComment(event.target.value)} maxLength={1000} disabled={update.isPending} placeholder="조치 내용이나 진행 상황을 남겨 주세요." /></label>
-            <Button className="justify-self-end" disabled={!post.canChangeStatus || update.isPending || query.isFetching} onClick={() => update.mutate({ status: post.workStatus === "COMPLETED" ? "IN_PROGRESS" : "COMPLETED", version: post.version, comment })}>
+            <label className="grid gap-2 text-sm">처리 코멘트 (선택)<Textarea value={comment} onChange={event => setComment(event.target.value)} maxLength={1000} disabled={busy} placeholder="조치 내용이나 진행 상황을 남겨 주세요." /></label>
+            <Button className="justify-self-end" disabled={!post.canChangeStatus || busy || query.isFetching} onClick={() => update.mutate({ status: post.workStatus === "COMPLETED" ? "IN_PROGRESS" : "COMPLETED", version: post.version, comment })}>
               {update.isPending ? "저장 중…" : post.workStatus === "COMPLETED" ? "진행중으로 변경" : "완료 처리"}
             </Button>
           </section>
@@ -79,6 +93,9 @@ function PostDetail({ id, onClose }) {
               {item.comment && <p className="mt-2 whitespace-pre-wrap break-words">{item.comment}</p>}
             </article>) : <p className="text-sm text-muted-foreground">아직 상태 변경 이력이 없습니다.</p>}
           </section>
+          {post.canDelete && <Button variant="destructive" className="justify-self-end" disabled={busy || query.isFetching} onClick={() => {
+            if (window.confirm(`“${post.title}” 게시글을 삭제하시겠습니까?\n이미지·수신인·상태 변경 이력도 함께 삭제되며 복구할 수 없습니다.`)) remove.mutate()
+          }}><Trash2 className="size-4" />{remove.isPending ? "삭제 중…" : "게시글 삭제"}</Button>}
         </div> : null}
     </DialogContent>
   </Dialog>

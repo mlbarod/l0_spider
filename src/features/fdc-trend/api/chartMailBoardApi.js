@@ -31,3 +31,6 @@ export function updateChartMailPost(id, input) {
 export function chartMailPostImageUrl(id) {
   return `/api/chart-mail-board/${encodeURIComponent(id)}/image`
 }
+export function deleteChartMailPost(id) {
+  return request(`/api/chart-mail-board/${encodeURIComponent(id)}`, { method: "DELETE" })
+}

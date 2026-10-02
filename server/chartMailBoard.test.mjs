@@ -66,9 +66,9 @@ test("이력저장 입력·이미지·출처 오류와 DB 비활성·저장 실�
   assert.equal(failed.body.code, "BOARD_STORAGE_ERROR")
   assert.doesNotMatch(JSON.stringify(failed.body), /private database password/)
 })
-async function call(handler, { path = "/api/chart-mail", method = "GET", body, raw, user = "Sender.Test", authenticated = true, contentType = "application/json" } = {}) {
+async function call(handler, { path = "/api/chart-mail", method = "GET", body, raw, user = "Sender.Test", authenticated = true, role = "general", contentType = "application/json", headers = {} } = {}) {
   const req = Readable.from([raw ?? (body ? JSON.stringify(body) : "")])
-  Object.assign(req, { method, headers: { "content-type": contentType, origin: "https://spider.example" }, ssoRequired: authenticated, auth: { knoxId: user } })
+  Object.assign(req, { method, headers: { "content-type": contentType, origin: "https://spider.example", ...headers }, accessRole: role, ssoRequired: authenticated, auth: { knoxId: user } })
   const response = {}
   await handler(req, { writeHead(status, headers) { response.status = status; response.headers = headers }, end(data) { response.body = Buffer.isBuffer(data) ? data : JSON.parse(data) } }, new URL(path, "https://spider.example"))
   return response
@@ -177,6 +177,35 @@ test("post-transport persistence failures do not retry mail, and both result sto
   assert.equal([...second.board.posts.values()][0].state, "accepted")
 })
 
+test("삭제 권한은 서버 마스터 역할만 허용하며 본문·헤더·쿼리의 위조 권한은 무시한다", async () => {
+  const calls = [], id = "a".repeat(64)
+  const db = createChartMailBoardDb({ run: async (action, payload) => {
+    calls.push({ action, payload })
+    return { ok: true, post: { id, sender: "other.user" } }
+  } })
+  const handler = createChartMailBoardHandler({ db, env })
+  const request = { path: `/api/chart-mail-board/${id}?role=master`, method: "DELETE", body: { role: "master", actor: "master.user" }, headers: { "x-quality-hub-role": "master" } }
+  assert.equal((await call(handler, { ...request, authenticated: false, role: "master" })).status, 401)
+  for (const role of ["general", "blocked", "", null]) {
+    assert.equal((await call(handler, { ...request, role })).status, 403)
+  }
+  assert.equal(calls.length, 0)
+  const detail = { path: `/api/chart-mail-board/${id}` }
+  assert.equal((await call(handler, { ...detail, role: "master" })).body.post.canDelete, true)
+  assert.equal((await call(handler, { ...detail, role: "general" })).body.post.canDelete, false)
+  assert.equal((await call(handler, { ...request, role: "master", user: "Master.User" })).status, 200)
+  assert.deepEqual(calls.at(-1), { action: "delete", payload: { actor: "master.user", id, role: "master" } })
+  for (const path of ["/api/chart-mail-board", `/api/chart-mail-board/${id}/image`]) {
+    assert.equal((await call(handler, { path, method: "DELETE", role: "master" })).status, 405)
+  }
+  for (const [code, status] of [["BOARD_NOT_FOUND", 404], ["BOARD_FORBIDDEN", 403], ["BOARD_STORAGE_ERROR", 500]]) {
+    const failed = createChartMailBoardHandler({ env, logger: () => {}, db: { delete: async () => { throw Object.assign(new Error("private database password"), { code }) } } })
+    const result = await call(failed, { ...request, role: "master" })
+    assert.equal(result.status, status)
+    assert.doesNotMatch(JSON.stringify(result.body), /private database password/)
+  }
+})
+
 test("board API requires login for list, image and writes; all logged-in users use SSO identity", async () => {
   const calls = [], id = "a".repeat(64)
   const db = createChartMailBoardDb({ run: async (action, payload) => {
@@ -199,7 +228,7 @@ test("board API requires login for list, image and writes; all logged-in users u
   assert.equal(image.headers["X-Content-Type-Options"], "nosniff")
   assert.equal((await call(handler, { path: `/api/chart-mail-board/${id}`, method: "PATCH", body: { actor: "forged", status: "COMPLETED", version: 1, comment: "done" } })).status, 200)
   assert.equal(calls.at(-1).payload.actor, "sender.test")
-  assert.equal((await call(handler, { path: `/api/chart-mail-board/${id}`, method: "DELETE" })).status, 405)
+  assert.equal((await call(handler, { path: `/api/chart-mail-board/${id}`, method: "DELETE" })).status, 403)
   assert.equal((await call(handler, { path: "/api/chart-mail-board", method: "POST", body: {} })).status, 400)
   for (const query of ["page=0", "page=2.5", "status=SKIP", ...["search", "line", "sdwt"].map(key => `${key}=${"a".repeat(201)}`)]) assert.equal((await call(handler, { path: `/api/chart-mail-board?${query}` })).status, 400)
   for (const body of [{ status: "SKIP", version: 1 }, { status: "COMPLETED", version: 0 }, { status: "COMPLETED", version: 1, comment: "a".repeat(1001) }]) assert.equal((await call(handler, { path: `/api/chart-mail-board/${id}`, method: "PATCH", body })).status, 400)

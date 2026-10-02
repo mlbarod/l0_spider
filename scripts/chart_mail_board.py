@@ -42,7 +42,7 @@ def json_date(value):
 def require_post(cursor, post_id, actor, lock=False):
     cursor.execute("SELECT * FROM chart_mail_post WHERE post_id = %s" + (" FOR UPDATE" if lock else ""), (post_id,))
     post = cursor.fetchone()
-    if not post:
+    if not post or post["work_status"] == "DELETED":
         raise BoardError("BOARD_NOT_FOUND")
     cursor.execute("SELECT recipient_knox_id FROM chart_mail_post_recipient WHERE post_id = %s ORDER BY recipient_order", (post_id,))
     recipients = [row["recipient_knox_id"] for row in cursor.fetchall()]
@@ -117,6 +117,8 @@ def execute_action(connection, action, payload):
         raise BoardError("BOARD_INVALID")
     if action != "list" and not re.fullmatch(r"[a-f0-9]{64}", str(payload.get("id", ""))):
         raise BoardError("BOARD_INVALID")
+    if action == "delete" and payload.get("role") != "master":
+        raise BoardError("BOARD_FORBIDDEN")
     with connection.cursor() as cursor:
         if action == "begin":
             result = begin(cursor, payload)
@@ -140,7 +142,7 @@ def execute_action(connection, action, payload):
                 raise BoardError("BOARD_INVALID")
             if any(not isinstance(value, str) or len(value) > 200 for value in (line, sdwt)):
                 raise BoardError("BOARD_INVALID")
-            where = "1 = 1"
+            where = "p.work_status <> 'DELETED'"
             params = []
             for column, value in (("line", line), ("sdwt", sdwt)):
                 if value:
@@ -159,11 +161,21 @@ def execute_action(connection, action, payload):
                 + " ORDER BY p.created_at DESC, p.post_id DESC LIMIT 20 OFFSET %s", tuple(params + [(page - 1) * 20]))
             result = {"posts": [public_post(row) for row in cursor.fetchall()], "total": total, "page": page, "pageSize": 20}
             # Options cover the entire board, not just this page or search result.
-            cursor.execute("SELECT DISTINCT line FROM chart_mail_post WHERE line <> '' ORDER BY line")
+            cursor.execute("SELECT DISTINCT line FROM chart_mail_post WHERE work_status <> 'DELETED' AND line <> '' ORDER BY line")
             lines = [row["line"] for row in cursor.fetchall()]
-            cursor.execute("SELECT DISTINCT sdwt FROM chart_mail_post WHERE sdwt <> ''"
+            cursor.execute("SELECT DISTINCT sdwt FROM chart_mail_post WHERE work_status <> 'DELETED' AND sdwt <> ''"
                            + (" AND line = %s" if line else "") + " ORDER BY sdwt", (line,) if line else ())
             result["filters"] = {"lines": lines, "sdwts": [row["sdwt"] for row in cursor.fetchall()]}
+        elif action == "delete":
+            require_post(cursor, payload["id"], actor, lock=True)
+            for table in ("chart_mail_post_history", "chart_mail_post_image", "chart_mail_post_recipient"):
+                cursor.execute(f"DELETE FROM {table} WHERE post_id = %s", (payload["id"],))
+            # Retain the request fingerprint and mail state to suppress resend/retry
+            # after deletion, including a send that is already in flight.
+            cursor.execute("""UPDATE chart_mail_post SET work_status = 'DELETED',
+                title = '', details = '', comment = '', chart_url = '', app = '', line = '', sdwt = '',
+                version = version + 1, updated_at = %s WHERE post_id = %s""", (timestamp(), payload["id"]))
+            result = {}
         elif action in ("detail", "image", "status"):
             post, recipients = require_post(cursor, payload["id"], actor, lock=action == "status")
             if action == "image":

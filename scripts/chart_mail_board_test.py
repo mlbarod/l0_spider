@@ -37,6 +37,8 @@ class Cursor:
     def execute(self, sql, params=()):
         if self.db.fail_image and "INSERT INTO chart_mail_post_image" in sql:
             raise RuntimeError("private DB credentials")
+        if self.db.fail_delete and "SET work_status = 'DELETED'" in sql:
+            raise RuntimeError("private DB credentials")
         sql = sql.replace("%s", "?").replace(" FOR UPDATE", "")
         sql = sql.replace("ON DUPLICATE KEY UPDATE post_id = post_id", "ON CONFLICT(post_id) DO NOTHING")
         self.cursor.execute(sql, params)
@@ -55,6 +57,7 @@ class Database:
         self.connection.row_factory = sqlite3.Row
         self.connection.create_function("LOCATE", 2, lambda needle, text: text.find(needle) + 1)
         self.fail_image = False
+        self.fail_delete = False
         self.connection.executescript("""
             PRAGMA foreign_keys=ON;
             CREATE TABLE chart_mail_post (post_id TEXT PRIMARY KEY, fingerprint TEXT, sender_knox_id TEXT,
@@ -98,6 +101,57 @@ class BoardTest(unittest.TestCase):
 
     def run_action(self, action, **payload):
         return board.execute_action(self.db, action, {"actor": "other.logged.in", "id": "a" * 64, **payload})
+
+    def test_only_master_deletes_content_and_children_without_reenabling_send(self):
+        request = draft(chartUrl="https://example.test/self-equipment?line=L1&sdwt=S1")
+        board.execute_action(self.db, "begin", request)
+        board.execute_action(self.db, "begin", draft(id="d" * 64, chartUrl="https://example.test/self-equipment?line=L2&sdwt=S2"))
+        self.run_action("status", status="COMPLETED", version=1, comment="확인")
+        for role in (None, "general", "blocked"):
+            with self.assertRaisesRegex(board.BoardError, "BOARD_FORBIDDEN"):
+                self.run_action("delete", role=role)
+        self.assertEqual(self.run_action("detail")["post"]["title"], request["title"])
+        self.run_action("delete", role="master")
+        for table in ("chart_mail_post_history", "chart_mail_post_recipient", "chart_mail_post_image"):
+            self.assertEqual(self.db.connection.execute(f"SELECT COUNT(*) FROM {table} WHERE post_id = ?", (request["id"],)).fetchone()[0], 0)
+        for action in ("detail", "image", "status", "delete"):
+            with self.assertRaisesRegex(board.BoardError, "BOARD_NOT_FOUND"):
+                self.run_action(action, role="master", status="IN_PROGRESS", version=2, comment="")
+        listing = self.run_action("list", page=1, search="", status="")
+        self.assertEqual(listing["total"], 1)
+        self.assertEqual(listing["filters"], {"lines": ["L2"], "sdwts": ["S2"]})
+        self.assertEqual(self.run_action("list", page=1, search="", status="", line="L1")["total"], 0)
+        # An in-flight mail can finish normally; duplicate requests cannot restore it.
+        self.run_action("finish", actor=request["actor"], state="accepted", diagnostics={})
+        retry = board.execute_action(self.db, "begin", request)
+        self.assertFalse(retry["created"])
+        self.assertEqual(retry["state"], "accepted")
+        stored = self.db.connection.execute("SELECT * FROM chart_mail_post WHERE post_id = ?", (request["id"],)).fetchone()
+        for column in ("title", "details", "comment", "chart_url", "app", "line", "sdwt"):
+            self.assertEqual(stored[column], "")
+        self.assertEqual(stored["work_status"], "DELETED")
+
+    def test_deleted_saved_history_does_not_reappear_on_retry(self):
+        request = draft()
+        board.execute_action(self.db, "save-history", request)
+        self.run_action("delete", role="master")
+        self.assertFalse(board.execute_action(self.db, "save-history", request)["created"])
+        self.assertEqual(self.run_action("list", page=1, search="", status="")["total"], 0)
+
+    def test_delete_failure_rolls_back_all_children(self):
+        board.execute_action(self.db, "begin", draft())
+        self.run_action("status", status="COMPLETED", version=1, comment="확인")
+        self.db.fail_delete = True
+        output = io.StringIO()
+        request = {"actor": "master.user", "role": "master", "id": "a" * 64}
+        with patch.object(board, "connect", return_value=self.db), patch.object(sys, "stdin", io.StringIO(json.dumps(request))), patch.object(sys, "argv", ["board", "delete"]), contextlib.redirect_stdout(output):
+            board.main()
+        self.assertEqual(json.loads(output.getvalue()), {"ok": False, "code": "BOARD_STORAGE_ERROR"})
+        post = self.run_action("detail")["post"]
+        self.assertEqual(post["title"], "TEST 제목")
+        self.assertEqual(len(post["history"]), 1)
+        self.assertEqual(len(post["recipients"]), 2)
+        self.assertEqual(self.run_action("image")["imageBase64"], PNG)
 
     def test_snapshot_binary_and_same_request_deduplication(self):
         self.assertTrue(board.execute_action(self.db, "begin", draft())["created"])

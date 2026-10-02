@@ -79,13 +79,21 @@ export function createChartMailBoardHandler({ db = createChartMailBoardDb(), env
         })
         return res.end(png)
       }
-      if (req.method === "GET" && id) return json(res, 200, await db.detail(actor, id))
+      if (req.method === "GET" && id) {
+        const result = await db.detail(actor, id)
+        return json(res, 200, { ...result, post: { ...result.post, canDelete: req.accessRole === "master" } })
+      }
       if (req.method === "PATCH" && id && !image) return json(res, 200, await db.status(actor, id, await readStatus(req)))
+      if (req.method === "DELETE" && id && !image) {
+        if (req.accessRole !== "master") return json(res, 403, { ok: false, code: "BOARD_FORBIDDEN", error: "마스터 권한 사용자만 게시글을 삭제할 수 있습니다." })
+        return json(res, 200, await db.delete(actor, id, req.accessRole))
+      }
       return json(res, 405, { ok: false, error: "지원하지 않는 요청입니다." })
     } catch (error) {
       if (sendSsoAuthenticationError(error, res)) return
       if (error instanceof TypeError || error.code === "BOARD_INVALID") return json(res, 400, { ok: false, code: "BOARD_INVALID", error: "게시판 조회·등록 또는 상태 변경 내용을 확인해 주세요." })
       if (error.code === "BOARD_NOT_FOUND") return json(res, 404, { ok: false, code: error.code, error: "게시글을 찾을 수 없습니다." })
+      if (error.code === "BOARD_FORBIDDEN") return json(res, 403, { ok: false, code: error.code, error: "마스터 권한 사용자만 게시글을 삭제할 수 있습니다." })
       if (error.code === "BOARD_CONFLICT") return json(res, 409, { ok: false, code: error.code, error: "다른 사용자가 상태를 변경했습니다. 최신 내용을 확인한 뒤 다시 처리해 주세요." })
       if (error.code === "MAIL_REQUEST_CONFLICT") return json(res, 409, { ok: false, code: error.code, error: "이미 다른 내용으로 저장한 요청입니다. 게시판에서 등록 내역을 확인해 주세요." })
       return json(res, 500, createSafeApiError({ code: "BOARD_STORAGE_ERROR", message: "게시판을 저장하거나 불러오지 못했습니다. DB 설정과 테이블을 확인해 주세요.", scope: "chart-mail-board", logger }))

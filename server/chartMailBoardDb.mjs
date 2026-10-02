@@ -2,7 +2,7 @@ import { execFile } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
 const helperPath = fileURLToPath(new URL("../scripts/chart_mail_board.py", import.meta.url))
-const inputCodes = new Set(["BOARD_NOT_FOUND", "BOARD_INVALID", "BOARD_CONFLICT", "MAIL_REQUEST_CONFLICT"])
+const inputCodes = new Set(["BOARD_NOT_FOUND", "BOARD_INVALID", "BOARD_CONFLICT", "BOARD_FORBIDDEN", "MAIL_REQUEST_CONFLICT"])
 
 export function runChartMailBoardHelper(action, payload, { execute = execFile } = {}) {
   return new Promise((resolve, reject) => {
@@ -33,5 +33,6 @@ export function createChartMailBoardDb({ run = runChartMailBoardHelper } = {}) {
     detail: (actor, id) => run("detail", { actor, id }),
     image: (actor, id) => run("image", { actor, id }),
     status: (actor, id, payload) => run("status", { ...payload, actor, id }),
+    delete: (actor, id, role) => run("delete", { actor, id, role }),
   }
 }
